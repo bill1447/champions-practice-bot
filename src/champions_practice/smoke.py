@@ -2,40 +2,13 @@
 
 from __future__ import annotations
 
-import asyncio
-from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
 
 from poke_env.player import RandomPlayer
 
+from champions_practice.client import close_player, wait_for_login
 from champions_practice.config import CHAMPIONS_FORMAT, SHOWDOWN_WS_URL
 from champions_practice.showdown import champions_format_present, default_showdown_root
-
-
-def _wait_for_login(player: RandomPlayer, timeout: float = 10.0) -> None:
-    future = asyncio.run_coroutine_threadsafe(
-        player.ps_client.logged_in.wait(),
-        player.ps_client.loop,
-    )
-    try:
-        future.result(timeout=timeout)
-    except FutureTimeoutError as exc:
-        raise RuntimeError(
-            f"Timed out connecting to local Showdown at {SHOWDOWN_WS_URL}"
-        ) from exc
-
-
-def _close_player(player: RandomPlayer) -> None:
-    future = asyncio.run_coroutine_threadsafe(
-        player.ps_client._stop_listening(),
-        player.ps_client.loop,
-    )
-    try:
-        future.result(timeout=5.0)
-    except Exception:
-        # The process is about to exit; do not turn a successful connectivity probe
-        # into a failure solely because the socket was already closing.
-        pass
 
 
 def main() -> None:
@@ -60,11 +33,11 @@ def main() -> None:
     )
 
     try:
-        _wait_for_login(player)
+        wait_for_login(player)
         print(f"poke-env: connected as {player.username}")
         print("RESULT:   local Showdown connection is healthy")
     finally:
-        _close_player(player)
+        close_player(player)
 
 
 if __name__ == "__main__":
