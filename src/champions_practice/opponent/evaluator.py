@@ -38,12 +38,21 @@ class ScoredOrder:
     reasons: tuple[str, ...] = ()
 
 
-def _target_for_position(battle: DoubleBattle, position: int) -> Pokemon | None:
+def _target_for_position(battle: DoubleBattle, position: int) -> tuple[str, Pokemon | None]:
+    """Resolve a Showdown doubles target position.
+
+    Positive positions are foes, negative positions are our own active slots, and zero
+    means the move does not require an explicit target.
+    """
     if position == battle.OPPONENT_1_POSITION:
-        return battle.opponent_active_pokemon[0]
+        return "foe", battle.opponent_active_pokemon[0]
     if position == battle.OPPONENT_2_POSITION:
-        return battle.opponent_active_pokemon[1]
-    return None
+        return "foe", battle.opponent_active_pokemon[1]
+    if position == battle.POKEMON_1_POSITION:
+        return "ally", battle.active_pokemon[0]
+    if position == battle.POKEMON_2_POSITION:
+        return "ally", battle.active_pokemon[1]
+    return "none", None
 
 
 def _attack_value(attacker: Pokemon, move: Move, target: Pokemon) -> float:
@@ -134,10 +143,22 @@ def score_single_order(
             value -= 8.0
         return value, f"status:{choice.id}"
 
-    if order.move_target > 0:
-        target = _target_for_position(battle, order.move_target)
+    if order.move_target != battle.EMPTY_TARGET_POSITION:
+        side, target = _target_for_position(battle, order.move_target)
         if target is None:
             return -25.0, f"attack:{choice.id}:empty"
+
+        if side == "ally":
+            # In Showdown doubles, negative targets are our own active slots. The v0
+            # evaluator previously treated every non-positive target as a spread move,
+            # which made attacks like Psychic -2 and Steel Roller -1 look excellent.
+            # Do not intentionally damage our partner until we explicitly model niche
+            # ally-target strategies.
+            if choice.id == "pollenpuff":
+                missing_hp = 1.0 - target.current_hp_fraction
+                return 80.0 * missing_hp, f"heal:pollenpuff->{target.species}"
+            return -500.0, f"friendly-fire:{choice.id}->{target.species}"
+
         value = _attack_value(attacker, choice, target)
         reason = f"attack:{choice.id}->{target.species}"
     else:
