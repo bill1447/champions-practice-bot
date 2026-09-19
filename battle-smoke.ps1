@@ -8,6 +8,7 @@ if (-not (Test-Path $Python)) {
     throw "Python environment is missing. Run .\setup.ps1 first."
 }
 
+& (Join-Path $Root "validate-team.ps1")
 & (Join-Path $Root "start-showdown.ps1")
 
 Write-Host ""
