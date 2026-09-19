@@ -61,6 +61,10 @@ Server controls:
 
 `test-local.ps1` runs unit tests plus the live `poke-env` connectivity test. Add `-StopAfter` if it had to start Showdown and you want it shut down afterward.
 
+`validate-team.ps1` asks the official Showdown validator to check the integration team against Reg M-C.
+
+`battle-smoke.ps1` validates that team, starts Showdown if needed, and runs one complete automated Champions doubles battle between two deterministic baseline players. A successful run proves the full path from team text → team preview → legal doubles actions → Mega Evolution → battle completion.
+
 `run.ps1` is a convenience command: it starts Showdown if needed, runs the live connectivity check, and deliberately leaves Showdown running.
 
 ## Remote-PC preparation
@@ -97,6 +101,8 @@ champions-practice-bot/
 ├── start-showdown.ps1
 ├── status.ps1
 ├── test-local.ps1
+├── validate-team.ps1
+├── battle-smoke.ps1
 ├── stop-showdown.ps1
 └── run.ps1
 ```
