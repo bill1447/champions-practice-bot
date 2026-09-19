@@ -25,7 +25,7 @@ try {
 
     Write-Host "Showdown PID: $($Process.Id)"
     Write-Host ""
-    & $Python -m champions_practice.cli
+    & $Python -m champions_practice.smoke
 }
 finally {
     if (-not $Process.HasExited) {
