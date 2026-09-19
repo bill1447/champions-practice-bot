@@ -9,20 +9,43 @@ from poke_env.player import Player
 
 from champions_practice.opponent.actions import enumerate_joint_orders
 from champions_practice.opponent.evaluator import score_joint_order
+from champions_practice.opponent.preview import choose_team_preview
 
 
 class HeuristicOpponent(Player):
-    """Choose the highest-scoring legal joint doubles action.
+    """Choose team preview and turns from public battle information.
 
-    Version 0 is deliberately transparent rather than clever. It only consumes the
-    public battle state exposed by poke-env, enumerates legal joint actions, and scores
-    them with a small tactical heuristic.
+    Version 0 remains deliberately transparent. It does not inspect hidden opponent
+    moves, items, abilities, spreads, or unrevealed bench information.
     """
 
     def __init__(self, *args, trace_choices: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
         self.trace_choices = trace_choices
         self.choice_logger = logging.getLogger("champions_practice.opponent")
+
+    def teampreview(self, battle: AbstractBattle) -> str:
+        team = list(battle.team.values())
+        opponents = list(battle.teampreview_opponent_team)
+
+        best, ranking = choose_team_preview(team, opponents)
+
+        for index in best.order:
+            team[index - 1]._selected_in_teampreview = True
+
+        if self.trace_choices:
+            self.choice_logger.warning(
+                "preview chosen=%s score=%.3f reasons=%s top5=%s",
+                best.order,
+                best.score,
+                best.reasons,
+                [
+                    (choice.order, round(choice.score, 3), choice.reasons)
+                    for choice in ranking[:5]
+                ],
+            )
+
+        return "/team " + "".join(str(index) for index in best.order)
 
     def choose_move(self, battle: AbstractBattle):
         if not isinstance(battle, DoubleBattle):
