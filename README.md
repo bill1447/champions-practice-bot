@@ -50,7 +50,7 @@ After setup:
 .\run.ps1
 ```
 
-The first milestone is deliberately narrow: prove that Python can connect to a local Showdown server advertising the Champions M-C format. Battle AI comes after the rules-engine connection is trustworthy.
+`run.ps1` now performs the first live integration milestone: it starts local Showdown, verifies that `gen9championsvgc2026regmc` is present in the checkout, connects through `poke-env`, reports a healthy login, and then shuts the server down cleanly. The next milestone is a real automated Champions doubles battle.
 
 ## Repository layout
 
