@@ -65,7 +65,7 @@ Server controls:
 
 `battle-smoke.ps1` validates that team, starts Showdown if needed, and runs one complete automated Champions doubles battle between two deterministic baseline players. A successful run proves the full path from team text → team preview → legal doubles actions → Mega Evolution → battle completion.
 
-`ai-smoke.ps1` runs the first real opponent policy against the deterministic baseline. The v0 heuristic enumerates every legal joint doubles action exposed by poke-env, scores attacks using base power / accuracy / STAB / type effectiveness / target HP pressure, gives small values to Protect and common support moves, penalizes obvious bad spread choices, and chooses the highest-scoring legal joint action. It is intentionally transparent and shallow; Showdown still resolves the actual turn.
+`ai-smoke.ps1` runs the first real opponent policy against the deterministic baseline. The v0 heuristic now also evaluates all 90 legal bring-4/lead-2 combinations at team preview using only public preview information plus its own known sets. During battle it enumerates every legal joint doubles action exposed by poke-env, scores attacks using base power / accuracy / STAB / type effectiveness / target HP pressure, gives small values to Protect and common support moves, penalizes obvious bad spread choices, and chooses the highest-scoring legal joint action. It is intentionally transparent and shallow; Showdown still resolves the actual turn.
 
 `run.ps1` is a convenience command: it starts Showdown if needed, runs the live connectivity check, and deliberately leaves Showdown running.
 
