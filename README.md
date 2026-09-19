@@ -65,6 +65,14 @@ Server controls:
 
 ## Remote-PC preparation
 
+Before leaving the home PC, run:
+
+```powershell
+.\prepare-remote.ps1 -ApplyPowerSettings
+```
+
+This checks for the Chrome Remote Desktop service, disables AC sleep/hibernation timeouts, and prints project/server status.
+
 For reliable Chrome Remote Desktop access, the home PC should:
 
 - stay awake while plugged in;
@@ -85,6 +93,7 @@ champions-practice-bot/
 ├── .runtime/                 # gitignored PID/log files
 ├── setup.ps1
 ├── update-local.ps1
+├── prepare-remote.ps1
 ├── start-showdown.ps1
 ├── status.ps1
 ├── test-local.ps1
