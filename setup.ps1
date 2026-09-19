@@ -93,6 +93,9 @@ finally {
     Pop-Location
 }
 
+. (Join-Path $Root "scripts\showdown-utils.ps1")
+Set-ChampionsShowdownLocalConfig
+
 if ($IncludeReferenceRepo) {
     Invoke-GitCloneOrPull -Url "https://github.com/Nolelle/pokemon-vgc-ai.git" -Path $Reference
 }
@@ -102,4 +105,5 @@ Write-Host "Running smoke tests"
 
 Write-Host ""
 Write-Host "Setup complete."
-Write-Host "Run .\run.ps1 to start the local Showdown server and practice-bot CLI."
+Write-Host "Showdown is configured for localhost only."
+Write-Host "Use .\start-showdown.ps1, .\status.ps1, .\test-local.ps1, and .\stop-showdown.ps1."
