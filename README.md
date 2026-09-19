@@ -21,47 +21,75 @@ The public `Nolelle/pokemon-vgc-ai` repository is useful as a reference implemen
 - Python 3.12
 - Node.js 22.18 or newer
 
-## Quick start
-
-Clone this repository and run:
-
-```powershell
-.\setup.ps1
-```
-
-To also clone the AI reference repository:
+## Initial setup
 
 ```powershell
 .\setup.ps1 -IncludeReferenceRepo
 ```
 
-The setup script:
+The setup script creates the Python environment, installs dependencies, clones/builds Pokémon Showdown, configures Showdown to listen on **127.0.0.1 only**, and runs the unit tests.
 
-- creates `.venv`;
-- installs this package and development dependencies;
-- clones or updates Pokémon Showdown under `external/pokemon-showdown`;
-- installs Showdown's Node dependencies;
-- builds Showdown;
-- runs the Python smoke tests.
+The localhost-only binding is intentional. Chrome Remote Desktop gives you access to the home PC; there is no reason to expose the Showdown development server to the LAN or Internet.
 
-After setup:
+## Daily / remote workflow
+
+After merging changes in GitHub:
 
 ```powershell
-.\run.ps1
+.\update-local.ps1
 ```
 
-`run.ps1` now performs the first live integration milestone: it starts local Showdown, verifies that `gen9championsvgc2026regmc` is present in the checkout, connects through `poke-env`, reports a healthy login, and then shuts the server down cleanly. The next milestone is a real automated Champions doubles battle.
+That fast-forwards the project checkout, syncs Python dependencies, and runs unit tests.
+
+Only when we intentionally want to update the upstream Showdown checkout too:
+
+```powershell
+.\update-local.ps1 -UpdateShowdown
+```
+
+Server controls:
+
+```powershell
+.\start-showdown.ps1
+.\status.ps1
+.\status.ps1 -Logs
+.\test-local.ps1
+.\stop-showdown.ps1
+```
+
+`start-showdown.ps1` launches Showdown as a hidden persistent process and records its PID/logs under `.runtime/`. It is not tied to the PowerShell window used to start it.
+
+`test-local.ps1` runs unit tests plus the live `poke-env` connectivity test. Add `-StopAfter` if it had to start Showdown and you want it shut down afterward.
+
+`run.ps1` is a convenience command: it starts Showdown if needed, runs the live connectivity check, and deliberately leaves Showdown running.
+
+## Remote-PC preparation
+
+For reliable Chrome Remote Desktop access, the home PC should:
+
+- stay awake while plugged in;
+- have Chrome Remote Desktop Host enabled and tested before leaving;
+- remain connected by reliable Ethernet/Wi-Fi;
+- have Windows configured so an unattended reboot does not require you to physically dismiss firmware prompts.
+
+A power outage is the main failure mode that Windows cannot solve by itself. If the motherboard supports it, set BIOS/UEFI **Restore on AC Power Loss** (sometimes called AC Back, After Power Failure, or Restore Last State) to **Power On** or **Last State**.
 
 ## Repository layout
 
 ```text
 champions-practice-bot/
 ├── src/champions_practice/
+├── scripts/
 ├── tests/
 ├── external/                 # gitignored local dependencies
+├── .runtime/                 # gitignored PID/log files
 ├── setup.ps1
-├── run.ps1
-└── pyproject.toml
+├── update-local.ps1
+├── start-showdown.ps1
+├── status.ps1
+├── test-local.ps1
+├── stop-showdown.ps1
+└── run.ps1
 ```
 
 ## Licensing
