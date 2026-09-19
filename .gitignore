@@ -10,7 +10,8 @@ build/
 # Local upstream/reference checkouts
 external/
 
-# Local runtime output
+# Local runtime/process state
+.runtime/
 runs/
 *.log
 
