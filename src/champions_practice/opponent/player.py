@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 from poke_env.battle import AbstractBattle, DoubleBattle
 from poke_env.player import Player
 
 from champions_practice.opponent.actions import enumerate_joint_orders
 from champions_practice.opponent.response import score_response_aware_order
+from champions_practice.trace import DecisionTrace, public_battle_snapshot
 from champions_practice.opponent.preview import choose_team_preview
 
 
@@ -20,10 +22,21 @@ class HeuristicOpponent(Player):
     attacks are used to penalize fragile lines before the final action is selected.
     """
 
-    def __init__(self, *args, trace_choices: bool = False, **kwargs):
+    def __init__(
+        self,
+        *args,
+        trace_choices: bool = False,
+        decision_trace_path: str | Path | None = None,
+        **kwargs,
+    ):
         super().__init__(*args, **kwargs)
         self.trace_choices = trace_choices
         self.choice_logger = logging.getLogger("champions_practice.opponent")
+        self.decision_trace = (
+            DecisionTrace(decision_trace_path)
+            if decision_trace_path is not None
+            else None
+        )
 
     def teampreview(self, battle: AbstractBattle) -> str:
         team = list(battle.team.values())
@@ -33,6 +46,15 @@ class HeuristicOpponent(Player):
 
         for index in best.order:
             team[index - 1]._selected_in_teampreview = True
+
+        top_preview = [
+            {
+                "order": list(choice.order),
+                "score": round(choice.score, 3),
+                "reasons": list(choice.reasons),
+            }
+            for choice in ranking[:5]
+        ]
 
         if self.trace_choices:
             self.choice_logger.warning(
@@ -44,6 +66,17 @@ class HeuristicOpponent(Player):
                     (choice.order, round(choice.score, 3), choice.reasons)
                     for choice in ranking[:5]
                 ],
+            )
+
+        if self.decision_trace is not None:
+            self.decision_trace.append(
+                {
+                    "event": "preview",
+                    "chosen": list(best.order),
+                    "score": round(best.score, 3),
+                    "reasons": list(best.reasons),
+                    "top5": top_preview,
+                }
             )
 
         return "/team " + "".join(str(index) for index in best.order)
@@ -59,12 +92,13 @@ class HeuristicOpponent(Player):
         scored = [score_response_aware_order(battle, order) for order in joint_orders]
         best = max(scored, key=lambda candidate: (candidate.score, candidate.order.message))
 
+        leaders = sorted(
+            scored,
+            key=lambda candidate: candidate.score,
+            reverse=True,
+        )[:5]
+
         if self.trace_choices:
-            leaders = sorted(
-                scored,
-                key=lambda candidate: candidate.score,
-                reverse=True,
-            )[:5]
             self.choice_logger.warning(
                 "turn=%s candidates=%s chosen=%.2f %s reasons=%s top5=%s",
                 battle.turn,
@@ -76,6 +110,26 @@ class HeuristicOpponent(Player):
                     (round(candidate.score, 2), candidate.order.message)
                     for candidate in leaders
                 ],
+            )
+
+        if self.decision_trace is not None:
+            self.decision_trace.append(
+                {
+                    "event": "turn",
+                    "state": public_battle_snapshot(battle),
+                    "candidate_count": len(scored),
+                    "chosen": best.order.message,
+                    "score": round(best.score, 3),
+                    "reasons": list(best.reasons),
+                    "top5": [
+                        {
+                            "action": candidate.order.message,
+                            "score": round(candidate.score, 3),
+                            "reasons": list(candidate.reasons),
+                        }
+                        for candidate in leaders
+                    ],
+                }
             )
 
         return best.order
