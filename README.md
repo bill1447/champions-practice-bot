@@ -31,6 +31,12 @@ The setup script creates the Python environment, installs dependencies, clones/b
 
 The localhost-only binding is intentional. Chrome Remote Desktop gives you access to the home PC; there is no reason to expose the Showdown development server to the LAN or Internet.
 
+## Continuous integration
+
+Every pull request and push to `main` now runs a Windows GitHub Actions job that installs the Python environment, clones/builds official Pokémon Showdown, lints the project, runs unit tests, validates the Reg M-C team, completes a baseline Champions battle, and completes a heuristic-opponent battle. Runtime logs and battle outputs are uploaded as workflow artifacts for seven days.
+
+This means most code changes can be validated in GitHub without requiring the home PC. The local machine remains useful for interactive testing and later UI work.
+
 ## Daily / remote workflow
 
 After merging changes in GitHub:

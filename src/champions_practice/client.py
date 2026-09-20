@@ -32,7 +32,7 @@ def close_player(player: Player, timeout: float = 5.0) -> None:
     )
     try:
         future.result(timeout=timeout)
-    except Exception:
-        # Commands are exiting immediately afterward. A socket that is already closing
-        # should not hide the result of the actual smoke/integration test.
-        pass
+    except FutureTimeoutError:
+        # Commands are exiting immediately afterward. Do not turn a slow websocket
+        # shutdown into a failure after the actual smoke/integration test has passed.
+        future.cancel()

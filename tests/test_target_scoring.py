@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from poke_env.battle import Move, Pokemon
 from poke_env.player.battle_order import SingleBattleOrder
 

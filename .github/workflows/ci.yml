@@ -1,0 +1,101 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-integration:
+    runs-on: windows-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out practice bot
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js 24
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Create Python environment
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .\.venv\Scripts\python.exe -m pip install --upgrade pip
+          .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+
+      - name: Clone Pokemon Showdown
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force external | Out-Null
+          git clone --depth 1 https://github.com/smogon/pokemon-showdown.git external/pokemon-showdown
+
+      - name: Install and build Pokemon Showdown
+        shell: pwsh
+        run: |
+          Push-Location external/pokemon-showdown
+          try {
+            npm install
+            npm run build
+            Copy-Item config/config-example.js config/config.js -Force
+          }
+          finally {
+            Pop-Location
+          }
+
+          . .\scripts\showdown-utils.ps1
+          Set-ChampionsShowdownLocalConfig
+
+      - name: Lint
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m ruff check src tests
+
+      - name: Unit tests
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m pytest
+
+      - name: Validate Champions team
+        shell: pwsh
+        run: .\validate-team.ps1
+
+      - name: Full Champions battle smoke test
+        shell: pwsh
+        run: .\battle-smoke.ps1
+
+      - name: Heuristic opponent smoke test
+        shell: pwsh
+        run: .\ai-smoke.ps1
+
+      - name: Capture status and logs
+        if: always()
+        continue-on-error: true
+        shell: pwsh
+        run: .\status.ps1 -Logs
+
+      - name: Stop local Showdown
+        if: always()
+        shell: pwsh
+        run: .\stop-showdown.ps1
+
+      - name: Upload integration artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: champions-ci-artifacts
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            .runtime/
+            runs/
