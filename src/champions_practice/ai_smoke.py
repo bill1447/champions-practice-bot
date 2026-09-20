@@ -50,7 +50,7 @@ async def run_battle(timeout: float = 90.0) -> None:
         battle = next(iter(heuristic.battles.values()))
         outcome = "heuristic win" if battle.won else "heuristic loss" if battle.lost else "tie"
 
-        print("")
+        print()
         print("Battle complete.")
         print(f"Turns:     {battle.turn}")
         print(f"Outcome:   {outcome}")
