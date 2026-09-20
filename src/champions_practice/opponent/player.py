@@ -8,15 +8,16 @@ from poke_env.battle import AbstractBattle, DoubleBattle
 from poke_env.player import Player
 
 from champions_practice.opponent.actions import enumerate_joint_orders
-from champions_practice.opponent.evaluator import score_joint_order
+from champions_practice.opponent.response import score_response_aware_order
 from champions_practice.opponent.preview import choose_team_preview
 
 
 class HeuristicOpponent(Player):
     """Choose team preview and turns from public battle information.
 
-    Version 0 remains deliberately transparent. It does not inspect hidden opponent
-    moves, items, abilities, spreads, or unrevealed bench information.
+    The policy remains deliberately transparent. It does not inspect hidden opponent
+    moves, items, abilities, spreads, or unrevealed bench information. Revealed opposing
+    attacks are used to penalize fragile lines before the final action is selected.
     """
 
     def __init__(self, *args, trace_choices: bool = False, **kwargs):
@@ -55,7 +56,7 @@ class HeuristicOpponent(Player):
         if not joint_orders:
             return self.choose_random_move(battle)
 
-        scored = [score_joint_order(battle, order) for order in joint_orders]
+        scored = [score_response_aware_order(battle, order) for order in joint_orders]
         best = max(scored, key=lambda candidate: (candidate.score, candidate.order.message))
 
         if self.trace_choices:
