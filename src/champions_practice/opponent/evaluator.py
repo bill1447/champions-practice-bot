@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from poke_env.battle import DoubleBattle, Move, MoveCategory, Pokemon, Target
+from poke_env.battle import DoubleBattle, Field, Move, MoveCategory, Pokemon, Target
 from poke_env.player.battle_order import DoubleBattleOrder, SingleBattleOrder
 
 
@@ -29,6 +29,12 @@ DEFENSIVE_SPREAD_MOVES = {"wideguard", "quickguard"}
 
 SPREAD_FOE_TARGETS = {Target.ALL_ADJACENT_FOES}
 SPREAD_WITH_ALLY_TARGETS = {Target.ALL, Target.ALL_ADJACENT}
+TERRAIN_FIELDS = {
+    Field.ELECTRIC_TERRAIN,
+    Field.GRASSY_TERRAIN,
+    Field.MISTY_TERRAIN,
+    Field.PSYCHIC_TERRAIN,
+}
 
 
 @dataclass(frozen=True)
@@ -95,8 +101,13 @@ def _attack_value(attacker: Pokemon, move: Move, target: Pokemon) -> float:
     return value
 
 
-def _status_value(move: Move, attacker: Pokemon) -> float:
+def _status_value(battle: DoubleBattle, move: Move, attacker: Pokemon) -> float:
     move_id = move.id
+
+    if move_id == "trickroom" and Field.TRICK_ROOM in battle.fields:
+        # Clicking Trick Room while it is already active ends it. That can be correct in
+        # a real position, but v0 has no speed-state search yet, so don't blindly toggle it.
+        return -12.0
 
     if move_id in PROTECT_MOVES:
         # A low-health Pokémon has a stronger reason to preserve itself, but we keep the
@@ -136,12 +147,20 @@ def score_single_order(
         return 0.0, "pass/default"
 
     if choice.category == MoveCategory.STATUS or choice.base_power <= 0:
-        value = _status_value(choice, attacker)
+        value = _status_value(battle, choice, attacker)
         if order.mega:
             # Never spend the once-per-battle Mega action on a status move unless the
             # engine leaves no better option.
             value -= 8.0
         return value, f"status:{choice.id}"
+
+    # Showdown exposes Steel Roller as a legal move even when no terrain exists, but the
+    # move fails in that state. A base-power heuristic otherwise becomes obsessed with it.
+    if choice.id == "steelroller" and not any(
+        terrain in battle.fields for terrain in TERRAIN_FIELDS
+    ):
+        return -800.0, "fail:steelroller-no-terrain"
+
 
     if order.move_target != battle.EMPTY_TARGET_POSITION:
         side, target = _target_for_position(battle, order.move_target)
@@ -183,6 +202,13 @@ def score_single_order(
             value -= 35.0
 
         reason = f"spread:{choice.id}"
+
+    if choice.id == "expandingforce" and Field.PSYCHIC_TERRAIN in battle.fields:
+        value += 35.0
+        reason += ":psychic-terrain"
+    elif choice.id == "grassyglide" and Field.GRASSY_TERRAIN in battle.fields:
+        value += 22.0
+        reason += ":grassy-terrain"
 
     if order.mega:
         # A small proactive bonus helps exercise Mega-capable lines without making Mega
