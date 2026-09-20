@@ -70,6 +70,10 @@ jobs:
         shell: pwsh
         run: .\validate-team.ps1
 
+      - name: Exact Showdown state fork smoke test
+        shell: pwsh
+        run: .\fork-smoke.ps1
+
       - name: Full Champions battle smoke test
         shell: pwsh
         run: .\battle-smoke.ps1
