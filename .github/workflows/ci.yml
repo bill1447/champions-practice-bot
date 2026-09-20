@@ -80,6 +80,7 @@ jobs:
 
       - name: Capture status and logs
         if: always()
+        continue-on-error: true
         shell: pwsh
         run: .\status.ps1 -Logs
 
