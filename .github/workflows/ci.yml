@@ -74,6 +74,10 @@ jobs:
         shell: pwsh
         run: .\fork-smoke.ps1
 
+      - name: Python to Showdown search bridge smoke test
+        shell: pwsh
+        run: .\bridge-smoke.ps1
+
       - name: Full Champions battle smoke test
         shell: pwsh
         run: .\battle-smoke.ps1
