@@ -52,7 +52,7 @@ async def run_battle(timeout: float = 90.0) -> None:
         battle = next(iter(player_one.battles.values()))
         outcome = "P1 win" if battle.won else "P1 loss" if battle.lost else "tie"
 
-        print("")
+        print()
         print("Battle complete.")
         print(f"Turns:    {battle.turn}")
         print(f"Outcome:  {outcome}")
