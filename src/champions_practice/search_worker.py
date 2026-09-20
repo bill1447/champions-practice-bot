@@ -1,0 +1,115 @@
+"""Persistent Python bridge to the exact local Showdown simulator."""
+
+from __future__ import annotations
+
+import json
+import subprocess
+from pathlib import Path
+from typing import Any
+
+
+class ShowdownSearchWorker:
+    """Send JSONL requests to a persistent Node.js Showdown search worker."""
+
+    def __init__(self, project_root: str | Path | None = None):
+        if project_root is None:
+            project_root = Path(__file__).resolve().parents[2]
+
+        self.project_root = Path(project_root)
+        self.script = self.project_root / "tools" / "showdown-search-worker.js"
+        self.showdown_battle = (
+            self.project_root
+            / "external"
+            / "pokemon-showdown"
+            / "dist"
+            / "sim"
+            / "battle.js"
+        )
+
+        if not self.script.is_file():
+            raise RuntimeError(f"Showdown search worker script is missing: {self.script}")
+        if not self.showdown_battle.is_file():
+            raise RuntimeError(
+                "Built Pokemon Showdown simulator is missing. "
+                "Run setup.ps1 or update-local.ps1 -UpdateShowdown first."
+            )
+
+        self._next_id = 1
+        self._process = subprocess.Popen(
+            ["node", str(self.script)],
+            cwd=self.project_root,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            encoding="utf-8",
+            bufsize=1,
+        )
+
+    def request(self, op: str, **payload: Any) -> dict[str, Any]:
+        if self._process.poll() is not None:
+            stderr = self._process.stderr.read() if self._process.stderr else ""
+            raise RuntimeError(
+                f"Showdown search worker exited unexpectedly: {stderr.strip()}"
+            )
+
+        request_id = self._next_id
+        self._next_id += 1
+
+        message = {"id": request_id, "op": op, **payload}
+
+        if self._process.stdin is None or self._process.stdout is None:
+            raise RuntimeError("Showdown search worker pipes are unavailable")
+
+        self._process.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
+        self._process.stdin.flush()
+
+        line = self._process.stdout.readline()
+        if not line:
+            stderr = self._process.stderr.read() if self._process.stderr else ""
+            raise RuntimeError(
+                "Showdown search worker closed without a response. "
+                f"stderr={stderr.strip()!r}"
+            )
+
+        response = json.loads(line)
+        if response.get("id") != request_id:
+            raise RuntimeError(
+                f"Showdown worker response id mismatch: "
+                f"expected {request_id}, got {response.get('id')}"
+            )
+        if not response.get("ok"):
+            raise RuntimeError(
+                f"Showdown worker {op!r} failed: {response.get('error', 'unknown error')}"
+            )
+
+        result = response.get("result")
+        if not isinstance(result, dict):
+            raise RuntimeError("Showdown worker returned a non-object result")
+        return result
+
+    def ping(self) -> bool:
+        return bool(self.request("ping").get("pong"))
+
+    def close(self) -> None:
+        if self._process.poll() is not None:
+            return
+
+        if self._process.stdin is not None:
+            self._process.stdin.close()
+
+        try:
+            self._process.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            self._process.terminate()
+            try:
+                self._process.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._process.kill()
+                self._process.wait(timeout=2)
+
+    def __enter__(self) -> "ShowdownSearchWorker":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
