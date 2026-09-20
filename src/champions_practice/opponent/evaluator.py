@@ -61,6 +61,46 @@ def _target_for_position(battle: DoubleBattle, position: int) -> tuple[str, Poke
     return "none", None
 
 
+
+def _stage_multiplier(stage: int) -> float:
+    if stage >= 0:
+        return (2.0 + stage) / 2.0
+    return 2.0 / (2.0 - stage)
+
+
+def _offense_defense_ratio(attacker: Pokemon, target: Pokemon, move: Move) -> float:
+    """Return an approximate offensive-stat / defensive-stat ratio.
+
+    If both exact tracked stats are known, use them. Otherwise fall back to base stats
+    for both sides so we do not mix incomparable scales. Current stat stages are applied
+    either way.
+    """
+    if move.category == MoveCategory.PHYSICAL:
+        attack_key, defense_key = "atk", "def"
+    elif move.category == MoveCategory.SPECIAL:
+        attack_key, defense_key = "spa", "spd"
+    else:
+        return 1.0
+
+    attacker_exact = attacker.stats.get(attack_key)
+    target_exact = target.stats.get(defense_key)
+
+    if attacker_exact is not None and target_exact is not None:
+        attack_stat = float(attacker_exact)
+        defense_stat = float(target_exact)
+    else:
+        attack_stat = float(attacker.base_stats.get(attack_key, 100))
+        defense_stat = float(target.base_stats.get(defense_key, 100))
+
+    attack_stat *= _stage_multiplier(attacker.boosts.get(attack_key, 0))
+    defense_stat *= _stage_multiplier(target.boosts.get(defense_key, 0))
+
+    if defense_stat <= 0:
+        return 1.0
+
+    return max(0.35, min(2.75, attack_stat / defense_stat))
+
+
 def _attack_value(attacker: Pokemon, move: Move, target: Pokemon) -> float:
     """Estimate offensive value without pretending to be an exact damage calculator."""
     if target.fainted:
@@ -74,6 +114,8 @@ def _attack_value(attacker: Pokemon, move: Move, target: Pokemon) -> float:
     hp_pressure = 1.0 + (1.0 - target.current_hp_fraction) * 0.4
     expected_hits = getattr(move, "expected_hits", 1.0) or 1.0
 
+    stat_ratio = _offense_defense_ratio(attacker, target, move)
+
     value = (
         move.base_power
         * move.accuracy
@@ -81,6 +123,7 @@ def _attack_value(attacker: Pokemon, move: Move, target: Pokemon) -> float:
         * effectiveness
         * stab
         * hp_pressure
+        * stat_ratio
     )
 
     # Type advantage should be tactically visible even before we have exact damage.
