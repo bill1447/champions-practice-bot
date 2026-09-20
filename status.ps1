@@ -14,8 +14,12 @@ Write-Host "============================"
 Write-Host "Project:  $ChampionProjectRoot"
 
 if (Get-Command git -ErrorAction SilentlyContinue) {
-    $Branch = (& git -C $ChampionProjectRoot branch --show-current).Trim()
-    $Commit = (& git -C $ChampionProjectRoot rev-parse --short HEAD).Trim()
+    $BranchOutput = & git -C $ChampionProjectRoot branch --show-current
+    $Branch = if ($null -eq $BranchOutput) { "" } else { "$BranchOutput".Trim() }
+    $Commit = "$(& git -C $ChampionProjectRoot rev-parse --short HEAD)".Trim()
+    if ([string]::IsNullOrWhiteSpace($Branch)) {
+        $Branch = "(detached)"
+    }
     $Changes = @(& git -C $ChampionProjectRoot status --porcelain)
     Write-Host "Git:      $Branch @ $Commit ($($Changes.Count) local change(s))"
 }
