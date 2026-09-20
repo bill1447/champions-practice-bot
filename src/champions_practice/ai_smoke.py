@@ -24,6 +24,7 @@ async def run_battle(timeout: float = 90.0) -> None:
         accept_open_team_sheet=False,
         save_replays=str(replay_dir),
         trace_choices=True,
+        decision_trace_path=replay_dir / "decisions.jsonl",
     )
     baseline = IntegrationBattlePlayer(
         battle_format=CHAMPIONS_FORMAT,
@@ -55,6 +56,7 @@ async def run_battle(timeout: float = 90.0) -> None:
         print(f"Turns:     {battle.turn}")
         print(f"Outcome:   {outcome}")
         print(f"Replays:   {replay_dir}")
+        print(f"Decisions: {replay_dir / 'decisions.jsonl'}")
         print("RESULT:    heuristic opponent completed a legal Champions battle")
     finally:
         close_player(heuristic)
