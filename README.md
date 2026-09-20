@@ -69,7 +69,7 @@ Server controls:
 
 `validate-team.ps1` asks the official Showdown validator to check the integration team against Reg M-C.
 
-`battle-smoke.ps1` validates that team, starts Showdown if needed, and runs one complete automated Champions doubles battle between two deterministic baseline players. A successful run proves the full path from team text → team preview → legal doubles actions → Mega Evolution → battle completion.
+`fork-smoke.ps1` creates a Champions battle directly in the official Showdown simulator, snapshots it after team preview with `Battle.toJSON()`, restores two independent copies with `Battle.fromJSON()`, applies different legal turns, and verifies that the forks diverge without mutating one another. This is the proof-of-concept needed for exact branch search without writing our own battle engine.\n\n`battle-smoke.ps1` validates that team, starts Showdown if needed, and runs one complete automated Champions doubles battle between two deterministic baseline players. A successful run proves the full path from team text → team preview → legal doubles actions → Mega Evolution → battle completion.
 
 `ai-smoke.ps1` runs the first real opponent policy against the deterministic baseline. The v0 heuristic now also evaluates all 90 legal bring-4/lead-2 combinations at team preview using only public preview information plus its own known sets. During battle it enumerates every legal joint doubles action exposed by poke-env, scores attacks using base power / accuracy / STAB / type effectiveness / target HP pressure, gives small values to Protect and common support moves, penalizes obvious bad spread choices, and chooses the highest-scoring legal joint action. It is intentionally transparent and shallow; Showdown still resolves the actual turn.
 
