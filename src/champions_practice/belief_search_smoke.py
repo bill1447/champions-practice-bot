@@ -177,6 +177,7 @@ def main() -> None:
     print(f"  Response legal enumeration: {timing.response_legal_seconds * 1000:.1f} ms")
     print(f"  Exact Showdown branching: {timing.branch_seconds * 1000:.1f} ms")
     print(f"  Python scoring/aggregation: {timing.scoring_seconds * 1000:.1f} ms")
+    print(f"  Legal cache: {timing.legal_cache_hits} hits / {timing.legal_cache_misses} misses")
     print(f"  Belief search total: {timing.total_seconds * 1000:.1f} ms")
     measured_pipeline = (
         belief_seconds
