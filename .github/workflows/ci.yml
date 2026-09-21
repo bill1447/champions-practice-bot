@@ -90,6 +90,10 @@ jobs:
         shell: pwsh
         run: .\legal-actions-smoke.ps1
 
+      - name: Bounded exact recommendation smoke test
+        shell: pwsh
+        run: .\recommendation-smoke.ps1
+
       - name: Full Champions battle smoke test
         shell: pwsh
         run: .\battle-smoke.ps1
