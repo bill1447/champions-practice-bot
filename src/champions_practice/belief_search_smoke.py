@@ -7,6 +7,7 @@ from time import perf_counter
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
     search_exact_belief_turn,
+    shortlist_belief_candidates,
 )
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_smoke import _hidden_variant_team, _public_priors
@@ -112,11 +113,28 @@ def main() -> None:
         if standard_states != variant_states:
             raise SystemExit("ERROR: human hidden truth changed reconstructed exact worlds")
 
+        pruning = shortlist_belief_candidates(
+            worker,
+            worlds=standard_states,
+            side="p2",
+            candidate_limit=8,
+        )
+        variant_pruning = shortlist_belief_candidates(
+            worker,
+            worlds=variant_states,
+            side="p2",
+            candidate_limit=8,
+        )
+        if pruning != variant_pruning:
+            raise SystemExit("ERROR: hidden truth changed autonomous candidate pruning")
+        if not pruning.candidate_shortlist:
+            raise SystemExit("ERROR: autonomous candidate pruning returned no actions")
+
         recommendation = search_exact_belief_turn(
             worker,
             worlds=standard_states,
             side="p2",
-            choices=CANDIDATES,
+            choices=list(pruning.candidate_shortlist),
             response_limit=8,
             rng_seeds=RNG_SEEDS,
         )
@@ -124,7 +142,7 @@ def main() -> None:
             worker,
             worlds=variant_states,
             side="p2",
-            choices=CANDIDATES,
+            choices=list(variant_pruning.candidate_shortlist),
             response_limit=8,
             rng_seeds=RNG_SEEDS,
         )
@@ -134,16 +152,13 @@ def main() -> None:
             raise SystemExit(
                 f"ERROR: expected 12 exact belief worlds, got {recommendation.world_count}"
             )
-        if recommendation.chosen.choice not in CANDIDATES:
-            raise SystemExit("ERROR: belief search chose outside the candidate set")
-        if recommendation.evaluated_choices != tuple(CANDIDATES):
-            raise SystemExit(
-                "ERROR: intended candidate coverage changed: "
-                f"expected {CANDIDATES!r}, got {recommendation.evaluated_choices!r}"
-            )
+        if recommendation.chosen.choice not in pruning.candidate_shortlist:
+            raise SystemExit("ERROR: belief search chose outside autonomous shortlist")
+        if recommendation.evaluated_choices != pruning.candidate_shortlist:
+            raise SystemExit("ERROR: autonomous shortlist was not fully evaluated")
         expected_forks = (
             recommendation.world_count
-            * len(CANDIDATES)
+            * len(pruning.candidate_shortlist)
             * 8
             * len(RNG_SEEDS)
         )
@@ -162,12 +177,15 @@ def main() -> None:
     print("Perspective: p2 AI receives its own sanitized public view of p1")
     print(f"Worlds: {recommendation.world_count} reconstructed exact Showdown states")
     print(
-        f"Candidates: {len(CANDIDATES)} supplied; "
+        f"Candidates: {pruning.legal_choice_count} legal -> "
+        f"{pruning.strategic_choice_count} strategic families -> "
+        f"{len(pruning.candidate_shortlist)} autonomous shortlist; "
         f"{len(recommendation.evaluated_choices)} evaluated"
     )
     print("Responses: up to 8 legal human replies per world")
     print(f"RNG futures: {len(RNG_SEEDS)} per action/response/world")
-    print(f"Exact forks: {recommendation.branch_count}")
+    print(f"Screening forks: {pruning.screening_branch_count}")
+    print(f"Exact belief forks: {recommendation.branch_count}")
     timing = recommendation.timing
     print("Timing breakdown (standard hidden-set run):")
     print(f"  Belief construction: {belief_seconds * 1000:.1f} ms")
