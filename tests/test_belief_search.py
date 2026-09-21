@@ -101,6 +101,7 @@ def test_belief_search_prefers_robust_choice_across_worlds() -> None:
     # worst-world resilience before public-prior weighted expectation.
     assert result.chosen.choice == "safe"
     assert result.world_count == 2
+    assert result.evaluated_choices == ("attack", "safe")
     assert result.branch_count == 8
     assert {world.label for world in result.chosen.worlds} == {"world-a", "world-b"}
 
@@ -121,6 +122,7 @@ def test_belief_search_uses_only_choices_legal_in_every_world() -> None:
     )
 
     assert [candidate.choice for candidate in result.ranking] == ["safe"]
+    assert result.evaluated_choices == ("safe",)
 
 
 def test_belief_search_averages_rng_before_world_minimax() -> None:
