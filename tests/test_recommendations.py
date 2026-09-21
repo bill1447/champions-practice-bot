@@ -6,6 +6,7 @@ from champions_practice.exact_search import ExactChoiceScore
 from champions_practice.recommendations import (
     _diversified_top,
     _reference_choices,
+    _strategy_families,
     _strategy_signature,
     recommend_exact_turn_perfect_information,
 )
@@ -77,6 +78,24 @@ def test_strategy_signature_ignores_targets_but_keeps_mega() -> None:
     assert base != mega
 
 
+def test_strategy_families_collapse_targets_and_prefer_split_enemy_targets() -> None:
+    choices = [
+        "move psychic +1, move steelroller +1 mega",
+        "move psychic +1, move steelroller +2 mega",
+        "move psychic +2, move steelroller +1 mega",
+        "move protect, move steelroller +1 mega",
+    ]
+
+    families = _strategy_families(choices)
+
+    assert len(families) == 2
+    assert len(families[0].choices) == 3
+    assert families[0].representative in {
+        "move psychic +1, move steelroller +2 mega",
+        "move psychic +2, move steelroller +1 mega",
+    }
+
+
 def test_reference_choices_include_varied_action_classes() -> None:
     choices = FakeWorker.choices["p1"] + [
         "move psychic +1, move rockslide mega"
@@ -118,8 +137,12 @@ def test_perfect_information_recommendation_is_bounded() -> None:
     assert recommendation.mode == "perfect_information"
     assert recommendation.legal_choice_count == 4
     assert recommendation.legal_response_count == 4
+    assert recommendation.strategic_choice_count == 3
+    assert recommendation.strategic_response_count == 3
     assert len(recommendation.candidate_shortlist) == 3
     assert len(recommendation.response_shortlist) == 3
+    assert recommendation.rng_sample_count == 3
+    assert recommendation.final_branch_count == 27
     assert recommendation.result.chosen.choice in recommendation.candidate_shortlist
 
 
@@ -128,6 +151,7 @@ def test_perfect_information_recommendation_is_bounded() -> None:
     [
         ("candidate_limit", 0),
         ("response_limit", 0),
+        ("family_limit", 0),
         ("reference_limit", 0),
     ],
 )
