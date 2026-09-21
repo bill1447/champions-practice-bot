@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from time import perf_counter
+
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
     search_exact_belief_turn,
@@ -83,14 +85,18 @@ def main() -> None:
         if standard_view != variant_view:
             raise SystemExit("ERROR: human hidden truth changed the p2 AI public view")
 
+        belief_started = perf_counter()
         standard_belief = build_public_opponent_belief(standard_view)
+        belief_seconds = perf_counter() - belief_started
         variant_belief = build_public_opponent_belief(variant_view)
         priors = _public_priors()
+        materialize_started = perf_counter()
         standard_worlds = materialize_public_belief_worlds(
             standard_belief,
             priors,
             limit=32,
         )
+        materialize_seconds = perf_counter() - materialize_started
         variant_worlds = materialize_public_belief_worlds(
             variant_belief,
             priors,
@@ -99,7 +105,9 @@ def main() -> None:
         if standard_worlds != variant_worlds:
             raise SystemExit("ERROR: human hidden truth changed materialized worlds")
 
+        reconstruct_started = perf_counter()
         standard_states = _world_states(worker, standard_belief, standard_worlds)
+        reconstruct_seconds = perf_counter() - reconstruct_started
         variant_states = _world_states(worker, variant_belief, variant_worlds)
         if standard_states != variant_states:
             raise SystemExit("ERROR: human hidden truth changed reconstructed exact worlds")
@@ -160,6 +168,23 @@ def main() -> None:
     print("Responses: up to 8 legal human replies per world")
     print(f"RNG futures: {len(RNG_SEEDS)} per action/response/world")
     print(f"Exact forks: {recommendation.branch_count}")
+    timing = recommendation.timing
+    print("Timing breakdown (standard hidden-set run):")
+    print(f"  Belief construction: {belief_seconds * 1000:.1f} ms")
+    print(f"  World materialization: {materialize_seconds * 1000:.1f} ms")
+    print(f"  Exact world reconstruction: {reconstruct_seconds * 1000:.1f} ms")
+    print(f"  Candidate legal enumeration: {timing.candidate_legal_seconds * 1000:.1f} ms")
+    print(f"  Response legal enumeration: {timing.response_legal_seconds * 1000:.1f} ms")
+    print(f"  Exact Showdown branching: {timing.branch_seconds * 1000:.1f} ms")
+    print(f"  Python scoring/aggregation: {timing.scoring_seconds * 1000:.1f} ms")
+    print(f"  Belief search total: {timing.total_seconds * 1000:.1f} ms")
+    measured_pipeline = (
+        belief_seconds
+        + materialize_seconds
+        + reconstruct_seconds
+        + timing.total_seconds
+    )
+    print(f"  Measured pipeline total: {measured_pipeline * 1000:.1f} ms")
     print(f"Chosen: {recommendation.chosen.choice}")
     print(
         "Chosen scores: "
