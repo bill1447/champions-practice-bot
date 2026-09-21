@@ -63,6 +63,7 @@ function publicOpponentReveals(battle, sideId, previewSpecies) {
       items: new Set(),
       abilities: new Set(),
       fainted: false,
+      seen: false,
     });
   }
 
@@ -88,7 +89,10 @@ function publicOpponentReveals(battle, sideId, previewSpecies) {
       const species = String(parts[3] || "").split(",", 1)[0];
       const speciesKey = toId(species);
       const observation = observations.get(speciesKey);
-      if (observation) slotSpecies.set(slot, speciesKey);
+      if (observation) {
+        observation.seen = true;
+        slotSpecies.set(slot, speciesKey);
+      }
       continue;
     }
 
@@ -117,6 +121,7 @@ function publicOpponentReveals(battle, sideId, previewSpecies) {
     items: [...observation.items].filter(Boolean).sort(),
     abilities: [...observation.abilities].filter(Boolean).sort(),
     fainted: observation.fainted,
+    seen: observation.seen,
   }));
 }
 
