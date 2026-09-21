@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from statistics import fmean
+from time import perf_counter
 from typing import Any, Protocol
 
 from champions_practice.exact_search import SideId, score_exact_summary
@@ -51,6 +52,15 @@ class BeliefChoiceScore:
 
 
 @dataclass(frozen=True)
+class BeliefSearchTiming:
+    total_seconds: float
+    candidate_legal_seconds: float
+    response_legal_seconds: float
+    branch_seconds: float
+    scoring_seconds: float
+
+
+@dataclass(frozen=True)
 class BeliefSearchResult:
     side: SideId
     chosen: BeliefChoiceScore
@@ -58,6 +68,7 @@ class BeliefSearchResult:
     world_count: int
     evaluated_choices: tuple[str, ...]
     branch_count: int
+    timing: BeliefSearchTiming
 
 
 def _common_legal_choices(
@@ -98,10 +109,13 @@ def search_exact_belief_turn(
     if rng_seeds is not None and not rng_seeds:
         raise ValueError("rng_seeds must not be empty")
 
+    total_started = perf_counter()
+    candidate_legal_started = perf_counter()
     samples: tuple[str | None, ...] = rng_seeds or (None,)
     opponent: SideId = "p2" if side == "p1" else "p1"
 
     common_choices = _common_legal_choices(worker, worlds, side=side)
+    candidate_legal_seconds = perf_counter() - candidate_legal_started
     if choices is None:
         candidate_choices = common_choices
     else:
@@ -116,9 +130,14 @@ def search_exact_belief_turn(
         choice: [] for choice in candidate_choices
     }
     branch_count = 0
+    response_legal_seconds = 0.0
+    branch_seconds = 0.0
+    scoring_seconds = 0.0
 
     for world_index, world in enumerate(worlds):
+        response_legal_started = perf_counter()
         responses = worker.legal_choices(state=world.state, side=opponent)
+        response_legal_seconds += perf_counter() - response_legal_started
         if response_limit is not None:
             responses = responses[:response_limit]
         if not responses:
@@ -144,11 +163,14 @@ def search_exact_belief_turn(
                     requested.append(branch)
                     metadata.append((choice, response))
 
+        branch_started = perf_counter()
         resolved = worker.branch_many(state=world.state, branches=requested)
+        branch_seconds += perf_counter() - branch_started
         if len(resolved) != len(metadata):
             raise RuntimeError("unexpected number of belief-search branches")
         branch_count += len(requested)
 
+        scoring_started = perf_counter()
         scores: dict[str, dict[str, list[float]]] = {
             choice: {response: [] for response in responses}
             for choice in candidate_choices
@@ -178,7 +200,9 @@ def search_exact_belief_turn(
                     legal_response_count=len(responses),
                 )
             )
+        scoring_seconds += perf_counter() - scoring_started
 
+    aggregation_started = perf_counter()
     scored: list[BeliefChoiceScore] = []
     for choice in candidate_choices:
         outcomes = tuple(outcomes_by_choice[choice])
@@ -206,6 +230,8 @@ def search_exact_belief_turn(
             ),
         )
     )
+    scoring_seconds += perf_counter() - aggregation_started
+    total_seconds = perf_counter() - total_started
     return BeliefSearchResult(
         side=side,
         chosen=ranking[0],
@@ -213,4 +239,11 @@ def search_exact_belief_turn(
         world_count=len(worlds),
         evaluated_choices=tuple(candidate_choices),
         branch_count=branch_count,
+        timing=BeliefSearchTiming(
+            total_seconds=total_seconds,
+            candidate_legal_seconds=candidate_legal_seconds,
+            response_legal_seconds=response_legal_seconds,
+            branch_seconds=branch_seconds,
+            scoring_seconds=scoring_seconds,
+        ),
     )
