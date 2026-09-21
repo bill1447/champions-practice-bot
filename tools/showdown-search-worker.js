@@ -8,12 +8,81 @@ const showdownRoot = path.join(root, "external", "pokemon-showdown");
 const { Battle } = require(path.join(showdownRoot, "dist", "sim", "battle"));
 const { Teams } = require(path.join(showdownRoot, "dist", "sim", "teams"));
 
+const sessions = new Map();
+let nextSessionId = 1;
+
 function importTeam(text) {
   const team = Teams.import(text);
   if (!team || !Array.isArray(team) || team.length === 0) {
     throw new Error("Could not import Showdown team text");
   }
   return team;
+}
+
+function cloneJson(value) {
+  if (value === undefined) return null;
+  return JSON.parse(JSON.stringify(value));
+}
+
+function hpPercent(mon) {
+  if (!mon || !mon.maxhp) return 0;
+  return Math.round((mon.hp / mon.maxhp) * 1000) / 10;
+}
+
+function publicActive(mon) {
+  if (!mon) return null;
+  return {
+    species: mon.species.name,
+    hp_percent: hpPercent(mon),
+    fainted: mon.fainted,
+    status: mon.status || null,
+    boosts: { ...mon.boosts },
+  };
+}
+
+function ownPokemon(mon) {
+  return {
+    species: mon.species.name,
+    hp: mon.hp,
+    maxhp: mon.maxhp,
+    hp_percent: hpPercent(mon),
+    fainted: mon.fainted,
+    status: mon.status || null,
+    boosts: { ...mon.boosts },
+    item: mon.item || null,
+    ability: mon.ability || null,
+    moves: mon.moveSlots.map((slot) => slot.move),
+    active: mon.isActive,
+  };
+}
+
+function playerView(battle, sideId = "p1") {
+  if (sideId !== "p1") {
+    throw new Error("Only the p1 practice-player view is exposed right now");
+  }
+
+  return {
+    turn: battle.turn,
+    phase: battle.requestState || (battle.ended ? "ended" : ""),
+    ended: battle.ended,
+    winner: battle.winner || null,
+    field: {
+      weather: battle.field.weather || null,
+      terrain: battle.field.terrain || null,
+      pseudo_weather: Object.keys(battle.field.pseudoWeather || {}),
+    },
+    request: cloneJson(battle.p1.activeRequest),
+    player: {
+      name: battle.p1.name,
+      active: battle.p1.active.map((mon) => (mon ? mon.species.name : null)),
+      team: battle.p1.pokemon.map(ownPokemon),
+    },
+    opponent: {
+      name: battle.p2.name,
+      preview_species: battle.p2.pokemon.map((mon) => mon.baseSpecies.name),
+      active: battle.p2.active.map(publicActive),
+    },
+  };
 }
 
 function summarize(battle) {
@@ -55,7 +124,7 @@ function summarize(battle) {
   };
 }
 
-function createBattle(request) {
+function battleOptions(request) {
   const options = {
     formatid: request.format,
     strictChoices: request.strict_choices !== false,
@@ -73,7 +142,11 @@ function createBattle(request) {
     options.seed = request.seed;
   }
 
-  const battle = new Battle(options);
+  return options;
+}
+
+function createBattle(request) {
+  const battle = new Battle(battleOptions(request));
 
   if (request.p1_preview || request.p2_preview) {
     if (!request.p1_preview || !request.p2_preview) {
@@ -112,6 +185,66 @@ function branchBattle(request) {
   return response;
 }
 
+function getSession(sessionId) {
+  const battle = sessions.get(sessionId);
+  if (!battle) {
+    throw new Error(`Unknown battle session: ${sessionId}`);
+  }
+  return battle;
+}
+
+function startSession(request) {
+  const battle = new Battle(battleOptions(request));
+  const sessionId = `session-${nextSessionId++}`;
+  sessions.set(sessionId, battle);
+
+  return {
+    session_id: sessionId,
+    view: playerView(battle),
+  };
+}
+
+function sessionView(request) {
+  const battle = getSession(request.session_id);
+  return {
+    session_id: request.session_id,
+    view: playerView(battle),
+  };
+}
+
+function sessionSnapshot(request) {
+  const battle = getSession(request.session_id);
+  return {
+    session_id: request.session_id,
+    state: battle.toJSON(),
+    summary: summarize(battle),
+  };
+}
+
+function sessionChoose(request) {
+  const battle = getSession(request.session_id);
+  if (typeof request.p1_choice !== "string" || typeof request.p2_choice !== "string") {
+    throw new Error("session_choose requires p1_choice and p2_choice strings");
+  }
+
+  battle.makeChoices(request.p1_choice, request.p2_choice);
+
+  return {
+    session_id: request.session_id,
+    view: playerView(battle),
+  };
+}
+
+function closeSession(request) {
+  const battle = getSession(request.session_id);
+  battle.destroy();
+  sessions.delete(request.session_id);
+  return {
+    session_id: request.session_id,
+    closed: true,
+  };
+}
+
 function handle(request) {
   switch (request.op) {
     case "ping":
@@ -120,10 +253,29 @@ function handle(request) {
       return createBattle(request);
     case "branch":
       return branchBattle(request);
+    case "session_start":
+      return startSession(request);
+    case "session_view":
+      return sessionView(request);
+    case "session_snapshot":
+      return sessionSnapshot(request);
+    case "session_choose":
+      return sessionChoose(request);
+    case "session_close":
+      return closeSession(request);
     default:
       throw new Error(`Unknown operation: ${request.op}`);
   }
 }
+
+function destroySessions() {
+  for (const battle of sessions.values()) {
+    battle.destroy();
+  }
+  sessions.clear();
+}
+
+process.on("exit", destroySessions);
 
 const rl = readline.createInterface({
   input: process.stdin,
