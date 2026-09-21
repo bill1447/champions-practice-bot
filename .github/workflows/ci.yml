@@ -86,6 +86,10 @@ jobs:
         shell: pwsh
         run: .\exact-search-smoke.ps1
 
+      - name: Persistent-session legal action smoke test
+        shell: pwsh
+        run: .\legal-actions-smoke.ps1
+
       - name: Full Champions battle smoke test
         shell: pwsh
         run: .\battle-smoke.ps1

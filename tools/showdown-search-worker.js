@@ -125,6 +125,166 @@ function summarize(battle) {
   };
 }
 
+function combinations(values, count, start = 0, prefix = [], output = []) {
+  if (prefix.length === count) {
+    output.push(prefix.slice());
+    return output;
+  }
+  for (let index = start; index <= values.length - (count - prefix.length); index++) {
+    prefix.push(values[index]);
+    combinations(values, count, index + 1, prefix, output);
+    prefix.pop();
+  }
+  return output;
+}
+
+function cartesian(groups, index = 0, prefix = [], output = []) {
+  if (index === groups.length) {
+    output.push(prefix.join(", "));
+    return output;
+  }
+  for (const value of groups[index]) {
+    prefix.push(value);
+    cartesian(groups, index + 1, prefix, output);
+    prefix.pop();
+  }
+  return output;
+}
+
+function isFainted(requestPokemon) {
+  return requestPokemon.condition.endsWith(" fnt");
+}
+
+function previewCandidates(battle, side) {
+  const teamSize = side.activeRequest.side.pokemon.length;
+  const pickedSize = side.pickedTeamSize();
+  const leadSize = Math.min(battle.activePerHalf, pickedSize);
+  const slots = Array.from({ length: teamSize }, (_, index) => index + 1);
+  const candidates = [];
+
+  for (const brought of combinations(slots, pickedSize)) {
+    for (const leads of combinations(brought, leadSize)) {
+      const leadOrders = leadSize === 2 ? [leads, [leads[1], leads[0]]] : [leads];
+      const bench = brought.filter((slot) => !leads.includes(slot));
+      for (const orderedLeads of leadOrders) {
+        candidates.push(`team ${orderedLeads.concat(bench).join("")}`);
+      }
+    }
+  }
+  return candidates;
+}
+
+function moveTargetLocations(battle) {
+  const locations = [];
+  for (let slot = 1; slot <= battle.activePerHalf; slot++) {
+    locations.push(slot, -slot);
+  }
+  return locations;
+}
+
+function availableSwitches(request) {
+  return request.side.pokemon
+    .map((pokemon, index) => ({ pokemon, slot: index + 1 }))
+    .filter(({ pokemon }) => !pokemon.active && !isFainted(pokemon))
+    .map(({ slot }) => `switch ${slot}`);
+}
+
+function moveSlotCandidates(battle, request, slot) {
+  const active = request.active[slot];
+  const pokemon = request.side.pokemon[slot];
+  if (!active || isFainted(pokemon) || pokemon.commanding) return ["pass"];
+
+  const choices = [];
+  for (const move of active.moves) {
+    if (move.disabled) continue;
+    const targets = battle.actions.targetTypeChoices(move.target) ?
+      moveTargetLocations(battle) : [0];
+    const events = [""];
+    if (active.canMegaEvo) events.push("mega");
+    if (active.canMegaEvoX) events.push("megax");
+    if (active.canMegaEvoY) events.push("megay");
+    if (active.canUltraBurst) events.push("ultra");
+
+    for (const target of targets) {
+      for (const event of events) {
+        const parts = [`move ${move.id}`];
+        if (target) parts.push(String(target));
+        if (event) parts.push(event);
+        choices.push(parts.join(" "));
+      }
+    }
+  }
+
+  if (!active.trapped) choices.push(...availableSwitches(request));
+  return choices;
+}
+
+function switchCandidates(request) {
+  const switches = availableSwitches(request);
+  return request.forceSwitch.map((mustSwitch) => mustSwitch ? switches : ["pass"]);
+}
+
+function proposedChoices(battle, side) {
+  const request = side.activeRequest;
+  if (!request || request.wait) return [""];
+  if (request.teamPreview) return previewCandidates(battle, side);
+  if (request.forceSwitch) return cartesian(switchCandidates(request));
+  if (request.active) {
+    return cartesian(
+      request.active.map((_, slot) => moveSlotCandidates(battle, request, slot)),
+    );
+  }
+  return [];
+}
+
+function validateChoice(state, sideId, candidate) {
+  const branch = Battle.fromJSON(JSON.stringify(state));
+  branch.restart(() => {});
+  const side = sideId === "p1" ? branch.p1 : branch.p2;
+  try {
+    if (candidate === "") {
+      return side.requestState === "" ? "" : null;
+    }
+    if (!side.choose(candidate) || !side.isChoiceDone()) return null;
+    return side.getChoice();
+  } catch {
+    return null;
+  } finally {
+    branch.destroy();
+  }
+}
+
+function enumerateLegalChoices(battle, sideId) {
+  if (sideId !== "p1" && sideId !== "p2") {
+    throw new Error("side must be p1 or p2");
+  }
+  if (battle.ended) return [];
+  const state = battle.toJSON();
+  const side = sideId === "p1" ? battle.p1 : battle.p2;
+  const legal = new Set();
+  for (const candidate of proposedChoices(battle, side)) {
+    const canonical = validateChoice(state, sideId, candidate);
+    if (canonical !== null) legal.add(canonical);
+  }
+  return [...legal].sort();
+}
+
+function legalChoices(request) {
+  if (!request.state) {
+    throw new Error("legal_choices requires a serialized battle state");
+  }
+  const battle = Battle.fromJSON(JSON.stringify(request.state));
+  battle.restart(() => {});
+  try {
+    return {
+      side: request.side,
+      choices: enumerateLegalChoices(battle, request.side),
+    };
+  } finally {
+    battle.destroy();
+  }
+}
+
 function battleOptions(request) {
   const options = {
     formatid: request.format,
@@ -265,6 +425,15 @@ function sessionSnapshot(request) {
   };
 }
 
+function sessionLegalChoices(request) {
+  const battle = getSession(request.session_id);
+  return {
+    session_id: request.session_id,
+    side: request.side,
+    choices: enumerateLegalChoices(battle, request.side),
+  };
+}
+
 function sessionChoose(request) {
   const battle = getSession(request.session_id);
   if (typeof request.p1_choice !== "string" || typeof request.p2_choice !== "string") {
@@ -299,12 +468,16 @@ function handle(request) {
       return branchBattle(request);
     case "branch_many":
       return branchMany(request);
+    case "legal_choices":
+      return legalChoices(request);
     case "session_start":
       return startSession(request);
     case "session_view":
       return sessionView(request);
     case "session_snapshot":
       return sessionSnapshot(request);
+    case "session_legal_choices":
+      return sessionLegalChoices(request);
     case "session_choose":
       return sessionChoose(request);
     case "session_close":
