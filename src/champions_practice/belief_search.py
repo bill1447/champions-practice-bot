@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import json
 from statistics import fmean
 from time import perf_counter
 from typing import Any, Protocol
@@ -58,6 +59,8 @@ class BeliefSearchTiming:
     response_legal_seconds: float
     branch_seconds: float
     scoring_seconds: float
+    legal_cache_hits: int
+    legal_cache_misses: int
 
 
 @dataclass(frozen=True)
@@ -71,20 +74,58 @@ class BeliefSearchResult:
     timing: BeliefSearchTiming = field(compare=False)
 
 
+def _side_legality_key(state: dict[str, Any], side: SideId) -> str:
+    """Key legal-choice requests by the acting side's request-visible state.
+
+    Showdown legal choices are determined by the acting side's active request. Opponent
+    hidden sets are deliberately excluded so public-belief worlds that differ only in
+    secret information can reuse the same enumeration.
+    """
+    side_state = state.get(side)
+    if not isinstance(side_state, dict):
+        return json.dumps(state, sort_keys=True, separators=(",", ":"))
+    payload = {
+        "requestState": state.get("requestState"),
+        "turn": state.get("turn"),
+        "side": side_state,
+    }
+    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+
+
+def _cached_legal_choices(
+    worker: BeliefSearchWorker,
+    state: dict[str, Any],
+    side: SideId,
+    cache: dict[tuple[SideId, str], list[str]],
+) -> tuple[list[str], bool]:
+    key = (side, _side_legality_key(state, side))
+    cached = cache.get(key)
+    if cached is not None:
+        return cached, True
+    choices = worker.legal_choices(state=state, side=side)
+    cache[key] = choices
+    return choices, False
+
+
 def _common_legal_choices(
     worker: BeliefSearchWorker,
     worlds: tuple[ExactBeliefWorldState, ...],
     *,
     side: SideId,
-) -> list[str]:
-    per_world = [
-        set(worker.legal_choices(state=world.state, side=side))
-        for world in worlds
-    ]
+    cache: dict[tuple[SideId, str], list[str]],
+) -> tuple[list[str], int, int]:
+    per_world = []
+    hits = 0
+    misses = 0
+    for world in worlds:
+        choices, hit = _cached_legal_choices(worker, world.state, side, cache)
+        per_world.append(set(choices))
+        hits += int(hit)
+        misses += int(not hit)
     if not per_world:
-        return []
+        return [], hits, misses
     common = set.intersection(*per_world)
-    return sorted(common)
+    return sorted(common), hits, misses
 
 
 def search_exact_belief_turn(
@@ -114,7 +155,10 @@ def search_exact_belief_turn(
     samples: tuple[str | None, ...] = rng_seeds or (None,)
     opponent: SideId = "p2" if side == "p1" else "p1"
 
-    common_choices = _common_legal_choices(worker, worlds, side=side)
+    legal_cache: dict[tuple[SideId, str], list[str]] = {}
+    common_choices, legal_cache_hits, legal_cache_misses = _common_legal_choices(
+        worker, worlds, side=side, cache=legal_cache
+    )
     candidate_legal_seconds = perf_counter() - candidate_legal_started
     if choices is None:
         candidate_choices = common_choices
@@ -136,7 +180,11 @@ def search_exact_belief_turn(
 
     for world_index, world in enumerate(worlds):
         response_legal_started = perf_counter()
-        responses = worker.legal_choices(state=world.state, side=opponent)
+        responses, cache_hit = _cached_legal_choices(
+            worker, world.state, opponent, legal_cache
+        )
+        legal_cache_hits += int(cache_hit)
+        legal_cache_misses += int(not cache_hit)
         response_legal_seconds += perf_counter() - response_legal_started
         if response_limit is not None:
             responses = responses[:response_limit]
@@ -245,5 +293,7 @@ def search_exact_belief_turn(
             response_legal_seconds=response_legal_seconds,
             branch_seconds=branch_seconds,
             scoring_seconds=scoring_seconds,
+            legal_cache_hits=legal_cache_hits,
+            legal_cache_misses=legal_cache_misses,
         ),
     )
