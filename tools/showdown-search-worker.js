@@ -340,21 +340,33 @@ function proposedChoices(battle, side) {
   return [];
 }
 
-function validateChoice(state, sideId, candidate) {
+function validateChoices(state, sideId, candidates) {
+  // Reuse one restored battle for the entire candidate set. Side.choose() only mutates
+  // choice/request bookkeeping, so clearing the choice is enough between validations;
+  // no turn is advanced until both players have submitted choices.
   const branch = Battle.fromJSON(JSON.stringify(state));
   branch.restart(() => {});
   const side = sideId === "p1" ? branch.p1 : branch.p2;
+  const legal = new Set();
   try {
-    if (candidate === "") {
-      return side.requestState === "" ? "" : null;
+    for (const candidate of candidates) {
+      try {
+        side.clearChoice();
+        if (candidate === "") {
+          if (side.requestState === "") legal.add("");
+          continue;
+        }
+        if (!side.choose(candidate) || !side.isChoiceDone()) continue;
+        legal.add(side.getChoice());
+      } catch {
+        // A rejected candidate must not poison validation of later candidates.
+        side.clearChoice();
+      }
     }
-    if (!side.choose(candidate) || !side.isChoiceDone()) return null;
-    return side.getChoice();
-  } catch {
-    return null;
   } finally {
     branch.destroy();
   }
+  return [...legal].sort();
 }
 
 function enumerateLegalChoices(battle, sideId) {
@@ -362,14 +374,8 @@ function enumerateLegalChoices(battle, sideId) {
     throw new Error("side must be p1 or p2");
   }
   if (battle.ended) return [];
-  const state = battle.toJSON();
   const side = sideId === "p1" ? battle.p1 : battle.p2;
-  const legal = new Set();
-  for (const candidate of proposedChoices(battle, side)) {
-    const canonical = validateChoice(state, sideId, candidate);
-    if (canonical !== null) legal.add(canonical);
-  }
-  return [...legal].sort();
+  return validateChoices(battle.toJSON(), sideId, proposedChoices(battle, side));
 }
 
 function legalChoices(request) {
