@@ -145,8 +145,13 @@ class ShowdownSearchWorker:
             payload["seed"] = seed
         return self.request("session_start", **payload)
 
-    def session_view(self, session_id: str) -> dict[str, Any]:
-        return self.request("session_view", session_id=session_id)
+    def session_view(
+        self,
+        session_id: str,
+        *,
+        side: str = "p1",
+    ) -> dict[str, Any]:
+        return self.request("session_view", session_id=session_id, side=side)
 
     def branch_many(
         self,
