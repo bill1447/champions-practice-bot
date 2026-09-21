@@ -91,6 +91,52 @@ class ShowdownSearchWorker:
     def ping(self) -> bool:
         return bool(self.request("ping").get("pong"))
 
+    def start_session(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str = "Practice Player",
+        p2_name: str = "Practice AI",
+        seed: str | None = None,
+    ) -> dict[str, Any]:
+        payload: dict[str, Any] = {
+            "format": battle_format,
+            "p1_team": p1_team,
+            "p2_team": p2_team,
+            "p1_name": p1_name,
+            "p2_name": p2_name,
+        }
+        if seed is not None:
+            payload["seed"] = seed
+        return self.request("session_start", **payload)
+
+    def session_view(self, session_id: str) -> dict[str, Any]:
+        return self.request("session_view", session_id=session_id)
+
+    def session_snapshot(self, session_id: str) -> dict[str, Any]:
+        return self.request("session_snapshot", session_id=session_id)
+
+    def choose_session(
+        self,
+        session_id: str,
+        *,
+        p1_choice: str,
+        p2_choice: str,
+    ) -> dict[str, Any]:
+        return self.request(
+            "session_choose",
+            session_id=session_id,
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+        )
+
+    def close_session(self, session_id: str) -> None:
+        result = self.request("session_close", session_id=session_id)
+        if not result.get("closed"):
+            raise RuntimeError(f"Showdown session {session_id!r} did not close")
+
     def close(self) -> None:
         if self._process.poll() is not None:
             return
