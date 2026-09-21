@@ -52,6 +52,7 @@ class FakeBeliefWorker:
                 "p2": ["counter", "switch"],
             },
         }
+        self.legal_calls = 0
         self.outcomes = {
             ("A", "attack", "counter"): _summary(10, 100),
             ("A", "attack", "protect"): _summary(60, 100),
@@ -64,6 +65,7 @@ class FakeBeliefWorker:
         }
 
     def legal_choices(self, *, state, side):
+        self.legal_calls += 1
         return self.states[state["id"]][side]
 
     def branch_many(self, *, state, branches):
@@ -108,6 +110,8 @@ def test_belief_search_prefers_robust_choice_across_worlds() -> None:
     assert result.timing.response_legal_seconds >= 0
     assert result.timing.branch_seconds >= 0
     assert result.timing.scoring_seconds >= 0
+    assert result.timing.legal_cache_hits >= 0
+    assert result.timing.legal_cache_misses >= 0
     assert {world.label for world in result.chosen.worlds} == {"world-a", "world-b"}
 
 
@@ -165,3 +169,24 @@ def test_belief_search_averages_rng_before_world_minimax() -> None:
 
     assert result.branch_count == 4
     assert result.chosen.worlds[0].legal_response_count == 2
+
+
+def test_legal_choice_cache_reuses_equivalent_side_state() -> None:
+    worker = FakeBeliefWorker()
+    shared_p1 = {"activeRequest": {"active": [{"moves": ["attack", "safe"]}]}}
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "A", "turn": 1, "requestState": "move", "p1": shared_p1},
+            weight=1.0,
+        ),
+        ExactBeliefWorldState(
+            state={"id": "B", "turn": 1, "requestState": "move", "p1": shared_p1},
+            weight=1.0,
+        ),
+    )
+
+    result = search_exact_belief_turn(worker, worlds=worlds, side="p1")
+
+    assert result.evaluated_choices == ("attack", "safe")
+    assert result.timing.legal_cache_hits >= 1
+    assert result.timing.legal_cache_misses < 4
