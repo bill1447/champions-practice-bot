@@ -91,6 +91,39 @@ class ShowdownSearchWorker:
     def ping(self) -> bool:
         return bool(self.request("ping").get("pong"))
 
+    def create_state(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_preview: str | None = None,
+        p2_preview: str | None = None,
+        p1_name: str = "Search P1",
+        p2_name: str = "Search P2",
+        seed: str | None = None,
+    ) -> dict[str, Any]:
+        """Create one exact Showdown state without opening a persistent session."""
+        payload: dict[str, Any] = {
+            "format": battle_format,
+            "p1_team": p1_team,
+            "p2_team": p2_team,
+            "p1_name": p1_name,
+            "p2_name": p2_name,
+        }
+        if p1_preview is not None or p2_preview is not None:
+            if p1_preview is None or p2_preview is None:
+                raise ValueError("both preview choices are required")
+            payload["p1_preview"] = p1_preview
+            payload["p2_preview"] = p2_preview
+        if seed is not None:
+            payload["seed"] = seed
+        result = self.request("create", **payload)
+        state = result.get("state")
+        if not isinstance(state, dict):
+            raise RuntimeError("Showdown worker returned an invalid created state")
+        return state
+
     def start_session(
         self,
         *,
@@ -112,8 +145,13 @@ class ShowdownSearchWorker:
             payload["seed"] = seed
         return self.request("session_start", **payload)
 
-    def session_view(self, session_id: str) -> dict[str, Any]:
-        return self.request("session_view", session_id=session_id)
+    def session_view(
+        self,
+        session_id: str,
+        *,
+        side: str = "p1",
+    ) -> dict[str, Any]:
+        return self.request("session_view", session_id=session_id, side=side)
 
     def branch_many(
         self,

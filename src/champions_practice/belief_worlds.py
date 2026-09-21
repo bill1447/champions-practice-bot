@@ -94,6 +94,36 @@ class PublicBeliefWorld:
 PublicSetPriorCatalog = Mapping[str, Sequence[PublicSetCandidate]]
 
 
+def preview_choice_for_world(
+    belief: PublicOpponentBelief,
+    world: PublicBeliefWorld,
+) -> str:
+    """Return the legal team-preview command implied by one public belief world."""
+    active_species = [pokemon.species for pokemon in belief.active]
+    if len(active_species) > len(world.selected_species):
+        raise ValueError("active roster exceeds selected belief-world roster")
+
+    selected_ids = {_id(species) for species in world.selected_species}
+    ordered_species = active_species + [
+        pokemon.species
+        for pokemon in belief.pokemon
+        if _id(pokemon.species) in selected_ids
+        and _id(pokemon.species) not in {_id(species) for species in active_species}
+    ]
+    if len(ordered_species) != len(world.selected_species):
+        raise ValueError("belief world does not contain every public active Pokemon")
+
+    preview_slots = {
+        _id(pokemon.species): index
+        for index, pokemon in enumerate(belief.pokemon, start=1)
+    }
+    try:
+        digits = "".join(str(preview_slots[_id(species)]) for species in ordered_species)
+    except KeyError as error:
+        raise ValueError("belief world contains species outside the public preview") from error
+    return f"team {digits}"
+
+
 def _id(value: str) -> str:
     return "".join(character for character in value.lower() if character.isalnum())
 
