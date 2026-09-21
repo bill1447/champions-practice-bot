@@ -128,6 +128,35 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid branch_many results")
         return resolved
 
+    def legal_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+    ) -> list[str]:
+        """Enumerate simulator-validated choices from an exact snapshot."""
+        result = self.request("legal_choices", state=state, side=side)
+        choices = result.get("choices")
+        if not isinstance(choices, list) or not all(
+            isinstance(choice, str) for choice in choices
+        ):
+            raise RuntimeError("Showdown worker returned invalid legal choices")
+        return choices
+
+    def session_legal_choices(self, session_id: str, *, side: str) -> list[str]:
+        """Enumerate simulator-validated choices for one live session side."""
+        result = self.request(
+            "session_legal_choices",
+            session_id=session_id,
+            side=side,
+        )
+        choices = result.get("choices")
+        if not isinstance(choices, list) or not all(
+            isinstance(choice, str) for choice in choices
+        ):
+            raise RuntimeError("Showdown worker returned invalid session choices")
+        return choices
+
     def session_snapshot(self, session_id: str) -> dict[str, Any]:
         return self.request("session_snapshot", session_id=session_id)
 
