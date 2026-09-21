@@ -7,6 +7,7 @@ from champions_practice.belief_worlds import (
     MissingPublicSetPrior,
     PublicSetCandidate,
     materialize_public_belief_worlds,
+    preview_choice_for_world,
 )
 
 
@@ -205,3 +206,19 @@ def test_world_team_text_contains_all_preview_species() -> None:
     assert world.team_text.count("Ability:") == 6
     for species in SPECIES:
         assert species in world.team_text
+
+
+def test_preview_choice_puts_public_actives_first() -> None:
+    belief = build_public_opponent_belief(
+        _view(active=("Metagross", "Armarouge"))
+    )
+    world = materialize_public_belief_worlds(
+        belief,
+        _priors(),
+        limit=1,
+    )[0]
+
+    command = preview_choice_for_world(belief, world)
+
+    assert command.startswith("team 64")
+    assert len(command.removeprefix("team ")) == 4
