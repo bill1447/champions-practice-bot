@@ -27,7 +27,7 @@ def _assert_public_view(view: dict) -> None:
     if len(opponent["preview_species"]) != 6:
         raise SystemExit("ERROR: player view leaked the opponent's selected four")
 
-    allowed_reveals = {"species", "moves", "items", "abilities", "fainted"}
+    allowed_reveals = {"species", "moves", "items", "abilities", "fainted", "seen"}
     for observation in opponent["revealed"]:
         unexpected = set(observation).difference(allowed_reveals)
         if unexpected:
