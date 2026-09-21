@@ -142,11 +142,13 @@ function ownPokemon(mon) {
 }
 
 function playerView(battle, sideId = "p1", previews = null) {
-  if (sideId !== "p1") {
-    throw new Error("Only the p1 practice-player view is exposed right now");
+  if (sideId !== "p1" && sideId !== "p2") {
+    throw new Error("side must be p1 or p2");
   }
-
-  const opponentPreview = previews ? previews.p2 : battle.p2.pokemon.map(
+  const own = sideId === "p1" ? battle.p1 : battle.p2;
+  const opponent = sideId === "p1" ? battle.p2 : battle.p1;
+  const opponentId = sideId === "p1" ? "p2" : "p1";
+  const opponentPreview = previews ? previews[opponentId] : opponent.pokemon.map(
     (mon) => mon.set.species,
   );
 
@@ -160,16 +162,16 @@ function playerView(battle, sideId = "p1", previews = null) {
       terrain: battle.field.terrain || null,
       pseudo_weather: Object.keys(battle.field.pseudoWeather || {}),
     },
-    request: cloneJson(battle.p1.activeRequest),
+    request: cloneJson(own.activeRequest),
     player: {
-      name: battle.p1.name,
-      active: battle.p1.active.map((mon) => (mon ? mon.species.name : null)),
-      team: battle.p1.pokemon.map(ownPokemon),
+      name: own.name,
+      active: own.active.map((mon) => (mon ? mon.species.name : null)),
+      team: own.pokemon.map(ownPokemon),
     },
     opponent: {
-      name: battle.p2.name,
+      name: opponent.name,
       preview_species: opponentPreview.slice(),
-      active: battle.p2.active.map(publicActive),
+      active: opponent.active.map(publicActive),
       revealed: publicOpponentReveals(battle, sideId, opponentPreview),
     },
   };
@@ -531,11 +533,13 @@ function startSession(request) {
 
 function sessionView(request) {
   const battle = getSession(request.session_id);
+  const sideId = request.side || "p1";
   return {
     session_id: request.session_id,
+    side: sideId,
     view: playerView(
       battle,
-      "p1",
+      sideId,
       sessionPreviewSpecies.get(request.session_id),
     ),
   };
