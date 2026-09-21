@@ -8,7 +8,13 @@ from statistics import fmean
 from time import perf_counter
 from typing import Any, Protocol
 
-from champions_practice.exact_search import SideId, score_exact_summary
+from champions_practice.exact_search import SideId, score_exact_summary, search_exact_turn
+from champions_practice.recommendations import (
+    SCREENING_RNG_SEEDS,
+    _diversified_top,
+    _reference_choices,
+    _strategy_families,
+)
 
 
 class BeliefSearchWorker(Protocol):
@@ -61,6 +67,14 @@ class BeliefSearchTiming:
     scoring_seconds: float
     legal_cache_hits: int
     legal_cache_misses: int
+
+
+@dataclass(frozen=True)
+class BeliefPruningResult:
+    legal_choice_count: int
+    strategic_choice_count: int
+    candidate_shortlist: tuple[str, ...]
+    screening_branch_count: int
 
 
 @dataclass(frozen=True)
@@ -126,6 +140,83 @@ def _common_legal_choices(
         return [], hits, misses
     common = set.intersection(*per_world)
     return sorted(common), hits, misses
+
+
+
+def shortlist_belief_candidates(
+    worker: BeliefSearchWorker,
+    *,
+    worlds: tuple[ExactBeliefWorldState, ...],
+    side: SideId,
+    candidate_limit: int = 8,
+    reference_limit: int = 2,
+) -> BeliefPruningResult:
+    """Autonomously shortlist public-belief-safe AI actions.
+
+    Candidate legality is intersected across all belief worlds. Strategic families
+    collapse target variants, then representatives are screened on a single belief
+    world against a small diversified opponent reference set. This stage chooses only
+    which of the AI's already-public legal actions deserve full cross-world search; it
+    must never inspect the live opponent's hidden truth.
+    """
+    if not worlds:
+        raise ValueError("worlds must not be empty")
+    if candidate_limit <= 0:
+        raise ValueError("candidate_limit must be positive")
+    if reference_limit <= 0:
+        raise ValueError("reference_limit must be positive")
+
+    cache: dict[tuple[SideId, str], list[str]] = {}
+    common, _, _ = _common_legal_choices(worker, worlds, side=side, cache=cache)
+    if not common:
+        raise ValueError("no candidate choices are legal in every belief world")
+
+    families = _strategy_families(common)
+    representatives = [family.representative for family in families]
+    opponent: SideId = "p2" if side == "p1" else "p1"
+    reference_world = max(worlds, key=lambda world: (world.weight, world.label))
+    responses = worker.legal_choices(state=reference_world.state, side=opponent)
+    response_families = _strategy_families(responses)
+    response_representatives = [family.representative for family in response_families]
+    references = _reference_choices(response_representatives, reference_limit)
+
+    screening = search_exact_turn(
+        worker,
+        state=reference_world.state,
+        side=side,
+        choices=representatives,
+        opponent_responses=references,
+        rng_seeds=SCREENING_RNG_SEEDS,
+    )
+    representative_shortlist = _diversified_top(screening.ranking, candidate_limit)
+    by_representative = {family.representative: family for family in families}
+
+    # Preserve target alternatives for selected strategic families, then use the
+    # screening ranking to bound the final candidate count.
+    expanded = [
+        choice
+        for representative in representative_shortlist
+        for choice in by_representative[representative].choices
+    ]
+    if len(expanded) > candidate_limit:
+        expanded_set = set(expanded)
+        ranked_expanded = [
+            candidate.choice
+            for candidate in screening.ranking
+            if candidate.choice in expanded_set
+        ]
+        # Screening contains representatives only; fill target variants deterministically.
+        expanded = ranked_expanded + [
+            choice for choice in expanded if choice not in ranked_expanded
+        ]
+        expanded = expanded[:candidate_limit]
+
+    return BeliefPruningResult(
+        legal_choice_count=len(common),
+        strategic_choice_count=len(families),
+        candidate_shortlist=tuple(expanded),
+        screening_branch_count=screening.branch_count,
+    )
 
 
 def search_exact_belief_turn(
