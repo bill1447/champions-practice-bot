@@ -5,10 +5,14 @@ const path = require("path");
 
 const root = path.resolve(__dirname, "..");
 const showdownRoot = path.join(root, "external", "pokemon-showdown");
-const { Battle } = require(path.join(showdownRoot, "dist", "sim", "battle"));
+const {
+  Battle,
+  extractChannelMessages,
+} = require(path.join(showdownRoot, "dist", "sim", "battle"));
 const { Teams } = require(path.join(showdownRoot, "dist", "sim", "teams"));
 
 const sessions = new Map();
+const sessionPreviewSpecies = new Map();
 let nextSessionId = 1;
 
 function importTeam(text) {
@@ -33,11 +37,87 @@ function publicActive(mon) {
   if (!mon) return null;
   return {
     species: mon.species.name,
+    base_species: mon.set.species,
     hp_percent: hpPercent(mon),
     fainted: mon.fainted,
     status: mon.status || null,
     boosts: { ...mon.boosts },
   };
+}
+
+function toId(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+}
+
+function publicOpponentReveals(battle, sideId, previewSpecies) {
+  const opponentPrefix = sideId === "p1" ? "p2" : "p1";
+  const channel = sideId === "p1" ? 1 : 2;
+  const observations = new Map();
+  const slotSpecies = new Map();
+
+  for (const species of previewSpecies) {
+    const key = toId(species);
+    observations.set(key, {
+      species,
+      moves: new Set(),
+      items: new Set(),
+      abilities: new Set(),
+      fainted: false,
+    });
+  }
+
+  function actorSlot(actor) {
+    const slot = String(actor || "").split(":", 1)[0];
+    return slot.startsWith(opponentPrefix) ? slot : null;
+  }
+
+  function observationForActor(actor) {
+    const slot = actorSlot(actor);
+    if (!slot) return null;
+    const speciesKey = slotSpecies.get(slot);
+    return speciesKey ? observations.get(speciesKey) || null : null;
+  }
+
+  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
+  for (const line of visibleLog) {
+    const parts = line.split("|");
+    const event = parts[1];
+    const slot = actorSlot(parts[2]);
+
+    if (slot && ["switch", "drag", "replace"].includes(event)) {
+      const species = String(parts[3] || "").split(",", 1)[0];
+      const speciesKey = toId(species);
+      const observation = observations.get(speciesKey);
+      if (observation) slotSpecies.set(slot, speciesKey);
+      continue;
+    }
+
+    const observation = observationForActor(parts[2]);
+    if (!observation) continue;
+
+    if (event === "move") {
+      observation.moves.add(toId(parts[3]));
+    } else if (event === "-item" || event === "-enditem") {
+      observation.items.add(toId(parts[3]));
+    } else if (event === "-mega") {
+      observation.items.add(toId(parts[4]));
+    } else if (event === "-ability") {
+      observation.abilities.add(toId(parts[3]));
+      if (parts[4] && !parts[4].startsWith("[")) {
+        observation.abilities.add(toId(parts[4]));
+      }
+    } else if (event === "faint") {
+      observation.fainted = true;
+    }
+  }
+
+  return [...observations.values()].map((observation) => ({
+    species: observation.species,
+    moves: [...observation.moves].filter(Boolean).sort(),
+    items: [...observation.items].filter(Boolean).sort(),
+    abilities: [...observation.abilities].filter(Boolean).sort(),
+    fainted: observation.fainted,
+  }));
 }
 
 function ownPokemon(mon) {
@@ -56,10 +136,14 @@ function ownPokemon(mon) {
   };
 }
 
-function playerView(battle, sideId = "p1") {
+function playerView(battle, sideId = "p1", previews = null) {
   if (sideId !== "p1") {
     throw new Error("Only the p1 practice-player view is exposed right now");
   }
+
+  const opponentPreview = previews ? previews.p2 : battle.p2.pokemon.map(
+    (mon) => mon.set.species,
+  );
 
   return {
     turn: battle.turn,
@@ -79,8 +163,9 @@ function playerView(battle, sideId = "p1") {
     },
     opponent: {
       name: battle.p2.name,
-      preview_species: battle.p2.pokemon.map((mon) => mon.baseSpecies.name),
+      preview_species: opponentPreview.slice(),
       active: battle.p2.active.map(publicActive),
+      revealed: publicOpponentReveals(battle, sideId, opponentPreview),
     },
   };
 }
@@ -426,11 +511,16 @@ function getSession(sessionId) {
 function startSession(request) {
   const battle = new Battle(battleOptions(request));
   const sessionId = `session-${nextSessionId++}`;
+  const previews = {
+    p1: battle.p1.pokemon.map((mon) => mon.set.species),
+    p2: battle.p2.pokemon.map((mon) => mon.set.species),
+  };
   sessions.set(sessionId, battle);
+  sessionPreviewSpecies.set(sessionId, previews);
 
   return {
     session_id: sessionId,
-    view: playerView(battle),
+    view: playerView(battle, "p1", previews),
   };
 }
 
@@ -438,7 +528,11 @@ function sessionView(request) {
   const battle = getSession(request.session_id);
   return {
     session_id: request.session_id,
-    view: playerView(battle),
+    view: playerView(
+      battle,
+      "p1",
+      sessionPreviewSpecies.get(request.session_id),
+    ),
   };
 }
 
@@ -470,7 +564,11 @@ function sessionChoose(request) {
 
   return {
     session_id: request.session_id,
-    view: playerView(battle),
+    view: playerView(
+      battle,
+      "p1",
+      sessionPreviewSpecies.get(request.session_id),
+    ),
   };
 }
 
@@ -478,6 +576,7 @@ function closeSession(request) {
   const battle = getSession(request.session_id);
   battle.destroy();
   sessions.delete(request.session_id);
+  sessionPreviewSpecies.delete(request.session_id);
   return {
     session_id: request.session_id,
     closed: true,
@@ -518,6 +617,7 @@ function destroySessions() {
     battle.destroy();
   }
   sessions.clear();
+  sessionPreviewSpecies.clear();
 }
 
 process.on("exit", destroySessions);

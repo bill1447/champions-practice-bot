@@ -82,6 +82,10 @@ jobs:
         shell: pwsh
         run: .\session-smoke.ps1
 
+      - name: Public-information belief privacy smoke test
+        shell: pwsh
+        run: .\belief-smoke.ps1
+
       - name: Exact one-ply search smoke test
         shell: pwsh
         run: .\exact-search-smoke.ps1

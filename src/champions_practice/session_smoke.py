@@ -24,6 +24,18 @@ def _assert_public_view(view: dict) -> None:
                 f"ERROR: player view leaked opponent private fields: {sorted(leaked)}"
             )
 
+    if len(opponent["preview_species"]) != 6:
+        raise SystemExit("ERROR: player view leaked the opponent's selected four")
+
+    allowed_reveals = {"species", "moves", "items", "abilities", "fainted"}
+    for observation in opponent["revealed"]:
+        unexpected = set(observation).difference(allowed_reveals)
+        if unexpected:
+            raise SystemExit(
+                "ERROR: revealed observation contains private fields: "
+                f"{sorted(unexpected)}"
+            )
+
 
 def main() -> None:
     with ShowdownSearchWorker() as worker:
@@ -85,7 +97,7 @@ def main() -> None:
         print("Persistent battle session API")
         print(f"Format:  {CHAMPIONS_FORMAT}")
         print("Preview: human and AI choices accepted independently")
-        print("Privacy: opponent item / ability / moves absent from player view")
+        print("Privacy: private set absent; only public reveals are tracked")
         print("Parity:  session turn matches exact fork from same snapshot")
         print("RESULT:  backend is ready to drive a local practice UI")
 
