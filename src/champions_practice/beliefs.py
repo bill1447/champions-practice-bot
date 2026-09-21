@@ -17,7 +17,7 @@ _ALLOWED_ACTIVE_KEYS = {
     "status",
     "boosts",
 }
-_ALLOWED_REVEALED_KEYS = {"species", "moves", "items", "abilities", "fainted"}
+_ALLOWED_REVEALED_KEYS = {"species", "moves", "items", "abilities", "fainted", "seen"}
 
 
 class PublicInformationLeak(ValueError):
