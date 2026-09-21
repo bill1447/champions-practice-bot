@@ -82,6 +82,10 @@ jobs:
         shell: pwsh
         run: .\session-smoke.ps1
 
+      - name: Exact one-ply search smoke test
+        shell: pwsh
+        run: .\exact-search-smoke.ps1
+
       - name: Full Champions battle smoke test
         shell: pwsh
         run: .\battle-smoke.ps1
