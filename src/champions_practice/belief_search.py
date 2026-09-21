@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import fmean
 from time import perf_counter
 from typing import Any, Protocol
@@ -68,7 +68,7 @@ class BeliefSearchResult:
     world_count: int
     evaluated_choices: tuple[str, ...]
     branch_count: int
-    timing: BeliefSearchTiming
+    timing: BeliefSearchTiming = field(compare=False)
 
 
 def _common_legal_choices(
