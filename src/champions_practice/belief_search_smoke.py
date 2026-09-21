@@ -21,9 +21,9 @@ AI_PREVIEW = "team 1235"
 HUMAN_PREVIEW = "team 6412"
 CANDIDATES = [
     "move followme, move rockslide",
-    "move followme, move closecombat 1",
-    "move psychic 1, move rockslide",
-    "move psychic 1, move closecombat 1",
+    "move followme, move closecombat +1",
+    "move psychic +1, move rockslide",
+    "move psychic +1, move closecombat +1",
 ]
 RNG_SEEDS = (
     "sodium,2222222222222222222222222222222222222222222222222222222222222222",
@@ -128,6 +128,22 @@ def main() -> None:
             )
         if recommendation.chosen.choice not in CANDIDATES:
             raise SystemExit("ERROR: belief search chose outside the candidate set")
+        if recommendation.evaluated_choices != tuple(CANDIDATES):
+            raise SystemExit(
+                "ERROR: intended candidate coverage changed: "
+                f"expected {CANDIDATES!r}, got {recommendation.evaluated_choices!r}"
+            )
+        expected_forks = (
+            recommendation.world_count
+            * len(CANDIDATES)
+            * 8
+            * len(RNG_SEEDS)
+        )
+        if recommendation.branch_count != expected_forks:
+            raise SystemExit(
+                f"ERROR: expected {expected_forks} exact forks, "
+                f"got {recommendation.branch_count}"
+            )
         if len(recommendation.chosen.worlds) != recommendation.world_count:
             raise SystemExit("ERROR: chosen action was not evaluated in every world")
 
@@ -137,7 +153,10 @@ def main() -> None:
     print("Belief-aware exact practice AI search")
     print("Perspective: p2 AI receives its own sanitized public view of p1")
     print(f"Worlds: {recommendation.world_count} reconstructed exact Showdown states")
-    print(f"Candidates: {len(CANDIDATES)} AI actions")
+    print(
+        f"Candidates: {len(CANDIDATES)} supplied; "
+        f"{len(recommendation.evaluated_choices)} evaluated"
+    )
     print("Responses: up to 8 legal human replies per world")
     print(f"RNG futures: {len(RNG_SEEDS)} per action/response/world")
     print(f"Exact forks: {recommendation.branch_count}")

@@ -56,6 +56,7 @@ class BeliefSearchResult:
     chosen: BeliefChoiceScore
     ranking: tuple[BeliefChoiceScore, ...]
     world_count: int
+    evaluated_choices: tuple[str, ...]
     branch_count: int
 
 
@@ -210,5 +211,6 @@ def search_exact_belief_turn(
         chosen=ranking[0],
         ranking=ranking,
         world_count=len(worlds),
+        evaluated_choices=tuple(candidate_choices),
         branch_count=branch_count,
     )
