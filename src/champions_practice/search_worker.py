@@ -115,6 +115,19 @@ class ShowdownSearchWorker:
     def session_view(self, session_id: str) -> dict[str, Any]:
         return self.request("session_view", session_id=session_id)
 
+    def branch_many(
+        self,
+        *,
+        state: dict[str, Any],
+        branches: list[dict[str, str]],
+    ) -> list[dict[str, Any]]:
+        """Resolve many independent action pairs from one exact snapshot."""
+        result = self.request("branch_many", state=state, branches=branches)
+        resolved = result.get("branches")
+        if not isinstance(resolved, list):
+            raise RuntimeError("Showdown worker returned invalid branch_many results")
+        return resolved
+
     def session_snapshot(self, session_id: str) -> dict[str, Any]:
         return self.request("session_snapshot", session_id=session_id)
 

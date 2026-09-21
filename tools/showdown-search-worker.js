@@ -88,6 +88,7 @@ function playerView(battle, sideId = "p1") {
 function summarize(battle) {
   function sideSummary(side) {
     return {
+      name: side.name,
       active: side.active.map((mon) =>
         mon
           ? {
@@ -164,25 +165,68 @@ function createBattle(request) {
   return response;
 }
 
-function branchBattle(request) {
-  if (!request.state) {
+function resolveBranch(state, p1Choice, p2Choice, includeState = true) {
+  if (!state) {
     throw new Error("branch requires a serialized battle state");
   }
-  if (typeof request.p1_choice !== "string" || typeof request.p2_choice !== "string") {
+  if (typeof p1Choice !== "string" || typeof p2Choice !== "string") {
     throw new Error("branch requires p1_choice and p2_choice strings");
   }
 
-  const battle = Battle.fromJSON(JSON.stringify(request.state));
+  const battle = Battle.fromJSON(JSON.stringify(state));
   battle.restart(() => {});
 
-  battle.makeChoices(request.p1_choice, request.p2_choice);
+  battle.makeChoices(p1Choice, p2Choice);
 
   const response = {
-    state: battle.toJSON(),
     summary: summarize(battle),
   };
+  if (includeState) response.state = battle.toJSON();
   battle.destroy();
   return response;
+}
+
+function branchBattle(request) {
+  return resolveBranch(
+    request.state,
+    request.p1_choice,
+    request.p2_choice,
+    request.include_state !== false,
+  );
+}
+
+function branchMany(request) {
+  if (!request.state) {
+    throw new Error("branch_many requires a serialized battle state");
+  }
+  if (!Array.isArray(request.branches) || request.branches.length === 0) {
+    throw new Error("branch_many requires a non-empty branches array");
+  }
+  if (request.branches.length > 10000) {
+    throw new Error("branch_many accepts at most 10000 branches");
+  }
+
+  return {
+    branches: request.branches.map((branch, index) => {
+      try {
+        return {
+          index,
+          ...resolveBranch(
+            request.state,
+            branch.p1_choice,
+            branch.p2_choice,
+            false,
+          ),
+        };
+      } catch (error) {
+        throw new Error(
+          `branch_many branch ${index} failed: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+      }
+    }),
+  };
 }
 
 function getSession(sessionId) {
@@ -253,6 +297,8 @@ function handle(request) {
       return createBattle(request);
     case "branch":
       return branchBattle(request);
+    case "branch_many":
+      return branchMany(request);
     case "session_start":
       return startSession(request);
     case "session_view":
