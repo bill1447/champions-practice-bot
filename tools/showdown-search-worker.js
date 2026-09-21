@@ -86,20 +86,31 @@ function playerView(battle, sideId = "p1") {
 }
 
 function summarize(battle) {
+  function activeSummary(mon) {
+    if (!mon) return null;
+    const moveTypes = new Set();
+    for (const slot of mon.moveSlots) {
+      const move = battle.dex.moves.get(slot.id);
+      if (move.category !== "Status") moveTypes.add(move.type.toLowerCase());
+    }
+    return {
+      species: mon.species.name,
+      hp: mon.hp,
+      maxhp: mon.maxhp,
+      fainted: mon.fainted,
+      status: mon.status || null,
+      boosts: { ...mon.boosts },
+      speed: mon.speed,
+      grounded: !!mon.isGrounded(),
+      moveTypes: [...moveTypes],
+    };
+  }
+
   function sideSummary(side) {
     return {
       name: side.name,
-      active: side.active.map((mon) =>
-        mon
-          ? {
-              species: mon.species.name,
-              hp: mon.hp,
-              maxhp: mon.maxhp,
-              fainted: mon.fainted,
-              status: mon.status || null,
-            }
-          : null,
-      ),
+      active: side.active.map(activeSummary),
+      sideConditions: Object.keys(side.sideConditions || {}),
       pokemon: side.pokemon.map((mon) => ({
         species: mon.species.name,
         hp: mon.hp,
@@ -325,7 +336,13 @@ function createBattle(request) {
   return response;
 }
 
-function resolveBranch(state, p1Choice, p2Choice, includeState = true) {
+function resolveBranch(
+  state,
+  p1Choice,
+  p2Choice,
+  includeState = true,
+  rngSeed = null,
+) {
   if (!state) {
     throw new Error("branch requires a serialized battle state");
   }
@@ -335,6 +352,13 @@ function resolveBranch(state, p1Choice, p2Choice, includeState = true) {
 
   const battle = Battle.fromJSON(JSON.stringify(state));
   battle.restart(() => {});
+  if (rngSeed !== null) {
+    if (typeof rngSeed !== "string") {
+      battle.destroy();
+      throw new Error("rng_seed must be a string");
+    }
+    battle.resetRNG(rngSeed);
+  }
 
   battle.makeChoices(p1Choice, p2Choice);
 
@@ -352,6 +376,7 @@ function branchBattle(request) {
     request.p1_choice,
     request.p2_choice,
     request.include_state !== false,
+    request.rng_seed ?? null,
   );
 }
 
@@ -376,6 +401,7 @@ function branchMany(request) {
             branch.p1_choice,
             branch.p2_choice,
             false,
+            branch.rng_seed ?? null,
           ),
         };
       } catch (error) {

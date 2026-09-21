@@ -31,7 +31,7 @@ def _summary(
 
 
 class FakeWorker:
-    def __init__(self, outcomes: dict[tuple[str, str], dict[str, Any]]):
+    def __init__(self, outcomes: dict[tuple, dict[str, Any]]):
         self.outcomes = outcomes
         self.requested: list[dict[str, str]] = []
 
@@ -40,7 +40,16 @@ class FakeWorker:
         return [
             {
                 "index": index,
-                "summary": self.outcomes[(branch["p1_choice"], branch["p2_choice"])],
+                "summary": self.outcomes.get(
+                    (
+                        branch["p1_choice"],
+                        branch["p2_choice"],
+                        branch.get("rng_seed"),
+                    ),
+                    self.outcomes.get(
+                        (branch["p1_choice"], branch["p2_choice"])
+                    ),
+                ),
             }
             for index, branch in enumerate(branches)
         ]
@@ -65,6 +74,46 @@ def test_terminal_result_overrides_material() -> None:
 
     assert score_exact_summary(p1_win, "p1") == 1_000_000
     assert score_exact_summary(p1_win, "p2") == -1_000_000
+
+
+def test_board_score_values_terrain_boosts_and_side_conditions() -> None:
+    summary = _summary([100], [100])
+    summary["field"] = {
+        "weather": None,
+        "terrain": "psychicterrain",
+        "pseudoWeather": [],
+    }
+    summary["p1"].update(
+        {
+            "sideConditions": ["tailwind", "reflect"],
+            "active": [
+                {
+                    **_pokemon(100),
+                    "boosts": {"spa": 1},
+                    "speed": 100,
+                    "grounded": True,
+                    "moveTypes": ["psychic"],
+                }
+            ],
+        }
+    )
+    summary["p2"].update(
+        {
+            "sideConditions": ["stealthrock"],
+            "active": [
+                {
+                    **_pokemon(100),
+                    "boosts": {},
+                    "speed": 80,
+                    "grounded": True,
+                    "moveTypes": ["normal"],
+                }
+            ],
+        }
+    )
+
+    assert score_exact_summary(summary, "p1") > 90
+    assert score_exact_summary(summary, "p2") < -90
 
 
 def test_search_uses_worst_opponent_response_before_average() -> None:
@@ -112,6 +161,33 @@ def test_search_maps_ai_side_to_p2() -> None:
     assert worker.requested == [
         {"p1_choice": human_response, "p2_choice": ai_choice}
     ]
+
+
+def test_search_averages_multiple_rng_futures_per_response() -> None:
+    attack = "move risky"
+    safe = "move safe"
+    response = "move response"
+    seeds = ("sodium,1", "sodium,2")
+    outcomes = {
+        (attack, response, seeds[0]): _summary([100], [80]),
+        (attack, response, seeds[1]): _summary([60], [100]),
+        (safe, response, seeds[0]): _summary([90], [90]),
+        (safe, response, seeds[1]): _summary([90], [90]),
+    }
+    worker = FakeWorker(outcomes)
+
+    result = search_exact_turn(
+        worker,
+        state={},
+        side="p1",
+        choices=[attack, safe],
+        opponent_responses=[response],
+        rng_seeds=seeds,
+    )
+
+    assert result.chosen.choice == safe
+    assert result.branch_count == 4
+    assert len(result.ranking[0].branches[0].samples) == 2
 
 
 @pytest.mark.parametrize(
