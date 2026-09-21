@@ -68,6 +68,11 @@ def main() -> None:
             )
         _assert_public_view(preview)
 
+        ai_view = worker.session_view(session_id, side="p2")["view"]
+        _assert_public_view(ai_view)
+        if ai_view["player"]["name"] != "AI" or ai_view["opponent"]["name"] != "Human":
+            raise SystemExit("ERROR: p2 sanitized view did not swap player/opponent sides")
+
         before = worker.session_snapshot(session_id)
 
         branch = worker.request(
@@ -97,7 +102,7 @@ def main() -> None:
         print("Persistent battle session API")
         print(f"Format:  {CHAMPIONS_FORMAT}")
         print("Preview: human and AI choices accepted independently")
-        print("Privacy: private set absent; only public reveals are tracked")
+        print("Privacy: private set absent; p1 and p2 sanitized views both work")
         print("Parity:  session turn matches exact fork from same snapshot")
         print("RESULT:  backend is ready to drive a local practice UI")
 
