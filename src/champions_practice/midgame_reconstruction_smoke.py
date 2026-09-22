@@ -33,10 +33,15 @@ def _midgame_hidden_variant_team() -> str:
     return variant
 
 
-TURN = PublicTurnChoice(
+TURN_ONE = PublicTurnChoice(
     p1_choice="move psychicfangs +2, move expandingforce +1",
     p2_choice="move psychic +2, move protect",
 )
+TURN_TWO = PublicTurnChoice(
+    p1_choice="move psychicfangs +2, switch 3",
+    p2_choice="switch 3, switch 4",
+)
+PUBLIC_TURNS = (TURN_ONE, TURN_TWO)
 
 
 def _run(worker, human_team):
@@ -54,7 +59,10 @@ def _run(worker, human_team):
     )
     preview_view = worker.session_view(session_id, side="p2")["view"]
     worker.choose_session(
-        session_id, p1_choice=TURN.p1_choice, p2_choice=TURN.p2_choice
+        session_id, p1_choice=TURN_ONE.p1_choice, p2_choice=TURN_ONE.p2_choice
+    )
+    worker.choose_session(
+        session_id, p1_choice=TURN_TWO.p1_choice, p2_choice=TURN_TWO.p2_choice
     )
     midgame_view = worker.session_view(session_id, side="p2")["view"]
     belief = build_public_opponent_belief(midgame_view)
@@ -66,7 +74,7 @@ def _run(worker, human_team):
         worlds=worlds,
         ai_team=SMOKE_TEAM,
         ai_preview=AI_PREVIEW,
-        public_turns=(TURN,),
+        public_turns=PUBLIC_TURNS,
         opponent_side="p1",
         seed=SEED,
     )
@@ -107,8 +115,8 @@ def main():
     if len(variant_reconstructed) != len(variant_worlds):
         raise SystemExit("ERROR: variant reconstruction lost belief worlds")
 
-    if any(world.state.get("turn", 0) < 2 for world in standard_reconstructed):
-        raise SystemExit("ERROR: a reconstructed world did not advance through turn one")
+    if any(world.state.get("turn", 0) < 3 for world in standard_reconstructed):
+        raise SystemExit("ERROR: a reconstructed world did not advance through two public turns")
 
     def mechanics(state):
         return {key: value for key, value in state.items() if key != "log"}
@@ -122,9 +130,10 @@ def main():
     print("Replay-based midgame belief reconstruction")
     print(f"Worlds: {len(standard_reconstructed)}")
     print(f"Public turn after replay: {standard_reconstructed[0].state.get('turn')}")
-    print("History: identical team preview + one resolved public turn")
+    print("History: identical team preview + two resolved public turns")
+    print("Stateful history: Protect, damage, opponent switch, AI double switch, terrain")
     print("Anti-cheat: alternate real hidden Metagross set reconstructed identical worlds")
-    print("RESULT: belief worlds now preserve public battle history into the next turn")
+    print("RESULT: belief worlds now preserve public battle history through stateful midgame transitions")
 
 
 if __name__ == "__main__":
