@@ -274,7 +274,7 @@ def materialize_public_belief_worlds(
         options_by_species[_id(pokemon.species)] = options
 
     selections = _selection_hypotheses(belief, selected_size=selected_size)
-    worlds: list[PublicBeliefWorld] = []
+    worlds_by_selection: list[list[PublicBeliefWorld]] = []
 
     for selected_species in selections:
         selected_ids = {_id(species) for species in selected_species}
@@ -289,12 +289,14 @@ def materialize_public_belief_worlds(
             if _id(pokemon.species) not in selected_ids:
                 continue
             expanded: list[tuple[dict[int, PublicSetCandidate], float]] = []
+            options = options_by_species[_id(pokemon.species)]
+            option_weight = sum(candidate.weight for candidate in options)
             for assigned, weight in partials:
-                for candidate in options_by_species[_id(pokemon.species)]:
+                for candidate in options:
                     next_assigned = dict(assigned)
                     next_assigned[index] = candidate
                     expanded.append(
-                        (next_assigned, weight * candidate.weight)
+                        (next_assigned, weight * candidate.weight / option_weight)
                     )
             expanded.sort(
                 key=lambda entry: (
@@ -307,27 +309,70 @@ def materialize_public_belief_worlds(
             )
             partials = expanded[:limit]
 
+        selection_worlds: list[PublicBeliefWorld] = []
         for assigned, weight in partials:
             sets = baseline.copy()
             for index, candidate in assigned.items():
                 sets[index] = candidate
-            worlds.append(
+            selection_worlds.append(
                 PublicBeliefWorld(
                     selected_species=selected_species,
                     sets=tuple(sets),
                     weight=weight,
                 )
             )
+        unique_selection: dict[tuple, PublicBeliefWorld] = {}
+        for world in selection_worlds:
+            signature = _world_signature(world)
+            current = unique_selection.get(signature)
+            if current is None or world.weight > current.weight:
+                unique_selection[signature] = world
+        worlds_by_selection.append(
+            sorted(
+                unique_selection.values(),
+                key=lambda world: (-world.weight, _world_signature(world)),
+            )
+        )
 
-    unique: dict[tuple, PublicBeliefWorld] = {}
-    for world in worlds:
-        signature = _world_signature(world)
-        current = unique.get(signature)
-        if current is None or world.weight > current.weight:
-            unique[signature] = world
+    # Preserve team-selection coverage before spending extra world budget on additional
+    # set variants. Otherwise a species with many catalog entries can crowd entire
+    # bring-four hypotheses out of the bounded search.
+    retained: list[PublicBeliefWorld] = []
+    depth = 0
+    while len(retained) < limit:
+        added = False
+        for selection_worlds in worlds_by_selection:
+            if depth >= len(selection_worlds):
+                continue
+            retained.append(selection_worlds[depth])
+            added = True
+            if len(retained) >= limit:
+                break
+        if not added:
+            break
+        depth += 1
 
-    ranked = sorted(
-        unique.values(),
-        key=lambda world: (-world.weight, _world_signature(world)),
+    retained_by_selection: dict[tuple[str, ...], list[PublicBeliefWorld]] = {}
+    for world in retained:
+        key = tuple(_id(species) for species in world.selected_species)
+        retained_by_selection.setdefault(key, []).append(world)
+
+    selection_weight = 1.0 / max(1, len(retained_by_selection))
+    normalized: list[PublicBeliefWorld] = []
+    for selection_worlds in retained_by_selection.values():
+        retained_weight = sum(world.weight for world in selection_worlds)
+        for world in selection_worlds:
+            normalized.append(
+                PublicBeliefWorld(
+                    selected_species=world.selected_species,
+                    sets=world.sets,
+                    weight=selection_weight * world.weight / retained_weight,
+                )
+            )
+
+    return tuple(
+        sorted(
+            normalized,
+            key=lambda world: (-world.weight, _world_signature(world)),
+        )
     )
-    return tuple(ranked[:limit])

@@ -16,6 +16,8 @@ from champions_practice.recommendations import (
     _strategy_families,
 )
 
+BELIEF_RESPONSE_SCREENING_RNG_SEEDS = (SCREENING_RNG_SEEDS[0],)
+
 
 class BeliefSearchWorker(Protocol):
     def legal_choices(self, *, state: dict[str, Any], side: str) -> list[str]: ...
@@ -63,6 +65,7 @@ class BeliefSearchTiming:
     total_seconds: float
     candidate_legal_seconds: float
     response_legal_seconds: float
+    response_screening_seconds: float
     branch_seconds: float
     scoring_seconds: float
     legal_cache_hits: int
@@ -75,6 +78,7 @@ class BeliefPruningResult:
     strategic_choice_count: int
     candidate_shortlist: tuple[str, ...]
     screening_branch_count: int
+    screening_seconds: float = field(compare=False)
 
 
 @dataclass(frozen=True)
@@ -83,6 +87,7 @@ class BeliefResponsePruning:
     strategic_response_count: int
     response_shortlist: tuple[str, ...]
     screening_branch_count: int
+    screening_seconds: float = field(compare=False)
 
 
 @dataclass(frozen=True)
@@ -104,13 +109,27 @@ def _side_legality_key(state: dict[str, Any], side: SideId) -> str:
     hidden sets are deliberately excluded so public-belief worlds that differ only in
     secret information can reuse the same enumeration.
     """
-    side_state = state.get(side)
+    sides = state.get("sides")
+    side_index = 0 if side == "p1" else 1
+    side_state = (
+        sides[side_index]
+        if isinstance(sides, list)
+        and len(sides) > side_index
+        and isinstance(sides[side_index], dict)
+        else state.get(side)
+    )
     if not isinstance(side_state, dict):
         return json.dumps(state, sort_keys=True, separators=(",", ":"))
+    opponent_active: Any = None
+    if isinstance(sides, list) and len(sides) == 2:
+        opponent_state = sides[1 - side_index]
+        if isinstance(opponent_state, dict):
+            opponent_active = opponent_state.get("active")
     payload = {
         "requestState": state.get("requestState"),
         "turn": state.get("turn"),
         "side": side_state,
+        "opponentActive": opponent_active,
     }
     return json.dumps(payload, sort_keys=True, separators=(",", ":"))
 
@@ -175,6 +194,7 @@ def shortlist_belief_candidates(
     if reference_limit <= 0:
         raise ValueError("reference_limit must be positive")
 
+    screening_started = perf_counter()
     cache: dict[tuple[SideId, str], list[str]] = {}
     common, _, _ = _common_legal_choices(worker, worlds, side=side, cache=cache)
     if not common:
@@ -189,7 +209,7 @@ def shortlist_belief_candidates(
     response_representatives = [family.representative for family in response_families]
     references = _reference_choices(response_representatives, reference_limit)
 
-    screening = search_exact_turn(
+    family_screening = search_exact_turn(
         worker,
         state=reference_world.state,
         side=side,
@@ -197,34 +217,38 @@ def shortlist_belief_candidates(
         opponent_responses=references,
         rng_seeds=SCREENING_RNG_SEEDS,
     )
-    representative_shortlist = _diversified_top(screening.ranking, candidate_limit)
+    family_limit = min(len(families), max(1, candidate_limit - 2))
+    representative_shortlist = _diversified_top(
+        family_screening.ranking,
+        family_limit,
+    )
     by_representative = {family.representative: family for family in families}
 
-    # Preserve target alternatives for selected strategic families, then use the
-    # screening ranking to bound the final candidate count.
+    # Family representatives decide which broad plans deserve more work. Every target
+    # variant in those families is then scored before the final bound is applied.
     expanded = [
         choice
         for representative in representative_shortlist
         for choice in by_representative[representative].choices
     ]
-    if len(expanded) > candidate_limit:
-        expanded_set = set(expanded)
-        ranked_expanded = [
-            candidate.choice
-            for candidate in screening.ranking
-            if candidate.choice in expanded_set
-        ]
-        # Screening contains representatives only; fill target variants deterministically.
-        expanded = ranked_expanded + [
-            choice for choice in expanded if choice not in ranked_expanded
-        ]
-        expanded = expanded[:candidate_limit]
+    target_screening = search_exact_turn(
+        worker,
+        state=reference_world.state,
+        side=side,
+        choices=expanded,
+        opponent_responses=references,
+        rng_seeds=SCREENING_RNG_SEEDS,
+    )
+    shortlist = _diversified_top(target_screening.ranking, candidate_limit)
 
     return BeliefPruningResult(
         legal_choice_count=len(common),
         strategic_choice_count=len(families),
-        candidate_shortlist=tuple(expanded),
-        screening_branch_count=screening.branch_count,
+        candidate_shortlist=tuple(shortlist),
+        screening_branch_count=(
+            family_screening.branch_count + target_screening.branch_count
+        ),
+        screening_seconds=perf_counter() - screening_started,
     )
 
 
@@ -235,42 +259,64 @@ def shortlist_belief_responses(
     ai_side: SideId,
     candidate_references: list[str],
     response_limit: int = 8,
+    legal_responses: list[str] | None = None,
 ) -> BeliefResponsePruning:
     """Select dangerous, strategically diverse opponent replies in one belief world."""
     if response_limit <= 0:
         raise ValueError("response_limit must be positive")
     if not candidate_references:
         raise ValueError("candidate_references must not be empty")
+    screening_started = perf_counter()
     opponent: SideId = "p2" if ai_side == "p1" else "p1"
-    responses = worker.legal_choices(state=world.state, side=opponent)
+    responses = (
+        legal_responses
+        if legal_responses is not None
+        else worker.legal_choices(state=world.state, side=opponent)
+    )
     if not responses:
         raise ValueError("opponent has no legal responses in belief world")
     families = _strategy_families(responses)
     representatives = [family.representative for family in families]
-    references = _reference_choices(candidate_references, min(2, len(candidate_references)))
-    screening = search_exact_turn(
+    # The final matrix still uses every requested RNG future. This is only the cheap
+    # per-world funnel, so one shared reference and seed are enough to rank broad plans
+    # before their targeting variants receive a second screening pass.
+    references = _reference_choices(candidate_references, 1)
+    family_screening = search_exact_turn(
         worker,
         state=world.state,
         side=opponent,
         choices=representatives,
         opponent_responses=references,
-        rng_seeds=SCREENING_RNG_SEEDS,
+        rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
-    representative_shortlist = _diversified_top(screening.ranking, response_limit)
+    family_limit = min(len(families), max(1, response_limit // 2))
+    representative_shortlist = _diversified_top(
+        family_screening.ranking,
+        family_limit,
+    )
     by_representative = {family.representative: family for family in families}
     expanded = [
         choice
         for representative in representative_shortlist
         for choice in by_representative[representative].choices
     ]
-    ordered = representative_shortlist + [
-        choice for choice in expanded if choice not in representative_shortlist
-    ]
+    target_screening = search_exact_turn(
+        worker,
+        state=world.state,
+        side=opponent,
+        choices=expanded,
+        opponent_responses=references,
+        rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
+    )
+    shortlist = _diversified_top(target_screening.ranking, response_limit)
     return BeliefResponsePruning(
         legal_response_count=len(responses),
         strategic_response_count=len(families),
-        response_shortlist=tuple(ordered[:response_limit]),
-        screening_branch_count=screening.branch_count,
+        response_shortlist=tuple(shortlist),
+        screening_branch_count=(
+            family_screening.branch_count + target_screening.branch_count
+        ),
+        screening_seconds=perf_counter() - screening_started,
     )
 
 
@@ -323,6 +369,7 @@ def search_exact_belief_turn(
     branch_count = 0
     response_screening_branch_count = 0
     response_legal_seconds = 0.0
+    response_screening_seconds = 0.0
     branch_seconds = 0.0
     scoring_seconds = 0.0
 
@@ -341,9 +388,11 @@ def search_exact_belief_turn(
                 ai_side=side,
                 candidate_references=candidate_choices,
                 response_limit=response_limit,
+                legal_responses=responses,
             )
             responses = list(pruning.response_shortlist)
             response_screening_branch_count += pruning.screening_branch_count
+            response_screening_seconds += pruning.screening_seconds
         elif response_limit is not None:
             responses = responses[:response_limit]
         if not responses:
@@ -450,6 +499,7 @@ def search_exact_belief_turn(
             total_seconds=total_seconds,
             candidate_legal_seconds=candidate_legal_seconds,
             response_legal_seconds=response_legal_seconds,
+            response_screening_seconds=response_screening_seconds,
             branch_seconds=branch_seconds,
             scoring_seconds=scoring_seconds,
             legal_cache_hits=legal_cache_hits,

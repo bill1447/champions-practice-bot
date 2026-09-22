@@ -3,6 +3,7 @@ from typing import Any
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
     search_exact_belief_turn,
+    shortlist_belief_responses,
 )
 
 
@@ -109,6 +110,7 @@ def test_belief_search_prefers_robust_choice_across_worlds() -> None:
     assert result.timing.total_seconds >= 0
     assert result.timing.candidate_legal_seconds >= 0
     assert result.timing.response_legal_seconds >= 0
+    assert result.timing.response_screening_seconds >= 0
     assert result.timing.branch_seconds >= 0
     assert result.timing.scoring_seconds >= 0
     assert result.timing.legal_cache_hits >= 0
@@ -174,14 +176,24 @@ def test_belief_search_averages_rng_before_world_minimax() -> None:
 
 def test_legal_choice_cache_reuses_equivalent_side_state() -> None:
     worker = FakeBeliefWorker()
-    shared_p1 = {"activeRequest": {"active": [{"moves": ["attack", "safe"]}]}}
+    shared_p1 = {"pokemon": [{"moves": ["attack", "safe"]}], "active": ["p1a"]}
     worlds = (
         ExactBeliefWorldState(
-            state={"id": "A", "turn": 1, "requestState": "move", "p1": shared_p1},
+            state={
+                "id": "A",
+                "turn": 1,
+                "requestState": "move",
+                "sides": [shared_p1, {"active": ["p2a"], "hidden": "first"}],
+            },
             weight=1.0,
         ),
         ExactBeliefWorldState(
-            state={"id": "B", "turn": 1, "requestState": "move", "p1": shared_p1},
+            state={
+                "id": "B",
+                "turn": 1,
+                "requestState": "move",
+                "sides": [shared_p1, {"active": ["p2a"], "hidden": "second"}],
+            },
             weight=1.0,
         ),
     )
@@ -191,6 +203,36 @@ def test_legal_choice_cache_reuses_equivalent_side_state() -> None:
     assert result.evaluated_choices == ("attack", "safe")
     assert result.timing.legal_cache_hits >= 1
     assert result.timing.legal_cache_misses < 4
+
+
+def test_response_pruning_scores_target_variants_before_truncating() -> None:
+    class TargetWorker:
+        def legal_choices(self, *, state, side):
+            if side == "p1":
+                return [
+                    "move hit +1, move hit +1",
+                    "move hit +2, move hit +1",
+                    "move protect, move hit +1",
+                ]
+            return ["move safe, move safe"]
+
+        def branch_many(self, *, state, branches):
+            results = []
+            for index, branch in enumerate(branches):
+                response = branch["p1_choice"]
+                p2_hp = 10 if response == "move hit +1, move hit +1" else 80
+                results.append({"index": index, "summary": _summary(100, p2_hp)})
+            return results
+
+    pruning = shortlist_belief_responses(
+        TargetWorker(),
+        world=ExactBeliefWorldState(state={"id": "target"}, weight=1.0),
+        ai_side="p2",
+        candidate_references=["move safe, move safe"],
+        response_limit=2,
+    )
+
+    assert "move hit +1, move hit +1" in pruning.response_shortlist
 
 
 def test_autonomous_response_pruning_is_bounded() -> None:

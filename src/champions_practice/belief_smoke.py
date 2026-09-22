@@ -41,6 +41,28 @@ Careful Nature
 - Protect
 """
 
+ORIGINAL_SNEASLER = """Sneasler @ Psychic Seed
+Ability: Unburden
+Level: 50
+EVs: 2 HP / 32 Atk / 32 Spe
+Adamant Nature
+- Close Combat
+- Dire Claw
+- Rock Slide
+- Protect
+"""
+
+ILLUSION_ZOROARK = """Zoroark @ Psychic Seed
+Ability: Illusion
+Level: 50
+EVs: 2 HP / 32 SpA / 32 Spe
+Timid Nature
+- Dark Pulse
+- Snarl
+- Flamethrower
+- Protect
+"""
+
 
 def _candidate(
     species: str,
@@ -150,6 +172,13 @@ def _hidden_variant_team() -> str:
     return variant
 
 
+def _illusion_team() -> str:
+    variant = SMOKE_TEAM.replace(ORIGINAL_SNEASLER, ILLUSION_ZOROARK)
+    if variant == SMOKE_TEAM:
+        raise SystemExit("ERROR: Illusion fixture did not replace Sneasler")
+    return variant
+
+
 def _start_turn_one(worker: ShowdownSearchWorker, opponent_team: str) -> str:
     started = worker.start_session(
         battle_format=CHAMPIONS_FORMAT,
@@ -192,6 +221,31 @@ def main() -> None:
     with ShowdownSearchWorker() as worker:
         standard_id = _start_turn_one(worker, SMOKE_TEAM)
         variant_id = _start_turn_one(worker, _hidden_variant_team())
+
+        illusion = worker.start_session(
+            battle_format=CHAMPIONS_FORMAT,
+            p1_team=SMOKE_TEAM,
+            p2_team=_illusion_team(),
+            p1_name="Illusion Observer",
+            p2_name="Illusion Opponent",
+            seed=SEED,
+        )
+        illusion_id = illusion["session_id"]
+        worker.choose_session(
+            illusion_id,
+            p1_choice="team 1235",
+            p2_choice="team 2135",
+        )
+        illusion_view = worker.session_view(illusion_id, side="p1")["view"]
+        illusion_active = illusion_view["opponent"]["active"][0]
+        if illusion_active["species"] != "Rillaboom":
+            raise SystemExit("ERROR: sanitized view exposed the Pokemon under Illusion")
+        illusion_belief = build_public_opponent_belief(illusion_view)
+        if any(
+            pokemon.species == "Zoroark" and pokemon.active_slot is not None
+            for pokemon in illusion_belief.pokemon
+        ):
+            raise SystemExit("ERROR: public belief exposed the Pokemon under Illusion")
 
         standard_view = worker.session_view(standard_id)["view"]
         variant_view = worker.session_view(variant_id)["view"]
@@ -275,6 +329,7 @@ def main() -> None:
 
         worker.close_session(standard_id)
         worker.close_session(variant_id)
+        worker.close_session(illusion_id)
 
     print("Public-information opponent belief")
     print("Public roster: 6 preview species; selected four remains hidden")
@@ -286,6 +341,7 @@ def main() -> None:
     print("Reveal filtering: Metagross evidence reduced the world set from 12 to 6")
     print("Reveals: used moves and Mega Stone entered the belief after public events")
     print("Anti-cheat: hidden moves, item, ability, nature, and stats changed nothing")
+    print("Illusion: sanitized active identity follows the public battle log")
     print("Isolation: live CTS exact recommendation remains disabled")
     print("RESULT: beliefs and opponent worlds derive only from public view + public priors")
 

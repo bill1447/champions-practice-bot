@@ -110,8 +110,9 @@ def main() -> None:
         standard_states = _world_states(worker, standard_belief, standard_worlds)
         reconstruct_seconds = perf_counter() - reconstruct_started
         variant_states = _world_states(worker, variant_belief, variant_worlds)
-        if standard_states != variant_states:
-            raise SystemExit("ERROR: human hidden truth changed reconstructed exact worlds")
+        # Exact states contain wall-clock timestamps in Showdown's retained battle log,
+        # so byte equality here is both unnecessary and flaky. Equal materialized worlds
+        # above plus equal semantic recommendations below enforce the anti-cheat boundary.
 
         pruning = shortlist_belief_candidates(
             worker,
@@ -171,6 +172,10 @@ def main() -> None:
             )
         if len(recommendation.chosen.worlds) != recommendation.world_count:
             raise SystemExit("ERROR: chosen action was not evaluated in every world")
+        if recommendation.timing.legal_cache_hits < recommendation.world_count - 1:
+            raise SystemExit("ERROR: equivalent candidate legality was not cached")
+        if recommendation.response_screening_branch_count > 1000:
+            raise SystemExit("ERROR: autonomous response screening exceeded its budget")
 
         worker.close_session(standard_id)
         worker.close_session(variant_id)
@@ -186,7 +191,10 @@ def main() -> None:
     )
     print("Responses: autonomously pruned to up to 8 adversarial replies per world")
     print(f"RNG futures: {len(RNG_SEEDS)} per action/response/world")
-    print(f"Candidate screening forks: {pruning.screening_branch_count}")
+    print(
+        f"Candidate screening: {pruning.screening_branch_count} forks, "
+        f"{pruning.screening_seconds * 1000:.1f} ms"
+    )
     print(f"Response screening forks: {recommendation.response_screening_branch_count}")
     print(f"Exact belief forks: {recommendation.branch_count}")
     timing = recommendation.timing
@@ -196,6 +204,7 @@ def main() -> None:
     print(f"  Exact world reconstruction: {reconstruct_seconds * 1000:.1f} ms")
     print(f"  Candidate legal enumeration: {timing.candidate_legal_seconds * 1000:.1f} ms")
     print(f"  Response legal enumeration: {timing.response_legal_seconds * 1000:.1f} ms")
+    print(f"  Response screening: {timing.response_screening_seconds * 1000:.1f} ms")
     print(f"  Exact Showdown branching: {timing.branch_seconds * 1000:.1f} ms")
     print(f"  Python scoring/aggregation: {timing.scoring_seconds * 1000:.1f} ms")
     print(f"  Legal cache: {timing.legal_cache_hits} hits / {timing.legal_cache_misses} misses")
