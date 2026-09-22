@@ -58,6 +58,7 @@ def _run(worker, human_team):
         session_id, p1_choice=HUMAN_PREVIEW, p2_choice=AI_PREVIEW
     )
     preview_view = worker.session_view(session_id, side="p2")["view"]
+    preview_belief = build_public_opponent_belief(preview_view)
     worker.choose_session(
         session_id, p1_choice=TURN_ONE.p1_choice, p2_choice=TURN_ONE.p2_choice
     )
@@ -71,6 +72,7 @@ def _run(worker, human_team):
         worker,
         battle_format=CHAMPIONS_FORMAT,
         belief=belief,
+        preview_belief=preview_belief,
         worlds=worlds,
         ai_team=SMOKE_TEAM,
         ai_preview=AI_PREVIEW,
