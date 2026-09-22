@@ -559,7 +559,7 @@ function branchMany(request) {
             request.state,
             branch.p1_choice,
             branch.p2_choice,
-            false,
+            branch.include_state === true,
             branch.rng_seed ?? null,
           ),
         };

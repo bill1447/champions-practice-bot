@@ -29,7 +29,7 @@ Persistent workers, batched validation, legal-choice caching, family-first pruni
 honest timing make the current search practical. Optimize again only when gameplay data
 identifies a real latency problem.
 
-## Phase 5 — Position visibility and decision evidence — in progress
+## Phase 5 — Position visibility and decision evidence — complete for current search
 
 Every recommendation must expose:
 
@@ -39,10 +39,23 @@ Every recommendation must expose:
 - shortlist coverage and an explicit non-optimality warning;
 - the top alternatives, aggregate scores, and representative worst replies.
 
-Next evidence additions are per-world outcomes, score-component breakdowns, and pruning
-reasons. This phase starts before the live bot because it is how later work is verified.
+The smoke report now includes the full final shortlist, per-world worst replies, named
+score components, the chosen worst resulting board, and a pruning audit that distinguishes
+cheap screening scores from final belief-search scores.
 
-## Phase 6 — Midgame belief-state reconstruction — next major objective
+## Phase 6 — Selective continuation — complete as a bounded principal-variation probe
+
+The strongest one-ply candidates are extended from their current worst sampled
+world/reply/RNG branch. The exact resulting Showdown state preserves turn progression,
+forced-switch requests, and consecutive-Protect state. A fresh bounded adversarial search
+then exposes the proposed next action, reply, leaf board, branch cost, and whether the
+one-ply recommendation survives.
+
+This is deliberately not exhaustive two-ply minimax. Benchmarks must determine whether to
+extend additional first-turn worlds and responses or replace the probe with a broader
+selective tree.
+
+## Phase 7 — Midgame belief-state reconstruction — next major objective
 
 Belief worlds currently begin from team preview. Reconstruct the current turn in every
 world while preserving only public information:
@@ -58,25 +71,25 @@ Hidden-state mutation tests must prove that unrevealed truth cannot affect the r
 position or recommendation. Nontrivial turn-two and turn-four fixtures will compare the
 displayed position, reconstructed worlds, and live session state.
 
-## Phase 7 — Live autonomous practice opponent
+## Phase 8 — Live autonomous practice opponent
 
 Connect reconstruction and search to the persistent session loop. Add a decision deadline,
 safe heuristic fallback, forced-switch handling, and complete-game regression tests.
 
-## Phase 8 — Benchmark and playing-strength development
+## Phase 9 — Benchmark and playing-strength development
 
 Build labeled positions and complete games. Compare bounded belief search with exhaustive
 search where tractable and with perfect-information search only as a diagnostic oracle.
 Track missed KOs, sacrifices, targets, switches, Protects, speed control, field control,
 setup recognition, conservatism, and latency.
 
-## Phase 9 — Selective deeper reasoning
+## Phase 10 — Selective deeper reasoning
 
 Add only what benchmark failures justify: selective two-ply search, adaptive world/RNG
 budgets, transposition caching, better public priors and probability updates, stronger
 response modeling, or parallel branching.
 
-## Phase 10 — Practice interface and review tools
+## Phase 11 — Practice interface and review tools
 
 Build the local browser client: team import, preview, battlefield, move/target/switch/Mega
 controls, thinking state, battle log, replay, postgame review, belief inspection, decision
@@ -85,4 +98,5 @@ traces, and optional perfect-information postgame analysis.
 Current sequence:
 
 **Simulator → public beliefs → bounded exact search → autonomous pruning → position evidence
-→ midgame reconstruction → live opponent → benchmarks/tuning → selective depth → GUI**
+→ selective continuation → midgame reconstruction → live opponent → benchmarks/tuning
+→ selective depth → GUI**
