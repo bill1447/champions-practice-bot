@@ -1,7 +1,7 @@
 """Integration smoke for replay-based midgame belief reconstruction."""
 
 from champions_practice.beliefs import build_public_opponent_belief
-from champions_practice.belief_smoke import _hidden_variant_team, _public_priors
+from champions_practice.belief_smoke import ORIGINAL_METAGROSS, _public_priors
 from champions_practice.belief_worlds import (
     PublicTurnChoice,
     materialize_public_belief_worlds,
@@ -14,6 +14,25 @@ from champions_practice.teams import SMOKE_TEAM
 SEED = "sodium,00000001000000020000000300000004"
 AI_PREVIEW = "team 1235"
 HUMAN_PREVIEW = "team 6412"
+MIDGAME_HIDDEN_VARIANT_METAGROSS = """Metagross @ Metagrossite
+Ability: Clear Body
+Level: 50
+EVs: 32 HP / 32 Def / 2 SpD
+Careful Nature
+- Psychic Fangs
+- Bullet Punch
+- Ice Punch
+- Protect
+"""
+
+
+def _midgame_hidden_variant_team() -> str:
+    variant = SMOKE_TEAM.replace(ORIGINAL_METAGROSS, MIDGAME_HIDDEN_VARIANT_METAGROSS)
+    if variant == SMOKE_TEAM:
+        raise SystemExit("ERROR: midgame hidden-set fixture did not replace Metagross")
+    return variant
+
+
 TURN = PublicTurnChoice(
     p1_choice="move psychicfangs +2, move expandingforce +1",
     p2_choice="move psychic +2, move protect",
@@ -71,7 +90,7 @@ def _public_signature(view):
 def main():
     with ShowdownSearchWorker() as worker:
         standard = _run(worker, SMOKE_TEAM)
-        variant = _run(worker, _hidden_variant_team())
+        variant = _run(worker, _midgame_hidden_variant_team())
 
     standard_preview, standard_midgame, standard_worlds, standard_reconstructed = standard
     variant_preview, variant_midgame, variant_worlds, variant_reconstructed = variant
