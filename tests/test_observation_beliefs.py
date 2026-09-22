@@ -44,3 +44,27 @@ def test_public_signature_is_order_independent():
     left = {"turn": 2, "field": {"terrain": "grassyterrain", "weather": None}}
     right = {"field": {"weather": None, "terrain": "grassyterrain"}, "turn": 2}
     assert public_observation_signature(left) == public_observation_signature(right)
+
+
+class SelectiveWorker(FakeWorker):
+    def legal_choices(self, *, state, side):
+        return ["move legal"]
+
+    def branch_many(self, *, state, branches):
+        return [{"state": {"id": state["id"], "branch": 0}} for _ in branches]
+
+
+def test_condition_particles_drops_world_when_requested_response_is_illegal():
+    worker = SelectiveWorker([{"turn": 2}])
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"id": 1}, 1.0, world_id="w1"),),
+        ai_side="p2",
+        ai_choice="move x",
+        actual_public_view={"turn": 2},
+        opponent_choices={"w1": ("move illegal",)},
+    )
+
+    assert update.generated == 0
+    assert update.matched == 0
+    assert update.particles == ()
