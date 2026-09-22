@@ -57,9 +57,6 @@ def _run(worker, human_team):
         session_id, p1_choice=TURN.p1_choice, p2_choice=TURN.p2_choice
     )
     midgame_view = worker.session_view(session_id, side="p2")["view"]
-    # Materialize from the CURRENT public belief, not the preview belief. The resolved
-    # turn publicly reveals Psychic Fangs / Expanding Force; worlds lacking those moves
-    # are no longer possible and cannot legally replay the observed history.
     belief = build_public_opponent_belief(midgame_view)
     worlds = materialize_public_belief_worlds(belief, _public_priors(), limit=32)
     reconstructed = reconstruct_midgame_belief_worlds(
@@ -78,12 +75,16 @@ def _run(worker, human_team):
 
 
 def _public_signature(view):
+    """Fields exposed by the sanitized player-view schema."""
     return {
         "turn": view["turn"],
-        "request_state": view["request_state"],
+        "phase": view["phase"],
+        "ended": view["ended"],
+        "winner": view["winner"],
         "field": view["field"],
-        "p1": view["p1"],
-        "p2": view["p2"],
+        "request": view["request"],
+        "player": view["player"],
+        "opponent": view["opponent"],
     }
 
 
@@ -106,12 +107,9 @@ def main():
     if len(variant_reconstructed) != len(variant_worlds):
         raise SystemExit("ERROR: variant reconstruction lost belief worlds")
 
-    # Exact reconstructed states should all have advanced beyond the preview position.
     if any(world.state.get("turn", 0) < 2 for world in standard_reconstructed):
         raise SystemExit("ERROR: a reconstructed world did not advance through turn one")
 
-    # Hidden truth must not alter the reconstructed hypotheses themselves. Ignore retained
-    # battle-log timestamps by comparing mechanics-bearing top-level state except log.
     def mechanics(state):
         return {key: value for key, value in state.items() if key != "log"}
 
