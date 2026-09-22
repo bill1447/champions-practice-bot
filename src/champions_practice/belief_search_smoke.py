@@ -7,6 +7,7 @@ from time import perf_counter
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
     search_exact_belief_turn,
+    search_selective_continuation,
     shortlist_belief_candidates,
 )
 from champions_practice.beliefs import build_public_opponent_belief
@@ -20,6 +21,7 @@ from champions_practice.position_report import (
     build_public_battle_position,
     format_belief_search_evidence,
     format_public_battle_position,
+    format_selective_continuation,
 )
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
@@ -182,6 +184,38 @@ def main() -> None:
         if recommendation.response_screening_branch_count > 1000:
             raise SystemExit("ERROR: autonomous response screening exceeded its budget")
 
+        continuation = search_selective_continuation(
+            worker,
+            worlds=standard_states,
+            first_turn=recommendation,
+            candidate_limit=3,
+            next_candidate_limit=4,
+            next_response_limit=4,
+            rng_seeds=RNG_SEEDS,
+        )
+        variant_continuation = search_selective_continuation(
+            worker,
+            worlds=variant_states,
+            first_turn=variant_recommendation,
+            candidate_limit=3,
+            next_candidate_limit=4,
+            next_response_limit=4,
+            rng_seeds=RNG_SEEDS,
+        )
+        if continuation != variant_continuation:
+            raise SystemExit("ERROR: hidden truth changed the selective continuation")
+        if continuation.candidate_limit != 3 or len(continuation.ranking) != 3:
+            raise SystemExit("ERROR: selective continuation did not extend three candidates")
+        if continuation.branch_count > 1000:
+            raise SystemExit("ERROR: selective continuation exceeded its branch budget")
+        original_line = next(
+            line
+            for line in continuation.ranking
+            if line.first_choice == recommendation.chosen.choice
+        )
+        if original_line.protect_chain_slots != (2,):
+            raise SystemExit("ERROR: continuation lost Sneasler's consecutive-Protect state")
+
         position = build_public_battle_position(standard_view)
         if position.turn != 1 or position.terrain != "psychicterrain":
             raise SystemExit("ERROR: reported position lost the searched field state")
@@ -243,8 +277,19 @@ def main() -> None:
     )
     print(format_public_battle_position(position))
     print(format_belief_search_evidence(recommendation, pruning))
-    print("Anti-cheat: changing the human's real hidden Metagross set changed nothing")
-    print("RESULT: p2 AI exact search now evaluates actions across public-belief worlds")
+    print(format_selective_continuation(continuation))
+    print(
+        "Selected after continuation: "
+        f"{continuation.chosen_choice}"
+    )
+    print(
+        "Anti-cheat: changing the human's real hidden Metagross set changed neither "
+        "one-ply nor continuation results"
+    )
+    print(
+        "RESULT: p2 AI exact search now selectively checks what its strongest "
+        "first-turn actions enable next"
+    )
 
 
 if __name__ == "__main__":

@@ -1,4 +1,4 @@
-"""Exact one-ply search across multiple public-belief worlds."""
+"""Exact bounded search across multiple public-belief worlds."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class BeliefSearchWorker(Protocol):
         self,
         *,
         state: dict[str, Any],
-        branches: list[dict[str, str]],
+        branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]: ...
 
 
@@ -58,6 +58,7 @@ class BeliefWorldOutcome:
     score_breakdown: ExactScoreBreakdown | None = None
     worst_sample_score: float | None = None
     worst_sample_summary: dict[str, Any] | None = field(default=None, compare=False)
+    worst_sample_rng_seed: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +125,71 @@ class BeliefSearchResult:
     branch_count: int
     response_screening_branch_count: int
     timing: BeliefSearchTiming = field(compare=False)
+
+
+@dataclass(frozen=True)
+class SelectiveContinuationLine:
+    """One first-turn candidate extended from its current principal worst branch."""
+
+    first_choice: str
+    first_world: str
+    first_world_weight: float
+    first_response: str
+    first_rng_seed: str | None
+    first_turn_score: float
+    next_phase: str
+    next_pruning: BeliefPruningResult | None
+    next_search: BeliefSearchResult | None
+    leaf_score: float
+    leaf_breakdown: ExactScoreBreakdown
+    leaf_summary: dict[str, Any] = field(compare=False)
+    protect_chain_slots: tuple[int, ...] = ()
+    branch_count: int = 0
+
+
+@dataclass(frozen=True)
+class SelectiveContinuationResult:
+    """Selective one-decision extension of the strongest one-ply candidates."""
+
+    side: SideId
+    original_choice: str
+    chosen_choice: str
+    ranking: tuple[SelectiveContinuationLine, ...]
+    candidate_limit: int
+    next_candidate_limit: int
+    next_response_limit: int
+    branch_count: int
+    total_seconds: float = field(compare=False)
+
+
+def _protect_chain_slots(state: dict[str, Any], side: SideId) -> tuple[int, ...]:
+    """Return active slots whose exact state carries Showdown's Protect chain."""
+    sides = state.get("sides")
+    side_index = 0 if side == "p1" else 1
+    if not isinstance(sides, list) or len(sides) <= side_index:
+        return ()
+    side_state = sides[side_index]
+    if not isinstance(side_state, dict):
+        return ()
+    active = side_state.get("active")
+    pokemon = side_state.get("pokemon")
+    if not isinstance(active, list) or not isinstance(pokemon, list):
+        return ()
+    active_count = len(active)
+    slots = []
+    for mon in pokemon:
+        if not isinstance(mon, dict):
+            continue
+        position = mon.get("position")
+        volatiles = mon.get("volatiles")
+        if (
+            isinstance(position, int)
+            and 0 <= position < active_count
+            and isinstance(volatiles, dict)
+            and "stall" in volatiles
+        ):
+            slots.append(position + 1)
+    return tuple(sorted(slots))
 
 
 def _side_legality_key(state: dict[str, Any], side: SideId) -> str:
@@ -532,6 +598,7 @@ def search_exact_belief_turn(
                     score_breakdown=component_means,
                     worst_sample_score=worst_sample[0].total,
                     worst_sample_summary=worst_sample[1],
+                    worst_sample_rng_seed=worst_sample[2],
                 )
             )
         scoring_seconds += perf_counter() - scoring_started
@@ -582,4 +649,191 @@ def search_exact_belief_turn(
             legal_cache_hits=legal_cache_hits,
             legal_cache_misses=legal_cache_misses,
         ),
+    )
+
+
+def search_selective_continuation(
+    worker: BeliefSearchWorker,
+    *,
+    worlds: tuple[ExactBeliefWorldState, ...],
+    first_turn: BeliefSearchResult,
+    candidate_limit: int = 3,
+    next_candidate_limit: int = 4,
+    next_response_limit: int = 4,
+    rng_seeds: tuple[str, ...] | None = None,
+) -> SelectiveContinuationResult:
+    """Extend the strongest first-turn choices through one more decision.
+
+    This is a principal-variation probe, not exhaustive two-ply minimax. For each top
+    first-turn candidate, it restores that candidate's current worst sampled
+    world/response/RNG result and runs a fresh bounded adversarial search from the exact
+    resulting state. This exposes next-turn liabilities such as consecutive Protect,
+    forced switches, and an exposed active Pokemon without multiplying the full belief
+    matrix by another complete search tree.
+    """
+    if not worlds:
+        raise ValueError("worlds must not be empty")
+    if candidate_limit <= 0:
+        raise ValueError("candidate_limit must be positive")
+    if next_candidate_limit <= 0:
+        raise ValueError("next_candidate_limit must be positive")
+    if next_response_limit <= 0:
+        raise ValueError("next_response_limit must be positive")
+    if rng_seeds is not None and not rng_seeds:
+        raise ValueError("rng_seeds must not be empty")
+
+    started = perf_counter()
+    continuation_rng = rng_seeds or SCREENING_RNG_SEEDS
+    labels: dict[str, ExactBeliefWorldState] = {}
+    for index, world in enumerate(worlds):
+        label = world.label or f"world-{index + 1}"
+        if label in labels:
+            raise ValueError(f"duplicate belief-world label: {label}")
+        labels[label] = world
+
+    lines: list[SelectiveContinuationLine] = []
+    total_branches = 0
+    for candidate in first_turn.ranking[:candidate_limit]:
+        first_outcome = min(
+            candidate.worlds,
+            key=lambda outcome: (outcome.worst_score, outcome.label),
+        )
+        source_world = labels.get(first_outcome.label)
+        if source_world is None:
+            raise ValueError(
+                f"first-turn outcome references unknown belief world {first_outcome.label!r}"
+            )
+
+        if first_turn.side == "p1":
+            first_branch: dict[str, Any] = {
+                "p1_choice": candidate.choice,
+                "p2_choice": first_outcome.worst_response,
+                "include_state": True,
+            }
+        else:
+            first_branch = {
+                "p1_choice": first_outcome.worst_response,
+                "p2_choice": candidate.choice,
+                "include_state": True,
+            }
+        if first_outcome.worst_sample_rng_seed is not None:
+            first_branch["rng_seed"] = first_outcome.worst_sample_rng_seed
+
+        resolved = worker.branch_many(state=source_world.state, branches=[first_branch])
+        total_branches += 1
+        if len(resolved) != 1:
+            raise RuntimeError("unexpected number of continuation source branches")
+        first_summary = resolved[0].get("summary")
+        next_state = resolved[0].get("state")
+        if not isinstance(first_summary, dict) or not isinstance(next_state, dict):
+            raise RuntimeError("continuation source branch is missing summary or exact state")
+
+        first_score = (
+            first_outcome.worst_sample_score
+            if first_outcome.worst_sample_score is not None
+            else score_exact_summary_breakdown(first_summary, first_turn.side).total
+        )
+        next_phase = str(next_state.get("requestState", first_summary.get("requestState", "")))
+        protect_chain_slots = _protect_chain_slots(next_state, first_turn.side)
+        if first_summary.get("ended"):
+            breakdown = score_exact_summary_breakdown(first_summary, first_turn.side)
+            lines.append(
+                SelectiveContinuationLine(
+                    first_choice=candidate.choice,
+                    first_world=first_outcome.label,
+                    first_world_weight=first_outcome.weight,
+                    first_response=first_outcome.worst_response,
+                    first_rng_seed=first_outcome.worst_sample_rng_seed,
+                    first_turn_score=first_score,
+                    next_phase="ended",
+                    next_pruning=None,
+                    next_search=None,
+                    leaf_score=breakdown.total,
+                    leaf_breakdown=breakdown,
+                    leaf_summary=first_summary,
+                    protect_chain_slots=protect_chain_slots,
+                    branch_count=1,
+                )
+            )
+            continue
+
+        continuation_world = ExactBeliefWorldState(
+            state=next_state,
+            weight=1.0,
+            label=f"{first_outcome.label}-continuation",
+        )
+        pruning = shortlist_belief_candidates(
+            worker,
+            worlds=(continuation_world,),
+            side=first_turn.side,
+            candidate_limit=next_candidate_limit,
+            reference_limit=1,
+        )
+        continuation = search_exact_belief_turn(
+            worker,
+            worlds=(continuation_world,),
+            side=first_turn.side,
+            choices=list(pruning.candidate_shortlist),
+            response_limit=next_response_limit,
+            autonomous_responses=True,
+            rng_seeds=continuation_rng,
+        )
+        next_worst = min(
+            continuation.chosen.worlds,
+            key=lambda outcome: (outcome.worst_score, outcome.label),
+        )
+        leaf_summary = next_worst.worst_sample_summary
+        if leaf_summary is None:
+            raise RuntimeError("continuation search is missing its worst leaf summary")
+        leaf_breakdown = next_worst.score_breakdown
+        if leaf_breakdown is None:
+            leaf_breakdown = score_exact_summary_breakdown(leaf_summary, first_turn.side)
+        line_branches = (
+            1
+            + pruning.screening_branch_count
+            + continuation.response_screening_branch_count
+            + continuation.branch_count
+        )
+        total_branches += line_branches - 1
+        lines.append(
+            SelectiveContinuationLine(
+                first_choice=candidate.choice,
+                first_world=first_outcome.label,
+                first_world_weight=first_outcome.weight,
+                first_response=first_outcome.worst_response,
+                first_rng_seed=first_outcome.worst_sample_rng_seed,
+                first_turn_score=first_score,
+                next_phase=next_phase,
+                next_pruning=pruning,
+                next_search=continuation,
+                leaf_score=continuation.chosen.worst_world_score,
+                leaf_breakdown=leaf_breakdown,
+                leaf_summary=leaf_summary,
+                protect_chain_slots=protect_chain_slots,
+                branch_count=line_branches,
+            )
+        )
+
+    ranking = tuple(
+        sorted(
+            lines,
+            key=lambda line: (
+                -line.leaf_score,
+                -line.first_turn_score,
+                line.first_choice,
+            ),
+        )
+    )
+    if not ranking:
+        raise ValueError("first-turn result has no candidates to extend")
+    return SelectiveContinuationResult(
+        side=first_turn.side,
+        original_choice=first_turn.chosen.choice,
+        chosen_choice=ranking[0].first_choice,
+        ranking=ranking,
+        candidate_limit=min(candidate_limit, len(first_turn.ranking)),
+        next_candidate_limit=next_candidate_limit,
+        next_response_limit=next_response_limit,
+        branch_count=total_branches,
+        total_seconds=perf_counter() - started,
     )

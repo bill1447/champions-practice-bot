@@ -7,12 +7,15 @@ from champions_practice.belief_search import (
     BeliefSearchResult,
     BeliefSearchTiming,
     BeliefWorldOutcome,
+    SelectiveContinuationLine,
+    SelectiveContinuationResult,
 )
 from champions_practice.exact_search import ExactScoreBreakdown
 from champions_practice.position_report import (
     build_public_battle_position,
     format_belief_search_evidence,
     format_public_battle_position,
+    format_selective_continuation,
 )
 
 
@@ -199,3 +202,42 @@ def test_search_evidence_rejects_empty_limit() -> None:
 
     with pytest.raises(ValueError, match="positive"):
         format_belief_search_evidence(recommendation, pruning, limit=0)
+
+
+def test_selective_continuation_report_exposes_next_click_and_protect_chain() -> None:
+    recommendation, pruning = _recommendation()
+    breakdown = ExactScoreBreakdown(75.0, 0.0, 70.0, 3.0, 2.0)
+    line = SelectiveContinuationLine(
+        first_choice="move psychic, move protect",
+        first_world="rare",
+        first_world_weight=0.25,
+        first_response="move attack",
+        first_rng_seed="low",
+        first_turn_score=80.0,
+        next_phase="move",
+        next_pruning=pruning,
+        next_search=recommendation,
+        leaf_score=75.0,
+        leaf_breakdown=breakdown,
+        leaf_summary=recommendation.chosen.worlds[1].worst_sample_summary,
+        protect_chain_slots=(2,),
+        branch_count=129,
+    )
+    continuation = SelectiveContinuationResult(
+        side="p2",
+        original_choice=line.first_choice,
+        chosen_choice=line.first_choice,
+        ranking=(line,),
+        candidate_limit=1,
+        next_candidate_limit=4,
+        next_response_limit=4,
+        branch_count=129,
+        total_seconds=1.2,
+    )
+
+    rendered = format_selective_continuation(continuation)
+
+    assert "original one-ply recommendation survived" in rendered
+    assert "consecutive-Protect chain preserved for AI slot(s) 2" in rendered
+    assert "next: move psychic vs move attack" in rendered
+    assert "129 added forks" in rendered

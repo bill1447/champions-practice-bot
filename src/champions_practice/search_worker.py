@@ -157,7 +157,7 @@ class ShowdownSearchWorker:
         self,
         *,
         state: dict[str, Any],
-        branches: list[dict[str, str]],
+        branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Resolve many independent action pairs from one exact snapshot."""
         result = self.request("branch_many", state=state, branches=branches)

@@ -3,6 +3,7 @@ from typing import Any
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
     search_exact_belief_turn,
+    search_selective_continuation,
     shortlist_belief_responses,
 )
 
@@ -250,3 +251,79 @@ def test_autonomous_response_pruning_is_bounded() -> None:
     assert result.branch_count == 1
     assert result.response_screening_branch_count > 0
     assert result.chosen.worlds[0].legal_response_count == 1
+
+
+def test_selective_continuation_can_reject_a_myopic_one_ply_winner() -> None:
+    class ContinuationWorker:
+        legal = {
+            "initial": {
+                "p1": ["move greedy", "move setup"],
+                "p2": ["move punish"],
+            },
+            "after-greedy": {
+                "p1": ["move finish"],
+                "p2": ["move counter"],
+            },
+            "after-setup": {
+                "p1": ["move payoff"],
+                "p2": ["move counter"],
+            },
+        }
+
+        def legal_choices(self, *, state, side):
+            return self.legal[state["id"]][side]
+
+        def branch_many(self, *, state, branches):
+            results = []
+            for index, branch in enumerate(branches):
+                state_id = state["id"]
+                p1_choice = branch["p1_choice"]
+                if state_id == "initial":
+                    if p1_choice == "move greedy":
+                        summary = _summary(100, 80)
+                        next_id = "after-greedy"
+                    else:
+                        summary = _summary(95, 95)
+                        next_id = "after-setup"
+                elif state_id == "after-greedy":
+                    summary = _summary(0, 80)
+                    next_id = "lost"
+                else:
+                    summary = _summary(80, 0)
+                    next_id = "won"
+                result = {"index": index, "summary": summary}
+                if branch.get("include_state"):
+                    result["state"] = {"id": next_id, "requestState": "move"}
+                results.append(result)
+            return results
+
+    worker = ContinuationWorker()
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "initial", "requestState": "move"},
+            weight=1.0,
+            label="world-a",
+        ),
+    )
+    first_turn = search_exact_belief_turn(
+        worker,
+        worlds=worlds,
+        side="p1",
+        rng_seeds=("low",),
+    )
+
+    continuation = search_selective_continuation(
+        worker,
+        worlds=worlds,
+        first_turn=first_turn,
+        candidate_limit=2,
+        next_candidate_limit=1,
+        next_response_limit=1,
+        rng_seeds=("low",),
+    )
+
+    assert first_turn.chosen.choice == "move greedy"
+    assert continuation.chosen_choice == "move setup"
+    assert continuation.ranking[0].next_search is not None
+    assert continuation.ranking[0].next_search.chosen.choice == "move payoff"
+    assert continuation.branch_count > 2

@@ -10,6 +10,7 @@ from champions_practice.belief_search import (
     BeliefPruningResult,
     BeliefSearchResult,
     BeliefWorldOutcome,
+    SelectiveContinuationResult,
 )
 from champions_practice.exact_search import ExactScoreBreakdown, SideId
 
@@ -385,4 +386,57 @@ def format_belief_search_evidence(
             lines.append(
                 f"    - {candidate.choice} | screen worst {candidate.worst_score:.1f}{detail}"
             )
+    return "\n".join(lines)
+
+
+def format_selective_continuation(result: SelectiveContinuationResult) -> str:
+    """Explain the bounded principal-variation continuation probe."""
+    changed = result.chosen_choice != result.original_choice
+    verdict = (
+        f"changed from {result.original_choice} to {result.chosen_choice}"
+        if changed
+        else f"survived: {result.chosen_choice}"
+    )
+    lines = [
+        "Selective continuation probe:",
+        "  Scope: extend each top one-ply candidate from its current worst "
+        "world/reply/RNG branch by one additional Showdown decision; "
+        "not exhaustive two-ply minimax",
+        f"  Result: original one-ply recommendation {verdict}",
+    ]
+    for rank, line in enumerate(result.ranking, start=1):
+        marker = " [CONTINUATION CHOSEN]" if line.first_choice == result.chosen_choice else ""
+        lines.append(
+            f"  {rank}.{marker} first {line.first_choice} | "
+            f"one-ply sample {line.first_turn_score:.1f} -> leaf {line.leaf_score:.1f} | "
+            f"phase {line.next_phase} | {line.branch_count} added forks"
+        )
+        lines.append(
+            f"     source: {line.first_world} (weight {line.first_world_weight:.3f}) "
+            f"vs {line.first_response}"
+        )
+        if line.protect_chain_slots:
+            slots = ", ".join(str(slot) for slot in line.protect_chain_slots)
+            lines.append(
+                f"     exact state: consecutive-Protect chain preserved for AI slot(s) {slots}"
+            )
+        if line.next_search is None:
+            lines.append("     continuation: battle ended on the first branch")
+            continue
+        next_choice = line.next_search.chosen.choice
+        next_world = _worst_world(line.next_search.chosen)
+        lines.append(
+            f"     next: {next_choice} vs {next_world.worst_response} | "
+            f"{_format_score_components(line.leaf_breakdown)}"
+        )
+
+    chosen = result.ranking[0]
+    lines.extend(
+        (
+            "Continuation-chosen worst sampled leaf board:",
+            format_exact_result_board(chosen.leaf_summary, side=result.side),
+            f"Continuation cost: {result.branch_count} added forks, "
+            f"{result.total_seconds * 1000:.1f} ms",
+        )
+    )
     return "\n".join(lines)
