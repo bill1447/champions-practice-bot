@@ -166,6 +166,23 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid branch_many results")
         return resolved
 
+    def state_view(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        previews: dict[str, list[str]] | None = None,
+    ) -> dict[str, Any]:
+        """Return the sanitized player view for any exact Showdown snapshot."""
+        payload: dict[str, Any] = {"state": state, "side": side}
+        if previews is not None:
+            payload["previews"] = previews
+        result = self.request("state_view", **payload)
+        view = result.get("view")
+        if not isinstance(view, dict):
+            raise RuntimeError("Showdown worker returned an invalid state view")
+        return view
+
     def legal_choices(
         self,
         *,

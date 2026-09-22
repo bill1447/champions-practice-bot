@@ -439,6 +439,27 @@ function enumerateLegalChoices(battle, sideId) {
   return validateChoices(battle.toJSON(), sideId, proposedChoices(battle, side));
 }
 
+function stateView(request) {
+  if (!request.state) {
+    throw new Error("state_view requires a serialized battle state");
+  }
+  const sideId = request.side || "p1";
+  const battle = Battle.fromJSON(JSON.stringify(request.state));
+  battle.restart(() => {});
+  try {
+    const previews = request.previews || {
+      p1: battle.p1.pokemon.map((mon) => mon.set.species),
+      p2: battle.p2.pokemon.map((mon) => mon.set.species),
+    };
+    return {
+      side: sideId,
+      view: playerView(battle, sideId, previews),
+    };
+  } finally {
+    battle.destroy();
+  }
+}
+
 function legalChoices(request) {
   if (!request.state) {
     throw new Error("legal_choices requires a serialized battle state");
@@ -671,6 +692,8 @@ function handle(request) {
       return branchMany(request);
     case "legal_choices":
       return legalChoices(request);
+    case "state_view":
+      return stateView(request);
     case "session_start":
       return startSession(request);
     case "session_view":
