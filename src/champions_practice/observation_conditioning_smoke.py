@@ -79,17 +79,12 @@ def main():
             p2_choice=TURN_ONE.p2_choice,
         )
         after_one = worker.session_view(session_id, side="p2")["view"]
-        first_responses = {
-            particle.world_id: (TURN_ONE.p1_choice,)
-            for particle in particles
-        }
         first_update = condition_particles(
             worker,
             particles=particles,
             ai_side="p2",
             ai_choice=TURN_ONE.p2_choice,
             actual_public_view=after_one,
-            opponent_choices=first_responses,
             previews=previews,
         )
         if not first_update.particles:
@@ -103,17 +98,12 @@ def main():
             p2_choice=TURN_TWO.p2_choice,
         )
         after_two = worker.session_view(session_id, side="p2")["view"]
-        second_responses = {
-            particle.world_id: (TURN_TWO.p1_choice,)
-            for particle in first_update.particles
-        }
         second_update = condition_particles(
             worker,
             particles=first_update.particles,
             ai_side="p2",
             ai_choice=TURN_TWO.p2_choice,
             actual_public_view=after_two,
-            opponent_choices=second_responses,
             previews=previews,
         )
         worker.close_session(session_id)
@@ -144,6 +134,7 @@ def main():
     print(f"Turn-two matches: {second_update.matched}")
     print(f"Turn-two posterior: {len(second_update.particles)}")
     print(f"Posterior mass: {posterior_mass:.6f}")
+    print("Opponent responses: simulator-enumerated; no hidden commands supplied")
     print("Boundary: survival uses only sanitized public observations")
     print("RESULT: belief particles condition sequentially across turns")
 

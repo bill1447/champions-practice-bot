@@ -46,6 +46,28 @@ def test_public_signature_is_order_independent():
     assert public_observation_signature(left) == public_observation_signature(right)
 
 
+def test_public_signature_ignores_names_and_preserves_winner_role():
+    left = {
+        "winner": "Practice AI",
+        "player": {"name": "Practice AI", "active": ["Indeedee-F"]},
+        "opponent": {"name": "Human", "active": ["Metagross"]},
+        "request": {"side": {"name": "Practice AI", "id": "p2"}},
+    }
+    right = {
+        "winner": "Search P2",
+        "player": {"name": "Search P2", "active": ["Indeedee-F"]},
+        "opponent": {"name": "Search P1", "active": ["Metagross"]},
+        "request": {"side": {"name": "Search P2", "id": "p2"}},
+    }
+    opponent_won = {
+        **right,
+        "winner": "Search P1",
+    }
+
+    assert public_observation_signature(left) == public_observation_signature(right)
+    assert public_observation_signature(left) != public_observation_signature(opponent_won)
+
+
 class SelectiveWorker(FakeWorker):
     def legal_choices(self, *, state, side):
         return ["move legal"]

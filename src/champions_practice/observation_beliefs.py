@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import json
 from dataclasses import dataclass
 from typing import Any, Iterable
@@ -26,7 +27,37 @@ class ParticleUpdate:
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
-    return json.dumps(view, sort_keys=True, separators=(",", ":"))
+    """Return a stable signature for mechanically relevant public information.
+
+    Reconstructed Showdown states may use different display names from the live
+    session. Names do not affect the battle state, so normalize a winner to its
+    player/opponent role and remove cosmetic names before comparing observations.
+    """
+    normalized = copy.deepcopy(view)
+    player = normalized.get("player")
+    opponent = normalized.get("opponent")
+    player_name = player.get("name") if isinstance(player, dict) else None
+    opponent_name = opponent.get("name") if isinstance(opponent, dict) else None
+
+    winner = normalized.get("winner")
+    if isinstance(winner, str):
+        if winner == player_name:
+            normalized["winner"] = "player"
+        elif winner == opponent_name:
+            normalized["winner"] = "opponent"
+
+    if isinstance(player, dict):
+        player.pop("name", None)
+    if isinstance(opponent, dict):
+        opponent.pop("name", None)
+
+    request = normalized.get("request")
+    if isinstance(request, dict):
+        request_side = request.get("side")
+        if isinstance(request_side, dict):
+            request_side.pop("name", None)
+
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
 
 
 def _state_key(state: dict[str, Any]) -> str:
