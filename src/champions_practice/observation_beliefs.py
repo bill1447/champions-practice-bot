@@ -72,15 +72,20 @@ def condition_particles(
     matched = 0
 
     for particle in particles:
-        responses = (
-            opponent_choices.get(particle.world_id, ())
-            if opponent_choices is not None
-            else ()
+        legal_responses = tuple(
+            worker.legal_choices(state=particle.state, side=opponent_side)
         )
-        if not responses:
-            responses = tuple(
-                worker.legal_choices(state=particle.state, side=opponent_side)
-            )
+        if opponent_choices is None:
+            responses = legal_responses
+        else:
+            requested = opponent_choices.get(particle.world_id)
+            if requested is None:
+                responses = legal_responses
+            else:
+                legal_set = set(legal_responses)
+                responses = tuple(
+                    response for response in requested if response in legal_set
+                )
         if not responses:
             continue
 
