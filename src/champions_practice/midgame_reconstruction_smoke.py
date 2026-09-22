@@ -34,12 +34,15 @@ def _run(worker, human_team):
         session_id, p1_choice=HUMAN_PREVIEW, p2_choice=AI_PREVIEW
     )
     preview_view = worker.session_view(session_id, side="p2")["view"]
-    belief = build_public_opponent_belief(preview_view)
-    worlds = materialize_public_belief_worlds(belief, _public_priors(), limit=32)
     worker.choose_session(
         session_id, p1_choice=TURN.p1_choice, p2_choice=TURN.p2_choice
     )
     midgame_view = worker.session_view(session_id, side="p2")["view"]
+    # Materialize from the CURRENT public belief, not the preview belief. The resolved
+    # turn publicly reveals Psychic Fangs / Expanding Force; worlds lacking those moves
+    # are no longer possible and cannot legally replay the observed history.
+    belief = build_public_opponent_belief(midgame_view)
+    worlds = materialize_public_belief_worlds(belief, _public_priors(), limit=32)
     reconstructed = reconstruct_midgame_belief_worlds(
         worker,
         battle_format=CHAMPIONS_FORMAT,
