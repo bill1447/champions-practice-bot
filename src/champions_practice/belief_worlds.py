@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from itertools import combinations
-from typing import Mapping, Sequence
+from typing import Any, Mapping, Protocol, Sequence
 
 from champions_practice.beliefs import PublicOpponentBelief, PublicPokemonBelief
 
@@ -376,3 +376,66 @@ def materialize_public_belief_worlds(
             key=lambda world: (-world.weight, _world_signature(world)),
         )
     )
+
+
+class MidgameWorldWorker(Protocol):
+    def create_state(self, *, battle_format: str, p1_team: str, p2_team: str,
+                     p1_preview: str | None = None, p2_preview: str | None = None,
+                     seed: str | None = None, **kwargs: Any) -> dict[str, Any]: ...
+    def branch_many(self, *, state: dict[str, Any],
+                    branches: list[dict[str, Any]]) -> list[dict[str, Any]]: ...
+
+
+@dataclass(frozen=True)
+class PublicTurnChoice:
+    """One fully public resolved turn used to advance every belief world."""
+    p1_choice: str
+    p2_choice: str
+    rng_seed: str | None = None
+
+
+@dataclass(frozen=True)
+class ReconstructedBeliefWorld:
+    world: PublicBeliefWorld
+    state: dict[str, Any]
+
+
+def reconstruct_midgame_belief_worlds(
+    worker: MidgameWorldWorker,
+    *,
+    battle_format: str,
+    belief: PublicOpponentBelief,
+    worlds: tuple[PublicBeliefWorld, ...],
+    ai_team: str,
+    ai_preview: str,
+    public_turns: tuple[PublicTurnChoice, ...],
+    opponent_side: str = "p1",
+    seed: str | None = None,
+) -> tuple[ReconstructedBeliefWorld, ...]:
+    """Replay identical public turn history into every hidden-set hypothesis."""
+    if opponent_side not in {"p1", "p2"}:
+        raise ValueError("opponent_side must be p1 or p2")
+    reconstructed = []
+    for world in worlds:
+        opponent_preview = preview_choice_for_world(belief, world)
+        if opponent_side == "p1":
+            state = worker.create_state(
+                battle_format=battle_format, p1_team=world.team_text, p2_team=ai_team,
+                p1_preview=opponent_preview, p2_preview=ai_preview, seed=seed,
+            )
+        else:
+            state = worker.create_state(
+                battle_format=battle_format, p1_team=ai_team, p2_team=world.team_text,
+                p1_preview=ai_preview, p2_preview=opponent_preview, seed=seed,
+            )
+        for turn in public_turns:
+            branch = {"p1_choice": turn.p1_choice, "p2_choice": turn.p2_choice,
+                      "include_state": True}
+            if turn.rng_seed is not None:
+                branch["rng_seed"] = turn.rng_seed
+            resolved = worker.branch_many(state=state, branches=[branch])
+            if len(resolved) != 1 or not isinstance(resolved[0].get("state"), dict):
+                raise RuntimeError("midgame reconstruction did not return an exact state")
+            state = resolved[0]["state"]
+        reconstructed.append(ReconstructedBeliefWorld(world=world, state=state))
+    return tuple(reconstructed)
