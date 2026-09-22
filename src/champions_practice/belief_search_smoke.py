@@ -16,6 +16,11 @@ from champions_practice.belief_worlds import (
     preview_choice_for_world,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
+from champions_practice.position_report import (
+    build_public_battle_position,
+    format_belief_search_evidence,
+    format_public_battle_position,
+)
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
@@ -177,6 +182,20 @@ def main() -> None:
         if recommendation.response_screening_branch_count > 1000:
             raise SystemExit("ERROR: autonomous response screening exceeded its budget")
 
+        position = build_public_battle_position(standard_view)
+        if position.turn != 1 or position.terrain != "psychicterrain":
+            raise SystemExit("ERROR: reported position lost the searched field state")
+        if [active.species for active in position.player.active] != [
+            "Indeedee-F",
+            "Sneasler",
+        ]:
+            raise SystemExit("ERROR: reported position lost the AI active slots")
+        if [active.species for active in position.opponent.active] != [
+            "Metagross",
+            "Armarouge",
+        ]:
+            raise SystemExit("ERROR: reported position lost the human active slots")
+
         worker.close_session(standard_id)
         worker.close_session(variant_id)
 
@@ -222,6 +241,8 @@ def main() -> None:
         f"worst-world={recommendation.chosen.worst_world_score:.1f} "
         f"weighted={recommendation.chosen.weighted_score:.1f}"
     )
+    print(format_public_battle_position(position))
+    print(format_belief_search_evidence(recommendation, pruning))
     print("Anti-cheat: changing the human's real hidden Metagross set changed nothing")
     print("RESULT: p2 AI exact search now evaluates actions across public-belief worlds")
 

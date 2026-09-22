@@ -8,7 +8,13 @@ from typing import Any, Literal
 
 BeliefActionKind = Literal["revealed_move", "unknown_move", "switch", "pass"]
 
-_ALLOWED_OPPONENT_KEYS = {"name", "preview_species", "active", "revealed"}
+_ALLOWED_OPPONENT_KEYS = {
+    "name",
+    "preview_species",
+    "active",
+    "revealed",
+    "side_conditions",
+}
 _ALLOWED_ACTIVE_KEYS = {
     "species",
     "base_species",
