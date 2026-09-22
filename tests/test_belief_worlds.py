@@ -118,6 +118,36 @@ def test_materializer_explores_selected_four_and_set_uncertainty() -> None:
     }
 
 
+def test_selection_weight_is_not_inflated_by_extra_set_variants() -> None:
+    belief = build_public_opponent_belief(_view())
+
+    worlds = materialize_public_belief_worlds(belief, _priors(), limit=32)
+
+    weight_by_selection: dict[tuple[str, ...], float] = {}
+    for world in worlds:
+        weight_by_selection[world.selected_species] = (
+            weight_by_selection.get(world.selected_species, 0.0) + world.weight
+        )
+
+    assert len(weight_by_selection) == 6
+    assert all(
+        weight == pytest.approx(1 / 6)
+        for weight in weight_by_selection.values()
+    )
+
+    metagross_selection = next(
+        selection for selection in weight_by_selection if "Metagross" in selection
+    )
+    metagross_worlds = [
+        world for world in worlds if world.selected_species == metagross_selection
+    ]
+    weight_by_set = {
+        world.set_for_species("Metagross").label: world.weight
+        for world in metagross_worlds
+    }
+    assert weight_by_set["mega"] == pytest.approx(2 * weight_by_set["bulky"])
+
+
 def test_reveals_filter_incompatible_public_set_priors() -> None:
     view = _view(active=("Metagross", "Armarouge"))
     metagross = next(

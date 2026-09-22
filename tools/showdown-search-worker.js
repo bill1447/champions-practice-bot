@@ -33,11 +33,11 @@ function hpPercent(mon) {
   return Math.round((mon.hp / mon.maxhp) * 1000) / 10;
 }
 
-function publicActive(mon) {
-  if (!mon) return null;
+function publicActive(mon, identity) {
+  if (!mon || !identity) return null;
   return {
-    species: mon.species.name,
-    base_species: mon.set.species,
+    species: identity.visibleSpecies,
+    base_species: identity.baseSpecies,
     hp_percent: hpPercent(mon),
     fainted: mon.fainted,
     status: mon.status || null,
@@ -49,11 +49,12 @@ function toId(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
-function publicOpponentReveals(battle, sideId, previewSpecies) {
+function publicOpponentKnowledge(battle, sideId, previewSpecies) {
   const opponentPrefix = sideId === "p1" ? "p2" : "p1";
   const channel = sideId === "p1" ? 1 : 2;
   const observations = new Map();
   const slotSpecies = new Map();
+  const slotVisibleSpecies = new Map();
 
   for (const species of previewSpecies) {
     const key = toId(species);
@@ -92,8 +93,14 @@ function publicOpponentReveals(battle, sideId, previewSpecies) {
       if (observation) {
         observation.seen = true;
         slotSpecies.set(slot, speciesKey);
+        slotVisibleSpecies.set(slot, species);
       }
       continue;
+    }
+
+    if (slot && ["detailschange", "-formechange"].includes(event)) {
+      const species = String(parts[3] || "").split(",", 1)[0];
+      if (species) slotVisibleSpecies.set(slot, species);
     }
 
     const observation = observationForActor(parts[2]);
@@ -115,14 +122,28 @@ function publicOpponentReveals(battle, sideId, previewSpecies) {
     }
   }
 
-  return [...observations.values()].map((observation) => ({
-    species: observation.species,
-    moves: [...observation.moves].filter(Boolean).sort(),
-    items: [...observation.items].filter(Boolean).sort(),
-    abilities: [...observation.abilities].filter(Boolean).sort(),
-    fainted: observation.fainted,
-    seen: observation.seen,
-  }));
+  const activeIdentities = new Map();
+  for (const [slot, speciesKey] of slotSpecies) {
+    const observation = observations.get(speciesKey);
+    const visibleSpecies = slotVisibleSpecies.get(slot);
+    if (!observation || !visibleSpecies) continue;
+    activeIdentities.set(slot, {
+      baseSpecies: observation.species,
+      visibleSpecies,
+    });
+  }
+
+  return {
+    activeIdentities,
+    revealed: [...observations.values()].map((observation) => ({
+      species: observation.species,
+      moves: [...observation.moves].filter(Boolean).sort(),
+      items: [...observation.items].filter(Boolean).sort(),
+      abilities: [...observation.abilities].filter(Boolean).sort(),
+      fainted: observation.fainted,
+      seen: observation.seen,
+    })),
+  };
 }
 
 function ownPokemon(mon) {
@@ -151,6 +172,11 @@ function playerView(battle, sideId = "p1", previews = null) {
   const opponentPreview = previews ? previews[opponentId] : opponent.pokemon.map(
     (mon) => mon.set.species,
   );
+  const opponentKnowledge = publicOpponentKnowledge(
+    battle,
+    sideId,
+    opponentPreview,
+  );
 
   return {
     turn: battle.turn,
@@ -171,8 +197,13 @@ function playerView(battle, sideId = "p1", previews = null) {
     opponent: {
       name: opponent.name,
       preview_species: opponentPreview.slice(),
-      active: opponent.active.map(publicActive),
-      revealed: publicOpponentReveals(battle, sideId, opponentPreview),
+      active: opponent.active.map((mon, index) => publicActive(
+        mon,
+        opponentKnowledge.activeIdentities.get(
+          `${opponentId}${String.fromCharCode("a".charCodeAt(0) + index)}`,
+        ),
+      )),
+      revealed: opponentKnowledge.revealed,
     },
   };
 }
