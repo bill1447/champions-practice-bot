@@ -105,6 +105,7 @@ def test_belief_search_prefers_robust_choice_across_worlds() -> None:
     assert result.world_count == 2
     assert result.evaluated_choices == ("attack", "safe")
     assert result.branch_count == 8
+    assert result.response_screening_branch_count == 0
     assert result.timing.total_seconds >= 0
     assert result.timing.candidate_legal_seconds >= 0
     assert result.timing.response_legal_seconds >= 0
@@ -190,3 +191,19 @@ def test_legal_choice_cache_reuses_equivalent_side_state() -> None:
     assert result.evaluated_choices == ("attack", "safe")
     assert result.timing.legal_cache_hits >= 1
     assert result.timing.legal_cache_misses < 4
+
+
+def test_autonomous_response_pruning_is_bounded() -> None:
+    worker = FakeBeliefWorker()
+    worlds = (ExactBeliefWorldState(state={"id": "A"}, weight=1.0),)
+    result = search_exact_belief_turn(
+        worker,
+        worlds=worlds,
+        side="p1",
+        choices=["safe"],
+        response_limit=1,
+        autonomous_responses=True,
+    )
+    assert result.branch_count == 1
+    assert result.response_screening_branch_count > 0
+    assert result.chosen.worlds[0].legal_response_count == 1

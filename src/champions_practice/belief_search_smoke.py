@@ -136,6 +136,7 @@ def main() -> None:
             side="p2",
             choices=list(pruning.candidate_shortlist),
             response_limit=8,
+            autonomous_responses=True,
             rng_seeds=RNG_SEEDS,
         )
         variant_recommendation = search_exact_belief_turn(
@@ -144,6 +145,7 @@ def main() -> None:
             side="p2",
             choices=list(variant_pruning.candidate_shortlist),
             response_limit=8,
+            autonomous_responses=True,
             rng_seeds=RNG_SEEDS,
         )
         if recommendation != variant_recommendation:
@@ -182,9 +184,10 @@ def main() -> None:
         f"{len(pruning.candidate_shortlist)} autonomous shortlist; "
         f"{len(recommendation.evaluated_choices)} evaluated"
     )
-    print("Responses: up to 8 legal human replies per world")
+    print("Responses: autonomously pruned to up to 8 adversarial replies per world")
     print(f"RNG futures: {len(RNG_SEEDS)} per action/response/world")
-    print(f"Screening forks: {pruning.screening_branch_count}")
+    print(f"Candidate screening forks: {pruning.screening_branch_count}")
+    print(f"Response screening forks: {recommendation.response_screening_branch_count}")
     print(f"Exact belief forks: {recommendation.branch_count}")
     timing = recommendation.timing
     print("Timing breakdown (standard hidden-set run):")

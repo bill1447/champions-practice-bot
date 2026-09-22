@@ -78,6 +78,14 @@ class BeliefPruningResult:
 
 
 @dataclass(frozen=True)
+class BeliefResponsePruning:
+    legal_response_count: int
+    strategic_response_count: int
+    response_shortlist: tuple[str, ...]
+    screening_branch_count: int
+
+
+@dataclass(frozen=True)
 class BeliefSearchResult:
     side: SideId
     chosen: BeliefChoiceScore
@@ -85,6 +93,7 @@ class BeliefSearchResult:
     world_count: int
     evaluated_choices: tuple[str, ...]
     branch_count: int
+    response_screening_branch_count: int
     timing: BeliefSearchTiming = field(compare=False)
 
 
@@ -219,6 +228,52 @@ def shortlist_belief_candidates(
     )
 
 
+def shortlist_belief_responses(
+    worker: BeliefSearchWorker,
+    *,
+    world: ExactBeliefWorldState,
+    ai_side: SideId,
+    candidate_references: list[str],
+    response_limit: int = 8,
+) -> BeliefResponsePruning:
+    """Select dangerous, strategically diverse opponent replies in one belief world."""
+    if response_limit <= 0:
+        raise ValueError("response_limit must be positive")
+    if not candidate_references:
+        raise ValueError("candidate_references must not be empty")
+    opponent: SideId = "p2" if ai_side == "p1" else "p1"
+    responses = worker.legal_choices(state=world.state, side=opponent)
+    if not responses:
+        raise ValueError("opponent has no legal responses in belief world")
+    families = _strategy_families(responses)
+    representatives = [family.representative for family in families]
+    references = _reference_choices(candidate_references, min(2, len(candidate_references)))
+    screening = search_exact_turn(
+        worker,
+        state=world.state,
+        side=opponent,
+        choices=representatives,
+        opponent_responses=references,
+        rng_seeds=SCREENING_RNG_SEEDS,
+    )
+    representative_shortlist = _diversified_top(screening.ranking, response_limit)
+    by_representative = {family.representative: family for family in families}
+    expanded = [
+        choice
+        for representative in representative_shortlist
+        for choice in by_representative[representative].choices
+    ]
+    ordered = representative_shortlist + [
+        choice for choice in expanded if choice not in representative_shortlist
+    ]
+    return BeliefResponsePruning(
+        legal_response_count=len(responses),
+        strategic_response_count=len(families),
+        response_shortlist=tuple(ordered[:response_limit]),
+        screening_branch_count=screening.branch_count,
+    )
+
+
 def search_exact_belief_turn(
     worker: BeliefSearchWorker,
     *,
@@ -226,6 +281,7 @@ def search_exact_belief_turn(
     side: SideId,
     choices: list[str] | None = None,
     response_limit: int | None = None,
+    autonomous_responses: bool = False,
     rng_seeds: tuple[str, ...] | None = None,
 ) -> BeliefSearchResult:
     """Rank actions across exact states generated only from public belief worlds.
@@ -265,6 +321,7 @@ def search_exact_belief_turn(
         choice: [] for choice in candidate_choices
     }
     branch_count = 0
+    response_screening_branch_count = 0
     response_legal_seconds = 0.0
     branch_seconds = 0.0
     scoring_seconds = 0.0
@@ -277,7 +334,17 @@ def search_exact_belief_turn(
         legal_cache_hits += int(cache_hit)
         legal_cache_misses += int(not cache_hit)
         response_legal_seconds += perf_counter() - response_legal_started
-        if response_limit is not None:
+        if autonomous_responses and response_limit is not None:
+            pruning = shortlist_belief_responses(
+                worker,
+                world=world,
+                ai_side=side,
+                candidate_references=candidate_choices,
+                response_limit=response_limit,
+            )
+            responses = list(pruning.response_shortlist)
+            response_screening_branch_count += pruning.screening_branch_count
+        elif response_limit is not None:
             responses = responses[:response_limit]
         if not responses:
             raise ValueError(f"opponent has no legal responses in belief world {world_index}")
@@ -378,6 +445,7 @@ def search_exact_belief_turn(
         world_count=len(worlds),
         evaluated_choices=tuple(candidate_choices),
         branch_count=branch_count,
+        response_screening_branch_count=response_screening_branch_count,
         timing=BeliefSearchTiming(
             total_seconds=total_seconds,
             candidate_legal_seconds=candidate_legal_seconds,
