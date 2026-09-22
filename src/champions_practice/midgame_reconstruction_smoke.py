@@ -130,7 +130,8 @@ def main():
     print("Replay-based midgame belief reconstruction")
     print(f"Worlds: {len(standard_reconstructed)}")
     print(f"Public turn after replay: {standard_reconstructed[0].state.get('turn')}")
-    print("History: identical team preview + two resolved public turns")\n    print("Stateful history: Protect, damage, opponent switch, AI double switch, terrain")
+    print("History: identical team preview + two resolved public turns")
+    print("Stateful history: Protect, damage, opponent switch, AI double switch, terrain")
     print("Anti-cheat: alternate real hidden Metagross set reconstructed identical worlds")
     print("RESULT: belief worlds now preserve public battle history through stateful midgame transitions")
 
