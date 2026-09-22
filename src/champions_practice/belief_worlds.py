@@ -405,6 +405,7 @@ def reconstruct_midgame_belief_worlds(
     *,
     battle_format: str,
     belief: PublicOpponentBelief,
+    preview_belief: PublicOpponentBelief,
     worlds: tuple[PublicBeliefWorld, ...],
     ai_team: str,
     ai_preview: str,
@@ -417,7 +418,7 @@ def reconstruct_midgame_belief_worlds(
         raise ValueError("opponent_side must be p1 or p2")
     reconstructed = []
     for world in worlds:
-        opponent_preview = preview_choice_for_world(belief, world)
+        opponent_preview = preview_choice_for_world(preview_belief, world)
         if opponent_side == "p1":
             state = worker.create_state(
                 battle_format=battle_format, p1_team=world.team_text, p2_team=ai_team,
