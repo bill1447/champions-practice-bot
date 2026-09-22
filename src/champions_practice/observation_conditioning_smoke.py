@@ -4,7 +4,7 @@ from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_smoke import _public_priors
 from champions_practice.belief_worlds import materialize_public_belief_worlds, reconstruct_midgame_belief_worlds
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.midgame_reconstruction_smoke import AI_PREVIEW, HUMAN_PREVIEW, PUBLIC_TURNS, SEED, TURN_ONE, TURN_TWO
+from champions_practice.midgame_reconstruction_smoke import AI_PREVIEW, HUMAN_PREVIEW, SEED, TURN_ONE, TURN_TWO
 from champions_practice.observation_beliefs import BeliefParticle, condition_particles
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
