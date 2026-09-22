@@ -17,8 +17,8 @@ HUMAN_PREVIEW = "team 6412"
 MIDGAME_HIDDEN_VARIANT_METAGROSS = """Metagross @ Metagrossite
 Ability: Clear Body
 Level: 50
-EVs: 32 HP / 32 Def / 2 SpD
-Careful Nature
+EVs: 2 HP / 32 Atk / 32 Spe
+Adamant Nature
 - Psychic Fangs
 - Bullet Punch
 - Ice Punch
