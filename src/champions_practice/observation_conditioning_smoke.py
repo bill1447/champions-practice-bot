@@ -52,7 +52,7 @@ def main():
 
     print("Observation-conditioned stateful belief integration")
     print(f"Prior particles: {len(particles)}")
-    print(f"Turn-one posterior: {len(first_update.particles)}")
+    print(f"Turn-one posterior: {len(first_update.particles)}")\n    print(f"Generated futures: {first_update.generated + update.generated}")
     print(f"Observation matches: {update.matched}")
     print(f"Posterior particles: {len(update.particles)}")
     print("Observation: real sanitized p2 view after opponent switch + AI double switch")
