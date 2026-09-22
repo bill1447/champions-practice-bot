@@ -3,10 +3,12 @@ import pytest
 from champions_practice.belief_search import (
     BeliefChoiceScore,
     BeliefPruningResult,
+    BeliefPruningScore,
     BeliefSearchResult,
     BeliefSearchTiming,
     BeliefWorldOutcome,
 )
+from champions_practice.exact_search import ExactScoreBreakdown
 from champions_practice.position_report import (
     build_public_battle_position,
     format_belief_search_evidence,
@@ -85,9 +87,55 @@ def test_public_position_includes_field_actives_status_and_boosts() -> None:
 
 
 def _recommendation() -> tuple[BeliefSearchResult, BeliefPruningResult]:
+    breakdown = ExactScoreBreakdown(80.0, 0.0, 70.0, 8.0, 2.0)
+    result_summary = {
+        "field": {
+            "weather": None,
+            "terrain": "psychicterrain",
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Human",
+            "active": [
+                {
+                    "species": "Metagross-Mega",
+                    "hp": 80,
+                    "maxhp": 100,
+                    "fainted": False,
+                    "status": None,
+                    "boosts": {},
+                }
+            ],
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Practice AI",
+            "active": [
+                {
+                    "species": "Sneasler",
+                    "hp": 90,
+                    "maxhp": 100,
+                    "fainted": False,
+                    "status": None,
+                    "boosts": {"spd": 1},
+                }
+            ],
+            "sideConditions": [],
+        },
+    }
     outcomes = (
         BeliefWorldOutcome("likely", 0.75, 120.0, 150.0, "move protect", 8),
-        BeliefWorldOutcome("rare", 0.25, 80.0, 100.0, "move attack", 8),
+        BeliefWorldOutcome(
+            "rare",
+            0.25,
+            80.0,
+            100.0,
+            "move attack",
+            8,
+            breakdown,
+            75.0,
+            result_summary,
+        ),
     )
     first = BeliefChoiceScore("move psychic", 80.0, 110.0, 100.0, outcomes)
     second = BeliefChoiceScore("move protect", 70.0, 115.0, 95.0, outcomes)
@@ -102,7 +150,28 @@ def _recommendation() -> tuple[BeliefSearchResult, BeliefPruningResult]:
         response_screening_branch_count=8,
         timing=timing,
     )
-    pruning = BeliefPruningResult(174, 58, (first.choice, second.choice), 20, 0.1)
+    pruning = BeliefPruningResult(
+        174,
+        58,
+        (first.choice, second.choice),
+        20,
+        0.1,
+        ("move psychic",),
+        (
+            BeliefPruningScore("move psychic", 80, 90, 100),
+            BeliefPruningScore(
+                "move followme, move direclaw +2",
+                -1000,
+                -900,
+                -800,
+                "move psychicfangs +2 mega, move expandingforce +2",
+                breakdown,
+                -1010,
+                result_summary,
+            ),
+        ),
+        (),
+    )
     return recommendation, pruning
 
 
@@ -111,10 +180,18 @@ def test_search_evidence_states_scope_and_ranks_alternatives() -> None:
 
     rendered = format_belief_search_evidence(recommendation, pruning)
 
-    assert "best of 2 shortlisted actions from 174 legal choices / 58 strategic families" in rendered
+    assert (
+        "best of 2 shortlisted actions from 174 legal choices / 58 strategic families" in rendered
+    )
     assert "not a proof of optimal play" in rendered
-    assert "1. move psychic" in rendered
-    assert "likely-world reply move protect" in rendered
+    assert "1. [CHOSEN] move psychic" in rendered
+    assert "rare (weight 0.250) vs move attack" in rendered
+    assert "material +70.0, position +8.0, speed +2.0" in rendered
+    assert "Chosen action's worst sampled resulting board (hypothetical belief world)" in rendered
+    assert "Metagross-Mega — 80.0%" in rendered
+    assert "Pruning audit" in rendered
+    assert "move followme, move direclaw +2" in rendered
+    assert "AI [Sneasler 90.0%]; Human [Metagross-Mega 80.0%]" in rendered
 
 
 def test_search_evidence_rejects_empty_limit() -> None:

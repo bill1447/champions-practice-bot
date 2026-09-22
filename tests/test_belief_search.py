@@ -142,9 +142,7 @@ def test_belief_search_averages_rng_before_world_minimax() -> None:
         def branch_many(self, *, state, branches):
             results = []
             for index, branch in enumerate(branches):
-                base = self.outcomes[
-                    (state["id"], branch["p1_choice"], branch["p2_choice"])
-                ]
+                base = self.outcomes[(state["id"], branch["p1_choice"], branch["p2_choice"])]
                 summary = {
                     **base,
                     "p1": {
@@ -172,6 +170,9 @@ def test_belief_search_averages_rng_before_world_minimax() -> None:
 
     assert result.branch_count == 4
     assert result.chosen.worlds[0].legal_response_count == 2
+    assert result.chosen.worlds[0].score_breakdown is not None
+    assert result.chosen.worlds[0].worst_sample_summary is not None
+    assert result.chosen.worlds[0].worst_sample_score is not None
 
 
 def test_legal_choice_cache_reuses_equivalent_side_state() -> None:

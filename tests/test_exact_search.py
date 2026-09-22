@@ -2,7 +2,11 @@ from typing import Any
 
 import pytest
 
-from champions_practice.exact_search import score_exact_summary, search_exact_turn
+from champions_practice.exact_search import (
+    score_exact_summary,
+    score_exact_summary_breakdown,
+    search_exact_turn,
+)
 
 
 def _pokemon(hp: int, maxhp: int = 100) -> dict[str, Any]:
@@ -46,9 +50,7 @@ class FakeWorker:
                         branch["p2_choice"],
                         branch.get("rng_seed"),
                     ),
-                    self.outcomes.get(
-                        (branch["p1_choice"], branch["p2_choice"])
-                    ),
+                    self.outcomes.get((branch["p1_choice"], branch["p2_choice"])),
                 ),
             }
             for index, branch in enumerate(branches)
@@ -59,9 +61,7 @@ def test_material_score_values_preserving_a_low_hp_pokemon() -> None:
     sacrificed = _summary([0, 70, 100, 100], [25, 0, 0, 0])
     preserved = _summary([15, 70, 100, 78], [24, 0, 0, 0])
 
-    assert score_exact_summary(preserved, "p1") > score_exact_summary(
-        sacrificed, "p1"
-    )
+    assert score_exact_summary(preserved, "p1") > score_exact_summary(sacrificed, "p1")
 
 
 def test_terminal_result_overrides_material() -> None:
@@ -115,6 +115,12 @@ def test_board_score_values_terrain_boosts_and_side_conditions() -> None:
     assert score_exact_summary(summary, "p1") > 90
     assert score_exact_summary(summary, "p2") < -90
 
+    breakdown = score_exact_summary_breakdown(summary, "p1")
+    assert breakdown.total == score_exact_summary(summary, "p1")
+    assert breakdown.material == 0
+    assert breakdown.position > 80
+    assert breakdown.speed > 0
+
 
 def test_search_uses_worst_opponent_response_before_average() -> None:
     attack = "move psychic 1, move psychicfangs 1"
@@ -158,9 +164,7 @@ def test_search_maps_ai_side_to_p2() -> None:
     )
 
     assert result.chosen.choice == ai_choice
-    assert worker.requested == [
-        {"p1_choice": human_response, "p2_choice": ai_choice}
-    ]
+    assert worker.requested == [{"p1_choice": human_response, "p2_choice": ai_choice}]
 
 
 def test_search_averages_multiple_rng_futures_per_response() -> None:

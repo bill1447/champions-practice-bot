@@ -8,7 +8,13 @@ from statistics import fmean
 from time import perf_counter
 from typing import Any, Protocol
 
-from champions_practice.exact_search import SideId, score_exact_summary, search_exact_turn
+from champions_practice.exact_search import (
+    ExactChoiceScore,
+    ExactScoreBreakdown,
+    SideId,
+    score_exact_summary_breakdown,
+    search_exact_turn,
+)
 from champions_practice.recommendations import (
     SCREENING_RNG_SEEDS,
     _diversified_top,
@@ -49,6 +55,21 @@ class BeliefWorldOutcome:
     mean_response_score: float
     worst_response: str
     legal_response_count: int
+    score_breakdown: ExactScoreBreakdown | None = None
+    worst_sample_score: float | None = None
+    worst_sample_summary: dict[str, Any] | None = field(default=None, compare=False)
+
+
+@dataclass(frozen=True)
+class BeliefPruningScore:
+    choice: str
+    worst_score: float
+    mean_score: float
+    best_score: float
+    worst_response: str = ""
+    score_breakdown: ExactScoreBreakdown | None = None
+    worst_sample_score: float | None = None
+    worst_sample_summary: dict[str, Any] | None = field(default=None, compare=False)
 
 
 @dataclass(frozen=True)
@@ -79,6 +100,9 @@ class BeliefPruningResult:
     candidate_shortlist: tuple[str, ...]
     screening_branch_count: int
     screening_seconds: float = field(compare=False)
+    selected_family_representatives: tuple[str, ...] = ()
+    family_ranking: tuple[BeliefPruningScore, ...] = ()
+    expanded_ranking: tuple[BeliefPruningScore, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -170,6 +194,44 @@ def _common_legal_choices(
     return sorted(common), hits, misses
 
 
+def _pruning_score(candidate: ExactChoiceScore, side: SideId) -> BeliefPruningScore:
+    """Retain the representative failure behind a cheap screening score."""
+    if not candidate.branches:
+        return BeliefPruningScore(
+            candidate.choice,
+            candidate.worst_score,
+            candidate.mean_score,
+            candidate.best_score,
+        )
+    worst_branch = min(
+        candidate.branches,
+        key=lambda branch: (branch.score, branch.response),
+    )
+    worst_sample = min(
+        worst_branch.samples,
+        key=lambda sample: (sample.score, sample.rng_seed or ""),
+    )
+    breakdowns = [
+        score_exact_summary_breakdown(sample.summary, side) for sample in worst_branch.samples
+    ]
+    score_breakdown = ExactScoreBreakdown(
+        total=fmean(value.total for value in breakdowns),
+        terminal=fmean(value.terminal for value in breakdowns),
+        material=fmean(value.material for value in breakdowns),
+        position=fmean(value.position for value in breakdowns),
+        speed=fmean(value.speed for value in breakdowns),
+    )
+    return BeliefPruningScore(
+        choice=candidate.choice,
+        worst_score=candidate.worst_score,
+        mean_score=candidate.mean_score,
+        best_score=candidate.best_score,
+        worst_response=worst_branch.response,
+        score_breakdown=score_breakdown,
+        worst_sample_score=worst_sample.score,
+        worst_sample_summary=worst_sample.summary,
+    )
+
 
 def shortlist_belief_candidates(
     worker: BeliefSearchWorker,
@@ -245,10 +307,15 @@ def shortlist_belief_candidates(
         legal_choice_count=len(common),
         strategic_choice_count=len(families),
         candidate_shortlist=tuple(shortlist),
-        screening_branch_count=(
-            family_screening.branch_count + target_screening.branch_count
-        ),
+        screening_branch_count=(family_screening.branch_count + target_screening.branch_count),
         screening_seconds=perf_counter() - screening_started,
+        selected_family_representatives=tuple(representative_shortlist),
+        family_ranking=tuple(
+            _pruning_score(candidate, side) for candidate in family_screening.ranking
+        ),
+        expanded_ranking=tuple(
+            _pruning_score(candidate, side) for candidate in target_screening.ranking
+        ),
     )
 
 
@@ -313,9 +380,7 @@ def shortlist_belief_responses(
         legal_response_count=len(responses),
         strategic_response_count=len(families),
         response_shortlist=tuple(shortlist),
-        screening_branch_count=(
-            family_screening.branch_count + target_screening.branch_count
-        ),
+        screening_branch_count=(family_screening.branch_count + target_screening.branch_count),
         screening_seconds=perf_counter() - screening_started,
     )
 
@@ -375,9 +440,7 @@ def search_exact_belief_turn(
 
     for world_index, world in enumerate(worlds):
         response_legal_started = perf_counter()
-        responses, cache_hit = _cached_legal_choices(
-            worker, world.state, opponent, legal_cache
-        )
+        responses, cache_hit = _cached_legal_choices(worker, world.state, opponent, legal_cache)
         legal_cache_hits += int(cache_hit)
         legal_cache_misses += int(not cache_hit)
         response_legal_seconds += perf_counter() - response_legal_started
@@ -399,7 +462,7 @@ def search_exact_belief_turn(
             raise ValueError(f"opponent has no legal responses in belief world {world_index}")
 
         requested: list[dict[str, str]] = []
-        metadata: list[tuple[str, str]] = []
+        metadata: list[tuple[str, str, str | None]] = []
         for choice in candidate_choices:
             for response in responses:
                 for rng_seed in samples:
@@ -416,7 +479,7 @@ def search_exact_belief_turn(
                     if rng_seed is not None:
                         branch["rng_seed"] = rng_seed
                     requested.append(branch)
-                    metadata.append((choice, response))
+                    metadata.append((choice, response, rng_seed))
 
         branch_started = perf_counter()
         resolved = worker.branch_many(state=world.state, branches=requested)
@@ -426,24 +489,37 @@ def search_exact_belief_turn(
         branch_count += len(requested)
 
         scoring_started = perf_counter()
-        scores: dict[str, dict[str, list[float]]] = {
-            choice: {response: [] for response in responses}
-            for choice in candidate_choices
-        }
-        for (choice, response), result in zip(metadata, resolved, strict=True):
+        samples_by_choice: dict[
+            str,
+            dict[str, list[tuple[ExactScoreBreakdown, dict[str, Any], str | None]]],
+        ] = {choice: {response: [] for response in responses} for choice in candidate_choices}
+        for (choice, response, rng_seed), result in zip(metadata, resolved, strict=True):
             summary = result.get("summary")
             if not isinstance(summary, dict):
                 raise RuntimeError("belief-search branch is missing a summary")
-            scores[choice][response].append(score_exact_summary(summary, side))
+            breakdown = score_exact_summary_breakdown(summary, side)
+            samples_by_choice[choice][response].append((breakdown, summary, rng_seed))
 
         for choice in candidate_choices:
             response_scores = {
-                response: fmean(values)
-                for response, values in scores[choice].items()
+                response: fmean(sample[0].total for sample in values)
+                for response, values in samples_by_choice[choice].items()
             }
             worst_response = min(
                 response_scores,
                 key=lambda response: (response_scores[response], response),
+            )
+            worst_samples = samples_by_choice[choice][worst_response]
+            worst_sample = min(
+                worst_samples,
+                key=lambda sample: (sample[0].total, sample[2] or ""),
+            )
+            component_means = ExactScoreBreakdown(
+                total=fmean(sample[0].total for sample in worst_samples),
+                terminal=fmean(sample[0].terminal for sample in worst_samples),
+                material=fmean(sample[0].material for sample in worst_samples),
+                position=fmean(sample[0].position for sample in worst_samples),
+                speed=fmean(sample[0].speed for sample in worst_samples),
             )
             outcomes_by_choice[choice].append(
                 BeliefWorldOutcome(
@@ -453,6 +529,9 @@ def search_exact_belief_turn(
                     mean_response_score=fmean(response_scores.values()),
                     worst_response=worst_response,
                     legal_response_count=len(responses),
+                    score_breakdown=component_means,
+                    worst_sample_score=worst_sample[0].total,
+                    worst_sample_summary=worst_sample[1],
                 )
             )
         scoring_seconds += perf_counter() - scoring_started
@@ -465,9 +544,7 @@ def search_exact_belief_turn(
             BeliefChoiceScore(
                 choice=choice,
                 worst_world_score=min(outcome.worst_score for outcome in outcomes),
-                weighted_score=sum(
-                    outcome.worst_score * outcome.weight for outcome in outcomes
-                )
+                weighted_score=sum(outcome.worst_score * outcome.weight for outcome in outcomes)
                 / total_weight,
                 mean_world_score=fmean(outcome.worst_score for outcome in outcomes),
                 worlds=outcomes,
