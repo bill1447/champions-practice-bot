@@ -38,8 +38,8 @@ function publicActive(mon, identity) {
   return {
     species: identity.visibleSpecies,
     base_species: identity.baseSpecies,
-    hp_percent: hpPercent(mon),
-    fainted: mon.fainted,
+    hp_percent: identity.hpPercent ?? hpPercent(mon),
+    fainted: identity.fainted ?? mon.fainted,
     status: mon.status || null,
     boosts: { ...mon.boosts },
   };
@@ -55,6 +55,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
   const observations = new Map();
   const slotSpecies = new Map();
   const slotVisibleSpecies = new Map();
+  const slotConditions = new Map();
 
   for (const species of previewSpecies) {
     const key = toId(species);
@@ -80,6 +81,23 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     return speciesKey ? observations.get(speciesKey) || null : null;
   }
 
+  function publicCondition(condition) {
+    const text = String(condition || "");
+    if (!text) return {};
+    if (text.endsWith(" fnt") || text === "0 fnt") {
+      return { hpPercent: 0, fainted: true };
+    }
+    const hp = text.split(" ", 1)[0];
+    const [current, maximum] = hp.split("/").map(Number);
+    if (!Number.isFinite(current) || !Number.isFinite(maximum) || maximum <= 0) {
+      return {};
+    }
+    return {
+      hpPercent: Math.round((current / maximum) * 1000) / 10,
+      fainted: current <= 0,
+    };
+  }
+
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
   for (const line of visibleLog) {
     const parts = line.split("|");
@@ -94,6 +112,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
         observation.seen = true;
         slotSpecies.set(slot, speciesKey);
         slotVisibleSpecies.set(slot, species);
+        slotConditions.set(slot, publicCondition(parts[4]));
       }
       continue;
     }
@@ -106,7 +125,9 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     const observation = observationForActor(parts[2]);
     if (!observation) continue;
 
-    if (event === "move") {
+    if (["-damage", "-heal"].includes(event)) {
+      slotConditions.set(slot, publicCondition(parts[3]));
+    } else if (event === "move") {
       observation.moves.add(toId(parts[3]));
     } else if (event === "-item" || event === "-enditem") {
       observation.items.add(toId(parts[3]));
@@ -119,6 +140,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       }
     } else if (event === "faint") {
       observation.fainted = true;
+      slotConditions.set(slot, { hpPercent: 0, fainted: true });
     }
   }
 
@@ -130,6 +152,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     activeIdentities.set(slot, {
       baseSpecies: observation.species,
       visibleSpecies,
+      ...slotConditions.get(slot),
     });
   }
 
@@ -162,6 +185,10 @@ function ownPokemon(mon) {
   };
 }
 
+function publicSideConditions(side) {
+  return Object.keys(side.sideConditions || {}).sort();
+}
+
 function playerView(battle, sideId = "p1", previews = null) {
   if (sideId !== "p1" && sideId !== "p2") {
     throw new Error("side must be p1 or p2");
@@ -186,17 +213,20 @@ function playerView(battle, sideId = "p1", previews = null) {
     field: {
       weather: battle.field.weather || null,
       terrain: battle.field.terrain || null,
-      pseudo_weather: Object.keys(battle.field.pseudoWeather || {}),
+      pseudo_weather: Object.keys(battle.field.pseudoWeather || {}).sort(),
     },
     request: cloneJson(own.activeRequest),
     player: {
       name: own.name,
       active: own.active.map((mon) => (mon ? mon.species.name : null)),
+      active_details: own.active.map((mon) => (mon ? ownPokemon(mon) : null)),
+      side_conditions: publicSideConditions(own),
       team: own.pokemon.map(ownPokemon),
     },
     opponent: {
       name: opponent.name,
       preview_species: opponentPreview.slice(),
+      side_conditions: publicSideConditions(opponent),
       active: opponent.active.map((mon, index) => publicActive(
         mon,
         opponentKnowledge.activeIdentities.get(

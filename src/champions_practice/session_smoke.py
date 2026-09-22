@@ -36,6 +36,12 @@ def _assert_public_view(view: dict) -> None:
                 f"{sorted(unexpected)}"
             )
 
+    if not isinstance(view["player"].get("active_details"), list):
+        raise SystemExit("ERROR: public view omitted own active details")
+    for side in (view["player"], opponent):
+        if not isinstance(side.get("side_conditions"), list):
+            raise SystemExit("ERROR: public view omitted side conditions")
+
 
 def main() -> None:
     with ShowdownSearchWorker() as worker:
@@ -96,6 +102,11 @@ def main() -> None:
 
         current_view = worker.session_view(session_id)["view"]
         _assert_public_view(current_view)
+        opponent_indeedee = current_view["opponent"]["active"][0]
+        if opponent_indeedee["hp_percent"] != 79:
+            raise SystemExit(
+                "ERROR: opponent HP did not use the public 79/100 protocol value"
+            )
 
         worker.close_session(session_id)
 
