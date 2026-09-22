@@ -86,6 +86,10 @@ jobs:
         shell: pwsh
         run: .\belief-smoke.ps1
 
+      - name: Sequential observation-conditioning smoke test
+        shell: pwsh
+        run: .\observation-conditioning-smoke.ps1
+
       - name: Belief-aware exact search smoke test
         shell: pwsh
         run: .\belief-search-smoke.ps1
