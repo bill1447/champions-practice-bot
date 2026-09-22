@@ -50,6 +50,17 @@ class ExactSearchResult:
     branch_count: int
 
 
+@dataclass(frozen=True)
+class ExactScoreBreakdown:
+    """Named parts of the board evaluator, all from one side's perspective."""
+
+    total: float
+    terminal: float
+    material: float
+    position: float
+    speed: float
+
+
 def _side_material(side: dict[str, Any]) -> float:
     """Value living pieces first, then remaining HP and status."""
     value = 0.0
@@ -109,8 +120,7 @@ def _active_position_value(
 ) -> float:
     """Give modest credit to immediately useful board resources."""
     value = sum(
-        _SIDE_CONDITION_VALUES.get(condition, 0.0)
-        for condition in side.get("sideConditions", [])
+        _SIDE_CONDITION_VALUES.get(condition, 0.0) for condition in side.get("sideConditions", [])
     )
     for pokemon in side.get("active", []):
         if not pokemon or pokemon.get("fainted"):
@@ -139,10 +149,7 @@ def _active_position_value(
 
 def _pseudo_weather_ids(field: dict[str, Any]) -> set[str]:
     values = field.get("pseudoWeather", [])
-    return {
-        value if isinstance(value, str) else str(value.get("id", ""))
-        for value in values
-    }
+    return {value if isinstance(value, str) else str(value.get("id", "")) for value in values}
 
 
 def _average_active_speed(side: dict[str, Any]) -> float | None:
@@ -167,8 +174,8 @@ def _speed_position_value(summary: dict[str, Any], side: SideId) -> float:
     return max(-20.0, min(20.0, delta / 5.0))
 
 
-def score_exact_summary(summary: dict[str, Any], side: SideId) -> float:
-    """Score an exact resolved board from one side's perspective."""
+def score_exact_summary_breakdown(summary: dict[str, Any], side: SideId) -> ExactScoreBreakdown:
+    """Score a resolved board while preserving the evaluator's named components."""
     opponent: SideId = "p2" if side == "p1" else "p1"
 
     if summary.get("ended"):
@@ -176,9 +183,9 @@ def score_exact_summary(summary: dict[str, Any], side: SideId) -> float:
         side_name = summary[side].get("name")
         opponent_name = summary[opponent].get("name")
         if winner and winner == side_name:
-            return 1_000_000.0
+            return ExactScoreBreakdown(1_000_000.0, 1_000_000.0, 0.0, 0.0, 0.0)
         if winner and winner == opponent_name:
-            return -1_000_000.0
+            return ExactScoreBreakdown(-1_000_000.0, -1_000_000.0, 0.0, 0.0, 0.0)
 
     field = summary.get("field", {})
     terrain = field.get("terrain")
@@ -186,10 +193,20 @@ def score_exact_summary(summary: dict[str, Any], side: SideId) -> float:
     material = _side_material(summary[side]) - _side_material(summary[opponent])
     position = _active_position_value(
         summary[side], terrain=terrain, weather=weather
-    ) - _active_position_value(
-        summary[opponent], terrain=terrain, weather=weather
+    ) - _active_position_value(summary[opponent], terrain=terrain, weather=weather)
+    speed = _speed_position_value(summary, side)
+    return ExactScoreBreakdown(
+        total=material + position + speed,
+        terminal=0.0,
+        material=material,
+        position=position,
+        speed=speed,
     )
-    return material + position + _speed_position_value(summary, side)
+
+
+def score_exact_summary(summary: dict[str, Any], side: SideId) -> float:
+    """Score an exact resolved board from one side's perspective."""
+    return score_exact_summary_breakdown(summary, side).total
 
 
 def search_exact_turn(
@@ -233,13 +250,10 @@ def search_exact_turn(
 
     resolved = worker.branch_many(state=state, branches=requested)
     if len(resolved) != len(pairs):
-        raise RuntimeError(
-            "Showdown worker returned an unexpected number of exact branches"
-        )
+        raise RuntimeError("Showdown worker returned an unexpected number of exact branches")
 
     grouped: dict[str, dict[str, list[ExactRngSample]]] = {
-        choice: {response: [] for response in opponent_responses}
-        for choice in choices
+        choice: {response: [] for response in opponent_responses} for choice in choices
     }
     for (choice, response, rng_seed), result in zip(pairs, resolved, strict=True):
         summary = result.get("summary")
