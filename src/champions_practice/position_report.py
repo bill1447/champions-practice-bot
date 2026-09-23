@@ -354,6 +354,12 @@ def format_belief_search_evidence(
         f"  Expanded {len(selected_families)} of "
         f"{pruning.strategic_choice_count} strategic families"
     )
+    if pruning.guidance_plan is not None:
+        reserved = ", ".join(pruning.strategic_reserved_choices) or "none needed"
+        lines.append(
+            f"  Strategy guidance: {pruning.guidance_plan}; "
+            f"reserved screening coverage: {reserved}"
+        )
     if rejected_families:
         lines.append("  Best family plans not expanded:")
         for candidate in rejected_families:
