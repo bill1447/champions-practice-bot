@@ -9,7 +9,7 @@ def main() -> None:
     print(f"Showdown: {SHOWDOWN_WS_URL}")
     print()
     print("Persistent public-belief battle controller is installed.")
-    print("Interactive battle UI is the next milestone.")
+    print("Strategic reasoning is the current development milestone.")
 
 
 if __name__ == "__main__":
