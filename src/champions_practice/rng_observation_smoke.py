@@ -16,7 +16,7 @@ from champions_practice.teams import SMOKE_TEAM
 
 LIVE_SEED = "sodium,deadbeef000000020000000300000004"
 P1_PREVIEW = "team 3125"
-P2_PREVIEW = "team 1235"
+P2_PREVIEW = "team 1245"
 TURN_ONE_P1 = "move hypnosis +1, move imprison"
 TURN_ONE_P2 = "move followme, move protect"
 TURN_TWO_P1 = "switch 3, switch 4"
