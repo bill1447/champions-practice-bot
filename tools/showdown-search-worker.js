@@ -64,6 +64,8 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       moves: new Set(),
       items: new Set(),
       abilities: new Set(),
+      hpPercent: null,
+      status: null,
       fainted: false,
       seen: false,
     });
@@ -87,7 +89,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     if (text.endsWith(" fnt") || text === "0 fnt") {
       return { hpPercent: 0, fainted: true };
     }
-    const hp = text.split(" ", 1)[0];
+    const [hp, status] = text.split(" ");
     const [current, maximum] = hp.split("/").map(Number);
     if (!Number.isFinite(current) || !Number.isFinite(maximum) || maximum <= 0) {
       return {};
@@ -95,7 +97,20 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     return {
       hpPercent: Math.round((current / maximum) * 1000) / 10,
       fainted: current <= 0,
+      status: status && status !== "fnt" ? toId(status) : null,
     };
+  }
+
+  function applyCondition(observation, condition, replaceStatus = false) {
+    if (condition.hpPercent !== undefined) {
+      observation.hpPercent = condition.hpPercent;
+    }
+    if (condition.fainted !== undefined) {
+      observation.fainted = condition.fainted;
+    }
+    if (replaceStatus || condition.status) {
+      observation.status = condition.status ?? null;
+    }
   }
 
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
@@ -110,9 +125,11 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       const observation = observations.get(speciesKey);
       if (observation) {
         observation.seen = true;
+        const condition = publicCondition(parts[4]);
+        applyCondition(observation, condition, true);
         slotSpecies.set(slot, speciesKey);
         slotVisibleSpecies.set(slot, species);
-        slotConditions.set(slot, publicCondition(parts[4]));
+        slotConditions.set(slot, condition);
       }
       continue;
     }
@@ -126,7 +143,13 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     if (!observation) continue;
 
     if (["-damage", "-heal"].includes(event)) {
-      slotConditions.set(slot, publicCondition(parts[3]));
+      const condition = publicCondition(parts[3]);
+      applyCondition(observation, condition);
+      slotConditions.set(slot, condition);
+    } else if (event === "-status") {
+      observation.status = toId(parts[3]);
+    } else if (event === "-curestatus") {
+      observation.status = null;
     } else if (event === "move") {
       observation.moves.add(toId(parts[3]));
     } else if (event === "-item" || event === "-enditem") {
@@ -139,6 +162,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
         observation.abilities.add(toId(parts[4]));
       }
     } else if (event === "faint") {
+      observation.hpPercent = 0;
       observation.fainted = true;
       slotConditions.set(slot, { hpPercent: 0, fainted: true });
     }
@@ -163,6 +187,8 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       moves: [...observation.moves].filter(Boolean).sort(),
       items: [...observation.items].filter(Boolean).sort(),
       abilities: [...observation.abilities].filter(Boolean).sort(),
+      hp_percent: observation.hpPercent,
+      status: observation.status,
       fainted: observation.fainted,
       seen: observation.seen,
     })),
