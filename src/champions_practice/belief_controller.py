@@ -91,6 +91,64 @@ def choose_public_fallback(choices: list[str]) -> str:
     return max(choices, key=_fallback_score)
 
 
+def _id(value: str) -> str:
+    return "".join(character for character in value.lower() if character.isalnum())
+
+
+def _species_from_team_header(header: str) -> str:
+    name = header.split(" @ ", 1)[0].strip()
+    if name.endswith(")") and " (" in name:
+        return name.rsplit(" (", 1)[1][:-1]
+    return name
+
+
+def _pin_known_team_genders(team_text: str, request: dict) -> str:
+    """Pin our publicly known own-side genders into hypothetical team text."""
+    side = request.get("side")
+    if not isinstance(side, dict):
+        return team_text
+    request_pokemon = side.get("pokemon")
+    if not isinstance(request_pokemon, list):
+        return team_text
+
+    genders: dict[str, str] = {}
+    for pokemon in request_pokemon:
+        if not isinstance(pokemon, dict):
+            continue
+        details = pokemon.get("details")
+        if not isinstance(details, str):
+            continue
+        tokens = [token.strip() for token in details.split(",")]
+        if not tokens:
+            continue
+        species = tokens[0]
+        gender = next((token for token in tokens[1:] if token in {"M", "F"}), None)
+        if gender is not None:
+            genders[_id(species)] = gender
+
+    if not genders:
+        return team_text
+
+    sections = team_text.strip().split("\n\n")
+    pinned: list[str] = []
+    for section in sections:
+        lines = section.splitlines()
+        if not lines:
+            continue
+        species_id = _id(_species_from_team_header(lines[0]))
+        gender = genders.get(species_id)
+        if gender is not None and not any(line.startswith("Gender:") for line in lines):
+            insert_at = 1
+            while insert_at < len(lines) and (
+                lines[insert_at].startswith("Ability:")
+                or lines[insert_at].startswith("Level:")
+            ):
+                insert_at += 1
+            lines.insert(insert_at, f"Gender: {gender}")
+        pinned.append("\n".join(lines))
+    return "\n\n".join(pinned) + "\n"
+
+
 def _public_diff_paths(left: object, right: object, path: str = "$") -> tuple[str, ...]:
     """Return a compact set of public-view paths whose values differ."""
     if type(left) is not type(right):
@@ -220,6 +278,10 @@ class BeliefBattleController:
         }
 
         belief = build_public_opponent_belief(view)
+        particle_ai_team = _pin_known_team_genders(
+            self.ai_team,
+            view.get("request", {}),
+        )
         worlds = materialize_public_belief_worlds(
             belief,
             self.opponent_priors,
@@ -234,7 +296,7 @@ class BeliefBattleController:
                 state = self.worker.create_state(
                     battle_format=self.battle_format,
                     p1_team=world.team_text,
-                    p2_team=self.ai_team,
+                    p2_team=particle_ai_team,
                     p1_preview=opponent_preview,
                     p2_preview=ai_choice,
                     seed=self._particle_seed(),
