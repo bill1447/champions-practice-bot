@@ -85,19 +85,20 @@ Completed so far:
 - contextual resource roles including speed control, redirection, field control, and Protect;
 - explicit `DesiredBoard` and `WinCondition` structures;
 - sacrifice/trade evaluation by resulting win-condition coverage rather than raw material;
-- production public-information whitelist reused before strategic reasoning.
+- production public-information whitelist reused before strategic reasoning;
+- inspectable `StrategicPlan` generation and posterior-aware plan evaluation/ranking.
 
 Current work:
-- generate inspectable `StrategicPlan` candidates from the assessment;
-- represent objectives, required resources, preservation requirements, acceptable losses,
-  desired future boards, and failure conditions;
-- evaluate and rank plans across hypothetical posterior outcomes by robustness and belief
-  coverage;
-- keep plan ranking disconnected from live move selection until plan quality is trustworthy.
+- translate plan priorities into soft tactical candidate guidance;
+- reserve bounded shortlist coverage for plan-compatible actions without displacing the
+  tactically strongest screened action;
+- expose any strategic reservation in pruning diagnostics;
+- keep exact belief search responsible for final action ranking.
 
 Next:
-- connect robust plan priorities to candidate generation/search constraints without allowing
-  strategy to bypass exact Showdown verification.
+- produce trustworthy live plan-outcome evidence from hypothetical belief branches so the
+  controller can select a plan without arbitrary heuristics;
+- only then wire live plan selection into the controller's candidate-generation path.
 
 ## Phase 10 — Benchmark and playing-strength development
 
