@@ -45,7 +45,10 @@ def main() -> None:
             )
 
             if not controller.particles:
-                raise SystemExit("ERROR: controller created no public-belief particles")
+                raise SystemExit(
+                    "ERROR: controller created no public-belief particles; "
+                    f"first public mismatches={controller.preview_mismatch_paths}"
+                )
 
             decision = controller.choose_ai_action()
             if decision.mode != "belief-search":
