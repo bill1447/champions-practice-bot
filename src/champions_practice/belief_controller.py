@@ -149,6 +149,39 @@ def _pin_known_team_genders(team_text: str, request: dict) -> str:
     return "\n\n".join(pinned) + "\n"
 
 
+def _value_at_path(root: object, path: str) -> object:
+    current = root
+    token = ""
+    index = 1
+    while index < len(path):
+        char = path[index]
+        if char == ".":
+            index += 1
+            start = index
+            while index < len(path) and path[index] not in ".[":
+                index += 1
+            key = path[start:index]
+            if not isinstance(current, dict):
+                return "<not-dict>"
+            current = current.get(key, "<missing>")
+            continue
+        if char == "[":
+            end = path.find("]", index)
+            if end < 0:
+                return "<bad-path>"
+            try:
+                item_index = int(path[index + 1:end])
+            except ValueError:
+                return "<bad-index>"
+            if not isinstance(current, list) or item_index >= len(current):
+                return "<missing>"
+            current = current[item_index]
+            index = end + 1
+            continue
+        index += 1
+    return current
+
+
 def _public_diff_paths(left: object, right: object, path: str = "$") -> tuple[str, ...]:
     """Return a compact set of public-view paths whose values differ."""
     if type(left) is not type(right):
@@ -231,6 +264,7 @@ class BeliefBattleController:
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
         self.preview_mismatch_paths: tuple[str, ...] = ()
+        self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
         self.degraded = False
 
     def start(
@@ -311,6 +345,14 @@ class BeliefBattleController:
                         self.preview_mismatch_paths = _public_diff_paths(
                             view,
                             particle_view,
+                        )
+                        self.preview_mismatch_values = tuple(
+                            (
+                                path,
+                                _value_at_path(view, path),
+                                _value_at_path(particle_view, path),
+                            )
+                            for path in self.preview_mismatch_paths
                         )
                     continue
                 particles.append(
