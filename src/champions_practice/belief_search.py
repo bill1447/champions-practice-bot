@@ -353,7 +353,15 @@ def shortlist_belief_candidates(
         opponent_responses=references,
         rng_seeds=SCREENING_RNG_SEEDS,
     )
-    family_limit = min(len(families), max(1, candidate_limit - 2))
+    minimum_families = (
+        2
+        if guidance is not None and guidance.active and candidate_limit >= 2
+        else 1
+    )
+    family_limit = min(
+        len(families),
+        max(minimum_families, candidate_limit - 2),
+    )
     representative_shortlist = _diversified_top(
         family_screening.ranking,
         family_limit,
