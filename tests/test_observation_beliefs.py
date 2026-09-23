@@ -1,3 +1,5 @@
+import pytest
+
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     condition_particles,
