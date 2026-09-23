@@ -47,7 +47,8 @@ def main() -> None:
             if not controller.particles:
                 raise SystemExit(
                     "ERROR: controller created no public-belief particles; "
-                    f"first public mismatches={controller.preview_mismatch_paths}"
+                    f"first public mismatches={controller.preview_mismatch_paths}; "
+                    f"values={controller.preview_mismatch_values}"
                 )
 
             decision = controller.choose_ai_action()
