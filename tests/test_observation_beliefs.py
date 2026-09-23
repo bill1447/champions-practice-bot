@@ -315,3 +315,170 @@ def test_item_stays_hidden_until_public_activation_then_eliminates_incompatible_
     assert final_view["opponent"]["revealed_item"] == "sitrusberry"
     assert "hidden_item" not in final_view["opponent"]
 
+class BenchedStateWorker:
+    def legal_choices(self, *, state, side):
+        if state["turn"] == 1:
+            return ["switch metagross"]
+        return ["move tackle"]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for branch in branches:
+            response = branch["p1_choice"]
+            next_state = {
+                **state,
+                "turn": state["turn"] + 1,
+                "roster": {
+                    name: dict(mon)
+                    for name, mon in state["roster"].items()
+                },
+            }
+            if response == "switch metagross":
+                next_state["active"] = "Metagross"
+            resolved.append({"state": next_state})
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        active = state["active"]
+        bench = []
+        for name, mon in state["roster"].items():
+            if name == active:
+                continue
+            public_mon = {
+                "name": name,
+                "hp": mon["hp"],
+                "status": mon["status"],
+            }
+            if mon["revealed_item"] is not None:
+                public_mon["revealed_item"] = mon["revealed_item"]
+            bench.append(public_mon)
+
+        active_mon = state["roster"][active]
+        public_active = {
+            "name": active,
+            "hp": active_mon["hp"],
+            "status": active_mon["status"],
+        }
+        if active_mon["revealed_item"] is not None:
+            public_active["revealed_item"] = active_mon["revealed_item"]
+
+        return {
+            "turn": state["turn"],
+            "opponent": {
+                "active": [public_active],
+                "bench": bench,
+            },
+        }
+
+
+def test_benched_public_state_persists_across_switch_and_later_turn():
+    worker = BenchedStateWorker()
+    particles = (
+        BeliefParticle(
+            {
+                "turn": 1,
+                "active": "Rillaboom",
+                "roster": {
+                    "Rillaboom": {
+                        "hp": 65,
+                        "status": "par",
+                        "revealed_item": "sitrusberry",
+                        "item_consumed": True,
+                        "hidden_moves": ("woodhammer", "fakeout", "uturn", "protect"),
+                    },
+                    "Metagross": {
+                        "hp": 100,
+                        "status": None,
+                        "revealed_item": None,
+                        "item_consumed": False,
+                        "hidden_moves": ("psychicfangs", "protect", "bulletpunch", "stompingtantrum"),
+                    },
+                },
+            },
+            1.0,
+            world_id="persistent-bench",
+        ),
+    )
+
+    after_switch = condition_particles(
+        worker,
+        particles=particles,
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 2,
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "hp": 100,
+                        "status": None,
+                    }
+                ],
+                "bench": [
+                    {
+                        "name": "Rillaboom",
+                        "hp": 65,
+                        "status": "par",
+                        "revealed_item": "sitrusberry",
+                    }
+                ],
+            },
+        },
+    )
+
+    assert len(after_switch.particles) == 1
+    switched_state = after_switch.particles[0].state
+    benched_rillaboom = switched_state["roster"]["Rillaboom"]
+    assert benched_rillaboom["hp"] == 65
+    assert benched_rillaboom["status"] == "par"
+    assert benched_rillaboom["revealed_item"] == "sitrusberry"
+    assert benched_rillaboom["item_consumed"] is True
+
+    switched_view = worker.state_view(state=switched_state, side="p2")
+    assert switched_view["opponent"]["bench"] == [
+        {
+            "name": "Rillaboom",
+            "hp": 65,
+            "status": "par",
+            "revealed_item": "sitrusberry",
+        }
+    ]
+    assert "hidden_moves" not in switched_view["opponent"]["bench"][0]
+    assert "item_consumed" not in switched_view["opponent"]["bench"][0]
+
+    after_later_turn = condition_particles(
+        worker,
+        particles=after_switch.particles,
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 3,
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "hp": 100,
+                        "status": None,
+                    }
+                ],
+                "bench": [
+                    {
+                        "name": "Rillaboom",
+                        "hp": 65,
+                        "status": "par",
+                        "revealed_item": "sitrusberry",
+                    }
+                ],
+            },
+        },
+    )
+
+    assert len(after_later_turn.particles) == 1
+    later_bench = after_later_turn.particles[0].state["roster"]["Rillaboom"]
+    assert later_bench["hp"] == 65
+    assert later_bench["status"] == "par"
+    assert later_bench["revealed_item"] == "sitrusberry"
+    assert later_bench["item_consumed"] is True
+    assert after_later_turn.particles[0].weight == 1.0
+
