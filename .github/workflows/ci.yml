@@ -94,6 +94,10 @@ jobs:
         shell: pwsh
         run: .\rng-observation-smoke.ps1
 
+      - name: Persistent public opponent ledger smoke test
+        shell: pwsh
+        run: .\public-ledger-smoke.ps1
+
       - name: Belief-aware exact search smoke test
         shell: pwsh
         run: .\belief-search-smoke.ps1

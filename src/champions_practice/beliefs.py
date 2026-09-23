@@ -23,7 +23,16 @@ _ALLOWED_ACTIVE_KEYS = {
     "status",
     "boosts",
 }
-_ALLOWED_REVEALED_KEYS = {"species", "moves", "items", "abilities", "fainted", "seen"}
+_ALLOWED_REVEALED_KEYS = {
+    "species",
+    "moves",
+    "items",
+    "abilities",
+    "hp_percent",
+    "status",
+    "fainted",
+    "seen",
+}
 
 
 class PublicInformationLeak(ValueError):
@@ -161,13 +170,21 @@ def build_public_opponent_belief(view: dict[str, Any]) -> PublicOpponentBelief:
                 hp_percent=(
                     float(active_pokemon["hp_percent"])
                     if "hp_percent" in active_pokemon
-                    else None
+                    else (
+                        float(observation["hp_percent"])
+                        if observation.get("hp_percent") is not None
+                        else None
+                    )
                 ),
                 fainted=bool(
                     active_pokemon.get("fainted", observation.get("fainted", False))
                 ),
                 seen=bool(observation.get("seen", False)),
-                status=active_pokemon.get("status"),
+                status=(
+                    active_pokemon.get("status")
+                    if active_entry is not None
+                    else observation.get("status")
+                ),
                 boosts=tuple(sorted((str(stat), int(stage)) for stat, stage in boosts.items())),
                 revealed_moves=tuple(sorted(str(move) for move in observation.get("moves", []))),
                 revealed_items=tuple(sorted(str(item) for item in observation.get("items", []))),
