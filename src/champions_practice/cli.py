@@ -8,7 +8,8 @@ def main() -> None:
     print(f"Format:   {CHAMPIONS_FORMAT}")
     print(f"Showdown: {SHOWDOWN_WS_URL}")
     print()
-    print("Bootstrap is installed. Battle client is the next milestone.")
+    print("Persistent public-belief battle controller is installed.")
+    print("Interactive battle UI is the next milestone.")
 
 
 if __name__ == "__main__":

@@ -234,6 +234,17 @@ class ShowdownSearchWorker:
         if not result.get("closed"):
             raise RuntimeError(f"Showdown session {session_id!r} did not close")
 
+
+    def abort(self) -> None:
+        """Immediately stop this worker so an over-budget search cannot block play."""
+        if self._process.poll() is not None:
+            return
+        self._process.kill()
+        try:
+            self._process.wait(timeout=1)
+        except subprocess.TimeoutExpired:
+            self._process.terminate()
+
     def close(self) -> None:
         if self._process.poll() is not None:
             return
