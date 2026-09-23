@@ -3,6 +3,7 @@ from champions_practice.observation_beliefs import (
     condition_particles,
     public_observation_signature,
     resample_particles,
+    resample_particles_by_world,
 )
 
 
@@ -735,3 +736,19 @@ def test_resample_particles_bounds_count_and_preserves_normalized_mass():
     assert len(resampled) <= 3
     assert abs(sum(particle.weight for particle in resampled) - 1.0) < 1e-9
     assert all(particle.weight > 0 for particle in resampled)
+
+
+def test_world_aware_resampling_preserves_each_surviving_world() -> None:
+    particles = (
+        BeliefParticle({"id": "a1"}, 0.45, world_id="a"),
+        BeliefParticle({"id": "a2"}, 0.35, world_id="a"),
+        BeliefParticle({"id": "b1"}, 0.10, world_id="b"),
+        BeliefParticle({"id": "c1"}, 0.06, world_id="c"),
+        BeliefParticle({"id": "d1"}, 0.04, world_id="d"),
+    )
+
+    resampled = resample_particles_by_world(particles, limit=4, seed=55)
+
+    assert len(resampled) <= 4
+    assert {particle.world_id for particle in resampled} == {"a", "b", "c", "d"}
+    assert sum(particle.weight for particle in resampled) == pytest.approx(1.0)
