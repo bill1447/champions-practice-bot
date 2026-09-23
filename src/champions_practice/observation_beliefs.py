@@ -130,6 +130,71 @@ def resample_particles(
     )
 
 
+def resample_particles_by_world(
+    particles: tuple[BeliefParticle, ...],
+    *,
+    limit: int,
+    seed: int = 0,
+) -> tuple[BeliefParticle, ...]:
+    """Bound particles while preserving surviving hidden-world diversity."""
+    normalized = _normalize(particles)
+    if len(normalized) <= limit:
+        return normalized
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+
+    groups: dict[str, list[BeliefParticle]] = {}
+    for particle in normalized:
+        key = particle.world_id or "<unlabeled>"
+        groups.setdefault(key, []).append(particle)
+
+    if len(groups) > limit:
+        return resample_particles(normalized, limit=limit, seed=seed)
+
+    masses = {
+        key: sum(particle.weight for particle in group)
+        for key, group in groups.items()
+    }
+    slots = {key: 1 for key in groups}
+    remaining = limit - len(groups)
+    if remaining > 0:
+        total_mass = sum(masses.values())
+        raw = {
+            key: remaining * masses[key] / total_mass
+            for key in groups
+        }
+        for key in groups:
+            slots[key] += int(raw[key])
+        leftover = limit - sum(slots.values())
+        order = sorted(
+            groups,
+            key=lambda key: (-(raw[key] - int(raw[key])), -masses[key], key),
+        )
+        for key in order[:leftover]:
+            slots[key] += 1
+
+    sampled: list[BeliefParticle] = []
+    for offset, key in enumerate(sorted(groups)):
+        group = tuple(groups[key])
+        group_mass = masses[key]
+        local = _normalize(group)
+        chosen = resample_particles(
+            local,
+            limit=slots[key],
+            seed=seed + offset + 1,
+        )
+        sampled.extend(
+            BeliefParticle(
+                state=particle.state,
+                weight=particle.weight * group_mass,
+                world_id=particle.world_id,
+                history_id=particle.history_id,
+            )
+            for particle in chosen
+        )
+    return _normalize(sampled)
+
+
 def condition_particles(
     worker: ShowdownSearchWorker,
     *,
