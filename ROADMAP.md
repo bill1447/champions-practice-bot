@@ -55,41 +55,52 @@ This is deliberately not exhaustive two-ply minimax. Benchmarks must determine w
 extend additional first-turn worlds and responses or replace the probe with a broader
 selective tree.
 
-## Phase 7 — Midgame belief-state reconstruction — next major objective
+## Phase 7 — Persistent live belief state — complete
 
-Belief worlds currently begin from team preview. Reconstruct the current turn in every
-world while preserving only public information:
+The live controller now carries exact public-belief particles across turns instead of
+reconstructing from complete command history. Independent RNG histories, persistent public
+HP/status evidence, bounded resampling, hard decision/conditioning deadlines, legal
+fallbacks, and multi-turn posterior updates are covered by real Showdown integration
+smokes.
 
-- active and benched identities;
-- HP, fainting, status, stat stages, and public transformations;
-- consumed or revealed items and abilities;
-- terrain, weather, rooms, screens, hazards, and other public effects;
-- PP and choice constraints only when legitimately knowable;
-- the AI's own exact private state.
+Replay reconstruction remains available only for controlled diagnostics and tests.
 
-Hidden-state mutation tests must prove that unrevealed truth cannot affect the reconstructed
-position or recommendation. Nontrivial turn-two and turn-four fixtures will compare the
-displayed position, reconstructed worlds, and live session state.
+## Phase 8 — RNG-robust live conditioning — current objective
 
-## Phase 8 — Live autonomous practice opponent
+Ordinary attacks introduce damage rolls and other public RNG evidence. Production
+conditioning must maintain enough bounded RNG diversity to avoid accidental particle
+collapse while remaining inside the live decision deadline.
 
-Connect reconstruction and search to the persistent session loop. Add a decision deadline,
-safe heuristic fallback, forced-switch handling, and complete-game regression tests.
+Current work:
+- batch branch resolution and sanitized observation generation in one worker request;
+- sample fresh bounded RNG continuations during observation updates;
+- adaptively expand RNG samples after zero-match batches;
+- preserve surviving hidden-world diversity during resampling;
+- retain the last good posterior and retry unresolved public transitions instead of
+  making one sampling miss permanently unrecoverable;
+- verify normal damaging turns under production-like deadlines.
 
-## Phase 9 — Benchmark and playing-strength development
+## Phase 9 — Strategic reasoning layer — next major objective
+
+Once RNG-robust conditioning is stable, add explicit strategic state and plan generation:
+threat assessment, resource valuation, win conditions, desired future boards, speed-control
+objectives, sacrifice/trade logic, cleanup pieces, and multi-turn plan candidates. Exact
+Showdown search remains the tactical verifier rather than the sole source of strategy.
+
+## Phase 10 — Benchmark and playing-strength development
 
 Build labeled positions and complete games. Compare bounded belief search with exhaustive
 search where tractable and with perfect-information search only as a diagnostic oracle.
 Track missed KOs, sacrifices, targets, switches, Protects, speed control, field control,
-setup recognition, conservatism, and latency.
+setup recognition, conservatism, strategic-plan quality, and latency.
 
-## Phase 10 — Selective deeper reasoning
+## Phase 11 — Selective deeper reasoning
 
 Add only what benchmark failures justify: selective two-ply search, adaptive world/RNG
 budgets, transposition caching, better public priors and probability updates, stronger
 response modeling, or parallel branching.
 
-## Phase 11 — Practice interface and review tools
+## Phase 12 — Practice interface and review tools
 
 Build the local browser client: team import, preview, battlefield, move/target/switch/Mega
 controls, thinking state, battle log, replay, postgame review, belief inspection, decision
@@ -98,5 +109,5 @@ traces, and optional perfect-information postgame analysis.
 Current sequence:
 
 **Simulator → public beliefs → bounded exact search → autonomous pruning → position evidence
-→ selective continuation → midgame reconstruction → live opponent → benchmarks/tuning
-→ selective depth → GUI**
+→ selective continuation → persistent live particles → RNG-robust conditioning → strategy
+→ benchmarks/tuning → selective depth → GUI**
