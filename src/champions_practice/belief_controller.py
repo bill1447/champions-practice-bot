@@ -151,7 +151,6 @@ def _pin_known_team_genders(team_text: str, request: dict) -> str:
 
 def _value_at_path(root: object, path: str) -> object:
     current = root
-    token = ""
     index = 1
     while index < len(path):
         char = path[index]
