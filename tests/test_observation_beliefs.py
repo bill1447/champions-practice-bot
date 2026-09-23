@@ -606,3 +606,114 @@ def test_unobserved_action_keeps_multiple_hidden_worlds_when_opponent_faints_fir
         assert active["revealed_moves"] == []
         assert "hidden_moves" not in active
 
+class ProtectChainWorker:
+    def legal_choices(self, *, state, side):
+        return ["move protect"]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for branch in branches:
+            rng_seed = branch.get("rng_seed")
+            consecutive = state["consecutive_protects"]
+
+            if consecutive == 0:
+                succeeded = True
+            else:
+                succeeded = rng_seed == "success"
+
+            resolved.append(
+                {
+                    "state": {
+                        **state,
+                        "turn": state["turn"] + 1,
+                        "consecutive_protects": consecutive + 1 if succeeded else 0,
+                        "last_protect_succeeded": succeeded,
+                        "revealed_moves": ("protect",),
+                    }
+                }
+            )
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        return {
+            "turn": state["turn"],
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "revealed_moves": list(state["revealed_moves"]),
+                        "last_protect_succeeded": state["last_protect_succeeded"],
+                    }
+                ]
+            },
+        }
+
+
+def test_consecutive_protect_state_persists_and_controls_next_turn_outcomes():
+    worker = ProtectChainWorker()
+    particles = (
+        BeliefParticle(
+            {
+                "turn": 1,
+                "consecutive_protects": 0,
+                "last_protect_succeeded": False,
+                "revealed_moves": (),
+            },
+            1.0,
+            world_id="protect-chain",
+        ),
+    )
+
+    after_first = condition_particles(
+        worker,
+        particles=particles,
+        ai_side="p2",
+        ai_choice="move attack",
+        actual_public_view={
+            "turn": 2,
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "revealed_moves": ["protect"],
+                        "last_protect_succeeded": True,
+                    }
+                ]
+            },
+        },
+    )
+
+    assert len(after_first.particles) == 1
+    first_state = after_first.particles[0].state
+    assert first_state["consecutive_protects"] == 1
+
+    first_view = worker.state_view(state=first_state, side="p2")
+    assert "consecutive_protects" not in first_view["opponent"]["active"][0]
+
+    after_second = condition_particles(
+        worker,
+        particles=after_first.particles,
+        ai_side="p2",
+        ai_choice="move attack",
+        actual_public_view={
+            "turn": 3,
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "revealed_moves": ["protect"],
+                        "last_protect_succeeded": False,
+                    }
+                ]
+            },
+        },
+        rng_seeds=("success", "fail"),
+    )
+
+    assert after_second.generated == 2
+    assert after_second.matched == 1
+    assert len(after_second.particles) == 1
+    assert after_second.particles[0].weight == 1.0
+    assert after_second.particles[0].state["consecutive_protects"] == 0
+    assert "fail" in after_second.particles[0].history_id
+
