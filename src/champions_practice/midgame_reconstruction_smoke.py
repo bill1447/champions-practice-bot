@@ -1,4 +1,4 @@
-"""Integration smoke for replay-based midgame belief reconstruction."""
+"""Legacy debug smoke for replay-based midgame belief reconstruction."""
 
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_smoke import ORIGINAL_METAGROSS, _public_priors
@@ -129,13 +129,14 @@ def main():
         if left.world != right.world or mechanics(left.state) != mechanics(right.state):
             raise SystemExit("ERROR: hidden truth changed reconstructed midgame worlds")
 
-    print("Replay-based midgame belief reconstruction")
+    print("LEGACY DEBUG: replay-based midgame belief reconstruction")
     print(f"Worlds: {len(standard_reconstructed)}")
     print(f"Public turn after replay: {standard_reconstructed[0].state.get('turn')}")
     print("History: identical team preview + two resolved public turns")
     print("Stateful history: Protect, damage, opponent switch, AI double switch, terrain")
     print("Anti-cheat: alternate real hidden Metagross set reconstructed identical worlds")
-    print("RESULT: belief worlds now preserve public battle history through stateful midgame transitions")
+    print("Scope: debug/test reconstruction only; live decisions use persistent particles")
+    print("RESULT: legacy reconstruction remains available for controlled diagnostics")
 
 
 if __name__ == "__main__":

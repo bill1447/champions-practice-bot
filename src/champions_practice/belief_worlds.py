@@ -9,6 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Any, Mapping, Protocol, Sequence
+import warnings
 
 from champions_practice.beliefs import PublicOpponentBelief, PublicPokemonBelief
 
@@ -413,7 +414,19 @@ def reconstruct_midgame_belief_worlds(
     opponent_side: str = "p1",
     seed: str | None = None,
 ) -> tuple[ReconstructedBeliefWorld, ...]:
-    """Replay identical public turn history into every hidden-set hypothesis."""
+    """Legacy replay reconstruction for tests/debugging, not live decisions.
+
+    Live battle decisions must carry sequential particles through BeliefBattleController.
+    This helper replays complete public command history and may accept an exact seed, so
+    using it in the live opponent would reintroduce the reconstruction path that the
+    persistent controller replaced.
+    """
+    warnings.warn(
+        "reconstruct_midgame_belief_worlds() is legacy debug/test-only; "
+        "use BeliefBattleController for live decisions",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     if opponent_side not in {"p1", "p2"}:
         raise ValueError("opponent_side must be p1 or p2")
     reconstructed = []
