@@ -2,6 +2,7 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     condition_particles,
     public_observation_signature,
+    resample_particles,
 )
 
 
@@ -717,3 +718,20 @@ def test_consecutive_protect_state_persists_and_controls_next_turn_outcomes():
     assert after_second.particles[0].state["consecutive_protects"] == 0
     assert "fail" in after_second.particles[0].history_id
 
+
+
+def test_resample_particles_bounds_count_and_preserves_normalized_mass():
+    particles = tuple(
+        BeliefParticle(
+            {"id": index},
+            weight,
+            world_id=f"w{index}",
+        )
+        for index, weight in enumerate((0.5, 0.2, 0.15, 0.1, 0.05), 1)
+    )
+
+    resampled = resample_particles(particles, limit=3, seed=51)
+
+    assert len(resampled) <= 3
+    assert abs(sum(particle.weight for particle in resampled) - 1.0) < 1e-9
+    assert all(particle.weight > 0 for particle in resampled)
