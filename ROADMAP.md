@@ -65,27 +65,30 @@ smokes.
 
 Replay reconstruction remains available only for controlled diagnostics and tests.
 
-## Phase 8 — RNG-robust live conditioning — current objective
+## Phase 8 — RNG-robust live conditioning — complete
 
-Ordinary attacks introduce damage rolls and other public RNG evidence. Production
-conditioning must maintain enough bounded RNG diversity to avoid accidental particle
-collapse while remaining inside the live decision deadline.
+Production conditioning now samples fresh bounded RNG continuations, adaptively expands
+after zero-match batches, preserves surviving hidden-world diversity, retains the last good
+posterior after sampling misses, and retries unresolved public transitions. A production-like
+ordinary damaging turn survives conditioning within the configured deadline and resumes
+belief search on the next decision.
+
+## Phase 9 — Strategic reasoning layer — current objective
+
+Add explicit strategic state and plan generation: threat assessment, resource valuation,
+win conditions, desired future boards, speed-control objectives, sacrifice/trade logic,
+cleanup pieces, mode selection, and multi-turn plan candidates. Exact Showdown search
+remains the tactical verifier rather than the sole source of strategy.
 
 Current work:
-- batch branch resolution and sanitized observation generation in one worker request;
-- sample fresh bounded RNG continuations during observation updates;
-- adaptively expand RNG samples after zero-match batches;
-- preserve surviving hidden-world diversity during resampling;
-- retain the last good posterior and retry unresolved public transitions instead of
-  making one sampling miss permanently unrecoverable;
-- verify normal damaging turns under production-like deadlines.
-
-## Phase 9 — Strategic reasoning layer — next major objective
-
-Once RNG-robust conditioning is stable, add explicit strategic state and plan generation:
-threat assessment, resource valuation, win conditions, desired future boards, speed-control
-objectives, sacrifice/trade logic, cleanup pieces, and multi-turn plan candidates. Exact
-Showdown search remains the tactical verifier rather than the sole source of strategy.
+- build a read-only `StrategicAssessment` from the AI-visible battle view and belief posterior;
+- identify contextual resource roles such as speed control, redirection, field control, and
+  Protect access;
+- represent desired future boards and declared win conditions;
+- judge sacrifices and trades by resulting win-condition coverage instead of raw material;
+- preserve the existing public-information whitelist before strategic reasoning;
+- keep strategy disconnected from live move selection until its assessments are inspectable
+  and regression-tested.
 
 ## Phase 10 — Benchmark and playing-strength development
 
