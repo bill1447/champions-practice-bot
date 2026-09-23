@@ -136,7 +136,8 @@ def main():
     print(f"Posterior mass: {posterior_mass:.6f}")
     print("Opponent responses: simulator-enumerated; no hidden commands supplied")
     print("Boundary: survival uses only sanitized public observations")
-    print("Scope: deterministic shared-seed structural coverage")\n    print("RESULT: sequential observation-conditioning structure remains valid")
+    print("Scope: deterministic shared-seed structural coverage")
+    print("RESULT: sequential observation-conditioning structure remains valid")
 
 
 if __name__ == "__main__":
