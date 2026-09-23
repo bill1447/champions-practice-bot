@@ -482,3 +482,127 @@ def test_benched_public_state_persists_across_switch_and_later_turn():
     assert later_bench["item_consumed"] is True
     assert after_later_turn.particles[0].weight == 1.0
 
+class NoActionAmbiguityWorker:
+    def legal_choices(self, *, state, side):
+        return [f"move {move}" for move in state["hidden_moves"]]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for branch in branches:
+            response = branch["p1_choice"]
+            if state["faints_before_action"]:
+                next_state = {
+                    **state,
+                    "turn": state["turn"] + 1,
+                    "hp": 0,
+                    "fainted": True,
+                    "revealed_moves": state["revealed_moves"],
+                }
+            else:
+                move = response.removeprefix("move ")
+                next_state = {
+                    **state,
+                    "turn": state["turn"] + 1,
+                    "hp": 10,
+                    "fainted": False,
+                    "revealed_moves": (*state["revealed_moves"], move),
+                }
+            resolved.append({"state": next_state})
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        return {
+            "turn": state["turn"],
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "hp": state["hp"],
+                        "fainted": state["fainted"],
+                        "revealed_moves": list(state["revealed_moves"]),
+                    }
+                ]
+            },
+        }
+
+
+def test_unobserved_action_keeps_multiple_hidden_worlds_when_opponent_faints_first():
+    worker = NoActionAmbiguityWorker()
+    particles = (
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hp": 40,
+                "fainted": False,
+                "faints_before_action": True,
+                "hidden_moves": ("psychicfangs", "protect"),
+                "revealed_moves": (),
+            },
+            1 / 3,
+            world_id="psychic-fangs-world",
+        ),
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hp": 40,
+                "fainted": False,
+                "faints_before_action": True,
+                "hidden_moves": (
+                    "stompingtantrum",
+                    "bulletpunch",
+                    "icepunch",
+                    "protect",
+                ),
+                "revealed_moves": (),
+            },
+            1 / 3,
+            world_id="stomping-tantrum-world",
+        ),
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hp": 100,
+                "fainted": False,
+                "faints_before_action": False,
+                "hidden_moves": ("psychicfangs", "protect"),
+                "revealed_moves": (),
+            },
+            1 / 3,
+            world_id="survives-and-acts",
+        ),
+    )
+
+    update = condition_particles(
+        worker,
+        particles=particles,
+        ai_side="p2",
+        ai_choice="move knockout",
+        actual_public_view={
+            "turn": 2,
+            "opponent": {
+                "active": [
+                    {
+                        "name": "Metagross",
+                        "hp": 0,
+                        "fainted": True,
+                        "revealed_moves": [],
+                    }
+                ]
+            },
+        },
+    )
+
+    assert {particle.world_id for particle in update.particles} == {
+        "psychic-fangs-world",
+        "stomping-tantrum-world",
+    }
+    assert len(update.particles) == 2
+    assert all(particle.weight == 0.5 for particle in update.particles)
+
+    for particle in update.particles:
+        view = worker.state_view(state=particle.state, side="p2")
+        active = view["opponent"]["active"][0]
+        assert active["fainted"] is True
+        assert active["revealed_moves"] == []
+        assert "hidden_moves" not in active
+
