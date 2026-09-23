@@ -90,3 +90,110 @@ def test_condition_particles_drops_world_when_requested_response_is_illegal():
     assert update.generated == 0
     assert update.matched == 0
     assert update.particles == ()
+
+class ProgressiveRevealWorker:
+    def legal_choices(self, *, state, side):
+        return [f"move {move}" for move in state["hidden_moves"]]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for branch in branches:
+            response = branch["p1_choice"]
+            move = response.removeprefix("move ")
+            resolved.append(
+                {
+                    "state": {
+                        **state,
+                        "turn": state["turn"] + 1,
+                        "revealed_moves": (*state["revealed_moves"], move),
+                    }
+                }
+            )
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        return {
+            "turn": state["turn"],
+            "opponent": {
+                "active": ["Metagross"],
+                "revealed_moves": list(state["revealed_moves"]),
+            },
+        }
+
+
+def test_progressive_move_revelation_narrows_worlds_without_exposing_other_moves():
+    worker = ProgressiveRevealWorker()
+    particles = (
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hidden_moves": ("psychicfangs", "protect", "bulletpunch", "stompingtantrum"),
+                "revealed_moves": (),
+            },
+            1 / 3,
+            world_id="has-both",
+        ),
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hidden_moves": ("psychicfangs", "bulletpunch", "stompingtantrum", "icepunch"),
+                "revealed_moves": (),
+            },
+            1 / 3,
+            world_id="has-first-only",
+        ),
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hidden_moves": ("protect", "bulletpunch", "stompingtantrum", "icepunch"),
+                "revealed_moves": (),
+            },
+            1 / 3,
+            world_id="missing-first",
+        ),
+    )
+
+    after_first = condition_particles(
+        worker,
+        particles=particles,
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 2,
+            "opponent": {
+                "active": ["Metagross"],
+                "revealed_moves": ["psychicfangs"],
+            },
+        },
+    )
+
+    assert {particle.world_id for particle in after_first.particles} == {
+        "has-both",
+        "has-first-only",
+    }
+    assert sum(particle.weight for particle in after_first.particles) == 1.0
+    for particle in after_first.particles:
+        view = worker.state_view(state=particle.state, side="p2")
+        assert view["opponent"]["revealed_moves"] == ["psychicfangs"]
+        assert "hidden_moves" not in view["opponent"]
+
+    after_second = condition_particles(
+        worker,
+        particles=after_first.particles,
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 3,
+            "opponent": {
+                "active": ["Metagross"],
+                "revealed_moves": ["psychicfangs", "protect"],
+            },
+        },
+    )
+
+    assert [particle.world_id for particle in after_second.particles] == ["has-both"]
+    assert after_second.particles[0].weight == 1.0
+    final_view = worker.state_view(state=after_second.particles[0].state, side="p2")
+    assert final_view["opponent"]["revealed_moves"] == ["psychicfangs", "protect"]
+    assert "hidden_moves" not in final_view["opponent"]
+
