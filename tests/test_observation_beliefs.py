@@ -197,3 +197,121 @@ def test_progressive_move_revelation_narrows_worlds_without_exposing_other_moves
     assert final_view["opponent"]["revealed_moves"] == ["psychicfangs", "protect"]
     assert "hidden_moves" not in final_view["opponent"]
 
+class ItemRevealWorker:
+    def legal_choices(self, *, state, side):
+        return ["move tackle"]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for _branch in branches:
+            damage = 20 if state["turn"] == 1 else 40
+            hp = max(0, state["hp"] - damage)
+            item_consumed = state["item_consumed"]
+            revealed_item = state["revealed_item"]
+            if (
+                state["hidden_item"] == "sitrusberry"
+                and not item_consumed
+                and hp > 0
+                and hp <= 50
+            ):
+                hp += 25
+                item_consumed = True
+                revealed_item = "sitrusberry"
+            resolved.append(
+                {
+                    "state": {
+                        **state,
+                        "turn": state["turn"] + 1,
+                        "hp": hp,
+                        "item_consumed": item_consumed,
+                        "revealed_item": revealed_item,
+                    }
+                }
+            )
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        opponent = {
+            "active": ["Rillaboom"],
+            "hp": state["hp"],
+        }
+        if state["revealed_item"] is not None:
+            opponent["revealed_item"] = state["revealed_item"]
+        return {
+            "turn": state["turn"],
+            "opponent": opponent,
+        }
+
+
+def test_item_stays_hidden_until_public_activation_then_eliminates_incompatible_worlds():
+    worker = ItemRevealWorker()
+    particles = (
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hp": 100,
+                "hidden_item": "sitrusberry",
+                "item_consumed": False,
+                "revealed_item": None,
+            },
+            0.5,
+            world_id="sitrus",
+        ),
+        BeliefParticle(
+            {
+                "turn": 1,
+                "hp": 100,
+                "hidden_item": "safetygoggles",
+                "item_consumed": False,
+                "revealed_item": None,
+            },
+            0.5,
+            world_id="goggles",
+        ),
+    )
+
+    before_activation = condition_particles(
+        worker,
+        particles=particles,
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 2,
+            "opponent": {
+                "active": ["Rillaboom"],
+                "hp": 80,
+            },
+        },
+    )
+
+    assert {particle.world_id for particle in before_activation.particles} == {
+        "sitrus",
+        "goggles",
+    }
+    assert sum(particle.weight for particle in before_activation.particles) == 1.0
+    for particle in before_activation.particles:
+        view = worker.state_view(state=particle.state, side="p2")
+        assert "revealed_item" not in view["opponent"]
+        assert "hidden_item" not in view["opponent"]
+
+    after_activation = condition_particles(
+        worker,
+        particles=before_activation.particles,
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 3,
+            "opponent": {
+                "active": ["Rillaboom"],
+                "hp": 65,
+                "revealed_item": "sitrusberry",
+            },
+        },
+    )
+
+    assert [particle.world_id for particle in after_activation.particles] == ["sitrus"]
+    assert after_activation.particles[0].weight == 1.0
+    final_view = worker.state_view(state=after_activation.particles[0].state, side="p2")
+    assert final_view["opponent"]["revealed_item"] == "sitrusberry"
+    assert "hidden_item" not in final_view["opponent"]
+
