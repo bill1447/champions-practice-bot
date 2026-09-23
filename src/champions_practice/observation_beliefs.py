@@ -180,7 +180,10 @@ def condition_particles(
                     "p1_choice": ai_choice if ai_side == "p1" else response,
                     "p2_choice": ai_choice if ai_side == "p2" else response,
                     "include_state": True,
+                    "view_side": ai_side,
                 }
+                if previews is not None:
+                    branch["previews"] = previews
                 if rng_seed is not None:
                     branch["rng_seed"] = rng_seed
                 branches.append(branch)
@@ -193,7 +196,13 @@ def condition_particles(
             state = result.get("state")
             if not isinstance(state, dict):
                 raise RuntimeError("particle branch did not return exact state")
-            view = worker.state_view(state=state, side=ai_side, previews=previews)
+            view = result.get("view")
+            if not isinstance(view, dict):
+                view = worker.state_view(
+                    state=state,
+                    side=ai_side,
+                    previews=previews,
+                )
             if public_observation_signature(view) != wanted:
                 continue
             matched += 1
