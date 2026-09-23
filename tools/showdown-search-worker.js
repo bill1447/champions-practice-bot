@@ -548,6 +548,8 @@ function resolveBranch(
   p2Choice,
   includeState = true,
   rngSeed = null,
+  viewSide = null,
+  previews = null,
 ) {
   if (!state) {
     throw new Error("branch requires a serialized battle state");
@@ -572,6 +574,13 @@ function resolveBranch(
     summary: summarize(battle),
   };
   if (includeState) response.state = battle.toJSON();
+  if (viewSide !== null) {
+    const effectivePreviews = previews || {
+      p1: battle.p1.pokemon.map((mon) => mon.set.species),
+      p2: battle.p2.pokemon.map((mon) => mon.set.species),
+    };
+    response.view = playerView(battle, viewSide, effectivePreviews);
+  }
   battle.destroy();
   return response;
 }
@@ -583,6 +592,8 @@ function branchBattle(request) {
     request.p2_choice,
     request.include_state !== false,
     request.rng_seed ?? null,
+    request.view_side ?? null,
+    request.previews ?? null,
   );
 }
 
@@ -608,6 +619,8 @@ function branchMany(request) {
             branch.p2_choice,
             branch.include_state === true,
             branch.rng_seed ?? null,
+            branch.view_side ?? null,
+            branch.previews ?? null,
           ),
         };
       } catch (error) {

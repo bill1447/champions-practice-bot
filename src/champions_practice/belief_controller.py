@@ -21,9 +21,10 @@ from champions_practice.belief_worlds import (
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.observation_beliefs import (
     BeliefParticle,
+    ParticleUpdate,
     condition_particles,
     public_observation_signature,
-    resample_particles,
+    resample_particles_by_world,
 )
 from champions_practice.search_worker import ShowdownSearchWorker
 
@@ -235,6 +236,8 @@ class BeliefBattleController:
         response_limit: int = 4,
         decision_budget_seconds: float = 8.0,
         conditioning_budget_seconds: float = 8.0,
+        rng_sample_batches: tuple[int, ...] = (2, 4),
+        recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
         particle_seed: int = 53,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
@@ -248,6 +251,12 @@ class BeliefBattleController:
             raise ValueError("search limits must be positive")
         if decision_budget_seconds <= 0 or conditioning_budget_seconds <= 0:
             raise ValueError("budgets must be positive")
+        if not rng_sample_batches or any(count <= 0 for count in rng_sample_batches):
+            raise ValueError("rng_sample_batches must contain positive counts")
+        if not recovery_rng_sample_batches or any(
+            count <= 0 for count in recovery_rng_sample_batches
+        ):
+            raise ValueError("recovery_rng_sample_batches must contain positive counts")
 
         self.worker = worker
         self.battle_format = battle_format
@@ -260,6 +269,8 @@ class BeliefBattleController:
         self.response_limit = response_limit
         self.decision_budget_seconds = decision_budget_seconds
         self.conditioning_budget_seconds = conditioning_budget_seconds
+        self.rng_sample_batches = rng_sample_batches
+        self.recovery_rng_sample_batches = recovery_rng_sample_batches
         self.fallback_selector = fallback_selector
         self._rng = random.Random(particle_seed)
 
@@ -269,6 +280,7 @@ class BeliefBattleController:
         self.last_public_view: dict | None = None
         self.preview_mismatch_paths: tuple[str, ...] = ()
         self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
+        self.pending_observations: list[tuple[str, dict]] = []
         self.degraded = False
 
     def start(
@@ -368,7 +380,7 @@ class BeliefBattleController:
                     )
                 )
 
-        self.particles = resample_particles(
+        self.particles = resample_particles_by_world(
             tuple(particles),
             limit=self.max_particles,
             seed=53,
@@ -405,6 +417,77 @@ class BeliefBattleController:
                 worker.close()
             executor.shutdown(wait=False, cancel_futures=True)
 
+    def _condition_adaptive(
+        self,
+        worker: ShowdownSearchWorker,
+        *,
+        particles: tuple[BeliefParticle, ...],
+        ai_choice: str,
+        view: dict,
+        batches: tuple[int, ...],
+    ) -> ParticleUpdate:
+        generated = 0
+        deduplicated = 0
+        for sample_count in batches:
+            seeds = tuple(self._particle_seed() for _ in range(sample_count))
+            update = condition_particles(
+                worker,
+                particles=particles,
+                ai_side="p2",
+                ai_choice=ai_choice,
+                actual_public_view=view,
+                rng_seeds=seeds,
+                previews=self.previews,
+            )
+            generated += update.generated
+            deduplicated += update.deduplicated
+            if update.particles:
+                return ParticleUpdate(
+                    particles=update.particles,
+                    generated=generated,
+                    matched=update.matched,
+                    deduplicated=deduplicated,
+                )
+        return ParticleUpdate((), generated, 0, deduplicated)
+
+    def _recover_pending(self) -> bool:
+        if not self.pending_observations:
+            return bool(self.particles)
+
+        starting_particles = self.particles
+        pending = tuple(self.pending_observations)
+
+        def recover(worker: ShowdownSearchWorker):
+            particles = starting_particles
+            for ai_choice, view in pending:
+                update = self._condition_adaptive(
+                    worker,
+                    particles=particles,
+                    ai_choice=ai_choice,
+                    view=view,
+                    batches=self.recovery_rng_sample_batches,
+                )
+                if not update.particles:
+                    return None
+                particles = resample_particles_by_world(
+                    update.particles,
+                    limit=self.max_particles,
+                    seed=int(view.get("turn", 0)) + 155,
+                )
+            return particles
+
+        recovered, timed_out = self._run_with_deadline(
+            recover,
+            timeout_seconds=self.conditioning_budget_seconds,
+        )
+        if timed_out or not recovered:
+            return False
+
+        self.particles = recovered
+        self.pending_observations.clear()
+        self.degraded = False
+        return True
+
     def _fallback_decision(
         self,
         legal_choices: list[str],
@@ -427,7 +510,14 @@ class BeliefBattleController:
         legal_live = self.ai_legal_choices()
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
-        if self.degraded or not self.particles:
+        if self.degraded:
+            if not self._recover_pending():
+                return self._fallback_decision(
+                    legal_live,
+                    started=started,
+                    reason="belief-recovery-pending",
+                )
+        if not self.particles:
             return self._fallback_decision(
                 legal_live,
                 started=started,
@@ -519,41 +609,49 @@ class BeliefBattleController:
 
         conditioning_started = perf_counter()
 
-        def run_conditioning(worker: ShowdownSearchWorker):
-            return condition_particles(
-                worker,
-                particles=self.particles,
-                ai_side="p2",
-                ai_choice=decision.choice,
-                actual_public_view=view,
-                previews=self.previews,
-            )
-
-        update, timed_out = self._run_with_deadline(
-            run_conditioning,
-            timeout_seconds=self.conditioning_budget_seconds,
-        )
-        conditioning_seconds = perf_counter() - conditioning_started
-
-        if timed_out or update is None:
-            self.particles = ()
+        if self.pending_observations:
+            self.pending_observations.append((decision.choice, view))
+            update = None
+            timed_out = False
+            conditioning_seconds = perf_counter() - conditioning_started
             self.degraded = True
             generated = 0
             matched = 0
-        elif update.particles:
-            self.particles = resample_particles(
-                update.particles,
-                limit=self.max_particles,
-                seed=int(view.get("turn", 0)) + 53,
-            )
-            self.degraded = False
-            generated = update.generated
-            matched = update.matched
         else:
-            self.particles = ()
-            self.degraded = True
-            generated = update.generated
-            matched = update.matched
+            def run_conditioning(worker: ShowdownSearchWorker):
+                return self._condition_adaptive(
+                    worker,
+                    particles=self.particles,
+                    ai_choice=decision.choice,
+                    view=view,
+                    batches=self.rng_sample_batches,
+                )
+
+            update, timed_out = self._run_with_deadline(
+                run_conditioning,
+                timeout_seconds=self.conditioning_budget_seconds,
+            )
+            conditioning_seconds = perf_counter() - conditioning_started
+
+            if timed_out or update is None:
+                self.pending_observations.append((decision.choice, view))
+                self.degraded = True
+                generated = 0
+                matched = 0
+            elif update.particles:
+                self.particles = resample_particles_by_world(
+                    update.particles,
+                    limit=self.max_particles,
+                    seed=int(view.get("turn", 0)) + 53,
+                )
+                self.degraded = False
+                generated = update.generated
+                matched = update.matched
+            else:
+                self.pending_observations.append((decision.choice, view))
+                self.degraded = True
+                generated = update.generated
+                matched = 0
 
         return BeliefTurnUpdate(
             decision=decision,

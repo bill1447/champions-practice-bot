@@ -1,6 +1,12 @@
 import pytest
 
-from champions_practice.belief_controller import _pin_known_team_genders, choose_public_fallback
+from champions_practice.belief_controller import (
+    BeliefBattleController,
+    BeliefDecision,
+    _pin_known_team_genders,
+    choose_public_fallback,
+)
+from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
 
 
 def test_public_fallback_returns_legal_choice_without_friendly_fire() -> None:
@@ -46,3 +52,51 @@ Level: 50
     assert "Armarouge (F) @ Life Orb" in pinned
     assert "Sneasler (M) @ Psychic Seed" in pinned
     assert "Gender:" not in pinned
+
+
+class _ZeroMatchWorker:
+    project_root = "."
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        return None
+
+    def session_view(self, session_id, *, side):
+        return {"view": {"turn": 2, "opponent": {}, "player": {}, "request": {}}}
+
+
+def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> None:
+    worker = _ZeroMatchWorker()
+    controller = BeliefBattleController(
+        worker,
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    controller.session_id = "session-1"
+    controller.previews = {"p1": [], "p2": []}
+    original = (
+        BeliefParticle({"turn": 1}, 1.0, world_id="world-1", history_id="rng-1"),
+    )
+    controller.particles = original
+    controller._run_with_deadline = lambda operation, timeout_seconds: (
+        ParticleUpdate((), 12, 0, 0),
+        False,
+    )
+
+    update = controller.resolve_turn(
+        human_choice="move a",
+        decision=BeliefDecision(
+            choice="move b",
+            mode="test",
+            particle_count=1,
+            candidate_count=0,
+            branch_count=0,
+            elapsed_seconds=0.0,
+        ),
+    )
+
+    assert controller.particles == original
+    assert controller.degraded is True
+    assert len(controller.pending_observations) == 1
+    assert update.particles_after == 1
+    assert update.matched_branches == 0
