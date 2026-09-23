@@ -98,6 +98,10 @@ jobs:
         shell: pwsh
         run: .\public-ledger-smoke.ps1
 
+      - name: Persistent belief battle controller smoke test
+        shell: pwsh
+        run: .\belief-controller-smoke.ps1
+
       - name: Belief-aware exact search smoke test
         shell: pwsh
         run: .\belief-search-smoke.ps1
