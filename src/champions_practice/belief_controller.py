@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 import random
 from time import perf_counter
-from typing import Callable
+from typing import Callable, TypeVar
 
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
@@ -28,6 +29,7 @@ from champions_practice.search_worker import ShowdownSearchWorker
 
 
 FallbackSelector = Callable[[list[str]], str]
+T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -239,6 +241,29 @@ class BeliefBattleController:
     def ai_legal_choices(self) -> list[str]:
         return self.worker.session_legal_choices(self._require_session(), side="p2")
 
+
+    def _run_with_deadline(
+        self,
+        operation: Callable[[ShowdownSearchWorker], T],
+        *,
+        timeout_seconds: float,
+    ) -> tuple[T | None, bool]:
+        """Run hypothetical work off-session and abort its worker on timeout."""
+        worker = ShowdownSearchWorker(self.worker.project_root)
+        executor = ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(operation, worker)
+        timed_out = False
+        try:
+            return future.result(timeout=timeout_seconds), False
+        except FutureTimeoutError:
+            timed_out = True
+            worker.abort()
+            return None, True
+        finally:
+            if not timed_out:
+                worker.close()
+            executor.shutdown(wait=False, cancel_futures=True)
+
     def _fallback_decision(
         self,
         legal_choices: list[str],
@@ -277,36 +302,38 @@ class BeliefBattleController:
             for particle in self.particles
         )
 
-        try:
+        def run_search(worker: ShowdownSearchWorker):
             pruning = shortlist_belief_candidates(
-                self.worker,
+                worker,
                 worlds=worlds,
                 side="p2",
                 candidate_limit=self.candidate_limit,
                 reference_limit=1,
             )
-            if perf_counter() - started > self.decision_budget_seconds:
-                return self._fallback_decision(
-                    legal_live,
-                    started=started,
-                    reason="candidate-screening-deadline",
-                )
-
             search = search_exact_belief_turn(
-                self.worker,
+                worker,
                 worlds=worlds,
                 side="p2",
                 choices=list(pruning.candidate_shortlist),
                 response_limit=self.response_limit,
                 autonomous_responses=True,
             )
-            elapsed = perf_counter() - started
-            if elapsed > self.decision_budget_seconds:
+            return pruning, search
+
+        try:
+            result, timed_out = self._run_with_deadline(
+                run_search,
+                timeout_seconds=self.decision_budget_seconds,
+            )
+            if timed_out or result is None:
                 return self._fallback_decision(
                     legal_live,
                     started=started,
                     reason="belief-search-deadline",
                 )
+
+            pruning, search = result
+            elapsed = perf_counter() - started
             if search.chosen.choice not in legal_live:
                 return self._fallback_decision(
                     legal_live,
@@ -350,40 +377,52 @@ class BeliefBattleController:
         self.last_public_view = view
 
         conditioning_started = perf_counter()
-        update = condition_particles(
-            self.worker,
-            particles=self.particles,
-            ai_side="p2",
-            ai_choice=decision.choice,
-            actual_public_view=view,
-            previews=self.previews,
+
+        def run_conditioning(worker: ShowdownSearchWorker):
+            return condition_particles(
+                worker,
+                particles=self.particles,
+                ai_side="p2",
+                ai_choice=decision.choice,
+                actual_public_view=view,
+                previews=self.previews,
+            )
+
+        update, timed_out = self._run_with_deadline(
+            run_conditioning,
+            timeout_seconds=self.conditioning_budget_seconds,
         )
         conditioning_seconds = perf_counter() - conditioning_started
-        over_budget = conditioning_seconds > self.conditioning_budget_seconds
 
-        if update.particles:
-            limit = self.max_particles
-            if over_budget and limit > 1:
-                limit = max(1, limit // 2)
+        if timed_out or update is None:
+            self.particles = ()
+            self.degraded = True
+            generated = 0
+            matched = 0
+        elif update.particles:
             self.particles = resample_particles(
                 update.particles,
-                limit=limit,
+                limit=self.max_particles,
                 seed=int(view.get("turn", 0)) + 53,
             )
             self.degraded = False
+            generated = update.generated
+            matched = update.matched
         else:
             self.particles = ()
             self.degraded = True
+            generated = update.generated
+            matched = update.matched
 
         return BeliefTurnUpdate(
             decision=decision,
             public_view=view,
             particles_before=particles_before,
             particles_after=len(self.particles),
-            generated_branches=update.generated,
-            matched_branches=update.matched,
+            generated_branches=generated,
+            matched_branches=matched,
             conditioning_seconds=conditioning_seconds,
-            conditioning_over_budget=over_budget,
+            conditioning_over_budget=timed_out,
             degraded=self.degraded,
         )
 
