@@ -102,6 +102,10 @@ jobs:
         shell: pwsh
         run: .\belief-controller-smoke.ps1
 
+      - name: Production-like damaging-turn conditioning smoke test
+        shell: pwsh
+        run: .\damage-conditioning-smoke.ps1
+
       - name: Belief-aware exact search smoke test
         shell: pwsh
         run: .\belief-search-smoke.ps1
