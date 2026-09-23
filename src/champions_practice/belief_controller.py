@@ -91,6 +91,33 @@ def choose_public_fallback(choices: list[str]) -> str:
     return max(choices, key=_fallback_score)
 
 
+def _public_diff_paths(left: object, right: object, path: str = "$") -> tuple[str, ...]:
+    """Return a compact set of public-view paths whose values differ."""
+    if type(left) is not type(right):
+        return (path,)
+    if isinstance(left, dict):
+        paths: list[str] = []
+        for key in sorted(set(left) | set(right)):
+            child = f"{path}.{key}"
+            if key not in left or key not in right:
+                paths.append(child)
+            else:
+                paths.extend(_public_diff_paths(left[key], right[key], child))
+            if len(paths) >= 12:
+                break
+        return tuple(paths[:12])
+    if isinstance(left, list):
+        if len(left) != len(right):
+            return (f"{path}.length",)
+        paths: list[str] = []
+        for index, (left_item, right_item) in enumerate(zip(left, right, strict=True)):
+            paths.extend(_public_diff_paths(left_item, right_item, f"{path}[{index}]"))
+            if len(paths) >= 12:
+                break
+        return tuple(paths[:12])
+    return () if left == right else (path,)
+
+
 class BeliefBattleController:
     """Drive one p1-human/p2-AI session from persistent public belief particles.
 
@@ -145,6 +172,7 @@ class BeliefBattleController:
         self.previews: dict[str, list[str]] | None = None
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
+        self.preview_mismatch_paths: tuple[str, ...] = ()
         self.degraded = False
 
     def start(
@@ -217,6 +245,11 @@ class BeliefBattleController:
                     previews=self.previews,
                 )
                 if public_observation_signature(particle_view) != wanted:
+                    if not self.preview_mismatch_paths:
+                        self.preview_mismatch_paths = _public_diff_paths(
+                            view,
+                            particle_view,
+                        )
                     continue
                 particles.append(
                     BeliefParticle(
