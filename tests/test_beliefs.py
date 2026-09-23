@@ -117,3 +117,48 @@ def test_unrelated_player_private_data_cannot_change_opponent_hypotheses() -> No
     second = public_response_hypotheses(build_public_opponent_belief(second_view))
 
     assert first == second
+
+
+def test_benched_public_hp_and_status_survive_in_belief() -> None:
+    view = _view()
+    view["opponent"]["revealed"].append(
+        {
+            "species": "Armarouge",
+            "moves": ["armorcanon"],
+            "items": ["lifeorb"],
+            "abilities": ["flashfire"],
+            "hp_percent": 69.0,
+            "status": "brn",
+            "fainted": False,
+            "seen": True,
+        }
+    )
+
+    belief = build_public_opponent_belief(view)
+    armarouge = next(
+        pokemon for pokemon in belief.pokemon if pokemon.species == "Armarouge"
+    )
+
+    assert armarouge.active_slot is None
+    assert armarouge.hp_percent == 69.0
+    assert armarouge.status == "brn"
+    assert armarouge.revealed_moves == ("armorcanon",)
+    assert armarouge.revealed_items == ("lifeorb",)
+    assert armarouge.revealed_abilities == ("flashfire",)
+
+
+def test_active_state_overrides_stale_ledger_hp_and_status() -> None:
+    view = _view()
+    gardevoir = next(
+        observation
+        for observation in view["opponent"]["revealed"]
+        if observation["species"] == "Gardevoir"
+    )
+    gardevoir["hp_percent"] = 31.0
+    gardevoir["status"] = "brn"
+
+    belief = build_public_opponent_belief(view)
+    active_gardevoir = belief.active[0]
+
+    assert active_gardevoir.hp_percent == 100.0
+    assert active_gardevoir.status is None
