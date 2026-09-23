@@ -83,22 +83,27 @@ remains the tactical verifier rather than the sole source of strategy.
 Completed so far:
 - read-only `StrategicAssessment` from the AI-visible battle view and belief posterior;
 - contextual resource roles including speed control, redirection, field control, and Protect;
-- explicit `DesiredBoard` and `WinCondition` structures;
-- sacrifice/trade evaluation by resulting win-condition coverage rather than raw material;
+- explicit `DesiredBoard`, `WinCondition`, and inspectable `StrategicPlan` structures;
+- sacrifice/trade and plan evaluation by posterior win-condition coverage;
 - production public-information whitelist reused before strategic reasoning;
-- inspectable `StrategicPlan` generation and posterior-aware plan evaluation/ranking.
+- soft plan-to-tactics guidance that can reserve candidate coverage without displacing the
+  tactically strongest screened action.
 
 Current work:
-- translate plan priorities into soft tactical candidate guidance;
-- reserve bounded shortlist coverage for plan-compatible actions without displacing the
-  tactically strongest screened action;
-- expose any strategic reservation in pruning diagnostics;
-- keep exact belief search responsible for final action ranking.
+- probe plan viability with separate exact Showdown branches across bounded candidates,
+  adversarial replies, belief worlds, and RNG futures;
+- judge those resulting boards against plan requirements rather than the generic board
+  evaluator;
+- report unsupported desired/failure conditions instead of silently pretending they were
+  evaluated;
+- keep the evidence probe disconnected from the live controller until its behavior is
+  inspectable and tested.
 
 Next:
-- produce trustworthy live plan-outcome evidence from hypothetical belief branches so the
-  controller can select a plan without arbitrary heuristics;
-- only then wire live plan selection into the controller's candidate-generation path.
+- use exact plan evidence to select a live strategic plan, then pass that plan's soft
+  guidance into the existing candidate-pruning hook;
+- benchmark whether strategic guidance improves sacrifice, Protect, switch, speed-control,
+  and endgame decisions before increasing strategic authority.
 
 ## Phase 10 — Benchmark and playing-strength development
 
