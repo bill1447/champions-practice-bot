@@ -469,3 +469,411 @@ def format_strategic_assessment(assessment: StrategicAssessment) -> str:
             *assessment.notes,
         )
     )
+
+
+
+@dataclass(frozen=True)
+class StrategicPlan:
+    """One inspectable multi-turn objective, separate from concrete move selection."""
+
+    name: str
+    objective: str
+    desired_board: DesiredBoard
+    required_resources: tuple[str, ...] = ()
+    preserve: tuple[str, ...] = ()
+    acceptable_losses: tuple[str, ...] = ()
+    failure_conditions: tuple[str, ...] = ()
+    rationale: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class PlanWorldOutcome:
+    """One hypothetical belief-world result used to judge a strategic plan."""
+
+    label: str
+    weight: float
+    conditions: tuple[str, ...]
+    living_resources: tuple[str, ...]
+    effective_turns: int
+    lost_resources: tuple[str, ...] = ()
+    triggered_failures: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class StrategicPlanEvaluation:
+    plan: StrategicPlan
+    viable_belief_mass: float
+    robust: bool
+    failed_worlds: int
+    preserve_failure_mass: float
+    required_resource_failure_mass: float
+    condition_failure_mass: float
+    timing_failure_mass: float
+    declared_failure_mass: float
+    unacceptable_loss_mass: float
+    reasons: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class StrategicPlanRanking:
+    ranking: tuple[StrategicPlanEvaluation, ...]
+
+    @property
+    def chosen(self) -> StrategicPlanEvaluation:
+        if not self.ranking:
+            raise ValueError("strategic plan ranking is empty")
+        return self.ranking[0]
+
+
+def strategic_plan_from_win_condition(
+    win_condition: WinCondition,
+    *,
+    rationale: Iterable[str] = (),
+) -> StrategicPlan:
+    """Promote an explicit win condition into an inspectable plan candidate."""
+    return StrategicPlan(
+        name=win_condition.name,
+        objective=win_condition.objective,
+        desired_board=win_condition.desired_board,
+        required_resources=win_condition.desired_board.required_resources,
+        preserve=win_condition.preserve,
+        acceptable_losses=win_condition.acceptable_losses,
+        failure_conditions=win_condition.failure_conditions,
+        rationale=tuple(rationale),
+    )
+
+
+def _living_resources(assessment: StrategicAssessment) -> tuple[ResourceAssessment, ...]:
+    return tuple(resource for resource in assessment.resources if not resource.fainted)
+
+
+def generate_strategic_plans(
+    assessment: StrategicAssessment,
+    *,
+    limit: int = 8,
+) -> tuple[StrategicPlan, ...]:
+    """Generate position-derived objectives without selecting a Showdown command.
+
+    These are deliberately broad plans. Later exact search will decide whether and how a
+    plan can be executed tactically. Generation uses only the read-only strategic
+    assessment, so opponent hidden sets remain represented only by the posterior.
+    """
+    if limit <= 0:
+        raise ValueError("plan limit must be positive")
+
+    plans: list[StrategicPlan] = []
+    key_resources = tuple(assessment.key_resources)
+    living = _living_resources(assessment)
+
+    if assessment.speed_control.trick_room_active:
+        plans.append(
+            StrategicPlan(
+                name="exploit-trick-room",
+                objective="Convert active Trick Room into progress before the speed window expires.",
+                desired_board=DesiredBoard(
+                    required_conditions=("trickroom-progress",),
+                    minimum_effective_turns=1,
+                ),
+                preserve=key_resources,
+                failure_conditions=(
+                    "trickroom-reversed",
+                    "trickroom-expired-before-progress",
+                ),
+                rationale=(
+                    "Trick Room is currently active.",
+                    "Finite speed-control turns should be treated as a strategic resource.",
+                ),
+            )
+        )
+    elif assessment.speed_control.our_tailwind:
+        plans.append(
+            StrategicPlan(
+                name="exploit-tailwind",
+                objective="Convert active Tailwind into progress before the speed window expires.",
+                desired_board=DesiredBoard(
+                    required_conditions=("tailwind-progress",),
+                    minimum_effective_turns=1,
+                ),
+                preserve=key_resources,
+                failure_conditions=("tailwind-expired-before-progress",),
+                rationale=("Our Tailwind is currently active.",),
+            )
+        )
+
+    if assessment.speed_control.opponent_tailwind:
+        protectors = tuple(
+            resource.species
+            for resource in living
+            if "protect" in resource.strategic_roles
+        )
+        plans.append(
+            StrategicPlan(
+                name="stall-opponent-tailwind",
+                objective="Deny efficient conversion of the opponent's Tailwind turns.",
+                desired_board=DesiredBoard(
+                    required_conditions=("opponent-tailwind-expired",),
+                ),
+                preserve=key_resources,
+                failure_conditions=("critical-resource-lost-during-tailwind",),
+                rationale=(
+                    "Opponent Tailwind is currently active.",
+                    (
+                        "Protect-capable resources are available: " + ", ".join(protectors)
+                        if protectors
+                        else "No Protect-capable resource was identified."
+                    ),
+                ),
+            )
+        )
+
+    if (
+        not assessment.speed_control.trick_room_active
+        and not assessment.speed_control.our_tailwind
+    ):
+        for species in assessment.speed_control.available_our_tools:
+            plans.append(
+                StrategicPlan(
+                    name=f"establish-speed-control-{_id(species)}",
+                    objective=f"Use {species} to establish a favorable speed-control state.",
+                    desired_board=DesiredBoard(
+                        required_conditions=("our-speed-control",),
+                        required_resources=(species,),
+                    ),
+                    required_resources=(species,),
+                    preserve=tuple(
+                        resource
+                        for resource in key_resources
+                        if resource != species
+                    ),
+                    failure_conditions=("speed-control-denied",),
+                    rationale=(f"{species} is a living speed-control provider.",),
+                )
+            )
+
+    for threat in assessment.threats:
+        if threat.urgency != "immediate":
+            continue
+        if not any(reason.startswith("positive boosts:") for reason in threat.reasons):
+            continue
+        threat_id = _id(threat.species)
+        plans.append(
+            StrategicPlan(
+                name=f"neutralize-boosted-{threat_id}",
+                objective=f"Remove or neutralize the boosted {threat.species} before it snowballs.",
+                desired_board=DesiredBoard(
+                    required_conditions=(f"threat-neutralized:{threat_id}",),
+                ),
+                preserve=key_resources,
+                failure_conditions=(f"threat-snowballs:{threat_id}",),
+                rationale=tuple(threat.reasons),
+            )
+        )
+
+    for species in key_resources:
+        plans.append(
+            StrategicPlan(
+                name=f"preserve-{_id(species)}",
+                objective=f"Preserve {species} because it uniquely supplies a needed role.",
+                desired_board=DesiredBoard(required_resources=(species,)),
+                required_resources=(species,),
+                preserve=(species,),
+                failure_conditions=(f"critical-resource-lost:{_id(species)}",),
+                rationale=tuple(
+                    reason
+                    for resource in assessment.resources
+                    if resource.species == species
+                    for reason in resource.reasons
+                ),
+            )
+        )
+
+    deduplicated: dict[str, StrategicPlan] = {}
+    for plan in plans:
+        deduplicated.setdefault(plan.name, plan)
+    return tuple(deduplicated.values())[:limit]
+
+
+def evaluate_strategic_plan(
+    plan: StrategicPlan,
+    *,
+    outcomes: Iterable[PlanWorldOutcome],
+    robust_threshold: float = 0.8,
+) -> StrategicPlanEvaluation:
+    """Evaluate one plan across hypothetical public-belief worlds."""
+    if not 0.0 <= robust_threshold <= 1.0:
+        raise ValueError("robust_threshold must be between 0 and 1")
+
+    outcomes = tuple(outcomes)
+    if not outcomes:
+        raise ValueError("at least one plan outcome is required")
+    if any(outcome.weight <= 0 for outcome in outcomes):
+        raise ValueError("plan outcome weights must be positive")
+
+    total_weight = sum(outcome.weight for outcome in outcomes)
+    desired_conditions = set(plan.desired_board.required_conditions)
+    required_resources = set(plan.required_resources).union(
+        plan.desired_board.required_resources
+    )
+    preserve = set(plan.preserve)
+    acceptable_losses = set(plan.acceptable_losses)
+    declared_failures = set(plan.failure_conditions)
+
+    viable_weight = 0.0
+    preserve_failure = 0.0
+    resource_failure = 0.0
+    condition_failure = 0.0
+    timing_failure = 0.0
+    declared_failure = 0.0
+    unacceptable_loss = 0.0
+    failed_worlds = 0
+
+    for outcome in outcomes:
+        living = set(outcome.living_resources)
+        lost = set(outcome.lost_resources)
+        preserve_ok = preserve.issubset(living) and not preserve.intersection(lost)
+        resources_ok = required_resources.issubset(living)
+        conditions_ok = desired_conditions.issubset(outcome.conditions)
+        timing_ok = outcome.effective_turns >= plan.desired_board.minimum_effective_turns
+        failures_ok = not declared_failures.intersection(outcome.triggered_failures)
+        extra_losses = lost.difference(acceptable_losses).difference(preserve)
+        losses_ok = not extra_losses
+
+        if not preserve_ok:
+            preserve_failure += outcome.weight
+        if not resources_ok:
+            resource_failure += outcome.weight
+        if not conditions_ok:
+            condition_failure += outcome.weight
+        if not timing_ok:
+            timing_failure += outcome.weight
+        if not failures_ok:
+            declared_failure += outcome.weight
+        if not losses_ok:
+            unacceptable_loss += outcome.weight
+
+        if (
+            preserve_ok
+            and resources_ok
+            and conditions_ok
+            and timing_ok
+            and failures_ok
+            and losses_ok
+        ):
+            viable_weight += outcome.weight
+        else:
+            failed_worlds += 1
+
+    def mass(value: float) -> float:
+        return value / total_weight
+
+    coverage = mass(viable_weight)
+    robust = coverage >= robust_threshold
+    reasons = [
+        f"viable across {coverage:.1%} posterior mass",
+        f"{failed_worlds} of {len(outcomes)} belief world(s) fail at least one requirement",
+    ]
+    if mass(preserve_failure):
+        reasons.append(f"preserve failures cover {mass(preserve_failure):.1%} posterior mass")
+    if mass(resource_failure):
+        reasons.append(
+            f"required-resource failures cover {mass(resource_failure):.1%} posterior mass"
+        )
+    if mass(condition_failure):
+        reasons.append(
+            f"desired-board failures cover {mass(condition_failure):.1%} posterior mass"
+        )
+    if mass(timing_failure):
+        reasons.append(f"timing failures cover {mass(timing_failure):.1%} posterior mass")
+    if mass(declared_failure):
+        reasons.append(
+            f"declared failure conditions occur in {mass(declared_failure):.1%} posterior mass"
+        )
+    if mass(unacceptable_loss):
+        reasons.append(
+            f"unacceptable losses occur in {mass(unacceptable_loss):.1%} posterior mass"
+        )
+
+    return StrategicPlanEvaluation(
+        plan=plan,
+        viable_belief_mass=coverage,
+        robust=robust,
+        failed_worlds=failed_worlds,
+        preserve_failure_mass=mass(preserve_failure),
+        required_resource_failure_mass=mass(resource_failure),
+        condition_failure_mass=mass(condition_failure),
+        timing_failure_mass=mass(timing_failure),
+        declared_failure_mass=mass(declared_failure),
+        unacceptable_loss_mass=mass(unacceptable_loss),
+        reasons=tuple(reasons),
+    )
+
+
+def rank_strategic_plans(
+    plans: Iterable[StrategicPlan],
+    *,
+    outcomes_by_plan: dict[str, Iterable[PlanWorldOutcome]],
+    robust_threshold: float = 0.8,
+) -> StrategicPlanRanking:
+    """Rank inspectable plans by robustness, then belief coverage.
+
+    This ranking is intentionally disconnected from live move choice. It says which
+    strategic objective is best supported by supplied hypothetical outcomes; exact search
+    still owns the concrete tactical decision.
+    """
+    plans = tuple(plans)
+    if not plans:
+        raise ValueError("at least one strategic plan is required")
+
+    evaluations = []
+    for plan in plans:
+        outcomes = outcomes_by_plan.get(plan.name)
+        if outcomes is None:
+            raise ValueError(f"missing outcomes for strategic plan {plan.name}")
+        evaluations.append(
+            evaluate_strategic_plan(
+                plan,
+                outcomes=outcomes,
+                robust_threshold=robust_threshold,
+            )
+        )
+
+    ranking = tuple(
+        sorted(
+            evaluations,
+            key=lambda evaluation: (
+                -int(evaluation.robust),
+                -evaluation.viable_belief_mass,
+                evaluation.preserve_failure_mass,
+                evaluation.required_resource_failure_mass,
+                evaluation.declared_failure_mass,
+                evaluation.unacceptable_loss_mass,
+                evaluation.plan.name,
+            ),
+        )
+    )
+    return StrategicPlanRanking(ranking=ranking)
+
+
+def format_strategic_plan_ranking(ranking: StrategicPlanRanking) -> str:
+    """Render strategic plan evidence without implying a concrete move recommendation."""
+    lines = [
+        "Strategic plan ranking:",
+        "  Scope: read-only objectives ranked across hypothetical public-belief outcomes; "
+        "live move selection is unchanged.",
+    ]
+    for index, evaluation in enumerate(ranking.ranking, start=1):
+        marker = " [TOP PLAN]" if index == 1 else ""
+        lines.append(
+            f"  {index}.{marker} {evaluation.plan.name} | "
+            f"coverage {evaluation.viable_belief_mass:.1%} | "
+            f"{'robust' if evaluation.robust else 'fragile'}"
+        )
+        lines.append(f"     objective: {evaluation.plan.objective}")
+        if evaluation.plan.preserve:
+            lines.append("     preserve: " + ", ".join(evaluation.plan.preserve))
+        if evaluation.plan.acceptable_losses:
+            lines.append(
+                "     acceptable losses: " + ", ".join(evaluation.plan.acceptable_losses)
+            )
+        lines.append("     " + "; ".join(evaluation.reasons))
+    return "\n".join(lines)
