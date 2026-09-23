@@ -7,7 +7,6 @@ from time import perf_counter
 from typing import Any
 
 from champions_practice.belief_search import (
-    BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     BeliefPruningResult,
     BeliefSearchWorker,
     ExactBeliefWorldState,
