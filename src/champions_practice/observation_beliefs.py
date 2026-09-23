@@ -137,11 +137,11 @@ def resample_particles_by_world(
     seed: int = 0,
 ) -> tuple[BeliefParticle, ...]:
     """Bound particles while preserving surviving hidden-world diversity."""
+    if limit <= 0:
+        raise ValueError("limit must be positive")
     normalized = _normalize(particles)
     if len(normalized) <= limit:
         return normalized
-    if limit <= 0:
-        raise ValueError("limit must be positive")
 
     groups: dict[str, list[BeliefParticle]] = {}
     for particle in normalized:
