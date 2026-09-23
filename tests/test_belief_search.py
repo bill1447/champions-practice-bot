@@ -4,8 +4,10 @@ from champions_practice.belief_search import (
     ExactBeliefWorldState,
     search_exact_belief_turn,
     search_selective_continuation,
+    shortlist_belief_candidates,
     shortlist_belief_responses,
 )
+from champions_practice.strategy_tactics import StrategicCandidateGuidance
 
 
 def _pokemon(hp: int) -> dict[str, Any]:
@@ -327,3 +329,59 @@ def test_selective_continuation_can_reject_a_myopic_one_ply_winner() -> None:
     assert continuation.ranking[0].next_search is not None
     assert continuation.ranking[0].next_search.chosen.choice == "move payoff"
     assert continuation.branch_count > 2
+
+
+
+def test_candidate_pruning_can_reserve_plan_compatible_family_without_replacing_top() -> None:
+    class GuidanceWorker:
+        choices = [
+            "move attacka +1, move attackb +1",
+            "move attackc +1, move attackd +1",
+            "move attacke +1, move attackf +1",
+            "move attackg +1, move attackh +1",
+            "move attacki +1, move attackj +1",
+            "move protect, move protect",
+        ]
+
+        def legal_choices(self, *, state, side):
+            if side == "p1":
+                return self.choices
+            return ["move counter +1, move counter +1"]
+
+        def branch_many(self, *, state, branches):
+            results = []
+            scores = {
+                self.choices[0]: 100,
+                self.choices[1]: 90,
+                self.choices[2]: 80,
+                self.choices[3]: 70,
+                self.choices[4]: 60,
+                self.choices[5]: 10,
+            }
+            for index, branch in enumerate(branches):
+                choice = branch["p1_choice"]
+                results.append(
+                    {
+                        "index": index,
+                        "summary": _summary(scores[choice], 100),
+                    }
+                )
+            return results
+
+    guidance = StrategicCandidateGuidance(
+        plan_name="stall",
+        preferred_move_ids=("protect",),
+    )
+    pruning = shortlist_belief_candidates(
+        GuidanceWorker(),
+        worlds=(ExactBeliefWorldState(state={"id": "guided"}, weight=1.0),),
+        side="p1",
+        candidate_limit=4,
+        reference_limit=1,
+        guidance=guidance,
+    )
+
+    assert pruning.candidate_shortlist[0] == "move attacka +1, move attackb +1"
+    assert "move protect, move protect" in pruning.candidate_shortlist
+    assert pruning.guidance_plan == "stall"
+    assert pruning.strategic_reserved_choices

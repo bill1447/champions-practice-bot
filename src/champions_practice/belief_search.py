@@ -21,6 +21,11 @@ from champions_practice.recommendations import (
     _reference_choices,
     _strategy_families,
 )
+from champions_practice.strategy_tactics import (
+    StrategicCandidateGuidance,
+    choice_matches_guidance,
+    reserve_strategic_candidate,
+)
 
 BELIEF_RESPONSE_SCREENING_RNG_SEEDS = (SCREENING_RNG_SEEDS[0],)
 
@@ -104,6 +109,8 @@ class BeliefPruningResult:
     selected_family_representatives: tuple[str, ...] = ()
     family_ranking: tuple[BeliefPruningScore, ...] = ()
     expanded_ranking: tuple[BeliefPruningScore, ...] = ()
+    guidance_plan: str | None = None
+    strategic_reserved_choices: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -306,6 +313,7 @@ def shortlist_belief_candidates(
     side: SideId,
     candidate_limit: int = 8,
     reference_limit: int = 2,
+    guidance: StrategicCandidateGuidance | None = None,
 ) -> BeliefPruningResult:
     """Autonomously shortlist public-belief-safe AI actions.
 
@@ -352,6 +360,33 @@ def shortlist_belief_candidates(
     )
     by_representative = {family.representative: family for family in families}
 
+    # Soft strategy guidance may reserve one family for deeper screening, but can never
+    # displace the tactically strongest screened family. Match against every member of a
+    # family so a target-specific plan is not lost just because the family's generic
+    # representative happened to point at the other slot.
+    family_reserved: tuple[str, ...] = ()
+    if guidance is not None and guidance.active and family_limit >= 2:
+        guided_representatives = {
+            family.representative
+            for family in families
+            if any(choice_matches_guidance(choice, guidance) for choice in family.choices)
+        }
+        if guided_representatives and not any(
+            representative in guided_representatives
+            for representative in representative_shortlist
+        ):
+            reserve = next(
+                (
+                    candidate.choice
+                    for candidate in family_screening.ranking
+                    if candidate.choice in guided_representatives
+                ),
+                None,
+            )
+            if reserve is not None:
+                representative_shortlist[-1] = reserve
+                family_reserved = (reserve,)
+
     # Family representatives decide which broad plans deserve more work. Every target
     # variant in those families is then scored before the final bound is applied.
     expanded = [
@@ -368,11 +403,18 @@ def shortlist_belief_candidates(
         rng_seeds=SCREENING_RNG_SEEDS,
     )
     shortlist = _diversified_top(target_screening.ranking, candidate_limit)
+    shortlist_tuple, target_reserved = reserve_strategic_candidate(
+        target_screening.ranking,
+        shortlist,
+        limit=candidate_limit,
+        guidance=guidance,
+    )
+    reserved = tuple(dict.fromkeys((*family_reserved, *target_reserved)))
 
     return BeliefPruningResult(
         legal_choice_count=len(common),
         strategic_choice_count=len(families),
-        candidate_shortlist=tuple(shortlist),
+        candidate_shortlist=shortlist_tuple,
         screening_branch_count=(family_screening.branch_count + target_screening.branch_count),
         screening_seconds=perf_counter() - screening_started,
         selected_family_representatives=tuple(representative_shortlist),
@@ -382,6 +424,8 @@ def shortlist_belief_candidates(
         expanded_ranking=tuple(
             _pruning_score(candidate, side) for candidate in target_screening.ranking
         ),
+        guidance_plan=guidance.plan_name if guidance is not None and guidance.active else None,
+        strategic_reserved_choices=reserved,
     )
 
 
