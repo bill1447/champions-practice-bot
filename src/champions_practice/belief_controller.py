@@ -97,6 +97,8 @@ def _id(value: str) -> str:
 
 def _species_from_team_header(header: str) -> str:
     name = header.split(" @ ", 1)[0].strip()
+    if name.endswith(" (M)") or name.endswith(" (F)"):
+        name = name[:-4]
     if name.endswith(")") and " (" in name:
         return name.rsplit(" (", 1)[1][:-1]
     return name
@@ -137,14 +139,17 @@ def _pin_known_team_genders(team_text: str, request: dict) -> str:
             continue
         species_id = _id(_species_from_team_header(lines[0]))
         gender = genders.get(species_id)
-        if gender is not None and not any(line.startswith("Gender:") for line in lines):
-            insert_at = 1
-            while insert_at < len(lines) and (
-                lines[insert_at].startswith("Ability:")
-                or lines[insert_at].startswith("Level:")
-            ):
-                insert_at += 1
-            lines.insert(insert_at, f"Gender: {gender}")
+        if gender is not None:
+            header = lines[0]
+            if " @ " in header:
+                identity, item = header.split(" @ ", 1)
+                item_suffix = f" @ {item}"
+            else:
+                identity = header
+                item_suffix = ""
+            if identity.endswith(" (M)") or identity.endswith(" (F)"):
+                identity = identity[:-4]
+            lines[0] = f"{identity} ({gender}){item_suffix}"
         pinned.append("\n".join(lines))
     return "\n\n".join(pinned) + "\n"
 
