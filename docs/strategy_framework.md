@@ -56,8 +56,8 @@ to a threat, the only speed-control setter, a required redirector, or the intend
 piece. Conversely, a healthy Pokemon may be expendable once its strategic job is complete.
 
 Implementation consequence: `ResourceAssessment` identifies roles and unique living role
-providers. Later plan generation should decide which resources are required, preserved, or
-acceptable to lose for the current win condition.
+providers. Plan generation then decides which resources are required, preserved, or
+acceptable to lose for the current objective.
 
 ### Robust plans beat unnecessary hard reads
 
@@ -67,8 +67,8 @@ A strong line should account for the opponent's plausible options rather than de
 a single guessed move whenever a safer line exists. More committed predictions become more
 reasonable when no robust line covers the position.
 
-Implementation consequence: plans should be evaluated across posterior belief mass and
-adversarial tactical replies. The strategy layer should reason about coverage and failure
+Implementation consequence: plans are evaluated across posterior belief mass and later
+adversarial tactical replies. The strategy layer reasons about coverage and failure
 conditions instead of treating the most likely hidden world as truth.
 
 ### Team modes matter
@@ -92,5 +92,9 @@ The responsibility split is:
 2. Tactics: which bounded candidate actions can advance that plan against plausible replies?
 3. Showdown: what mechanically happens in each exact branch?
 
-PR #56 intentionally implements only the first read-only strategic state and trade-assessment
-primitives. It does not change live action selection.
+PR #56 introduced the read-only strategic state and trade-assessment primitives.
+
+PR #57 adds explicit `StrategicPlan` generation and posterior-aware plan ranking. Plans can
+express objectives such as exploiting Trick Room, stalling opposing Tailwind, preserving a
+unique resource, or neutralizing a boosted threat. The ranking remains read-only and does
+not choose a Showdown command.
