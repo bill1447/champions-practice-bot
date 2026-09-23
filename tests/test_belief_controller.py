@@ -43,5 +43,6 @@ Level: 50
 
     pinned = _pin_known_team_genders(team, request)
 
-    assert "Gender: F" in pinned
-    assert "Gender: M" in pinned
+    assert "Armarouge (F) @ Life Orb" in pinned
+    assert "Sneasler (M) @ Psychic Seed" in pinned
+    assert "Gender:" not in pinned
