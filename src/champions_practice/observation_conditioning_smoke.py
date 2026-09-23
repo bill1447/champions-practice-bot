@@ -1,4 +1,4 @@
-"""Integration smoke for sequential observation-conditioned belief particles."""
+"""Deterministic structural smoke for sequential observation-conditioned particles."""
 
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_smoke import _public_priors
@@ -127,7 +127,7 @@ def main():
             "ERROR: surviving particle did not advance to observed turn"
         )
 
-    print("Sequential observation-conditioned belief integration")
+    print("Deterministic sequential observation-conditioning structure")
     print(f"Preview particles: {len(particles)}")
     print(f"Turn-one matches: {first_update.matched}")
     print(f"Turn-one posterior: {len(first_update.particles)}")
@@ -136,7 +136,7 @@ def main():
     print(f"Posterior mass: {posterior_mass:.6f}")
     print("Opponent responses: simulator-enumerated; no hidden commands supplied")
     print("Boundary: survival uses only sanitized public observations")
-    print("RESULT: belief particles condition sequentially across turns")
+    print("Scope: deterministic shared-seed structural coverage")\n    print("RESULT: sequential observation-conditioning structure remains valid")
 
 
 if __name__ == "__main__":
