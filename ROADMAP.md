@@ -80,15 +80,24 @@ win conditions, desired future boards, speed-control objectives, sacrifice/trade
 cleanup pieces, mode selection, and multi-turn plan candidates. Exact Showdown search
 remains the tactical verifier rather than the sole source of strategy.
 
+Completed so far:
+- read-only `StrategicAssessment` from the AI-visible battle view and belief posterior;
+- contextual resource roles including speed control, redirection, field control, and Protect;
+- explicit `DesiredBoard` and `WinCondition` structures;
+- sacrifice/trade evaluation by resulting win-condition coverage rather than raw material;
+- production public-information whitelist reused before strategic reasoning.
+
 Current work:
-- build a read-only `StrategicAssessment` from the AI-visible battle view and belief posterior;
-- identify contextual resource roles such as speed control, redirection, field control, and
-  Protect access;
-- represent desired future boards and declared win conditions;
-- judge sacrifices and trades by resulting win-condition coverage instead of raw material;
-- preserve the existing public-information whitelist before strategic reasoning;
-- keep strategy disconnected from live move selection until its assessments are inspectable
-  and regression-tested.
+- generate inspectable `StrategicPlan` candidates from the assessment;
+- represent objectives, required resources, preservation requirements, acceptable losses,
+  desired future boards, and failure conditions;
+- evaluate and rank plans across hypothetical posterior outcomes by robustness and belief
+  coverage;
+- keep plan ranking disconnected from live move selection until plan quality is trustworthy.
+
+Next:
+- connect robust plan priorities to candidate generation/search constraints without allowing
+  strategy to bypass exact Showdown verification.
 
 ## Phase 10 — Benchmark and playing-strength development
 
