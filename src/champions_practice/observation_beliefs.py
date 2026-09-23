@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import random
 from dataclasses import dataclass
 from typing import Any, Iterable
 
@@ -77,6 +78,55 @@ def _normalize(particles: Iterable[BeliefParticle]) -> tuple[BeliefParticle, ...
             history_id=particle.history_id,
         )
         for particle in particles
+    )
+
+
+def resample_particles(
+    particles: tuple[BeliefParticle, ...],
+    *,
+    limit: int,
+    seed: int = 0,
+) -> tuple[BeliefParticle, ...]:
+    """Bound a posterior with deterministic systematic resampling.
+
+    Resampling operates only on already-conditioned particles. It never consults
+    the live battle state or hidden opponent information.
+    """
+    if limit <= 0:
+        raise ValueError("limit must be positive")
+
+    normalized = _normalize(particles)
+    if len(normalized) <= limit:
+        return normalized
+
+    rng = random.Random(seed)
+    step = 1.0 / limit
+    target = rng.random() * step
+    index = 0
+    cumulative = normalized[0].weight
+    counts: dict[str, tuple[BeliefParticle, int]] = {}
+
+    for sample_index in range(limit):
+        position = target + sample_index * step
+        while position > cumulative and index < len(normalized) - 1:
+            index += 1
+            cumulative += normalized[index].weight
+        particle = normalized[index]
+        key = _state_key(particle.state)
+        previous = counts.get(key)
+        if previous is None:
+            counts[key] = (particle, 1)
+        else:
+            counts[key] = (previous[0], previous[1] + 1)
+
+    return tuple(
+        BeliefParticle(
+            state=particle.state,
+            weight=count / limit,
+            world_id=particle.world_id,
+            history_id=particle.history_id,
+        )
+        for particle, count in counts.values()
     )
 
 
