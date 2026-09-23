@@ -484,6 +484,7 @@ class StrategicPlan:
     acceptable_losses: tuple[str, ...] = ()
     failure_conditions: tuple[str, ...] = ()
     rationale: tuple[str, ...] = ()
+    tactical_priorities: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -623,6 +624,7 @@ def generate_strategic_plans(
                         else "No Protect-capable resource was identified."
                     ),
                 ),
+                tactical_priorities=("prefer-protect", "prefer-switch"),
             )
         )
 
@@ -647,6 +649,7 @@ def generate_strategic_plans(
                     ),
                     failure_conditions=("speed-control-denied",),
                     rationale=(f"{species} is a living speed-control provider.",),
+                    tactical_priorities=("prefer-speed-control",),
                 )
             )
 
@@ -666,6 +669,7 @@ def generate_strategic_plans(
                 preserve=key_resources,
                 failure_conditions=(f"threat-snowballs:{threat_id}",),
                 rationale=tuple(threat.reasons),
+                tactical_priorities=(f"target:{threat.species}",),
             )
         )
 
@@ -684,6 +688,7 @@ def generate_strategic_plans(
                     if resource.species == species
                     for reason in resource.reasons
                 ),
+                tactical_priorities=(f"preserve:{species}",),
             )
         )
 
