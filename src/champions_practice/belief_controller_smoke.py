@@ -14,6 +14,10 @@ HUMAN_TURN_ONE = "move protect, move protect"
 
 def main() -> None:
     with ShowdownSearchWorker() as worker:
+        def forbidden_snapshot(*args, **kwargs):
+            raise AssertionError("controller attempted to read live hidden snapshot")
+
+        worker.session_snapshot = forbidden_snapshot
         controller = BeliefBattleController(
             worker,
             battle_format=CHAMPIONS_FORMAT,
