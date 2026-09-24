@@ -94,22 +94,27 @@ Completed so far:
   and RNG futures;
 - explicit unsupported/unresolved evidence reporting before a plan can be called robust.
 
+Completed so far:
+- strategic desirability is separated from mere feasibility for supported plans;
+- speed-control plans require a favorable exact speed relationship;
+- equally robust plans compare exact resulting-board utility before deterministic ties;
+- unsupported one-turn plans are filtered before the live plan budget;
+- DesiredBoard can now require an active pairing, a newly safe-entered resource, and
+  purpose-specific endgame resources such as a cleanup piece held in back;
+- exact plan evidence records active and newly active resources and evaluates those richer
+  positioning requirements.
+
 Current work:
-- distinguish strategic desirability from mere plan feasibility;
-- require speed-control plans to produce a favorable exact speed relationship, not merely
-  an active Trick Room or Tailwind state;
-- rank equally robust plans by exact resulting-board utility before deterministic name
-  tie-breaks;
-- filter unsupported one-turn plans before applying the live strategic-plan budget;
-- preserve exact belief search as the final command selector.
+- preserve exact belief search as the final command selector while richer strategic state
+  becomes inspectable and regression-tested;
+- use labeled positions to decide which richer board objectives should be generated
+  automatically instead of adding species-specific rules.
 
 Next:
-- add richer desired-board concepts for active pairings, safe entry, cleanup pieces, and
-  specific endgame resources;
 - expand strategic RNG coverage and calibrate evidence terminology;
 - benchmark live strategic guidance on labeled sacrifice, Protect, switch, speed-control,
-  targeting, and endgame positions;
-- fix ordinary multi-damage-turn conditioning before increasing strategic authority.
+  targeting, positioning, and endgame positions;
+- only then increase strategic authority or add deeper plan continuation.
 
 ## Phase 10 — Benchmark and playing-strength development
 
