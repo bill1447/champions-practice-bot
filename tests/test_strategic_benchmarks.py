@@ -25,9 +25,7 @@ def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
     assert len(STRATEGIC_BENCHMARKS) >= 11
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
-    assert [case.case_id for case in known_gaps] == [
-        "auto-generate-cleanup-purpose",
-    ]
+    assert known_gaps == []
 
 
 def test_observation_from_probe_preserves_plan_choice_and_robustness() -> None:
@@ -84,7 +82,7 @@ def test_richer_positioning_expectation_detects_wrong_board() -> None:
     assert any("missing resource purposes" in failure for failure in result.failures)
 
 
-def test_known_generation_gap_is_not_reported_as_regression() -> None:
+def test_resolved_cleanup_case_missing_observation_is_a_regression() -> None:
     case = _case("auto-generate-cleanup-purpose")
 
     result = evaluate_strategic_benchmark(
@@ -98,8 +96,9 @@ def test_known_generation_gap_is_not_reported_as_regression() -> None:
     )
 
     assert result.passed is False
-    assert result.status == "known-gap"
-    assert result.failures == ("selected result has no DesiredBoard",)
+    assert result.status == "fail"
+    assert any("accepted set" in failure for failure in result.failures)
+    assert any("DesiredBoard" in failure for failure in result.failures)
 
 
 def test_baseline_suite_separates_known_gap_from_regressions() -> None:
@@ -233,6 +232,27 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             choice="move attack +1, move attack +2",
             robust=True,
         ),
+        "auto-generate-cleanup-purpose": observation_from_plan(
+            StrategicPlan(
+                name="reserve-sneasler-cleanup",
+                objective="reserve Sneasler for cleanup",
+                desired_board=DesiredBoard(
+                    required_resources=("Sneasler",),
+                    resource_purposes=(
+                        ResourcePurpose(
+                            species="Sneasler",
+                            purpose="cleanup",
+                            position="bench",
+                        ),
+                    ),
+                ),
+                required_resources=("Sneasler",),
+                preserve=("Sneasler",),
+                failure_conditions=("critical-resource-lost:sneasler",),
+            ),
+            choice="move attack +1, move attack +2",
+            robust=True,
+        ),
     }
 
     suite = evaluate_strategic_benchmark_suite(
@@ -242,13 +262,11 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
 
     assert suite.passed is True
     assert suite.regressions == ()
-    assert [result.case.case_id for result in suite.known_gaps] == [
-        "auto-generate-cleanup-purpose",
-    ]
+    assert suite.known_gaps == ()
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 10 | known-gap 1 | fail 0" in report
-    assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
+    assert "pass 11 | known-gap 0 | fail 0" in report
+    assert "[KNOWN-GAP]" not in report
 
 
 def test_resolved_case_failure_is_a_regression() -> None:
