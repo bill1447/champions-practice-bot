@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from champions_practice.belief_controller import (
@@ -7,6 +9,8 @@ from champions_practice.belief_controller import (
     choose_public_fallback,
 )
 from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
+from champions_practice.strategy import DesiredBoard, StrategicPlan
+from champions_practice.strategy_tactics import StrategicCandidateGuidance
 
 
 def test_public_fallback_returns_legal_choice_without_friendly_fire() -> None:
@@ -100,3 +104,134 @@ def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> Non
     assert len(controller.pending_observations) == 1
     assert update.particles_after == 1
     assert update.matched_branches == 0
+
+
+
+class _DecisionWorker:
+    project_root = "."
+
+    def session_legal_choices(self, session_id, *, side):
+        return ["move safe"]
+
+
+def _decision_controller() -> BeliefBattleController:
+    controller = BeliefBattleController(
+        _DecisionWorker(),
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        candidate_limit=4,
+        response_limit=4,
+    )
+    controller.session_id = "session-1"
+    controller.last_public_view = {"turn": 2}
+    controller.particles = (
+        BeliefParticle(
+            {"id": "world"},
+            1.0,
+            world_id="world-1",
+            history_id="rng-1",
+        ),
+    )
+    controller._run_with_deadline = lambda operation, timeout_seconds: (
+        operation(SimpleNamespace()),
+        False,
+    )
+    return controller
+
+
+def _patch_live_strategy_pipeline(monkeypatch, *, selected):
+    plan = StrategicPlan(
+        name="preserve-key",
+        objective="preserve the key resource",
+        desired_board=DesiredBoard(),
+        tactical_priorities=("prefer-protect",),
+    )
+    probe = SimpleNamespace(
+        plan=plan,
+        proven_robust=True,
+        pruning=SimpleNamespace(screening_branch_count=5),
+        response_screening_branch_count=7,
+        branch_count=11,
+    )
+    guidance = StrategicCandidateGuidance(
+        plan_name=plan.name,
+        preferred_move_ids=("protect",),
+    )
+    seen = {}
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.assess_strategic_position",
+        lambda view, particles: SimpleNamespace(),
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.generate_strategic_plans",
+        lambda assessment, limit: (plan,),
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.probe_strategic_plan",
+        lambda *args, **kwargs: probe,
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.select_supported_plan",
+        lambda probes: probe if selected else None,
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.guidance_from_plan",
+        lambda selected_plan, view: guidance,
+    )
+
+    def fake_pruning(*args, **kwargs):
+        seen["guidance"] = kwargs.get("guidance")
+        return SimpleNamespace(
+            candidate_shortlist=("move safe",),
+            screening_branch_count=2,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.shortlist_belief_candidates",
+        fake_pruning,
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.search_exact_belief_turn",
+        lambda *args, **kwargs: SimpleNamespace(
+            chosen=SimpleNamespace(choice="move safe"),
+            evaluated_choices=("move safe",),
+            response_screening_branch_count=3,
+            branch_count=4,
+        ),
+    )
+    return plan, probe, guidance, seen
+
+
+def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkeypatch) -> None:
+    controller = _decision_controller()
+    _, probe, _, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=False,
+    )
+
+    decision = controller.choose_ai_action()
+
+    assert decision.choice == "move safe"
+    assert decision.mode == "belief-search"
+    assert decision.strategic_plan is None
+    assert decision.strategic_probe_count == 1
+    assert decision.strategic_branch_count == 23
+    assert seen["guidance"] is None
+    assert decision.branch_count == 32
+
+
+def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypatch) -> None:
+    controller = _decision_controller()
+    plan, _, guidance, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+    )
+
+    decision = controller.choose_ai_action()
+
+    assert decision.choice == "move safe"
+    assert decision.strategic_plan == plan.name
+    assert decision.strategic_probe_count == 1
+    assert seen["guidance"] == guidance
