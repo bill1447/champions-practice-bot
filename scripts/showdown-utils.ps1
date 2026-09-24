@@ -37,9 +37,9 @@ function Sync-ChampionsShowdownCheckout {
             throw "Pokemon Showdown checkout is missing. Run .\setup.ps1 first."
         }
 
-        New-Item -ItemType Directory -Force -Path (
-            Split-Path -Parent $ChampionShowdownRoot
-        ) | Out-Null
+        $ShowdownParent = Split-Path -Parent $ChampionShowdownRoot
+        New-Item -ItemType Directory -Force -Path $ShowdownParent | Out-Null
+
         Write-Host "Cloning Pokemon Showdown dependency..."
         & git clone --filter=blob:none --no-checkout "https://github.com/smogon/pokemon-showdown.git" $ChampionShowdownRoot
         if ($LASTEXITCODE -ne 0) {
@@ -51,19 +51,15 @@ function Sync-ChampionsShowdownCheckout {
     if (-not $FreshClone) {
         $Changes = @(& git -C $ChampionShowdownRoot status --porcelain)
         if ($Changes.Count -gt 0) {
-            throw (
-                "Pokemon Showdown checkout has local changes. "
-                + "Clean or stash them before synchronizing the pinned revision."
-            )
+            throw "Pokemon Showdown checkout has local changes. Clean or stash them before synchronizing the pinned revision."
         }
     }
 
     & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Fetching Pokemon Showdown history for pinned revision..."
-        $IsShallow = "$(
-            & git -C $ChampionShowdownRoot rev-parse --is-shallow-repository
-        )".Trim()
+        $IsShallowOutput = & git -C $ChampionShowdownRoot rev-parse --is-shallow-repository
+        $IsShallow = "$IsShallowOutput".Trim()
         if ($IsShallow -eq "true") {
             & git -C $ChampionShowdownRoot fetch --unshallow --filter=blob:none origin
         }
@@ -86,7 +82,8 @@ function Sync-ChampionsShowdownCheckout {
         throw "Pokemon Showdown checkout of pinned revision failed."
     }
 
-    $Actual = "$(& git -C $ChampionShowdownRoot rev-parse HEAD)".Trim().ToLowerInvariant()
+    $ActualOutput = & git -C $ChampionShowdownRoot rev-parse HEAD
+    $Actual = "$ActualOutput".Trim().ToLowerInvariant()
     if ($Actual -ne $Commit) {
         throw "Pokemon Showdown revision mismatch: expected $Commit, found $Actual."
     }
