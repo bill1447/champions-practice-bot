@@ -40,7 +40,7 @@ def test_observation_from_probe_preserves_plan_choice_and_robustness() -> None:
     probe = SimpleNamespace(
         plan=plan,
         chosen=SimpleNamespace(choice="move protect, move protect"),
-        proven_robust=True,
+        sampled_robust=True,
     )
 
     observation = observation_from_probe(probe)
