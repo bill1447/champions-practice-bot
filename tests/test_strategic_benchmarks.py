@@ -1,5 +1,6 @@
 from types import SimpleNamespace
 
+from champions_practice.belief_search import ExactBeliefWorldState
 from champions_practice.strategic_benchmarks import (
     STRATEGIC_BENCHMARKS,
     StrategicBenchmarkObservation,
@@ -8,6 +9,7 @@ from champions_practice.strategic_benchmarks import (
     format_strategic_benchmark_report,
     observation_from_plan,
     observation_from_probe,
+    run_generated_strategy_benchmark,
 )
 from champions_practice.strategy import DesiredBoard, ResourcePurpose, StrategicPlan
 
@@ -20,7 +22,7 @@ def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
     ids = [case.case_id for case in STRATEGIC_BENCHMARKS]
 
     assert len(ids) == len(set(ids))
-    assert len(STRATEGIC_BENCHMARKS) >= 5
+    assert len(STRATEGIC_BENCHMARKS) >= 6
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
     assert [case.case_id for case in known_gaps] == [
@@ -112,6 +114,15 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             choice="move psychic +1, move protect",
             robust=True,
         ),
+        "sneasler-neutral-trick-room-showdown": observation_from_plan(
+            StrategicPlan(
+                name="preserve-indeedeef",
+                objective="preserve Indeedee",
+                desired_board=DesiredBoard(required_resources=("Indeedee-F",)),
+                preserve=("Indeedee-F",),
+            ),
+            robust=True,
+        ),
         "critical-resource-over-material": observation_from_plan(
             StrategicPlan(
                 name="preserve-keeper",
@@ -165,7 +176,7 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
     ]
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 4 | known-gap 1 | fail 0" in report
+    assert "pass 5 | known-gap 1 | fail 0" in report
     assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
 
 
@@ -195,3 +206,380 @@ def test_resolved_case_failure_is_a_regression() -> None:
     result = suite.regressions[0]
     assert result.status == "fail"
     assert any("forbidden plan" in failure for failure in result.failures)
+
+
+
+def _benchmark_mon(species: str, hp: int, speed: int) -> dict:
+    return {
+        "species": species,
+        "hp": hp,
+        "maxhp": 100,
+        "fainted": hp == 0,
+        "status": None,
+        "boosts": {},
+        "speed": speed,
+        "grounded": True,
+        "moveTypes": ["normal"],
+    }
+
+
+def _sneasler_public_view() -> dict:
+    return {
+        "turn": 2,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": "psychicterrain",
+            "pseudo_weather": [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": [
+                {
+                    "species": "Indeedee-F",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "Psychic Surge",
+                    "moves": ["Psychic", "Trick Room", "Follow Me", "Protect"],
+                },
+                {
+                    "species": "Sneasler",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "Unburden",
+                    "moves": ["Close Combat", "Dire Claw", "Rock Slide", "Protect"],
+                },
+                {
+                    "species": "Gardevoir",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "Trace",
+                    "moves": ["Psychic", "Protect"],
+                },
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "Grassy Surge",
+                    "moves": ["Wood Hammer", "Protect"],
+                },
+            ],
+            "active_details": [
+                {
+                    "species": "Indeedee-F",
+                    "moves": ["Psychic", "Trick Room", "Follow Me", "Protect"],
+                },
+                {
+                    "species": "Sneasler",
+                    "moves": ["Close Combat", "Dire Claw", "Rock Slide", "Protect"],
+                },
+            ],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["FoeA", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "FoeA",
+                    "base_species": "FoeA",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+def _sneasler_summary(*, trick_room: bool, foe_a_hp: int) -> dict:
+    indeedee = _benchmark_mon("Indeedee-F", 100, 80)
+    sneasler = _benchmark_mon("Sneasler", 100, 190)
+    gardevoir = _benchmark_mon("Gardevoir", 100, 150)
+    rillaboom = _benchmark_mon("Rillaboom", 100, 140)
+    foe_a = _benchmark_mon("FoeA", foe_a_hp, 120)
+    foe_b = _benchmark_mon("FoeB", 100, 110)
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": "psychicterrain",
+            "pseudoWeather": ["trickroom"] if trick_room else [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [indeedee, sneasler, gardevoir, rillaboom],
+            "active": [indeedee, sneasler],
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class GeneratedSneaslerWorker:
+    psychic = "move psychic +1, move protect"
+    trick_room = "move trickroom, move protect"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.psychic, self.trick_room] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for index, branch in enumerate(branches):
+            choice = branch["p1_choice"]
+            resolved.append(
+                {
+                    "index": index,
+                    "summary": (
+                        _sneasler_summary(trick_room=False, foe_a_hp=60)
+                        if choice == self.psychic
+                        else _sneasler_summary(trick_room=True, foe_a_hp=100)
+                    ),
+                }
+            )
+        return resolved
+
+
+def test_executable_benchmark_runs_real_strategy_generation_probe_and_selection() -> None:
+    case = _case("sneasler-neutral-trick-room")
+
+    execution = run_generated_strategy_benchmark(
+        GeneratedSneaslerWorker(),
+        case=case,
+        view=_sneasler_public_view(),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "sneasler"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        plan_limit=4,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.plan.name == "preserve-indeedeef"
+    assert execution.selected_probe.chosen.choice == "move psychic +1, move protect"
+    assert "establish-speed-control-indeedeef" in execution.generated_plan_names
+    assert "preserve-indeedeef" in execution.generated_plan_names
+    assert set(execution.probed_plan_names) == {
+        "establish-speed-control-indeedeef",
+        "preserve-indeedeef",
+    }
+    assert execution.exact_branch_count > 0
+
+
+
+def _keeper_public_view() -> dict:
+    return {
+        "turn": 4,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudo_weather": [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": [
+                {
+                    "species": "Keeper",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Attack", "Psychic Terrain", "Protect"],
+                },
+                {
+                    "species": "Partner",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+                {
+                    "species": "BenchA",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+                {
+                    "species": "BenchB",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+            ],
+            "active_details": [
+                {
+                    "species": "Keeper",
+                    "moves": ["Attack", "Psychic Terrain", "Protect"],
+                },
+                {
+                    "species": "Partner",
+                    "moves": ["Attack", "Protect"],
+                },
+            ],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["FoeA", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "FoeA",
+                    "base_species": "FoeA",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+def _keeper_summary(
+    *,
+    keeper_hp: int,
+    partner_hp: int,
+    foe_a_hp: int,
+    foe_b_hp: int,
+) -> dict:
+    keeper = _benchmark_mon("Keeper", keeper_hp, 100)
+    partner = _benchmark_mon("Partner", partner_hp, 100)
+    bench_a = _benchmark_mon("BenchA", 100, 100)
+    bench_b = _benchmark_mon("BenchB", 100, 100)
+    foe_a = _benchmark_mon("FoeA", foe_a_hp, 100)
+    foe_b = _benchmark_mon("FoeB", foe_b_hp, 100)
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [keeper, partner, bench_a, bench_b],
+            "active": [keeper, partner],
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class GeneratedKeeperWorker:
+    material = "move attack +1, move attack +2"
+    preserve = "move protect, move protect"
+    response = "move counter +1, move counter +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.material, self.preserve] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for index, branch in enumerate(branches):
+            choice = branch["p1_choice"]
+            resolved.append(
+                {
+                    "index": index,
+                    "summary": (
+                        _keeper_summary(
+                            keeper_hp=0,
+                            partner_hp=100,
+                            foe_a_hp=0,
+                            foe_b_hp=0,
+                        )
+                        if choice == self.material
+                        else _keeper_summary(
+                            keeper_hp=100,
+                            partner_hp=100,
+                            foe_a_hp=100,
+                            foe_b_hp=100,
+                        )
+                    ),
+                }
+            )
+        return resolved
+
+
+def test_executable_benchmark_generates_resource_preservation_from_position() -> None:
+    case = _case("critical-resource-over-material")
+
+    execution = run_generated_strategy_benchmark(
+        GeneratedKeeperWorker(),
+        case=case,
+        view=_keeper_public_view(),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "keeper"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        plan_limit=4,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names == ("preserve-keeper",)
+    assert execution.probed_plan_names == ("preserve-keeper",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.plan.name == "preserve-keeper"
+    assert execution.selected_probe.chosen.choice == "move protect, move protect"

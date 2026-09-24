@@ -103,7 +103,11 @@ Completed so far:
   positioning requirements;
 - an initial labeled strategic benchmark corpus now separates resolved regressions from
   explicit known gaps across speed control, sacrifice, resource preservation, positioning,
-  and cleanup-role generation.
+  and cleanup-role generation;
+- executable benchmarks can now run the production-shaped strategy path from public
+  assessment through generation, exact plan probing, supported-plan selection, and scoring;
+- CI includes a real-Showdown strategic smoke so at least one labeled strategy case crosses
+  the Python/Showdown boundary rather than relying only on synthetic branch summaries.
 
 Current work:
 - preserve exact belief search as the final command selector while richer strategic state
@@ -124,6 +128,11 @@ The first labeled strategic benchmark corpus is in place. It records expected pl
 actions, desired boards, preserved resources, and known gaps independently from the live
 controller. Known gaps are reported separately from regressions so unfinished capabilities
 do not hide new breakage.
+
+The benchmark harness now supports production-shaped execution:
+public view -> StrategicAssessment -> generated plans -> one-turn support filtering ->
+exact plan probes -> supported-plan selection -> labeled scoring. CI also runs a dedicated
+real-Showdown benchmark smoke for neutral Trick Room versus resource preservation.
 
 Continue adding labeled positions and complete games. Compare bounded belief search with
 exhaustive search where tractable and with perfect-information search only as a diagnostic
