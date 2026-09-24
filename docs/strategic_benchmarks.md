@@ -66,9 +66,11 @@ the resulting win condition rather than raw Pokemon count.
 
 Category: plan generation.
 
-This is intentionally a known gap. The representation can express Sneasler as a cleanup
-piece held in back, and exact evidence can evaluate such a plan, but current automatic plan
-generation does not infer that offensive role from matchup state.
+Cleanup is now inferred from position rather than species identity. When the visible opposing
+active board is already chipped, the generator considers healthy benched resources with at
+least two damaging moves. Outside Trick Room it prefers the fastest qualifying reserve;
+under Trick Room it prefers the slowest. Exact evidence then verifies that the selected
+cleanup resource can remain preserved in back for the current turn.
 
 ## Executable benchmarks
 
@@ -172,3 +174,24 @@ while it remains in reserve. Exact evidence then decides whether a sacrificial l
 improves the resulting board enough to justify those losses.
 
 Healthy support resources do not trigger this plan.
+
+
+### Offensive cleanup role — resolved
+
+The AI-visible own-team view now includes exact own speed and damaging-move count derived
+directly from Showdown. These are legal private facts about the AI's own team, not opponent
+hidden information.
+
+Cleanup generation requires:
+
+- every visible opposing active Pokemon to be at 55% HP or lower;
+- a benched resource at 70% HP or higher;
+- at least two damaging moves on that reserve;
+- a known own speed.
+
+The preferred reserve follows the current speed mode: fastest outside Trick Room, slowest
+inside Trick Room. The resulting DesiredBoard assigns a `cleanup` purpose with
+`position="bench"`, so exact evidence rejects lines that spend the resource too early.
+
+With this case resolved, the initial 11-case strategic benchmark corpus has no known gaps.
+Future KNOWN-GAP cases may still be added when gameplay exposes new missing capabilities.
