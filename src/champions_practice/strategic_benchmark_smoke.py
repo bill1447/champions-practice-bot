@@ -162,11 +162,11 @@ def main() -> None:
             )
         if speed_probe.sampled_robust:
             raise SystemExit(
-                "ERROR: neutral Trick Room received robust strategic authority"
+                "ERROR: neutral Trick Room received sampled-robust strategic authority"
             )
         if not preserve_probe.sampled_robust:
             raise SystemExit(
-                "ERROR: preserve-Indeedee plan was not robust in harmless benchmark state"
+                "ERROR: preserve-Indeedee plan was not sampled robust in harmless benchmark state"
             )
         if execution.selected_probe is None:
             raise SystemExit("ERROR: executable benchmark selected no supported plan")
