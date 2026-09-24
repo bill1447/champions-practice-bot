@@ -70,6 +70,30 @@ This is intentionally a known gap. The representation can express Sneasler as a 
 piece held in back, and exact evidence can evaluate such a plan, but current automatic plan
 generation does not infer that offensive role from matchup state.
 
+## Executable benchmarks
+
+The corpus is no longer only a schema/scorer test.
+
+`run_generated_strategy_benchmark()` executes the same strategic sequence used by the live
+controller:
+
+1. build `StrategicAssessment` from the public view and posterior;
+2. generate the full strategic plan set;
+3. filter plans unsupported by the one-turn evidence model;
+4. probe each retained plan with exact branch resolution;
+5. select the strongest fully supported robust plan;
+6. score that observed result against the labeled benchmark.
+
+Pytest includes deterministic production-shaped cases for the neutral-Trick-Room regression
+and critical-resource preservation. CI additionally runs a dedicated real-Showdown smoke
+that creates an actual Champions battle state and sends the generated plans through the
+Showdown-backed exact probe path.
+
+The real-Showdown label intentionally protects the strategic conclusion rather than one
+exact tactical command. The deterministic benchmark still protects the original
+`Psychic + Protect` action. This keeps simulator integration coverage from becoming brittle
+when several tactically equivalent legal lines exist.
+
 ## How to use the corpus
 
 When a strategy change is proposed, score its observations against the labeled cases before
