@@ -507,7 +507,10 @@ def shortlist_belief_responses(
         opponent_responses=references,
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
-    family_limit = min(len(families), response_limit)
+    family_limit = min(
+        len(families),
+        1 if response_limit == 1 else max(2, response_limit // 2),
+    )
     representative_shortlist = _diversified_top(
         family_screening.ranking,
         family_limit,
