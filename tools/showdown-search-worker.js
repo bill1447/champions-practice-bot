@@ -318,7 +318,7 @@ function playerView(battle, sideId = "p1", previews = null) {
       active: own.active.map((mon) => (mon ? mon.species.name : null)),
       active_details: own.active.map((mon) => (mon ? ownPokemon(mon, battle) : null)),
       side_conditions: publicSideConditions(own),
-      team: own.pokemon.map(ownPokemon),
+      team: own.pokemon.map((mon) => ownPokemon(mon, battle)),
     },
     opponent: {
       name: opponent.name,
