@@ -118,3 +118,41 @@ branch and has no unsupported desired conditions or unresolved failure condition
 The older `proven_robust` attribute remains temporarily as a read-only compatibility
 alias, but diagnostics and new code use `sampled_robust`. Increasing the RNG sample count
 later is a search-budget decision, not a change in what the term means.
+
+
+## Expanded behavior coverage
+
+The corpus now distinguishes strategic behaviors that the current production-shaped stack
+can already execute from capabilities that are only represented or partially implemented.
+
+### Protect a unique resource — resolved
+
+The assessment identifies Anchor as the only living redirection provider. The generator
+creates `preserve-anchor`, and exact plan evidence must prefer a Protect line when an
+aggressive line loses that resource.
+
+### Switch a unique resource — resolved
+
+The same preservation objective is tested in a position where Protect still loses Anchor
+under the sampled reply. Exact plan evidence must therefore prefer switching Anchor to the
+bench. This verifies that preservation guidance is not synonymous with always clicking
+Protect.
+
+### Boosted-threat targeting — known evidence gap
+
+The assessment and generator already identify a boosted immediate threat and create a
+`neutralize-boosted-*` plan with target guidance. The live one-turn evidence filter still
+rejects that plan because `threat-snowballs:*` is not modeled as a supported failure
+condition. The benchmark records that boundary explicitly.
+
+### Active pairing and safe entry — known generation gap
+
+`DesiredBoard` can represent an active pair and a newly safe-entered Pokemon, and exact
+evidence can evaluate those requirements. Automatic plan generation still does not infer
+that board objective from the position.
+
+### Sacrifice into a specific endgame — known generation gap
+
+Trade evaluation can score acceptable losses against a declared win condition, but
+automatic generation still does not infer when support Pokemon should be intentionally
+spent to secure a specific endgame.
