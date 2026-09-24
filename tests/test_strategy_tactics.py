@@ -211,6 +211,7 @@ def test_safe_entry_guidance_targets_the_intended_bench_resource() -> None:
 
     guidance = guidance_from_plan(plan, view=_view())
 
+    assert guidance.stay_active_slots == (2,)
     assert guidance.switch_in_slots == (3,)
     assert guidance.active is True
     assert choice_matches_guidance(
@@ -219,6 +220,10 @@ def test_safe_entry_guidance_targets_the_intended_bench_resource() -> None:
     )
     assert not choice_matches_guidance(
         "switch 4, move closecombat +1",
+        guidance,
+    )
+    assert not choice_matches_guidance(
+        "move followme, switch 3",
         guidance,
     )
     assert not choice_matches_guidance(
