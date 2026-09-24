@@ -728,6 +728,26 @@ def generate_strategic_plans(
                 )
             )
 
+    for threat in assessment.threats:
+        if threat.urgency != "immediate":
+            continue
+        if not any(reason.startswith("positive boosts:") for reason in threat.reasons):
+            continue
+        threat_id = _id(threat.species)
+        plans.append(
+            StrategicPlan(
+                name=f"neutralize-boosted-{threat_id}",
+                objective=f"Remove or neutralize the boosted {threat.species} before it snowballs.",
+                desired_board=DesiredBoard(
+                    required_conditions=(f"threat-neutralized:{threat_id}",),
+                ),
+                preserve=key_resources,
+                failure_conditions=(f"threat-snowballs:{threat_id}",),
+                rationale=tuple(threat.reasons),
+                tactical_priorities=(f"target:{threat.species}",),
+            )
+        )
+
     active_key_resources = tuple(
         resource
         for resource in living
@@ -777,26 +797,6 @@ def generate_strategic_plans(
                     ),
                 )
             )
-
-    for threat in assessment.threats:
-        if threat.urgency != "immediate":
-            continue
-        if not any(reason.startswith("positive boosts:") for reason in threat.reasons):
-            continue
-        threat_id = _id(threat.species)
-        plans.append(
-            StrategicPlan(
-                name=f"neutralize-boosted-{threat_id}",
-                objective=f"Remove or neutralize the boosted {threat.species} before it snowballs.",
-                desired_board=DesiredBoard(
-                    required_conditions=(f"threat-neutralized:{threat_id}",),
-                ),
-                preserve=key_resources,
-                failure_conditions=(f"threat-snowballs:{threat_id}",),
-                rationale=tuple(threat.reasons),
-                tactical_priorities=(f"target:{threat.species}",),
-            )
-        )
 
     for species in key_resources:
         plans.append(
