@@ -546,24 +546,23 @@ STRATEGIC_BENCHMARKS = (
         case_id="auto-generate-active-pair",
         label="Infer a desired active pairing and safe entry",
         category="positioning",
-        stage="plan-generation",
+        stage="generated-exact-plan",
         scenario=(
-            "The position calls for bringing Gardevoir in beside Rillaboom while "
-            "preserving the remaining offensive resource in back."
+            "Rillaboom is the only living field-control provider and is already active. "
+            "Gardevoir is the only living speed-control provider and begins on the bench."
         ),
         principle=(
-            "The richer DesiredBoard representation should eventually be populated from "
-            "position and matchup evidence rather than only from hand-authored plans."
+            "When an active strategic anchor and a benched strategic resource provide "
+            "distinct unique roles, generation can propose combining them while exact "
+            "evidence decides whether the entry is actually safe."
         ),
         expectation=StrategicBenchmarkExpectation(
             accepted_plan_names=("create-gardevoir-rillaboom-board",),
-            require_robust=None,
+            accepted_choices=("switch 3, move attack +1",),
+            require_robust=True,
             required_active_pair=("Gardevoir", "Rillaboom"),
             safe_entry_resources=("Gardevoir",),
-        ),
-        known_gap=(
-            "Current automatic plan generation does not infer desired active pairings "
-            "or safe-entry objectives from the public position."
+            required_preserve=("Rillaboom", "Gardevoir"),
         ),
     ),
     StrategicBenchmarkCase(
