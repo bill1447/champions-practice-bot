@@ -551,7 +551,7 @@ def _living_resources(assessment: StrategicAssessment) -> tuple[ResourceAssessme
 def generate_strategic_plans(
     assessment: StrategicAssessment,
     *,
-    limit: int = 8,
+    limit: int | None = 8,
 ) -> tuple[StrategicPlan, ...]:
     """Generate position-derived objectives without selecting a Showdown command.
 
@@ -559,7 +559,7 @@ def generate_strategic_plans(
     plan can be executed tactically. Generation uses only the read-only strategic
     assessment, so opponent hidden sets remain represented only by the posterior.
     """
-    if limit <= 0:
+    if limit is not None and limit <= 0:
         raise ValueError("plan limit must be positive")
 
     plans: list[StrategicPlan] = []
@@ -572,7 +572,10 @@ def generate_strategic_plans(
                 name="exploit-trick-room",
                 objective="Convert active Trick Room into progress before the speed window expires.",
                 desired_board=DesiredBoard(
-                    required_conditions=("trickroom-progress",),
+                    required_conditions=(
+                        "favorable-speed-control",
+                        "trickroom-progress",
+                    ),
                     minimum_effective_turns=1,
                 ),
                 preserve=key_resources,
@@ -592,7 +595,10 @@ def generate_strategic_plans(
                 name="exploit-tailwind",
                 objective="Convert active Tailwind into progress before the speed window expires.",
                 desired_board=DesiredBoard(
-                    required_conditions=("tailwind-progress",),
+                    required_conditions=(
+                        "favorable-speed-control",
+                        "tailwind-progress",
+                    ),
                     minimum_effective_turns=1,
                 ),
                 preserve=key_resources,
@@ -638,7 +644,7 @@ def generate_strategic_plans(
                     name=f"establish-speed-control-{_id(species)}",
                     objective=f"Use {species} to establish a favorable speed-control state.",
                     desired_board=DesiredBoard(
-                        required_conditions=("our-speed-control",),
+                        required_conditions=("favorable-speed-control",),
                         required_resources=(species,),
                     ),
                     required_resources=(species,),
@@ -695,7 +701,8 @@ def generate_strategic_plans(
     deduplicated: dict[str, StrategicPlan] = {}
     for plan in plans:
         deduplicated.setdefault(plan.name, plan)
-    return tuple(deduplicated.values())[:limit]
+    values = tuple(deduplicated.values())
+    return values if limit is None else values[:limit]
 
 
 def evaluate_strategic_plan(

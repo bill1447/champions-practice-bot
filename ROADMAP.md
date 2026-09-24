@@ -90,17 +90,21 @@ Completed so far:
 - explicit unsupported/unresolved evidence reporting before a plan can be called robust.
 
 Current work:
-- select only fully supported robust plans for live use;
-- pass the selected plan's soft guidance into ordinary belief candidate pruning;
-- keep exact belief search responsible for the final command;
-- keep strategic probing inside the existing live decision deadline and expose its branch
-  cost in `BeliefDecision`.
+- distinguish strategic desirability from mere plan feasibility;
+- require speed-control plans to produce a favorable exact speed relationship, not merely
+  an active Trick Room or Tailwind state;
+- rank equally robust plans by exact resulting-board utility before deterministic name
+  tie-breaks;
+- filter unsupported one-turn plans before applying the live strategic-plan budget;
+- preserve exact belief search as the final command selector.
 
 Next:
+- add richer desired-board concepts for active pairings, safe entry, cleanup pieces, and
+  specific endgame resources;
+- expand strategic RNG coverage and calibrate evidence terminology;
 - benchmark live strategic guidance on labeled sacrifice, Protect, switch, speed-control,
   targeting, and endgame positions;
-- tune plan generation/evidence only where benchmark failures justify it before granting
-  strategy any stronger authority.
+- fix ordinary multi-damage-turn conditioning before increasing strategic authority.
 
 ## Phase 10 — Benchmark and playing-strength development
 
