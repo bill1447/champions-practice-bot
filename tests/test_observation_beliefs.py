@@ -857,7 +857,13 @@ def test_partial_public_action_only_constrains_observed_slot() -> None:
     )
 
     assert update.generated == 2
-    assert update.matched == 0
+    assert update.matched == 2
+    assert {
+        particle.state["response"] for particle in update.particles
+    } == {
+        "move psychic +1, move protect",
+        "move psychic +1, move closecombat +1",
+    }
 
 
 def test_public_action_filter_fails_open_when_parser_cannot_match_legal_set() -> None:
@@ -879,7 +885,10 @@ def test_public_action_filter_fails_open_when_parser_cannot_match_legal_set() ->
     )
 
     assert update.generated == len(worker.choices)
-    assert update.matched == 0
+    assert update.matched == len(worker.choices)
+    assert {
+        particle.state["response"] for particle in update.particles
+    } == set(worker.choices)
 
 
 
