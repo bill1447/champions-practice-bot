@@ -586,6 +586,7 @@ class BeliefBattleController:
             worker: ShowdownSearchWorker,
             *,
             guidance=None,
+            rng_seeds: tuple[str, ...] | None = None,
         ):
             pruning = shortlist_belief_candidates(
                 worker,
@@ -602,6 +603,7 @@ class BeliefBattleController:
                 choices=list(pruning.candidate_shortlist),
                 response_limit=self.response_limit,
                 autonomous_responses=True,
+                rng_seeds=rng_seeds,
             )
             return pruning, search
 
@@ -704,6 +706,9 @@ class BeliefBattleController:
                 generate_strategic_plans(assessment, limit=None),
                 limit=self.strategic_plan_limit,
             )
+            if not plans:
+                return (None, None, None, None, 0, 0)
+
             probes = []
             shared_responses = prepare_shared_strategic_responses(
                 worker,
@@ -775,6 +780,7 @@ class BeliefBattleController:
             guided_pruning, guided_search = run_tactical(
                 worker,
                 guidance=guidance,
+                rng_seeds=self.strategic_rng_seeds,
             )
             return (
                 guided_pruning,
