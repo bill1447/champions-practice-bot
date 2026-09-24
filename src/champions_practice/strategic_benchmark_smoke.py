@@ -109,7 +109,7 @@ def main() -> None:
             p2_name="Benchmark Opponent",
             seed=SEED,
         )
-        view = worker.state_view(state=state, side="p1")["view"]
+        view = worker.state_view(state=state, side="p1")
 
         active = [
             pokemon.get("species")
