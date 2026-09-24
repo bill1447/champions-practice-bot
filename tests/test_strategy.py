@@ -519,3 +519,57 @@ def test_desired_active_pair_and_safe_entry_are_independent_requirements() -> No
     assert evaluation.robust is False
     assert evaluation.active_pair_failure_mass == 0.25
     assert evaluation.safe_entry_failure_mass == 0.25
+
+
+
+def test_trade_evaluation_respects_positioning_and_resource_purpose() -> None:
+    win_condition = WinCondition(
+        name="positioned-endgame",
+        objective="enter Gardevoir beside Rillaboom and keep Sneasler in reserve",
+        desired_board=DesiredBoard(
+            required_active_pair=("Gardevoir", "Rillaboom"),
+            safe_entry_resources=("Gardevoir",),
+            resource_purposes=(
+                ResourcePurpose(
+                    species="Sneasler",
+                    purpose="cleanup",
+                    position="bench",
+                ),
+            ),
+        ),
+    )
+
+    good = assess_trade_against_win_condition(
+        win_condition,
+        lost_resources=(),
+        outcomes=(
+            BeliefBoardOutcome(
+                label="good",
+                weight=1.0,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Rillaboom"),
+                newly_active_resources=("Gardevoir",),
+            ),
+        ),
+    )
+    wrong_board = assess_trade_against_win_condition(
+        win_condition,
+        lost_resources=(),
+        outcomes=(
+            BeliefBoardOutcome(
+                label="wrong",
+                weight=1.0,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Sneasler"),
+                newly_active_resources=("Gardevoir",),
+            ),
+        ),
+    )
+
+    assert good.supports_win_condition is True
+    assert wrong_board.supports_win_condition is False
+    assert any("pairing" in reason for reason in wrong_board.reasons)
