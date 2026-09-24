@@ -22,11 +22,14 @@ def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
     ids = [case.case_id for case in STRATEGIC_BENCHMARKS]
 
     assert len(ids) == len(set(ids))
-    assert len(STRATEGIC_BENCHMARKS) >= 6
+    assert len(STRATEGIC_BENCHMARKS) >= 11
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
     assert [case.case_id for case in known_gaps] == [
-        "auto-generate-cleanup-purpose"
+        "boosted-threat-targeting-evidence",
+        "auto-generate-active-pair",
+        "auto-generate-sacrifice-endgame",
+        "auto-generate-cleanup-purpose",
     ]
 
 
@@ -162,6 +165,26 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             ),
             robust=True,
         ),
+        "protect-unique-resource": observation_from_plan(
+            StrategicPlan(
+                name="preserve-anchor",
+                objective="preserve Anchor with Protect",
+                desired_board=DesiredBoard(required_resources=("Anchor",)),
+                preserve=("Anchor",),
+            ),
+            choice="move protect, move attack +1",
+            robust=True,
+        ),
+        "switch-unique-resource": observation_from_plan(
+            StrategicPlan(
+                name="preserve-anchor",
+                objective="preserve Anchor by switching",
+                desired_board=DesiredBoard(required_resources=("Anchor",)),
+                preserve=("Anchor",),
+            ),
+            choice="switch 3, move attack +1",
+            robust=True,
+        ),
     }
 
     suite = evaluate_strategic_benchmark_suite(
@@ -172,11 +195,14 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
     assert suite.passed is True
     assert suite.regressions == ()
     assert [result.case.case_id for result in suite.known_gaps] == [
-        "auto-generate-cleanup-purpose"
+        "boosted-threat-targeting-evidence",
+        "auto-generate-active-pair",
+        "auto-generate-sacrifice-endgame",
+        "auto-generate-cleanup-purpose",
     ]
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 5 | known-gap 1 | fail 0" in report
+    assert "pass 7 | known-gap 4 | fail 0" in report
     assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
 
 
@@ -583,3 +609,365 @@ def test_executable_benchmark_generates_resource_preservation_from_position() ->
     assert execution.selected_probe is not None
     assert execution.selected_probe.plan.name == "preserve-keeper"
     assert execution.selected_probe.chosen.choice == "move protect, move protect"
+
+
+
+def _anchor_public_view() -> dict:
+    return {
+        "turn": 5,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudo_weather": [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": [
+                {
+                    "species": "Anchor",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Follow Me", "Protect", "Attack"],
+                },
+                {
+                    "species": "Partner",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Attack"],
+                },
+                {
+                    "species": "BenchA",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack"],
+                },
+                {
+                    "species": "BenchB",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack"],
+                },
+            ],
+            "active_details": [
+                {
+                    "species": "Anchor",
+                    "moves": ["Follow Me", "Protect", "Attack"],
+                },
+                {
+                    "species": "Partner",
+                    "moves": ["Attack"],
+                },
+            ],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["FoeA", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "FoeA",
+                    "base_species": "FoeA",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+def _anchor_summary(
+    *,
+    anchor_hp: int,
+    foe_a_hp: int = 100,
+    switched: bool = False,
+) -> dict:
+    anchor = _benchmark_mon("Anchor", anchor_hp, 90)
+    partner = _benchmark_mon("Partner", 100, 100)
+    bench_a = _benchmark_mon("BenchA", 100, 110)
+    bench_b = _benchmark_mon("BenchB", 100, 120)
+    foe_a = _benchmark_mon("FoeA", foe_a_hp, 100)
+    foe_b = _benchmark_mon("FoeB", 100, 100)
+    active = [bench_a, partner] if switched else [anchor, partner]
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [anchor, partner, bench_a, bench_b],
+            "active": active,
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class ProtectAnchorWorker:
+    attack = "move attack +1, move attack +1"
+    protect = "move protect, move attack +1"
+    response = "move pressure +1, move pressure +1"
+
+    def legal_choices(self, *, state, side):
+        return [self.attack, self.protect] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        results = []
+        for index, branch in enumerate(branches):
+            choice = branch["p1_choice"]
+            summary = (
+                _anchor_summary(anchor_hp=0, foe_a_hp=0)
+                if choice == self.attack
+                else _anchor_summary(anchor_hp=100)
+            )
+            results.append({"index": index, "summary": summary})
+        return results
+
+
+class SwitchAnchorWorker:
+    protect = "move protect, move attack +1"
+    switch = "switch 3, move attack +1"
+    response = "move feint +1, move pressure +1"
+
+    def legal_choices(self, *, state, side):
+        return [self.protect, self.switch] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        results = []
+        for index, branch in enumerate(branches):
+            choice = branch["p1_choice"]
+            summary = (
+                _anchor_summary(anchor_hp=100, switched=True)
+                if choice == self.switch
+                else _anchor_summary(anchor_hp=0)
+            )
+            results.append({"index": index, "summary": summary})
+        return results
+
+
+def _run_anchor_benchmark(case_id: str, worker) -> object:
+    return run_generated_strategy_benchmark(
+        worker,
+        case=_case(case_id),
+        view=_anchor_public_view(),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": case_id},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        plan_limit=4,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low", "high"),
+    )
+
+
+def test_executable_benchmark_uses_protect_to_preserve_unique_resource() -> None:
+    execution = _run_anchor_benchmark(
+        "protect-unique-resource",
+        ProtectAnchorWorker(),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names == ("preserve-anchor",)
+    assert execution.probed_plan_names == ("preserve-anchor",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.chosen.choice == ProtectAnchorWorker.protect
+    assert execution.selected_probe.sampled_robust is True
+
+
+def test_executable_benchmark_switches_when_protect_does_not_preserve_resource() -> None:
+    execution = _run_anchor_benchmark(
+        "switch-unique-resource",
+        SwitchAnchorWorker(),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names == ("preserve-anchor",)
+    assert execution.probed_plan_names == ("preserve-anchor",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.chosen.choice == SwitchAnchorWorker.switch
+    assert execution.selected_probe.sampled_robust is True
+
+
+def _gap_public_view(
+    *,
+    team_species: tuple[str, str, str, str],
+    active_species: tuple[str, str],
+    boosted_foe: bool = False,
+) -> dict:
+    team = []
+    for species in team_species:
+        team.append(
+            {
+                "species": species,
+                "hp_percent": 100,
+                "fainted": False,
+                "active": species in active_species,
+                "ability": "",
+                "moves": ["Attack"],
+            }
+        )
+    return {
+        "turn": 6,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudo_weather": [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": team,
+            "active_details": [
+                {"species": species, "moves": ["Attack"]}
+                for species in active_species
+            ],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["BoostedFoe", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "BoostedFoe",
+                    "base_species": "BoostedFoe",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {"atk": 1} if boosted_foe else {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+class GapWorker:
+    def legal_choices(self, *, state, side):
+        if side == "p1":
+            return [
+                "move attack +1, move attack +1",
+                "move attack +2, move attack +2",
+            ]
+        return ["move attack +1, move attack +2"]
+
+    def branch_many(self, *, state, branches):
+        raise AssertionError("known-gap plan should not reach exact probing")
+
+
+def test_boosted_threat_targeting_gap_is_at_evidence_filter() -> None:
+    execution = run_generated_strategy_benchmark(
+        GapWorker(),
+        case=_case("boosted-threat-targeting-evidence"),
+        view=_gap_public_view(
+            team_species=("AttackerA", "AttackerB", "BenchA", "BenchB"),
+            active_species=("AttackerA", "AttackerB"),
+            boosted_foe=True,
+        ),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "boosted-target"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        rng_seeds=("low",),
+    )
+
+    assert execution.result.status == "known-gap"
+    assert "neutralize-boosted-boostedfoe" in execution.generated_plan_names
+    assert execution.probed_plan_names == ()
+    assert execution.selected_probe is None
+
+
+def test_pairing_and_sacrifice_generation_gaps_remain_explicit() -> None:
+    pairing = run_generated_strategy_benchmark(
+        GapWorker(),
+        case=_case("auto-generate-active-pair"),
+        view=_gap_public_view(
+            team_species=("Rillaboom", "Partner", "Gardevoir", "Sneasler"),
+            active_species=("Rillaboom", "Partner"),
+        ),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "pairing-gap"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        rng_seeds=("low",),
+    )
+    sacrifice = run_generated_strategy_benchmark(
+        GapWorker(),
+        case=_case("auto-generate-sacrifice-endgame"),
+        view=_gap_public_view(
+            team_species=("Indeedee-F", "Porygon2", "Torkoal", "Partner"),
+            active_species=("Indeedee-F", "Porygon2"),
+        ),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "sacrifice-gap"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        rng_seeds=("low",),
+    )
+
+    assert pairing.result.status == "known-gap"
+    assert pairing.generated_plan_names == ()
+    assert pairing.selected_probe is None
+
+    assert sacrifice.result.status == "known-gap"
+    assert sacrifice.generated_plan_names == ()
+    assert sacrifice.selected_probe is None
