@@ -81,7 +81,8 @@ Write-Host "Installing Python package and development dependencies"
 & $Python -m pip install --upgrade pip
 & $Python -m pip install -e "$Root[dev]"
 
-Invoke-GitCloneOrPull -Url "https://github.com/smogon/pokemon-showdown.git" -Path $Showdown
+. (Join-Path $Root "scripts\showdown-utils.ps1")
+Sync-ChampionsShowdownCheckout -CloneIfMissing
 
 Write-Host "Installing Pokemon Showdown dependencies"
 Push-Location $Showdown
@@ -93,7 +94,6 @@ finally {
     Pop-Location
 }
 
-. (Join-Path $Root "scripts\showdown-utils.ps1")
 Set-ChampionsShowdownLocalConfig
 
 if ($IncludeReferenceRepo) {
