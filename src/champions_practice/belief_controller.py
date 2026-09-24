@@ -28,7 +28,11 @@ from champions_practice.observation_beliefs import (
 )
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.strategy import assess_strategic_position, generate_strategic_plans
-from champions_practice.strategy_evidence import probe_strategic_plan, select_supported_plan
+from champions_practice.strategy_evidence import (
+    filter_supported_plans,
+    probe_strategic_plan,
+    select_supported_plan,
+)
 from champions_practice.strategy_tactics import guidance_from_plan
 
 
@@ -560,8 +564,8 @@ class BeliefBattleController:
                     self.last_public_view,
                     particles=self.particles,
                 )
-                plans = generate_strategic_plans(
-                    assessment,
+                plans = filter_supported_plans(
+                    generate_strategic_plans(assessment, limit=None),
                     limit=self.strategic_plan_limit,
                 )
                 probes = []
