@@ -65,6 +65,84 @@ def _state_key(state: dict[str, Any]) -> str:
     return json.dumps(state, sort_keys=True, separators=(",", ":"))
 
 
+def _id(value: object) -> str:
+    return "".join(
+        character for character in str(value).lower() if character.isalnum()
+    )
+
+
+def _observed_opponent_actions(
+    view: dict[str, Any],
+) -> tuple[tuple[int, str, int | None], ...]:
+    values = view.get("opponent_last_actions")
+    if not isinstance(values, list):
+        return ()
+
+    actions = []
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        slot = value.get("slot")
+        move = value.get("move")
+        target = value.get("target")
+        if not isinstance(slot, int) or slot <= 0 or not isinstance(move, str):
+            continue
+        if target is not None and not isinstance(target, int):
+            continue
+        move_id = _id(move)
+        if move_id:
+            actions.append((slot, move_id, target))
+    return tuple(sorted(actions))
+
+
+def _choice_matches_observed_actions(
+    choice: str,
+    actions: tuple[tuple[int, str, int | None], ...],
+) -> bool:
+    commands = [command.strip().split() for command in choice.split(",")]
+    for slot, move_id, observed_target in actions:
+        if slot > len(commands):
+            return False
+        tokens = commands[slot - 1]
+        if len(tokens) < 2 or tokens[0] != "move":
+            return False
+        if _id(tokens[1]) != move_id:
+            return False
+
+        command_target = next(
+            (
+                int(token)
+                for token in tokens[2:]
+                if token.lstrip("+-").isdigit()
+            ),
+            None,
+        )
+        if (
+            observed_target is not None
+            and command_target is not None
+            and command_target != observed_target
+        ):
+            return False
+    return True
+
+
+def _filter_responses_by_public_actions(
+    responses: tuple[str, ...],
+    actual_public_view: dict[str, Any],
+) -> tuple[str, ...]:
+    actions = _observed_opponent_actions(actual_public_view)
+    if not actions:
+        return responses
+    filtered = tuple(
+        response
+        for response in responses
+        if _choice_matches_observed_actions(response, actions)
+    )
+    # Public action parsing is an optimization, not a posterior-deletion rule.
+    # If the parsed evidence cannot be reconciled with the legal set, fail open.
+    return filtered or responses
+
+
 def _normalize(particles: Iterable[BeliefParticle]) -> tuple[BeliefParticle, ...]:
     particles = tuple(particles)
     total = sum(particle.weight for particle in particles)
@@ -232,6 +310,10 @@ def condition_particles(
                 responses = tuple(
                     response for response in requested if response in legal_set
                 )
+        responses = _filter_responses_by_public_actions(
+            tuple(responses),
+            actual_public_view,
+        )
         if not responses:
             continue
 
