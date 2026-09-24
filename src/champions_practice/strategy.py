@@ -748,6 +748,56 @@ def generate_strategic_plans(
             )
         )
 
+    active_key_resources = tuple(
+        resource
+        for resource in living
+        if resource.active and resource.preservation_priority == "high"
+    )
+    bench_key_resources = tuple(
+        resource
+        for resource in living
+        if not resource.active and resource.preservation_priority == "high"
+    )
+    if len(active_key_resources) == 1:
+        anchor = active_key_resources[0]
+        for partner in bench_key_resources:
+            plans.append(
+                StrategicPlan(
+                    name=(
+                        f"create-{_id(partner.species)}-"
+                        f"{_id(anchor.species)}-board"
+                    ),
+                    objective=(
+                        f"Bring {partner.species} in safely beside {anchor.species} "
+                        "to combine two high-priority strategic resources."
+                    ),
+                    desired_board=DesiredBoard(
+                        required_resources=(
+                            anchor.species,
+                            partner.species,
+                        ),
+                        required_active_pair=(
+                            partner.species,
+                            anchor.species,
+                        ),
+                        safe_entry_resources=(partner.species,),
+                    ),
+                    required_resources=(
+                        anchor.species,
+                        partner.species,
+                    ),
+                    preserve=key_resources,
+                    rationale=(
+                        f"{anchor.species} is already active and strategically unique.",
+                        f"{partner.species} is a benched strategically unique resource.",
+                    ),
+                    tactical_priorities=(
+                        "prefer-switch",
+                        f"preserve:{anchor.species}",
+                    ),
+                )
+            )
+
     for species in key_resources:
         plans.append(
             StrategicPlan(

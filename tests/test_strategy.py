@@ -5,9 +5,15 @@ import pytest
 from champions_practice.strategy import (
     BeliefBoardOutcome,
     DesiredBoard,
+    FieldControlAssessment,
     PlanWorldOutcome,
+    PosteriorAssessment,
+    ResourceAssessment,
     ResourcePurpose,
+    SpeedControlAssessment,
+    StrategicAssessment,
     StrategicPlan,
+    ThreatAssessment,
     WinCondition,
     assess_strategic_position,
     assess_trade_against_win_condition,
@@ -249,6 +255,84 @@ def test_plan_generation_turns_assessment_into_inspectable_objectives() -> None:
     preserve = next(plan for plan in plans if plan.name == "preserve-indeedeef")
     assert preserve.preserve == ("Indeedee-F",)
     assert preserve.required_resources == ("Indeedee-F",)
+
+
+def test_positioning_generation_keeps_immediate_threats_ahead_of_board_setup() -> None:
+    assessment = StrategicAssessment(
+        turn=6,
+        phase="move",
+        threats=(
+            ThreatAssessment(
+                species="BoostedFoe",
+                urgency="immediate",
+                hp_percent=100.0,
+                reasons=("currently active", "positive boosts: atk"),
+            ),
+        ),
+        resources=(
+            ResourceAssessment(
+                species="Anchor",
+                hp_percent=100.0,
+                active=True,
+                fainted=False,
+                strategic_roles=("field-control",),
+                preservation_priority="high",
+                reasons=("only living field-control provider",),
+            ),
+            ResourceAssessment(
+                species="Partner",
+                hp_percent=100.0,
+                active=True,
+                fainted=False,
+                strategic_roles=(),
+                preservation_priority="unassigned",
+                reasons=(),
+            ),
+            ResourceAssessment(
+                species="BenchKey",
+                hp_percent=100.0,
+                active=False,
+                fainted=False,
+                strategic_roles=("speed-control",),
+                preservation_priority="high",
+                reasons=("only living speed-control provider",),
+            ),
+        ),
+        speed_control=SpeedControlAssessment(
+            trick_room_active=False,
+            our_tailwind=False,
+            opponent_tailwind=False,
+            available_our_tools=("BenchKey",),
+        ),
+        field_control=FieldControlAssessment(
+            terrain=None,
+            weather=None,
+            our_side_conditions=(),
+            opponent_side_conditions=(),
+            available_our_setters=("Anchor",),
+        ),
+        posterior=PosteriorAssessment(
+            particle_count=0,
+            world_count=0,
+            world_mass=(),
+        ),
+        key_resources=("Anchor", "BenchKey"),
+        notes=(),
+    )
+
+    plans = generate_strategic_plans(assessment, limit=None)
+    names = [plan.name for plan in plans]
+
+    threat_index = names.index("neutralize-boosted-boostedfoe")
+    pair_index = names.index("create-benchkey-anchor-board")
+    preserve_index = names.index("preserve-anchor")
+
+    assert threat_index < pair_index < preserve_index
+
+    pairing = plans[pair_index]
+    assert pairing.desired_board.required_active_pair == ("BenchKey", "Anchor")
+    assert pairing.desired_board.safe_entry_resources == ("BenchKey",)
+    assert pairing.preserve == ("Anchor", "BenchKey")
 
 
 def test_win_condition_can_be_promoted_to_plan_without_losing_trade_semantics() -> None:
