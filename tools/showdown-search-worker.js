@@ -49,6 +49,71 @@ function toId(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+function publicLastOpponentActions(battle, sideId) {
+  const opponentPrefix = sideId === "p1" ? "p2" : "p1";
+  const channel = sideId === "p1" ? 1 : 2;
+  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
+  let logTurn = 0;
+  const byTurn = new Map();
+
+  function slotIdentity(value) {
+    const slot = String(value || "").split(":", 1)[0];
+    if (!/^p[12][a-z]$/.test(slot)) return null;
+    return {
+      side: slot.slice(0, 2),
+      slot: slot.charCodeAt(2) - "a".charCodeAt(0) + 1,
+    };
+  }
+
+  for (const line of visibleLog) {
+    const parts = line.split("|");
+    const event = parts[1];
+    if (event === "turn") {
+      const parsed = Number(parts[2]);
+      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
+      continue;
+    }
+    if (event !== "move" || logTurn <= 0) continue;
+
+    const actor = slotIdentity(parts[2]);
+    if (!actor || actor.side !== opponentPrefix) continue;
+    if (parts.slice(5).some((part) => String(part).startsWith("[from]"))) {
+      continue;
+    }
+
+    const move = toId(parts[3]);
+    if (!move) continue;
+    const target = slotIdentity(parts[4]);
+    let targetLocation = null;
+    if (target) {
+      targetLocation = target.side === opponentPrefix ? -target.slot : target.slot;
+    }
+
+    if (!byTurn.has(logTurn)) byTurn.set(logTurn, new Map());
+    const actions = byTurn.get(logTurn);
+    const previous = actions.get(actor.slot);
+    if (previous === undefined) {
+      actions.set(actor.slot, {
+        turn: logTurn,
+        slot: actor.slot,
+        move,
+        target: targetLocation,
+      });
+    } else {
+      // Multiple public move events from one slot can be caused by effects such as
+      // Instruct. They do not map cleanly to one chosen command, so keep that slot
+      // unconstrained rather than inferring private intent.
+      actions.set(actor.slot, null);
+    }
+  }
+
+  const turns = [...byTurn.keys()].sort((left, right) => right - left);
+  if (!turns.length) return [];
+  return [...byTurn.get(turns[0]).values()]
+    .filter((action) => action !== null)
+    .sort((left, right) => left.slot - right.slot);
+}
+
 function publicOpponentKnowledge(battle, sideId, previewSpecies) {
   const opponentPrefix = sideId === "p1" ? "p2" : "p1";
   const channel = sideId === "p1" ? 1 : 2;
@@ -234,6 +299,7 @@ function playerView(battle, sideId = "p1", previews = null) {
   return {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
+    opponent_last_actions: publicLastOpponentActions(battle, sideId),
     ended: battle.ended,
     winner: battle.winner || null,
     field: {
@@ -502,6 +568,22 @@ function legalChoices(request) {
   }
 }
 
+function validateRequestedChoices(request) {
+  if (!request.state) {
+    throw new Error("validate_choices requires a serialized battle state");
+  }
+  if (!Array.isArray(request.candidates) || !request.candidates.length) {
+    throw new Error("validate_choices requires non-empty candidates");
+  }
+  if (!request.candidates.every((candidate) => typeof candidate === "string")) {
+    throw new Error("validate_choices candidates must be strings");
+  }
+  return {
+    side: request.side,
+    choices: validateChoices(request.state, request.side, request.candidates),
+  };
+}
+
 function battleOptions(request) {
   const options = {
     formatid: request.format,
@@ -731,6 +813,8 @@ function handle(request) {
       return branchMany(request);
     case "legal_choices":
       return legalChoices(request);
+    case "validate_choices":
+      return validateRequestedChoices(request);
     case "state_view":
       return stateView(request);
     case "session_start":

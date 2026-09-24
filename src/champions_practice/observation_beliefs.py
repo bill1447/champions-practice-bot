@@ -6,6 +6,7 @@ import copy
 import json
 import random
 from dataclasses import dataclass
+from itertools import product
 from typing import Any, Iterable
 
 from .search_worker import ShowdownSearchWorker
@@ -35,6 +36,10 @@ def public_observation_signature(view: dict[str, Any]) -> str:
     player/opponent role and remove cosmetic names before comparing observations.
     """
     normalized = copy.deepcopy(view)
+    # Public action history is evidence used to prune replay candidates, not part of
+    # the mechanically relevant resulting battle state. Exact reconstructed states
+    # need not retain the same historical log representation as the live session.
+    normalized.pop("opponent_last_actions", None)
     player = normalized.get("player")
     opponent = normalized.get("opponent")
     player_name = player.get("name") if isinstance(player, dict) else None
@@ -63,6 +68,159 @@ def public_observation_signature(view: dict[str, Any]) -> str:
 
 def _state_key(state: dict[str, Any]) -> str:
     return json.dumps(state, sort_keys=True, separators=(",", ":"))
+
+
+def _id(value: object) -> str:
+    return "".join(
+        character for character in str(value).lower() if character.isalnum()
+    )
+
+
+def _public_action_fingerprint(
+    view: dict[str, Any] | None,
+) -> tuple[tuple[int | None, int, str, int | None], ...]:
+    if not isinstance(view, dict):
+        return ()
+    values = view.get("opponent_last_actions")
+    if not isinstance(values, list):
+        return ()
+
+    actions = []
+    for value in values:
+        if not isinstance(value, dict):
+            continue
+        turn = value.get("turn")
+        slot = value.get("slot")
+        move = value.get("move")
+        target = value.get("target")
+        if turn is not None and not isinstance(turn, int):
+            continue
+        if not isinstance(slot, int) or slot <= 0 or not isinstance(move, str):
+            continue
+        if target is not None and not isinstance(target, int):
+            continue
+        move_id = _id(move)
+        if move_id:
+            actions.append((turn, slot, move_id, target))
+    return tuple(sorted(actions))
+
+
+def _observed_opponent_actions(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[tuple[int, str, int | None], ...]:
+    current = _public_action_fingerprint(view)
+    if previous_public_view is not None:
+        previous = _public_action_fingerprint(previous_public_view)
+        if current == previous:
+            return ()
+    return tuple((slot, move_id, target) for _, slot, move_id, target in current)
+
+
+def _choice_matches_observed_actions(
+    choice: str,
+    actions: tuple[tuple[int, str, int | None], ...],
+) -> bool:
+    commands = [command.strip().split() for command in choice.split(",")]
+    for slot, move_id, observed_target in actions:
+        if slot > len(commands):
+            return False
+        tokens = commands[slot - 1]
+        if len(tokens) < 2 or tokens[0] != "move":
+            return False
+        if _id(tokens[1]) != move_id:
+            return False
+
+        command_target = next(
+            (
+                int(token)
+                for token in tokens[2:]
+                if token.lstrip("+-").isdigit()
+            ),
+            None,
+        )
+        if (
+            observed_target is not None
+            and command_target is not None
+            and command_target != observed_target
+        ):
+            return False
+    return True
+
+
+def _filter_responses_by_public_actions(
+    responses: tuple[str, ...],
+    actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[str, ...]:
+    actions = _observed_opponent_actions(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
+    if not actions:
+        return responses
+    filtered = tuple(
+        response
+        for response in responses
+        if _choice_matches_observed_actions(response, actions)
+    )
+    # Public action parsing is an optimization, not a posterior-deletion rule.
+    # If the parsed evidence cannot be reconciled with the legal set, fail open.
+    return filtered or responses
+
+
+def _observed_joint_move_candidates(
+    actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[str, ...]:
+    actions = _observed_opponent_actions(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
+    opponent = actual_public_view.get("opponent")
+    active = opponent.get("active") if isinstance(opponent, dict) else None
+    if not isinstance(active, list) or not active:
+        return ()
+    expected_slots = set(range(1, len(active) + 1))
+    if {slot for slot, _, _ in actions} != expected_slots:
+        return ()
+
+    per_slot: list[tuple[str, ...]] = []
+    for slot, move_id, target in actions:
+        bases = [f"move {move_id}"]
+        if target is not None and target != -slot:
+            bases.append(f"move {move_id} {target:+d}")
+
+        variants = []
+        for base in bases:
+            variants.append(base)
+            variants.extend(
+                f"{base} {event}"
+                for event in ("mega", "megax", "megay", "ultra")
+            )
+        per_slot.append(tuple(dict.fromkeys(variants)))
+
+    return tuple(
+        ", ".join(commands)
+        for commands in product(*per_slot)
+    )
+
+
+def public_opponent_moves_fully_observed(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> bool:
+    """Return whether every opponent slot produced a fresh direct public move event."""
+    return bool(
+        _observed_joint_move_candidates(
+            view,
+            previous_public_view=previous_public_view,
+        )
+    )
 
 
 def _normalize(particles: Iterable[BeliefParticle]) -> tuple[BeliefParticle, ...]:
@@ -202,6 +360,7 @@ def condition_particles(
     ai_side: str,
     ai_choice: str,
     actual_public_view: dict[str, Any],
+    previous_public_view: dict[str, Any] | None = None,
     opponent_choices: dict[str, tuple[str, ...]] | None = None,
     rng_seeds: tuple[str | None, ...] = (None,),
     previews: dict[str, list[str]] | None = None,
@@ -217,21 +376,53 @@ def condition_particles(
     generated = 0
     matched = 0
 
+    observed_candidates = _observed_joint_move_candidates(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
+
     for particle in particles:
-        legal_responses = tuple(
-            worker.legal_choices(state=particle.state, side=opponent_side)
-        )
-        if opponent_choices is None:
-            responses = legal_responses
+        responses: tuple[str, ...]
+        validator = getattr(worker, "validate_choices", None)
+        if (
+            opponent_choices is None
+            and observed_candidates
+            and callable(validator)
+        ):
+            validated = tuple(
+                validator(
+                    state=particle.state,
+                    side=opponent_side,
+                    candidates=list(observed_candidates),
+                )
+            )
+            if validated:
+                responses = validated
+            else:
+                responses = tuple(
+                    worker.legal_choices(state=particle.state, side=opponent_side)
+                )
         else:
-            requested = opponent_choices.get(particle.world_id)
-            if requested is None:
+            legal_responses = tuple(
+                worker.legal_choices(state=particle.state, side=opponent_side)
+            )
+            if opponent_choices is None:
                 responses = legal_responses
             else:
-                legal_set = set(legal_responses)
-                responses = tuple(
-                    response for response in requested if response in legal_set
-                )
+                requested = opponent_choices.get(particle.world_id)
+                if requested is None:
+                    responses = legal_responses
+                else:
+                    legal_set = set(legal_responses)
+                    responses = tuple(
+                        response for response in requested if response in legal_set
+                    )
+
+        responses = _filter_responses_by_public_actions(
+            tuple(responses),
+            actual_public_view,
+            previous_public_view=previous_public_view,
+        )
         if not responses:
             continue
 

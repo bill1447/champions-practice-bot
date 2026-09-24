@@ -754,3 +754,277 @@ def test_world_aware_resampling_preserves_each_surviving_world() -> None:
     assert len(resampled) <= 4
     assert {particle.world_id for particle in resampled} == {"a", "b", "c", "d"}
     assert sum(particle.weight for particle in resampled) == pytest.approx(1.0)
+
+
+
+class PublicActionFilterWorker:
+    choices = (
+        "move psychic +1, move protect",
+        "move psychic +2, move protect",
+        "move trickroom, move protect",
+        "move psychic +1, move closecombat +1",
+    )
+
+    def legal_choices(self, *, state, side):
+        return list(self.choices)
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for index, branch in enumerate(branches):
+            response = branch["p1_choice"]
+            commands = [command.strip().split() for command in response.split(",")]
+            actions = []
+            for slot, tokens in enumerate(commands, start=1):
+                if len(tokens) < 2 or tokens[0] != "move":
+                    continue
+                target = next(
+                    (
+                        int(token)
+                        for token in tokens[2:]
+                        if token.lstrip("+-").isdigit()
+                    ),
+                    None,
+                )
+                actions.append(
+                    {
+                        "slot": slot,
+                        "move": tokens[1],
+                        "target": target,
+                    }
+                )
+            resolved.append(
+                {
+                    "state": {
+                        "turn": 2,
+                        "response": response,
+                        "rng_seed": branch.get("rng_seed"),
+                        "actions": actions,
+                    },
+                    "view": {
+                        "turn": 2,
+                        "opponent_last_actions": actions,
+                    },
+                    "index": index,
+                }
+            )
+        return resolved
+
+
+def test_public_actions_filter_move_and_target_before_rng_branching() -> None:
+    worker = PublicActionFilterWorker()
+    actual = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"slot": 1, "move": "psychic", "target": 1},
+            {"slot": 2, "move": "protect", "target": None},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        rng_seeds=("rng-a", "rng-b"),
+    )
+
+    assert update.generated == 2
+    assert update.matched == 2
+    assert len(update.particles) == 2
+    assert all(
+        "move psychic +1, move protect" in particle.history_id
+        for particle in update.particles
+    )
+
+
+def test_partial_public_action_only_constrains_observed_slot() -> None:
+    worker = PublicActionFilterWorker()
+    actual = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"slot": 1, "move": "psychic", "target": 1},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        rng_seeds=("rng",),
+    )
+
+    assert update.generated == 2
+    assert update.matched == 2
+    assert {
+        particle.state["response"] for particle in update.particles
+    } == {
+        "move psychic +1, move protect",
+        "move psychic +1, move closecombat +1",
+    }
+
+
+def test_public_action_filter_fails_open_when_parser_cannot_match_legal_set() -> None:
+    worker = PublicActionFilterWorker()
+    actual = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"slot": 1, "move": "impossiblemove", "target": 1},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        rng_seeds=("rng",),
+    )
+
+    assert update.generated == len(worker.choices)
+    assert update.matched == len(worker.choices)
+    assert {
+        particle.state["response"] for particle in update.particles
+    } == set(worker.choices)
+
+
+
+class DirectValidationWorker(PublicActionFilterWorker):
+    def __init__(self):
+        self.legal_calls = 0
+        self.validate_calls = 0
+
+    def legal_choices(self, *, state, side):
+        self.legal_calls += 1
+        return super().legal_choices(state=state, side=side)
+
+    def validate_choices(self, *, state, side, candidates):
+        self.validate_calls += 1
+        legal = set(self.choices)
+        return [candidate for candidate in candidates if candidate in legal]
+
+
+def test_fully_observed_moves_use_bounded_validation_not_full_enumeration() -> None:
+    worker = DirectValidationWorker()
+    actual = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"slot": 1, "move": "psychic", "target": 1},
+            {"slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.validate_calls == 1
+    assert worker.legal_calls == 0
+    assert update.generated == 1
+
+
+
+def test_unchanged_public_actions_do_not_constrain_later_transition() -> None:
+    worker = DirectValidationWorker()
+    previous = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "psychic", "target": 1},
+            {"turn": 1, "slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+    actual = {
+        **previous,
+        "turn": 3,
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 2}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="switch 3, pass",
+        actual_public_view=actual,
+        previous_public_view=previous,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.validate_calls == 0
+    assert worker.legal_calls == 1
+    assert update.generated == len(worker.choices)
+
+
+def test_same_moves_on_new_turn_are_fresh_public_evidence() -> None:
+    worker = DirectValidationWorker()
+    previous = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "psychic", "target": 1},
+            {"turn": 1, "slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+    actual = {
+        "turn": 3,
+        "opponent": previous["opponent"],
+        "opponent_last_actions": [
+            {"turn": 2, "slot": 1, "move": "psychic", "target": 1},
+            {"turn": 2, "slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 2}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        previous_public_view=previous,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.validate_calls == 1
+    assert worker.legal_calls == 0
+    assert update.generated == 1
+
+
+
+def test_public_signature_ignores_auxiliary_action_history() -> None:
+    left = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "psychic", "target": 1},
+        ],
+        "opponent": {"active": ["A"]},
+    }
+    right = {
+        "turn": 2,
+        "opponent_last_actions": [],
+        "opponent": {"active": ["A"]},
+    }
+
+    assert public_observation_signature(left) == public_observation_signature(right)

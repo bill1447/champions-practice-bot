@@ -98,6 +98,7 @@ def main() -> None:
             ai_side="p2",
             ai_choice=TURN_ONE_P2,
             actual_public_view=after_one,
+            previous_public_view=preview,
             previews=previews,
         )
         first_seconds = time.perf_counter() - first_at
@@ -127,6 +128,7 @@ def main() -> None:
             ai_side="p2",
             ai_choice=TURN_TWO_P2,
             actual_public_view=after_two,
+            previous_public_view=after_one,
             previews=previews,
         )
         second_seconds = time.perf_counter() - second_at
