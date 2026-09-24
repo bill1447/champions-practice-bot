@@ -13,7 +13,7 @@ from champions_practice.belief_search import (
     shortlist_belief_candidates,
     shortlist_belief_responses,
 )
-from champions_practice.exact_search import SideId
+from champions_practice.exact_search import SideId, score_exact_summary_breakdown
 from champions_practice.recommendations import SCREENING_RNG_SEEDS
 from champions_practice.strategy import (
     PlanWorldOutcome,
@@ -30,6 +30,8 @@ class PlanProbeCandidate:
     choice: str
     evaluation: StrategicPlanEvaluation
     worst_world_outcomes: tuple[PlanWorldOutcome, ...]
+    worst_board_score: float
+    weighted_board_score: float
     failure_penalty: float
 
 
@@ -172,9 +174,9 @@ def _threat_fainted(
 
 def _supported_condition(condition: str) -> bool:
     return condition in {
+        "favorable-speed-control",
         "trickroom-progress",
         "tailwind-progress",
-        "opponent-tailwind-expired",
         "our-speed-control",
     } or condition.startswith("threat-neutralized:")
 
@@ -186,6 +188,65 @@ def _supported_failure(condition: str) -> bool:
         "trickroom-expired-before-progress",
         "tailwind-expired-before-progress",
     } or condition.startswith("critical-resource-lost:")
+
+
+def plan_is_one_turn_supported(plan: StrategicPlan) -> bool:
+    """Return whether the one-turn evidence probe can evaluate every plan requirement."""
+    return all(
+        _supported_condition(condition)
+        for condition in plan.desired_board.required_conditions
+    ) and all(_supported_failure(condition) for condition in plan.failure_conditions)
+
+
+def filter_supported_plans(
+    plans: tuple[StrategicPlan, ...],
+    *,
+    limit: int,
+) -> tuple[StrategicPlan, ...]:
+    """Filter unprobeable plans before applying the live strategic-plan budget."""
+    if limit <= 0:
+        raise ValueError("plan limit must be positive")
+    supported = tuple(plan for plan in plans if plan_is_one_turn_supported(plan))
+    return supported[:limit]
+
+
+def _favorable_speed_control(summary: dict[str, Any], side: SideId) -> bool:
+    """Judge whether the resulting speed state favors the acting side's active pair."""
+    own, opponent = _side_ids(side)
+    own_active = tuple(
+        pokemon for pokemon in _active_entries(summary, own) if _is_living(pokemon)
+    )
+    opponent_active = tuple(
+        pokemon for pokemon in _active_entries(summary, opponent) if _is_living(pokemon)
+    )
+    if not own_active or not opponent_active:
+        return False
+
+    own_tailwind = "tailwind" in _side_conditions(summary, own)
+    opponent_tailwind = "tailwind" in _side_conditions(summary, opponent)
+    trick_room = "trickroom" in _pseudo_weather(summary)
+
+    own_speeds = [
+        int(pokemon.get("speed", 0)) * (2 if own_tailwind else 1)
+        for pokemon in own_active
+    ]
+    opponent_speeds = [
+        int(pokemon.get("speed", 0)) * (2 if opponent_tailwind else 1)
+        for pokemon in opponent_active
+    ]
+
+    advantage = 0
+    for own_speed in own_speeds:
+        for opponent_speed in opponent_speeds:
+            if own_speed == opponent_speed:
+                continue
+            acts_first = (
+                own_speed < opponent_speed
+                if trick_room
+                else own_speed > opponent_speed
+            )
+            advantage += 1 if acts_first else -1
+    return advantage > 0
 
 
 def _outcome_from_summary(
@@ -220,6 +281,8 @@ def _outcome_from_summary(
     conditions: set[str] = set()
     if "trickroom" in pseudo or "tailwind" in own_conditions:
         conditions.add("our-speed-control")
+    if _favorable_speed_control(summary, side):
+        conditions.add("favorable-speed-control")
     if assessment.speed_control.trick_room_active and "trickroom" in pseudo and progress:
         conditions.add("trickroom-progress")
     if assessment.speed_control.our_tailwind and "tailwind" in own_conditions and progress:
@@ -242,7 +305,7 @@ def _outcome_from_summary(
             if assessment.speed_control.opponent_tailwind and preserve_ids.intersection(lost_ids):
                 failures.add(failure)
         elif failure == "speed-control-denied":
-            if "our-speed-control" not in conditions:
+            if "favorable-speed-control" not in conditions:
                 failures.add(failure)
         elif failure == "trickroom-expired-before-progress":
             if (
@@ -294,8 +357,8 @@ def _worst_branch(
     label: str,
     weight: float,
     branches: list[tuple[str, str | None, dict[str, Any]]],
-) -> PlanWorldOutcome:
-    scored: list[tuple[float, str, str, PlanWorldOutcome]] = []
+) -> tuple[PlanWorldOutcome, float]:
+    scored: list[tuple[float, float, str, str, PlanWorldOutcome]] = []
     for response, rng_seed, summary in branches:
         outcome = _outcome_from_summary(
             plan,
@@ -310,9 +373,11 @@ def _worst_branch(
             outcomes=(outcome,),
             robust_threshold=1.0,
         )
+        board_score = score_exact_summary_breakdown(summary, side).total
         scored.append(
             (
                 _failure_penalty(evaluation),
+                -board_score,
                 response,
                 rng_seed or "",
                 outcome,
@@ -320,7 +385,8 @@ def _worst_branch(
         )
     if not scored:
         raise ValueError("plan probe has no exact branches to evaluate")
-    return max(scored, key=lambda value: (value[0], value[1], value[2]))[3]
+    worst = max(scored, key=lambda value: (value[0], value[1], value[2], value[3]))
+    return worst[4], -worst[1]
 
 
 def probe_strategic_plan(
@@ -364,6 +430,9 @@ def probe_strategic_plan(
     opponent: SideId = "p2" if side == "p1" else "p1"
 
     outcomes_by_choice: dict[str, list[PlanWorldOutcome]] = {
+        choice: [] for choice in choices
+    }
+    board_scores_by_choice: dict[str, list[tuple[float, float]]] = {
         choice: [] for choice in choices
     }
     exact_branch_count = 0
@@ -412,16 +481,16 @@ def probe_strategic_plan(
 
         label = world.label or f"world-{index}"
         for choice in choices:
-            outcomes_by_choice[choice].append(
-                _worst_branch(
-                    plan,
-                    assessment,
-                    side=side,
-                    label=label,
-                    weight=world.weight,
-                    branches=branches_by_choice[choice],
-                )
+            outcome, board_score = _worst_branch(
+                plan,
+                assessment,
+                side=side,
+                label=label,
+                weight=world.weight,
+                branches=branches_by_choice[choice],
             )
+            outcomes_by_choice[choice].append(outcome)
+            board_scores_by_choice[choice].append((world.weight, board_score))
 
     candidate_scores = []
     for choice in choices:
@@ -431,11 +500,18 @@ def probe_strategic_plan(
             outcomes=outcomes,
             robust_threshold=robust_threshold,
         )
+        board_scores = board_scores_by_choice[choice]
+        total_weight = sum(weight for weight, _ in board_scores)
         candidate_scores.append(
             PlanProbeCandidate(
                 choice=choice,
                 evaluation=evaluation,
                 worst_world_outcomes=outcomes,
+                worst_board_score=min(score for _, score in board_scores),
+                weighted_board_score=(
+                    sum(weight * score for weight, score in board_scores)
+                    / total_weight
+                ),
                 failure_penalty=_failure_penalty(evaluation),
             )
         )
@@ -447,6 +523,8 @@ def probe_strategic_plan(
                 -int(candidate.evaluation.robust),
                 -candidate.evaluation.viable_belief_mass,
                 candidate.failure_penalty,
+                -candidate.worst_board_score,
+                -candidate.weighted_board_score,
                 candidate.choice,
             ),
         )
@@ -493,6 +571,8 @@ def format_strategic_plan_probe(probe: StrategicPlanProbe) -> str:
         "belief worlds, and RNG futures; not a proof of optimal play",
         f"  Best probe action: {probe.chosen.choice}",
         f"  Posterior coverage: {probe.chosen.evaluation.viable_belief_mass:.1%}",
+        f"  Cross-plan board utility: worst {probe.chosen.worst_board_score:.1f}; "
+        f"weighted {probe.chosen.weighted_board_score:.1f}",
         f"  Evidence status: {'proven robust' if probe.proven_robust else 'incomplete/fragile'}",
     ]
     if probe.unsupported_conditions:
@@ -518,8 +598,8 @@ def select_supported_plan(
     """Choose the strongest fully supported robust plan, if one exists.
 
     Unsupported or unresolved plans receive no live strategic authority. Among proven
-    plans, prefer posterior coverage, then lower aggregate failure mass, then a stable
-    plan name for deterministic behavior.
+    plans, prefer posterior coverage, then the stronger exact resulting board, then
+    lower aggregate failure mass. Plan names are only a deterministic final tie-breaker.
     """
     supported = [probe for probe in probes if probe.proven_robust]
     if not supported:
@@ -528,6 +608,8 @@ def select_supported_plan(
         supported,
         key=lambda probe: (
             -probe.chosen.evaluation.viable_belief_mass,
+            -probe.chosen.worst_board_score,
+            -probe.chosen.weighted_board_score,
             probe.chosen.failure_penalty,
             probe.plan.name,
         ),
