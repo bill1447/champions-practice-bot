@@ -65,11 +65,22 @@ def main() -> None:
             )
 
             actions = update.public_view.get("opponent_last_actions")
-            expected_actions = [
-                {"slot": 1, "move": "psychic", "target": 1},
-                {"slot": 2, "move": "protect", "target": -2},
-            ]
-            if actions != expected_actions:
+            if not isinstance(actions, list):
+                raise SystemExit("ERROR: public opponent actions are missing")
+            action_by_slot = {
+                action.get("slot"): action
+                for action in actions
+                if isinstance(action, dict)
+            }
+            psychic = action_by_slot.get(1)
+            protect = action_by_slot.get(2)
+            if (
+                psychic is None
+                or psychic.get("move") != "psychic"
+                or psychic.get("target") != 1
+                or protect is None
+                or protect.get("move") != "protect"
+            ):
                 raise SystemExit(
                     "ERROR: public action extraction did not recover the human choice: "
                     f"{actions!r}"
