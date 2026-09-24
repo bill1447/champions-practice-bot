@@ -111,19 +111,24 @@ Completed so far:
 - CI includes a real-Showdown strategic smoke so at least one labeled strategy case crosses
   the Python/Showdown boundary rather than relying only on synthetic branch summaries;
 - live strategic probes now sample two deterministic RNG futures instead of one, and probe
-  authority is labeled sampled robust rather than proven robust.
+  authority is labeled sampled robust rather than proven robust;
+- executable benchmarks now cover Protect-based preservation and switching a unique
+  resource when Protect is unsafe;
+- known-gap benchmarks explicitly locate missing boosted-threat evidence, active-pair
+  generation, and sacrifice/endgame generation.
 
 Current work:
 - preserve exact belief search as the final command selector while richer strategic state
   becomes inspectable and benchmarked;
-- grow the labeled corpus before adding more automatic plan-generation heuristics;
+- use the now-labeled capability gaps to choose the next general reasoning improvement;
 - treat benchmark misses as evidence for specific missing reasoning rather than as a reason
   to add species-specific rules.
 
 Next:
-- benchmark live strategic guidance on labeled sacrifice, Protect, switch, speed-control,
-  targeting, positioning, and endgame positions;
-- only then increase strategic authority or add deeper plan continuation.
+- implement one-turn evidence for boosted-threat snowball risk and make the targeting
+  benchmark pass for the right reason;
+- then tackle automatic active-pair/safe-entry and sacrifice/endgame plan generation;
+- only after those benchmarks pass should strategic authority or plan depth increase.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
