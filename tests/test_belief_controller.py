@@ -222,14 +222,20 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         "champions_practice.belief_controller.shortlist_belief_candidates",
         fake_pruning,
     )
-    monkeypatch.setattr(
-        "champions_practice.belief_controller.search_exact_belief_turn",
-        lambda *args, **kwargs: SimpleNamespace(
+    def fake_search(*args, **kwargs):
+        seen.setdefault("search_rng_seeds", []).append(
+            kwargs.get("rng_seeds")
+        )
+        return SimpleNamespace(
             chosen=SimpleNamespace(choice="move safe"),
             evaluated_choices=("move safe",),
             response_screening_branch_count=3,
             branch_count=4,
-        ),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.search_exact_belief_turn",
+        fake_search,
     )
     return plan, probe, guidance, seen
 
@@ -255,6 +261,7 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] is None
     assert seen["pruning_guidance"] == [None]
+    assert seen["search_rng_seeds"] == [None]
     assert decision.branch_count == 32
 
 
@@ -382,4 +389,5 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance
     assert seen["pruning_guidance"] == [None, guidance]
+    assert seen["search_rng_seeds"] == [None, SCREENING_RNG_SEEDS]
     assert decision.branch_count == 41
