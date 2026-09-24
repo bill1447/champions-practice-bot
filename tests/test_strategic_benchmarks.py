@@ -310,6 +310,8 @@ def _sneasler_public_view() -> dict:
 def _sneasler_summary(*, trick_room: bool, foe_a_hp: int) -> dict:
     indeedee = _benchmark_mon("Indeedee-F", 100, 80)
     sneasler = _benchmark_mon("Sneasler", 100, 190)
+    gardevoir = _benchmark_mon("Gardevoir", 100, 150)
+    rillaboom = _benchmark_mon("Rillaboom", 100, 140)
     foe_a = _benchmark_mon("FoeA", foe_a_hp, 120)
     foe_b = _benchmark_mon("FoeB", 100, 110)
     return {
@@ -323,7 +325,7 @@ def _sneasler_summary(*, trick_room: bool, foe_a_hp: int) -> dict:
         },
         "p1": {
             "name": "Practice AI",
-            "pokemon": [indeedee, sneasler],
+            "pokemon": [indeedee, sneasler, gardevoir, rillaboom],
             "active": [indeedee, sneasler],
             "sideConditions": [],
         },
@@ -490,6 +492,8 @@ def _keeper_summary(
 ) -> dict:
     keeper = _benchmark_mon("Keeper", keeper_hp, 100)
     partner = _benchmark_mon("Partner", partner_hp, 100)
+    bench_a = _benchmark_mon("BenchA", 100, 100)
+    bench_b = _benchmark_mon("BenchB", 100, 100)
     foe_a = _benchmark_mon("FoeA", foe_a_hp, 100)
     foe_b = _benchmark_mon("FoeB", foe_b_hp, 100)
     return {
@@ -503,7 +507,7 @@ def _keeper_summary(
         },
         "p1": {
             "name": "Practice AI",
-            "pokemon": [keeper, partner],
+            "pokemon": [keeper, partner, bench_a, bench_b],
             "active": [keeper, partner],
             "sideConditions": [],
         },
