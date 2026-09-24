@@ -797,6 +797,7 @@ class PublicActionFilterWorker:
                     "state": {
                         "turn": 2,
                         "response": response,
+                        "rng_seed": branch.get("rng_seed"),
                         "actions": actions,
                     },
                     "view": {
