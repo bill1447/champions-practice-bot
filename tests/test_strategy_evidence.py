@@ -15,6 +15,7 @@ from champions_practice.strategy_evidence import (
     filter_supported_plans,
     format_strategic_plan_probe,
     plan_is_one_turn_supported,
+    prepare_shared_strategic_responses,
     probe_strategic_plan,
     select_supported_plan,
 )
@@ -174,6 +175,128 @@ class PlanProbeWorker:
                 )
             results.append({"index": index, "summary": summary})
         return results
+
+
+class SharedEvidenceWorker:
+    choices = (
+        "move attack +1, move attack +2",
+        "move protect, move protect",
+    )
+    responses = (
+        "move counter +1, move counter +1",
+        "move counter +2, move counter +1",
+        "move protect, move counter +1",
+    )
+
+    def __init__(self) -> None:
+        self.shared_batches: list[tuple[tuple[str, ...], tuple[str, ...]]] = []
+
+    def legal_choices(self, *, state, side):
+        return list(self.choices) if side == "p1" else list(self.responses)
+
+    def branch_many(self, *, state, branches):
+        shared = [
+            branch
+            for branch in branches
+            if str(branch.get("rng_seed", "")).startswith("shared-")
+        ]
+        if shared:
+            self.shared_batches.append(
+                (
+                    tuple(sorted({branch["p2_choice"] for branch in shared})),
+                    tuple(sorted({branch["rng_seed"] for branch in shared})),
+                )
+            )
+
+        results = []
+        for index, branch in enumerate(branches):
+            keeper_hp = 100 if branch["p1_choice"] == self.choices[1] else 0
+            results.append(
+                {
+                    "index": index,
+                    "summary": _summary(
+                        keeper_hp=keeper_hp,
+                        partner_hp=100,
+                        foe_a_hp=100,
+                        foe_b_hp=100,
+                    ),
+                }
+            )
+        return results
+
+
+def test_competing_plans_share_response_families_and_rng_futures() -> None:
+    worker = SharedEvidenceWorker()
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "shared"},
+            weight=1.0,
+            label="world-a",
+        ),
+    )
+    shared = prepare_shared_strategic_responses(
+        worker,
+        worlds=worlds,
+        side="p1",
+        candidate_references=worker.choices,
+        response_limit=2,
+        rng_seeds=("shared-low", "shared-high"),
+    )
+    plan_a = StrategicPlan(
+        name="preserve-keeper-a",
+        objective="preserve Keeper",
+        desired_board=DesiredBoard(required_resources=("Keeper",)),
+        required_resources=("Keeper",),
+        preserve=("Keeper",),
+        failure_conditions=("critical-resource-lost:keeper",),
+        tactical_priorities=("preserve:Keeper",),
+    )
+    plan_b = replace(
+        plan_a,
+        name="preserve-keeper-b",
+        objective="preserve Keeper under a competing plan",
+    )
+
+    probe_a = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan_a,
+        candidate_limit=2,
+        response_limit=2,
+        rng_seeds=("different",),
+        shared_responses=shared,
+    )
+    probe_b = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan_b,
+        candidate_limit=2,
+        response_limit=2,
+        rng_seeds=("also-different",),
+        shared_responses=shared,
+    )
+
+    assert len(shared.response_shortlists) == 1
+    assert len(shared.response_shortlists[0]) == 2
+    assert "move protect, move counter +1" in shared.response_shortlists[0]
+    assert shared.rng_seeds == ("shared-low", "shared-high")
+    assert probe_a.response_screening_branch_count == 0
+    assert probe_b.response_screening_branch_count == 0
+    assert probe_a.rng_sample_count == 2
+    assert probe_b.rng_sample_count == 2
+    assert probe_a.branch_count == probe_b.branch_count == 8
+    assert len(worker.shared_batches) == 2
+    assert worker.shared_batches[0] == worker.shared_batches[1]
+    assert worker.shared_batches[0][0] == tuple(
+        sorted(shared.response_shortlists[0])
+    )
+    assert worker.shared_batches[0][1] == ("shared-high", "shared-low")
 
 
 def test_plan_probe_can_reject_generic_material_winner_to_preserve_required_resource() -> None:
