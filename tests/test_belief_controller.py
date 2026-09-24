@@ -148,16 +148,21 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         desired_board=DesiredBoard(),
         tactical_priorities=("prefer-protect",),
     )
+    probe_candidate = SimpleNamespace(
+        choice="move safe",
+        evaluation=SimpleNamespace(robust=True),
+    )
     probe = SimpleNamespace(
         plan=plan,
         sampled_robust=True,
         pruning=SimpleNamespace(screening_branch_count=5),
         response_screening_branch_count=7,
         branch_count=11,
+        ranking=(probe_candidate,),
     )
     guidance = StrategicCandidateGuidance(
         plan_name=plan.name,
-        preferred_move_ids=("protect",),
+        preferred_move_ids=("safe",),
     )
     seen = {}
 
@@ -286,6 +291,55 @@ def test_strategy_error_never_replaces_completed_tactical_result(monkeypatch) ->
     assert decision.fallback_reason is None
     assert decision.strategic_plan is None
     assert decision.branch_count == 9
+
+
+def test_controller_does_not_report_plan_when_final_action_misses_guidance(
+    monkeypatch,
+) -> None:
+    controller = _decision_controller()
+    plan, probe, _, _ = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+    )
+    mismatched = StrategicCandidateGuidance(
+        plan_name=plan.name,
+        preferred_move_ids=("protect",),
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.guidance_from_plan",
+        lambda selected_plan, view: mismatched,
+    )
+
+    decision = controller.choose_ai_action()
+
+    assert probe.ranking[0].evaluation.robust is True
+    assert decision.choice == "move safe"
+    assert decision.strategic_plan is None
+    assert decision.mode == "belief-search"
+    assert decision.branch_count == 41
+
+
+def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
+    monkeypatch,
+) -> None:
+    controller = _decision_controller()
+    plan, probe, guidance, _ = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+    )
+    unproven = SimpleNamespace(
+        choice="move safe",
+        evaluation=SimpleNamespace(robust=False),
+    )
+    probe.ranking = (unproven,)
+
+    decision = controller.choose_ai_action()
+
+    assert guidance.preferred_move_ids == ("safe",)
+    assert decision.choice == "move safe"
+    assert decision.strategic_plan is None
+    assert decision.mode == "belief-search"
+    assert decision.branch_count == 41
 
 
 def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypatch) -> None:

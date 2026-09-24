@@ -14,6 +14,7 @@ from dataclasses import replace
 from champions_practice.strategy_evidence import (
     filter_supported_plans,
     format_strategic_plan_probe,
+    plan_is_one_turn_supported,
     probe_strategic_plan,
     select_supported_plan,
 )
@@ -467,6 +468,66 @@ def test_unsupported_plans_are_filtered_before_plan_budget() -> None:
     assert filtered == (supported_threat, supported_preserve)
 
 
+def test_live_plan_budget_prioritizes_boosted_threat_over_speed_tool_order() -> None:
+    speed_beta = StrategicPlan(
+        name="establish-speed-control-beta",
+        objective="use Beta for speed control",
+        desired_board=DesiredBoard(
+            required_conditions=("favorable-speed-control",),
+        ),
+        failure_conditions=("speed-control-denied",),
+    )
+    speed_alpha = StrategicPlan(
+        name="establish-speed-control-alpha",
+        objective="use Alpha for speed control",
+        desired_board=DesiredBoard(
+            required_conditions=("favorable-speed-control",),
+        ),
+        failure_conditions=("speed-control-denied",),
+    )
+    boosted = StrategicPlan(
+        name="neutralize-boosted-boostedfoe",
+        objective="remove the boosted immediate threat",
+        desired_board=DesiredBoard(
+            required_conditions=("threat-neutralized:boostedfoe",),
+        ),
+        failure_conditions=("threat-snowballs:boostedfoe",),
+    )
+
+    filtered = filter_supported_plans(
+        (speed_beta, speed_alpha, boosted),
+        limit=2,
+    )
+
+    assert filtered == (boosted, speed_alpha)
+
+
+def test_active_speed_window_plans_are_one_turn_supported() -> None:
+    exploit_room = StrategicPlan(
+        name="exploit-trick-room",
+        objective="convert Trick Room into progress",
+        desired_board=DesiredBoard(
+            required_conditions=(
+                "favorable-speed-control",
+                "trickroom-progress",
+            ),
+            minimum_effective_turns=1,
+        ),
+        failure_conditions=("trickroom-expired-before-progress",),
+    )
+    stall_tailwind = StrategicPlan(
+        name="stall-opponent-tailwind",
+        objective="stall the opposing Tailwind",
+        desired_board=DesiredBoard(
+            required_conditions=("opponent-tailwind-expired",),
+        ),
+        failure_conditions=("critical-resource-lost-during-tailwind",),
+    )
+
+    assert plan_is_one_turn_supported(exploit_room) is True
+    assert plan_is_one_turn_supported(stall_tailwind) is True
+
+
 def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:
     plan_a = StrategicPlan(
         name="aaa-worse-plan",
@@ -638,10 +699,16 @@ def _positioning_assessment() -> StrategicAssessment:
 def _positioning_view() -> dict:
     return {
         "player": {
+            "team": [
+                {"species": "LeadA"},
+                {"species": "Rillaboom"},
+                {"species": "Gardevoir"},
+                {"species": "Sneasler"},
+            ],
             "active_details": [
                 {"species": "LeadA", "moves": ["Protect"]},
                 {"species": "Rillaboom", "moves": ["Protect"]},
-            ]
+            ],
         },
         "opponent": {
             "active": [
@@ -687,7 +754,6 @@ def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
                 ),
             ),
         ),
-        tactical_priorities=("prefer-switch",),
     )
 
     probe = probe_strategic_plan(

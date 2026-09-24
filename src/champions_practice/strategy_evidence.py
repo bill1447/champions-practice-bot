@@ -184,6 +184,7 @@ def _supported_condition(condition: str) -> bool:
         "trickroom-progress",
         "tailwind-progress",
         "our-speed-control",
+        "opponent-tailwind-expired",
     } or condition.startswith("threat-neutralized:")
 
 
@@ -206,16 +207,50 @@ def plan_is_one_turn_supported(plan: StrategicPlan) -> bool:
     ) and all(_supported_failure(condition) for condition in plan.failure_conditions)
 
 
+def _plan_priority(plan: StrategicPlan) -> tuple[int, str]:
+    """Prioritize time-sensitive supported plans independently of generator order."""
+    required = set(plan.desired_board.required_conditions)
+    failures = set(plan.failure_conditions)
+
+    if any(condition.startswith("threat-neutralized:") for condition in required):
+        tier = 0
+    elif required.intersection(
+        {
+            "trickroom-progress",
+            "tailwind-progress",
+            "opponent-tailwind-expired",
+        }
+    ) or "critical-resource-lost-during-tailwind" in failures:
+        tier = 1
+    elif (
+        "favorable-speed-control" in required
+        or "speed-control-denied" in failures
+    ):
+        tier = 2
+    elif (
+        plan.desired_board.required_active_pair
+        or plan.desired_board.safe_entry_resources
+        or plan.desired_board.resource_purposes
+        or plan.acceptable_losses
+    ):
+        tier = 3
+    elif plan.preserve:
+        tier = 4
+    else:
+        tier = 5
+    return tier, plan.name
+
+
 def filter_supported_plans(
     plans: tuple[StrategicPlan, ...],
     *,
     limit: int,
 ) -> tuple[StrategicPlan, ...]:
-    """Filter unprobeable plans before applying the live strategic-plan budget."""
+    """Filter and prioritize probeable plans before applying the live plan budget."""
     if limit <= 0:
         raise ValueError("plan limit must be positive")
     supported = tuple(plan for plan in plans if plan_is_one_turn_supported(plan))
-    return supported[:limit]
+    return tuple(sorted(supported, key=_plan_priority)[:limit])
 
 
 def _favorable_speed_control(summary: dict[str, Any], side: SideId) -> bool:

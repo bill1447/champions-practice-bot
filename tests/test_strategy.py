@@ -250,7 +250,9 @@ def test_plan_generation_turns_assessment_into_inspectable_objectives() -> None:
 
     exploit = next(plan for plan in plans if plan.name == "exploit-trick-room")
     assert "Trick Room" in exploit.objective
-    assert "trickroom-reversed" in exploit.failure_conditions
+    assert exploit.failure_conditions == (
+        "trickroom-expired-before-progress",
+    )
 
     preserve = next(plan for plan in plans if plan.name == "preserve-indeedeef")
     assert preserve.preserve == ("Indeedee-F",)

@@ -149,9 +149,10 @@ Current hardening sequence:
 - tactical-first decision budgeting: secure a valid unguided exact tactical result before
   spending residual decision time on strategy; a strategy timeout or error must retain the
   completed tactical result rather than fall back;
-- strategy authority correctness: prioritize plans explicitly, repair or remove dead plans,
-  target intended switches rather than generic switching, and only report plans that align
-  with the final command;
+- strategy authority correctness: urgent plans are prioritized independently of generator
+  order, dead speed-window plans are probeable, safe-entry guidance targets the intended
+  switch while retaining the active anchor, and a reported plan must match a robust
+  plan-probed final command;
 - comparable strategic evidence: improve response-family diversity and align response/RNG
   samples enough that competing plans are judged on comparable evidence;
 - capability-separated battle coordination: keep complete human team data, unrevealed human
@@ -161,9 +162,10 @@ Current hardening sequence:
 - runtime engine verification and real-Showdown negative controls before the interactive
   demo is considered ready.
 
-The first item is now implemented in the current hardening branch. The persistent-controller
-smoke uses the production-default eight-second decision budget so strategy cannot hide a
-deadline regression behind an oversized test allowance.
+The first two items are now implemented across the tactical-first and strategy-authority
+hardening branches. The persistent-controller smoke uses the production-default eight-second
+decision budget so strategy cannot hide a deadline regression behind an oversized test
+allowance.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 

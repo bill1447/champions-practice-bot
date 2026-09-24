@@ -673,10 +673,7 @@ def generate_strategic_plans(
                     minimum_effective_turns=1,
                 ),
                 preserve=key_resources,
-                failure_conditions=(
-                    "trickroom-reversed",
-                    "trickroom-expired-before-progress",
-                ),
+                failure_conditions=("trickroom-expired-before-progress",),
                 rationale=(
                     "Trick Room is currently active.",
                     "Finite speed-control turns should be treated as a strategic resource.",
@@ -816,10 +813,7 @@ def generate_strategic_plans(
                         f"{anchor.species} is already active and strategically unique.",
                         f"{partner.species} is a benched strategically unique resource.",
                     ),
-                    tactical_priorities=(
-                        "prefer-switch",
-                        f"preserve:{anchor.species}",
-                    ),
+                    tactical_priorities=(f"preserve:{anchor.species}",),
                 )
             )
 

@@ -195,3 +195,66 @@ def test_bench_resource_guidance_reserves_non_switch_family() -> None:
         "move attack +1, move attack +2",
     )
     assert reserved == ("move attack +1, move attack +2",)
+
+
+
+def test_safe_entry_guidance_targets_the_intended_bench_resource() -> None:
+    plan = StrategicPlan(
+        name="create-gardevoir-sneasler-board",
+        objective="bring Gardevoir in beside Sneasler",
+        desired_board=DesiredBoard(
+            required_active_pair=("Gardevoir", "Sneasler"),
+            safe_entry_resources=("Gardevoir",),
+        ),
+        tactical_priorities=("preserve:Sneasler",),
+    )
+
+    guidance = guidance_from_plan(plan, view=_view())
+
+    assert guidance.stay_active_slots == (2,)
+    assert guidance.switch_in_slots == (3,)
+    assert guidance.active is True
+    assert choice_matches_guidance(
+        "switch 3, move closecombat +1",
+        guidance,
+    )
+    assert not choice_matches_guidance(
+        "switch 4, move closecombat +1",
+        guidance,
+    )
+    assert not choice_matches_guidance(
+        "move followme, switch 3",
+        guidance,
+    )
+    assert not choice_matches_guidance(
+        "move followme, move closecombat +1",
+        guidance,
+    )
+
+
+def test_safe_entry_guidance_reserves_exact_switch_family() -> None:
+    ranking = (
+        Candidate("switch 4, move attack +1"),
+        Candidate("move attack +1, move attack +2"),
+        Candidate("switch 3, move attack +1"),
+    )
+    guidance = StrategicCandidateGuidance(
+        plan_name="create-target-board",
+        switch_in_slots=(3,),
+    )
+
+    shortlist, reserved = reserve_strategic_candidate(
+        ranking,
+        (
+            "switch 4, move attack +1",
+            "move attack +1, move attack +2",
+        ),
+        limit=2,
+        guidance=guidance,
+    )
+
+    assert shortlist == (
+        "switch 4, move attack +1",
+        "switch 3, move attack +1",
+    )
+    assert reserved == ("switch 3, move attack +1",)
