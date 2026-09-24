@@ -260,7 +260,10 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
   };
 }
 
-function ownPokemon(mon) {
+function ownPokemon(mon, battle) {
+  const damagingMoveCount = mon.moveSlots.filter(
+    (slot) => battle.dex.moves.get(slot.id).category !== "Status",
+  ).length;
   return {
     species: mon.species.name,
     hp: mon.hp,
@@ -272,6 +275,8 @@ function ownPokemon(mon) {
     item: mon.item || null,
     ability: mon.ability || null,
     moves: mon.moveSlots.map((slot) => slot.move),
+    speed: mon.speed,
+    damaging_move_count: damagingMoveCount,
     active: mon.isActive,
   };
 }
@@ -311,7 +316,7 @@ function playerView(battle, sideId = "p1", previews = null) {
     player: {
       name: own.name,
       active: own.active.map((mon) => (mon ? mon.species.name : null)),
-      active_details: own.active.map((mon) => (mon ? ownPokemon(mon) : null)),
+      active_details: own.active.map((mon) => (mon ? ownPokemon(mon, battle) : null)),
       side_conditions: publicSideConditions(own),
       team: own.pokemon.map(ownPokemon),
     },
