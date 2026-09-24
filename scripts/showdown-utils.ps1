@@ -27,6 +27,7 @@ function Sync-ChampionsShowdownCheckout {
 
     $Commit = Get-ChampionsShowdownCommit
     $GitDir = Join-Path $ChampionShowdownRoot ".git"
+    $FreshClone = $false
 
     if (-not (Test-Path $GitDir)) {
         if (Test-Path $ChampionShowdownRoot) {
@@ -44,20 +45,31 @@ function Sync-ChampionsShowdownCheckout {
         if ($LASTEXITCODE -ne 0) {
             throw "Pokemon Showdown clone failed."
         }
+        $FreshClone = $true
     }
 
-    $Changes = @(& git -C $ChampionShowdownRoot status --porcelain)
-    if ($Changes.Count -gt 0) {
-        throw (
-            "Pokemon Showdown checkout has local changes. "
-            + "Clean or stash them before synchronizing the pinned revision."
-        )
+    if (-not $FreshClone) {
+        $Changes = @(& git -C $ChampionShowdownRoot status --porcelain)
+        if ($Changes.Count -gt 0) {
+            throw (
+                "Pokemon Showdown checkout has local changes. "
+                + "Clean or stash them before synchronizing the pinned revision."
+            )
+        }
     }
 
     & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
     if ($LASTEXITCODE -ne 0) {
         Write-Host "Fetching Pokemon Showdown history for pinned revision..."
-        & git -C $ChampionShowdownRoot fetch origin --filter=blob:none
+        $IsShallow = "$(
+            & git -C $ChampionShowdownRoot rev-parse --is-shallow-repository
+        )".Trim()
+        if ($IsShallow -eq "true") {
+            & git -C $ChampionShowdownRoot fetch --unshallow --filter=blob:none origin
+        }
+        else {
+            & git -C $ChampionShowdownRoot fetch --filter=blob:none origin
+        }
         if ($LASTEXITCODE -ne 0) {
             throw "Pokemon Showdown fetch failed."
         }
