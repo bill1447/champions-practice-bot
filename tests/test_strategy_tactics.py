@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from champions_practice.strategy import DesiredBoard, StrategicPlan
+from champions_practice.strategy import DesiredBoard, ResourcePurpose, StrategicPlan
 from champions_practice.strategy_tactics import (
     StrategicCandidateGuidance,
     choice_matches_guidance,
@@ -17,6 +17,12 @@ class Candidate:
 def _view() -> dict:
     return {
         "player": {
+            "team": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+                {"species": "Gardevoir"},
+                {"species": "Rillaboom"},
+            ],
             "active_details": [
                 {
                     "species": "Indeedee-F",
@@ -135,3 +141,57 @@ def test_strategy_has_no_reservation_power_when_only_one_candidate_is_allowed() 
 
     assert shortlist == ("move attack +1, move attack +1",)
     assert reserved == ()
+
+
+
+def test_bench_resource_purpose_reserves_candidates_that_keep_it_back() -> None:
+    plan = StrategicPlan(
+        name="reserve-gardevoir",
+        objective="keep Gardevoir for later",
+        desired_board=DesiredBoard(
+            resource_purposes=(
+                ResourcePurpose(
+                    species="Gardevoir",
+                    purpose="cleanup",
+                    position="bench",
+                ),
+            ),
+        ),
+    )
+
+    guidance = guidance_from_plan(plan, view=_view())
+
+    assert guidance.active is True
+    assert guidance.reserved_bench_slots == (3,)
+    assert choice_matches_guidance(
+        "move psychic +1, move closecombat +1",
+        guidance,
+    )
+    assert not choice_matches_guidance(
+        "switch 3, move closecombat +1",
+        guidance,
+    )
+
+
+def test_bench_resource_guidance_reserves_non_switch_family() -> None:
+    ranking = (
+        Candidate("switch 3, move attack +1"),
+        Candidate("move attack +1, move attack +2"),
+    )
+    guidance = StrategicCandidateGuidance(
+        plan_name="reserve-cleaner",
+        reserved_bench_slots=(3,),
+    )
+
+    shortlist, reserved = reserve_strategic_candidate(
+        ranking,
+        ("switch 3, move attack +1",),
+        limit=2,
+        guidance=guidance,
+    )
+
+    assert shortlist == (
+        "switch 3, move attack +1",
+        "move attack +1, move attack +2",
+    )
+    assert reserved == ("move attack +1, move attack +2",)
