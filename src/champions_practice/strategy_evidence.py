@@ -602,6 +602,23 @@ def format_strategic_plan_probe(probe: StrategicPlanProbe) -> str:
         f"weighted {probe.chosen.weighted_board_score:.1f}",
         f"  Evidence status: {'proven robust' if probe.proven_robust else 'incomplete/fragile'}",
     ]
+    desired = probe.plan.desired_board
+    if desired.required_active_pair:
+        lines.append(
+            "  Desired active pair: " + " + ".join(desired.required_active_pair)
+        )
+    if desired.safe_entry_resources:
+        lines.append(
+            "  Safe entry: " + ", ".join(desired.safe_entry_resources)
+        )
+    if desired.resource_purposes:
+        lines.append(
+            "  Resource purposes: "
+            + ", ".join(
+                f"{purpose.species}={purpose.purpose} ({purpose.position})"
+                for purpose in desired.resource_purposes
+            )
+        )
     if probe.unsupported_conditions:
         lines.append(
             "  Unsupported desired conditions: " + ", ".join(probe.unsupported_conditions)
