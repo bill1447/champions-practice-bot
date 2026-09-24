@@ -149,11 +149,16 @@ The benchmark requires the generated plan to focus the boosted opposing slot, KO
 threat, and receive sampled-robust authority. A competing line that attacks the other slot
 lets the threat increase its public boost state and is recorded as a snowball failure.
 
-### Active pairing and safe entry — known generation gap
+### Active pairing and safe entry — resolved for unique-role resources
 
 `DesiredBoard` can represent an active pair and a newly safe-entered Pokemon, and exact
-evidence can evaluate those requirements. Automatic plan generation still does not infer
-that board objective from the position.
+evidence evaluates those requirements directly.
+
+Generation now proposes a positioning plan when exactly one high-priority strategic
+resource is active and another high-priority resource is on the bench. The generated board
+pairs the benched resource with the active anchor and requires the benched resource to be
+newly active. This is role-derived rather than species-derived; exact evidence still decides
+whether any legal switch actually reaches the board safely.
 
 ### Sacrifice into a specific endgame — known generation gap
 
