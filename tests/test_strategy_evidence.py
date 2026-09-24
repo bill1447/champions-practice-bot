@@ -709,3 +709,80 @@ def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
     assert "Desired active pair: Gardevoir + Rillaboom" in rendered
     assert "Safe entry: Gardevoir" in rendered
     assert "Sneasler=cleanup (bench)" in rendered
+
+
+
+class RngFragilityWorker:
+    choice = "move protect, move protect"
+    response = "move counter +1, move counter +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.choice] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        results = []
+        for index, branch in enumerate(branches):
+            keeper_hp = 0 if branch.get("rng_seed") == "bad" else 100
+            results.append(
+                {
+                    "index": index,
+                    "summary": _summary(
+                        keeper_hp=keeper_hp,
+                        partner_hp=100,
+                        foe_a_hp=100,
+                        foe_b_hp=100,
+                    ),
+                }
+            )
+        return results
+
+
+def test_second_rng_future_can_revoke_sampled_robust_authority() -> None:
+    plan = StrategicPlan(
+        name="preserve-keeper",
+        objective="keep Keeper alive across sampled RNG futures",
+        desired_board=DesiredBoard(required_resources=("Keeper",)),
+        required_resources=("Keeper",),
+        preserve=("Keeper",),
+        failure_conditions=("critical-resource-lost:Keeper",),
+        tactical_priorities=("preserve:Keeper",),
+    )
+    worker = RngFragilityWorker()
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "rng-fragility"},
+            weight=1.0,
+            label="world-a",
+        ),
+    )
+
+    one_seed = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan,
+        candidate_limit=1,
+        response_limit=1,
+        rng_seeds=("safe",),
+    )
+    two_seeds = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan,
+        candidate_limit=1,
+        response_limit=1,
+        rng_seeds=("safe", "bad"),
+    )
+
+    assert one_seed.sampled_robust is True
+    assert one_seed.rng_sample_count == 1
+    assert one_seed.branch_count == 1
+    assert two_seeds.sampled_robust is False
+    assert two_seeds.rng_sample_count == 2
+    assert two_seeds.branch_count == 2
+    assert two_seeds.chosen.evaluation.preserve_failure_mass == 1.0
