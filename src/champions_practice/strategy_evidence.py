@@ -509,3 +509,26 @@ def format_strategic_plan_probe(probe: StrategicPlanProbe) -> str:
         f"{probe.response_screening_branch_count} response-screening branches"
     )
     return "\n".join(lines)
+
+
+
+def select_supported_plan(
+    probes: tuple[StrategicPlanProbe, ...],
+) -> StrategicPlanProbe | None:
+    """Choose the strongest fully supported robust plan, if one exists.
+
+    Unsupported or unresolved plans receive no live strategic authority. Among proven
+    plans, prefer posterior coverage, then lower aggregate failure mass, then a stable
+    plan name for deterministic behavior.
+    """
+    supported = [probe for probe in probes if probe.proven_robust]
+    if not supported:
+        return None
+    return min(
+        supported,
+        key=lambda probe: (
+            -probe.chosen.evaluation.viable_belief_mass,
+            probe.chosen.failure_penalty,
+            probe.plan.name,
+        ),
+    )
