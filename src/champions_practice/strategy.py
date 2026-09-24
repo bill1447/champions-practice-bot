@@ -484,7 +484,8 @@ def assess_trade_against_win_condition(
         reasons.append(f"{failed_worlds} belief world(s) fail the desired-board requirements")
     if positioning_failures:
         reasons.append(
-            f"{positioning_failures} belief world(s) fail pairing, entry, or resource-purpose requirements"
+            f"{positioning_failures} belief world(s) fail pairing, entry, "
+            "or resource-purpose requirements"
         )
     if supports:
         reasons.append("trade converts material into a robust path to the declared win condition")
