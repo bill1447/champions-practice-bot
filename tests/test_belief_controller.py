@@ -185,6 +185,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
     )
     shared_responses = SimpleNamespace(
         response_shortlists=(("move counter",),),
+        rng_seeds=SCREENING_RNG_SEEDS,
         screening_branch_count=7,
     )
 
@@ -192,6 +193,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         seen["shared_candidate_references"] = kwargs.get(
             "candidate_references"
         )
+        seen["shared_rng_seeds"] = kwargs.get("rng_seeds")
         return shared_responses
 
     monkeypatch.setattr(
@@ -250,6 +252,7 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["shared_responses"] is not None
     assert seen["shared_candidate_references"] == ("move safe",)
+    assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] is None
     assert seen["pruning_guidance"] == [None]
     assert decision.branch_count == 32
@@ -376,6 +379,7 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["shared_responses"] is not None
     assert seen["shared_candidate_references"] == ("move safe",)
+    assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance
     assert seen["pruning_guidance"] == [None, guidance]
     assert decision.branch_count == 41
