@@ -578,55 +578,11 @@ class BeliefBattleController:
             for particle in self.particles
         )
 
-        def run_search(worker: ShowdownSearchWorker):
-            selected_probe = None
-            strategic_branch_count = 0
-            probe_count = 0
-            guidance = None
-
-            if self.last_public_view is not None:
-                assessment = assess_strategic_position(
-                    self.last_public_view,
-                    particles=self.particles,
-                )
-                plans = filter_supported_plans(
-                    generate_strategic_plans(assessment, limit=None),
-                    limit=self.strategic_plan_limit,
-                )
-                probes = []
-                for plan in plans:
-                    probe = probe_strategic_plan(
-                        worker,
-                        worlds=worlds,
-                        assessment=assessment,
-                        view=self.last_public_view,
-                        side="p2",
-                        plan=plan,
-                        candidate_limit=min(
-                            self.candidate_limit,
-                            self.strategic_candidate_limit,
-                        ),
-                        response_limit=min(
-                            self.response_limit,
-                            self.strategic_response_limit,
-                        ),
-                        rng_seeds=self.strategic_rng_seeds,
-                    )
-                    probes.append(probe)
-                    probe_count += 1
-                    strategic_branch_count += (
-                        probe.pruning.screening_branch_count
-                        + probe.response_screening_branch_count
-                        + probe.branch_count
-                    )
-
-                selected_probe = select_supported_plan(tuple(probes))
-                if selected_probe is not None:
-                    guidance = guidance_from_plan(
-                        selected_probe.plan,
-                        view=self.last_public_view,
-                    )
-
+        def run_tactical(
+            worker: ShowdownSearchWorker,
+            *,
+            guidance=None,
+        ):
             pruning = shortlist_belief_candidates(
                 worker,
                 worlds=worlds,
@@ -643,62 +599,57 @@ class BeliefBattleController:
                 response_limit=self.response_limit,
                 autonomous_responses=True,
             )
+            return pruning, search
+
+        def tactical_branch_count(pruning, search) -> int:
             return (
-                pruning,
-                search,
-                selected_probe,
-                probe_count,
-                strategic_branch_count,
+                pruning.screening_branch_count
+                + search.response_screening_branch_count
+                + search.branch_count
             )
 
-        try:
-            result, timed_out = self._run_with_deadline(
-                run_search,
-                timeout_seconds=self.decision_budget_seconds,
-            )
-            if timed_out or result is None:
-                return self._fallback_decision(
-                    legal_live,
-                    started=started,
-                    reason="belief-search-deadline",
-                )
-
-            (
-                pruning,
-                search,
-                selected_probe,
-                probe_count,
-                strategic_branch_count,
-            ) = result
-            elapsed = perf_counter() - started
-            if search.chosen.choice not in legal_live:
-                return self._fallback_decision(
-                    legal_live,
-                    started=started,
-                    reason="search-choice-not-live-legal",
-                )
+        def decision_from_tactical(
+            pruning,
+            search,
+            *,
+            strategic_plan: str | None = None,
+            strategic_probe_count: int = 0,
+            strategic_branch_count: int = 0,
+            include_extra_tactical_branches: int = 0,
+        ) -> BeliefDecision:
             return BeliefDecision(
                 choice=search.chosen.choice,
                 mode="belief-search",
                 particle_count=len(self.particles),
                 candidate_count=len(search.evaluated_choices),
                 branch_count=(
-                    strategic_branch_count
-                    + pruning.screening_branch_count
-                    + search.response_screening_branch_count
-                    + search.branch_count
+                    tactical_branch_count(pruning, search)
+                    + strategic_branch_count
+                    + include_extra_tactical_branches
                 ),
-                elapsed_seconds=elapsed,
-                strategic_plan=(
-                    selected_probe.plan.name
-                    if selected_probe is not None
-                    else None
-                ),
-                strategic_probe_count=probe_count,
+                elapsed_seconds=perf_counter() - started,
+                strategic_plan=strategic_plan,
+                strategic_probe_count=strategic_probe_count,
                 strategic_branch_count=strategic_branch_count,
                 strategic_rng_sample_count=(
-                    len(self.strategic_rng_seeds) if probe_count else 0
+                    len(self.strategic_rng_seeds)
+                    if strategic_probe_count
+                    else 0
                 ),
+            )
+
+        baseline_budget = self.decision_budget_seconds - (perf_counter() - started)
+        if baseline_budget <= 0:
+            return self._fallback_decision(
+                legal_live,
+                started=started,
+                reason="belief-search-deadline",
+            )
+
+        try:
+            baseline_result, baseline_timed_out = self._run_with_deadline(
+                lambda worker: run_tactical(worker),
+                timeout_seconds=baseline_budget,
             )
         except (RuntimeError, ValueError) as error:
             return self._fallback_decision(
@@ -706,6 +657,164 @@ class BeliefBattleController:
                 started=started,
                 reason=f"search-error:{type(error).__name__}",
             )
+
+        if baseline_timed_out or baseline_result is None:
+            return self._fallback_decision(
+                legal_live,
+                started=started,
+                reason="belief-search-deadline",
+            )
+
+        baseline_pruning, baseline_search = baseline_result
+        if baseline_search.chosen.choice not in legal_live:
+            return self._fallback_decision(
+                legal_live,
+                started=started,
+                reason="search-choice-not-live-legal",
+            )
+
+        baseline_branches = tactical_branch_count(
+            baseline_pruning,
+            baseline_search,
+        )
+
+        if self.last_public_view is None:
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+            )
+
+        remaining_budget = self.decision_budget_seconds - (perf_counter() - started)
+        if remaining_budget <= 0:
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+            )
+
+        def run_strategy_augmentation(worker: ShowdownSearchWorker):
+            assessment = assess_strategic_position(
+                self.last_public_view,
+                particles=self.particles,
+            )
+            plans = filter_supported_plans(
+                generate_strategic_plans(assessment, limit=None),
+                limit=self.strategic_plan_limit,
+            )
+            probes = []
+            strategic_branch_count = 0
+            for plan in plans:
+                probe = probe_strategic_plan(
+                    worker,
+                    worlds=worlds,
+                    assessment=assessment,
+                    view=self.last_public_view,
+                    side="p2",
+                    plan=plan,
+                    candidate_limit=min(
+                        self.candidate_limit,
+                        self.strategic_candidate_limit,
+                    ),
+                    response_limit=min(
+                        self.response_limit,
+                        self.strategic_response_limit,
+                    ),
+                    rng_seeds=self.strategic_rng_seeds,
+                )
+                probes.append(probe)
+                strategic_branch_count += (
+                    probe.pruning.screening_branch_count
+                    + probe.response_screening_branch_count
+                    + probe.branch_count
+                )
+
+            selected_probe = select_supported_plan(tuple(probes))
+            if selected_probe is None:
+                return (
+                    None,
+                    None,
+                    None,
+                    len(probes),
+                    strategic_branch_count,
+                )
+
+            guidance = guidance_from_plan(
+                selected_probe.plan,
+                view=self.last_public_view,
+            )
+            if not guidance.active:
+                return (
+                    None,
+                    None,
+                    None,
+                    len(probes),
+                    strategic_branch_count,
+                )
+
+            guided_pruning, guided_search = run_tactical(
+                worker,
+                guidance=guidance,
+            )
+            return (
+                guided_pruning,
+                guided_search,
+                selected_probe,
+                len(probes),
+                strategic_branch_count,
+            )
+
+        try:
+            augmentation, strategy_timed_out = self._run_with_deadline(
+                run_strategy_augmentation,
+                timeout_seconds=remaining_budget,
+            )
+        except (RuntimeError, ValueError):
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+            )
+
+        if strategy_timed_out or augmentation is None:
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+            )
+
+        (
+            guided_pruning,
+            guided_search,
+            selected_probe,
+            probe_count,
+            strategic_branch_count,
+        ) = augmentation
+
+        if (
+            guided_pruning is None
+            or guided_search is None
+            or selected_probe is None
+        ):
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+                strategic_probe_count=probe_count,
+                strategic_branch_count=strategic_branch_count,
+            )
+
+        if guided_search.chosen.choice not in legal_live:
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+                strategic_probe_count=probe_count,
+                strategic_branch_count=strategic_branch_count,
+            )
+
+        return decision_from_tactical(
+            guided_pruning,
+            guided_search,
+            strategic_plan=selected_probe.plan.name,
+            strategic_probe_count=probe_count,
+            strategic_branch_count=strategic_branch_count,
+            include_extra_tactical_branches=baseline_branches,
+        )
 
     def resolve_turn(
         self,

@@ -187,7 +187,9 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
     )
 
     def fake_pruning(*args, **kwargs):
-        seen["guidance"] = kwargs.get("guidance")
+        guidance_value = kwargs.get("guidance")
+        seen["guidance"] = guidance_value
+        seen.setdefault("pruning_guidance", []).append(guidance_value)
         return SimpleNamespace(
             candidate_shortlist=("move safe",),
             screening_branch_count=2,
@@ -226,7 +228,64 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] is None
+    assert seen["pruning_guidance"] == [None]
     assert decision.branch_count == 32
+
+
+def test_strategy_timeout_never_replaces_completed_tactical_result(monkeypatch) -> None:
+    controller = _decision_controller()
+    controller.decision_budget_seconds = 8.0
+    _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+    )
+    calls = []
+
+    def staged_deadline(operation, *, timeout_seconds):
+        calls.append(timeout_seconds)
+        if len(calls) == 1:
+            return operation(SimpleNamespace()), False
+        return None, True
+
+    controller._run_with_deadline = staged_deadline
+
+    decision = controller.choose_ai_action()
+
+    assert len(calls) == 2
+    assert 0 < calls[1] <= calls[0] <= 8.0
+    assert decision.choice == "move safe"
+    assert decision.mode == "belief-search"
+    assert decision.fallback_reason is None
+    assert decision.strategic_plan is None
+    assert decision.strategic_probe_count == 0
+    assert decision.branch_count == 9
+
+
+def test_strategy_error_never_replaces_completed_tactical_result(monkeypatch) -> None:
+    controller = _decision_controller()
+    _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+    )
+    calls = 0
+
+    def staged_deadline(operation, *, timeout_seconds):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return operation(SimpleNamespace()), False
+        raise RuntimeError("strategy exploded")
+
+    controller._run_with_deadline = staged_deadline
+
+    decision = controller.choose_ai_action()
+
+    assert calls == 2
+    assert decision.choice == "move safe"
+    assert decision.mode == "belief-search"
+    assert decision.fallback_reason is None
+    assert decision.strategic_plan is None
+    assert decision.branch_count == 9
 
 
 def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypatch) -> None:
@@ -244,3 +303,5 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance
+    assert seen["pruning_guidance"] == [None, guidance]
+    assert decision.branch_count == 41

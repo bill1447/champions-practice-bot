@@ -30,7 +30,6 @@ def main() -> None:
             max_particles=6,
             candidate_limit=2,
             response_limit=2,
-            decision_budget_seconds=60.0,
             conditioning_budget_seconds=60.0,
             particle_seed=5301,
         )
@@ -108,7 +107,7 @@ def main() -> None:
             if second_update.matched_branches <= 0:
                 raise SystemExit("ERROR: turn-two observation matched no particle branch")
 
-            controller.decision_budget_seconds = 60.0
+            controller.decision_budget_seconds = 8.0
             third_decision = controller.choose_ai_action()
             if third_decision.mode != "belief-search":
                 raise SystemExit(
@@ -124,6 +123,7 @@ def main() -> None:
             print(f"Turn-one search candidates: {decision.candidate_count}")
             print(f"Turn-one search branches: {decision.branch_count}")
             print(f"Turn-one search seconds: {decision.elapsed_seconds:.3f}")
+            print(f"Turn-one strategic plan: {decision.strategic_plan or 'none'}")
             print(f"Turn-one conditioning matches: {update.matched_branches}")
             print(f"Turn-one posterior particles: {update.particles_after}")
             print(f"Turn-two deadline fallback: {fallback.choice}")
