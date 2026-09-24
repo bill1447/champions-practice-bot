@@ -279,10 +279,11 @@ def _outcome_from_summary(
     progress = _opponent_progress(assessment, summary, opponent)
 
     conditions: set[str] = set()
-    if "trickroom" in pseudo or "tailwind" in own_conditions:
+    has_our_speed_control = "trickroom" in pseudo or "tailwind" in own_conditions
+    if has_our_speed_control:
         conditions.add("our-speed-control")
-    if _favorable_speed_control(summary, side):
-        conditions.add("favorable-speed-control")
+        if _favorable_speed_control(summary, side):
+            conditions.add("favorable-speed-control")
     if assessment.speed_control.trick_room_active and "trickroom" in pseudo and progress:
         conditions.add("trickroom-progress")
     if assessment.speed_control.our_tailwind and "tailwind" in own_conditions and progress:
