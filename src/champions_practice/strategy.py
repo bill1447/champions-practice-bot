@@ -35,6 +35,8 @@ class ResourceAssessment:
     strategic_roles: tuple[str, ...]
     preservation_priority: str
     reasons: tuple[str, ...]
+    speed: int | None = None
+    damaging_move_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -262,6 +264,12 @@ def _resource_assessments(view: dict[str, Any]) -> tuple[ResourceAssessment, ...
                 strategic_roles=roles,
                 preservation_priority=priority,
                 reasons=reasons,
+                speed=(
+                    int(pokemon["speed"])
+                    if pokemon.get("speed") is not None
+                    else None
+                ),
+                damaging_move_count=int(pokemon.get("damaging_move_count", 0)),
             )
         )
     return tuple(resources)
@@ -874,6 +882,83 @@ def generate_strategic_plans(
                     ),
                 )
             )
+
+    immediate_threats = tuple(
+        threat
+        for threat in assessment.threats
+        if threat.urgency == "immediate"
+    )
+    cleanup_candidates = tuple(
+        resource
+        for resource in living
+        if (
+            not resource.active
+            and resource.hp_percent >= 70.0
+            and resource.damaging_move_count >= 2
+            and resource.speed is not None
+        )
+    )
+    chipped_active_board = bool(immediate_threats) and all(
+        threat.hp_percent is not None and threat.hp_percent <= 55.0
+        for threat in immediate_threats
+    )
+    if chipped_active_board and cleanup_candidates:
+        if assessment.speed_control.trick_room_active:
+            cleanup = min(
+                cleanup_candidates,
+                key=lambda resource: (
+                    resource.speed,
+                    -resource.damaging_move_count,
+                    -resource.hp_percent,
+                    resource.species,
+                ),
+            )
+            speed_rationale = "Trick Room favors the slowest qualified reserve."
+        else:
+            cleanup = min(
+                cleanup_candidates,
+                key=lambda resource: (
+                    -resource.speed,
+                    -resource.damaging_move_count,
+                    -resource.hp_percent,
+                    resource.species,
+                ),
+            )
+            speed_rationale = "Outside Trick Room, the fastest qualified reserve is favored."
+
+        plans.append(
+            StrategicPlan(
+                name=f"reserve-{_id(cleanup.species)}-cleanup",
+                objective=(
+                    f"Keep {cleanup.species} in reserve as a cleanup resource while "
+                    "the opposing active board is already chipped."
+                ),
+                desired_board=DesiredBoard(
+                    required_resources=(cleanup.species,),
+                    resource_purposes=(
+                        ResourcePurpose(
+                            species=cleanup.species,
+                            purpose="cleanup",
+                            position="bench",
+                        ),
+                    ),
+                ),
+                required_resources=(cleanup.species,),
+                preserve=(cleanup.species,),
+                failure_conditions=(
+                    f"critical-resource-lost:{_id(cleanup.species)}",
+                ),
+                rationale=(
+                    "All visible opposing active resources are at 55% HP or lower.",
+                    (
+                        f"{cleanup.species} is healthy in reserve with "
+                        f"{cleanup.damaging_move_count} damaging moves."
+                    ),
+                    speed_rationale,
+                ),
+                tactical_priorities=(f"preserve:{cleanup.species}",),
+            )
+        )
 
     for species in key_resources:
         plans.append(
