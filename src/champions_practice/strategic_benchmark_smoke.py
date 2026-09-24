@@ -122,6 +122,26 @@ def main() -> None:
                 f"{active!r}"
             )
 
+        own_profiles = {
+            pokemon["species"]: pokemon
+            for pokemon in view["player"]["team"]
+            if isinstance(pokemon, dict)
+        }
+        sneasler_profile = own_profiles.get("Sneasler")
+        indeedee_profile = own_profiles.get("Indeedee-F")
+        if not isinstance(sneasler_profile, dict) or not isinstance(indeedee_profile, dict):
+            raise SystemExit("ERROR: own strategic profiles are missing from player view")
+        if sneasler_profile.get("damaging_move_count") != 3:
+            raise SystemExit(
+                "ERROR: Sneasler damaging-move count was not derived from Showdown"
+            )
+        if indeedee_profile.get("damaging_move_count") != 1:
+            raise SystemExit(
+                "ERROR: Indeedee-F damaging-move count was not derived from Showdown"
+            )
+        if not isinstance(sneasler_profile.get("speed"), int):
+            raise SystemExit("ERROR: own exact speed is missing from player view")
+
         legal = worker.legal_choices(state=state, side="p1")
         if not any("move trickroom" in choice for choice in legal):
             raise SystemExit("ERROR: real benchmark state has no legal Trick Room line")

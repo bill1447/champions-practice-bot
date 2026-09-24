@@ -18,16 +18,14 @@ def _case(case_id: str):
     return next(case for case in STRATEGIC_BENCHMARKS if case.case_id == case_id)
 
 
-def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
+def test_benchmark_catalog_has_unique_ids_and_no_known_gaps() -> None:
     ids = [case.case_id for case in STRATEGIC_BENCHMARKS]
 
     assert len(ids) == len(set(ids))
     assert len(STRATEGIC_BENCHMARKS) >= 11
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
-    assert [case.case_id for case in known_gaps] == [
-        "auto-generate-cleanup-purpose",
-    ]
+    assert known_gaps == []
 
 
 def test_observation_from_probe_preserves_plan_choice_and_robustness() -> None:
@@ -84,7 +82,7 @@ def test_richer_positioning_expectation_detects_wrong_board() -> None:
     assert any("missing resource purposes" in failure for failure in result.failures)
 
 
-def test_known_generation_gap_is_not_reported_as_regression() -> None:
+def test_resolved_cleanup_case_missing_observation_is_a_regression() -> None:
     case = _case("auto-generate-cleanup-purpose")
 
     result = evaluate_strategic_benchmark(
@@ -98,11 +96,12 @@ def test_known_generation_gap_is_not_reported_as_regression() -> None:
     )
 
     assert result.passed is False
-    assert result.status == "known-gap"
-    assert result.failures == ("selected result has no DesiredBoard",)
+    assert result.status == "fail"
+    assert any("accepted set" in failure for failure in result.failures)
+    assert any("DesiredBoard" in failure for failure in result.failures)
 
 
-def test_baseline_suite_separates_known_gap_from_regressions() -> None:
+def test_baseline_suite_has_no_regressions_or_known_gaps() -> None:
     observations = {
         "sneasler-neutral-trick-room": observation_from_plan(
             StrategicPlan(
@@ -233,6 +232,27 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             choice="move attack +1, move attack +2",
             robust=True,
         ),
+        "auto-generate-cleanup-purpose": observation_from_plan(
+            StrategicPlan(
+                name="reserve-sneasler-cleanup",
+                objective="reserve Sneasler for cleanup",
+                desired_board=DesiredBoard(
+                    required_resources=("Sneasler",),
+                    resource_purposes=(
+                        ResourcePurpose(
+                            species="Sneasler",
+                            purpose="cleanup",
+                            position="bench",
+                        ),
+                    ),
+                ),
+                required_resources=("Sneasler",),
+                preserve=("Sneasler",),
+                failure_conditions=("critical-resource-lost:sneasler",),
+            ),
+            choice="move attack +1, move attack +2",
+            robust=True,
+        ),
     }
 
     suite = evaluate_strategic_benchmark_suite(
@@ -242,13 +262,11 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
 
     assert suite.passed is True
     assert suite.regressions == ()
-    assert [result.case.case_id for result in suite.known_gaps] == [
-        "auto-generate-cleanup-purpose",
-    ]
+    assert suite.known_gaps == ()
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 10 | known-gap 1 | fail 0" in report
-    assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
+    assert "pass 11 | known-gap 0 | fail 0" in report
+    assert "[KNOWN-GAP]" not in report
 
 
 def test_resolved_case_failure_is_a_regression() -> None:
@@ -989,19 +1007,6 @@ class TargetingWorker:
         ]
 
 
-class GapWorker:
-    def legal_choices(self, *, state, side):
-        if side == "p1":
-            return [
-                "move attack +1, move attack +1",
-                "move attack +2, move attack +2",
-            ]
-        return ["move attack +1, move attack +2"]
-
-    def branch_many(self, *, state, branches):
-        raise AssertionError("known-gap plan should not reach exact probing")
-
-
 def test_boosted_threat_targeting_passes_exact_evidence() -> None:
     execution = run_generated_strategy_benchmark(
         TargetingWorker(),
@@ -1256,3 +1261,132 @@ def test_sacrifice_generation_passes_exact_trade_evidence() -> None:
         "Porygon2",
     )
     assert execution.selected_probe.plan.preserve == ("Torkoal",)
+
+
+
+def _cleanup_public_view() -> dict:
+    view = _gap_public_view(
+        team_species=("LeadA", "LeadB", "Sneasler", "OtherCleaner"),
+        active_species=("LeadA", "LeadB"),
+    )
+    team = view["player"]["team"]
+    profiles = (
+        (100, 2),
+        (90, 2),
+        (190, 3),
+        (120, 3),
+    )
+    for pokemon, (speed, damaging_move_count) in zip(
+        team,
+        profiles,
+        strict=True,
+    ):
+        pokemon["speed"] = speed
+        pokemon["damaging_move_count"] = damaging_move_count
+        pokemon["moves"] = ["Attack", "Attack2", "Protect"]
+
+    view["player"]["active_details"] = [
+        {
+            "species": "LeadA",
+            "moves": ["Attack", "Attack2", "Protect"],
+            "speed": 100,
+            "damaging_move_count": 2,
+        },
+        {
+            "species": "LeadB",
+            "moves": ["Attack", "Attack2", "Protect"],
+            "speed": 90,
+            "damaging_move_count": 2,
+        },
+    ]
+    view["opponent"]["active"][0]["hp_percent"] = 45
+    view["opponent"]["active"][1]["hp_percent"] = 50
+    return view
+
+
+def _cleanup_summary(*, sneasler_active: bool) -> dict:
+    lead_a = _benchmark_mon("LeadA", 100, 100)
+    lead_b = _benchmark_mon("LeadB", 100, 90)
+    sneasler = _benchmark_mon("Sneasler", 100, 190)
+    other = _benchmark_mon("OtherCleaner", 100, 120)
+    foe_a = _benchmark_mon("BoostedFoe", 45, 105)
+    foe_b = _benchmark_mon("FoeB", 50, 95)
+    active = [sneasler, lead_b] if sneasler_active else [lead_a, lead_b]
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [lead_a, lead_b, sneasler, other],
+            "active": active,
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class CleanupWorker:
+    preserve = "move attack +1, move attack +2"
+    spend = "switch 3, move attack +2"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.preserve, self.spend] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        return [
+            {
+                "index": index,
+                "summary": _cleanup_summary(
+                    sneasler_active=branch["p1_choice"] == self.spend,
+                ),
+            }
+            for index, branch in enumerate(branches)
+        ]
+
+
+def test_cleanup_role_generation_passes_exact_reserve_evidence() -> None:
+    execution = run_generated_strategy_benchmark(
+        CleanupWorker(),
+        case=_case("auto-generate-cleanup-purpose"),
+        view=_cleanup_public_view(),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "cleanup"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        plan_limit=2,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low", "high"),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names == ("reserve-sneasler-cleanup",)
+    assert execution.probed_plan_names == ("reserve-sneasler-cleanup",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.chosen.choice == CleanupWorker.preserve
+    assert execution.selected_probe.sampled_robust is True
+    purpose = execution.selected_probe.plan.desired_board.resource_purposes[0]
+    assert purpose == ResourcePurpose(
+        species="Sneasler",
+        purpose="cleanup",
+        position="bench",
+    )
+    outcome = execution.selected_probe.chosen.worst_world_outcomes[0]
+    assert "Sneasler" not in outcome.active_resources

@@ -78,7 +78,7 @@ then spend the saved budget on additional RNG futures. Stale move observations a
 from switch-only transitions by comparing the previous and current public views. The
 production damaging-turn smoke now requires public damage on both sides in one turn.
 
-## Phase 9 — Strategic reasoning layer — current objective
+## Phase 9 — Strategic reasoning layer — baseline complete for tech demo
 
 Add explicit strategic state and plan generation: threat assessment, resource valuation,
 win conditions, desired future boards, speed-control objectives, sacrifice/trade logic,
@@ -121,27 +121,30 @@ Completed so far:
 - support-sacrifice generation now activates only for heavily spent active support pieces
   with a healthy benched unique-role endgame resource, while exact evidence decides whether
   the trade is worthwhile;
-- the remaining known-gap benchmark is offensive cleanup-role generation.
+- offensive cleanup-role generation now derives a finisher from own offensive density,
+  health, public opposing HP, and the current speed mode;
+- the initial 11-case strategic benchmark corpus now has zero known gaps.
 
 Current work:
-- preserve exact belief search as the final command selector while richer strategic state
-  becomes inspectable and benchmarked;
-- use the now-labeled capability gaps to choose the next general reasoning improvement;
-- treat benchmark misses as evidence for specific missing reasoning rather than as a reason
-  to add species-specific rules.
+- freeze further strategy expansion until gameplay produces concrete failures;
+- preserve exact belief search as the final command selector;
+- keep the 11-case strategic corpus as a regression floor rather than evidence that strategy
+  is complete or optimal.
 
 Next:
-- infer offensive cleanup roles from matchup state;
-- then stop strategy expansion temporarily and build the interactive battle tech demo with
-  sealed AI choices until the human player commits;
-- only after demo/gameplay evidence should strategic authority or plan depth increase.
+- build the interactive battle tech demo;
+- seal the AI's selected command and all decision diagnostics until the human player has
+  committed a legal action for that turn;
+- reveal the AI choice and decision trace only after both choices have been handed to
+  Showdown for resolution;
+- use complete demo games to identify the next strategy/search improvements.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
 The first labeled strategic benchmark corpus is in place. It records expected plans,
-actions, desired boards, preserved resources, and known gaps independently from the live
-controller. Known gaps are reported separately from regressions so unfinished capabilities
-do not hide new breakage.
+actions, desired boards, preserved resources, and capability gaps independently from the
+live controller. The initial 11-case corpus currently has no known gaps; future missing
+capabilities should still be added explicitly rather than hidden from CI.
 
 The benchmark harness now supports production-shaped execution:
 public view -> StrategicAssessment -> generated plans -> one-turn support filtering ->
