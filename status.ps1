@@ -36,6 +36,28 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
     Write-Host "Node:     $((& node --version).Trim())"
 }
 
+if (
+    (Get-Command git -ErrorAction SilentlyContinue)
+    -and (Test-Path (Join-Path $ChampionShowdownRoot ".git"))
+) {
+    $PinnedShowdown = Get-ChampionsShowdownCommit
+    $ActualShowdown = "$(& git -C $ChampionShowdownRoot rev-parse HEAD)".Trim().ToLowerInvariant()
+    $PinState = if ($ActualShowdown -eq $PinnedShowdown) { "matches pin" } else { "PIN MISMATCH" }
+    Write-Host (
+        "Engine:   "
+        + $ActualShowdown.Substring(0, 8)
+        + " (pin "
+        + $PinnedShowdown.Substring(0, 8)
+        + "; "
+        + $PinState
+        + ")"
+    )
+}
+elseif (Test-Path $ChampionShowdownVersionFile) {
+    $PinnedShowdown = Get-ChampionsShowdownCommit
+    Write-Host "Engine:   checkout missing (pin $($PinnedShowdown.Substring(0, 8)))"
+}
+
 $TrackedPid = Get-ChampionsTrackedShowdownPid
 $PortOpen = Test-ChampionsTcpPort
 
