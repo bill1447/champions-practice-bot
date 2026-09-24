@@ -1274,3 +1274,132 @@ def test_sacrifice_generation_passes_exact_trade_evidence() -> None:
         "Porygon2",
     )
     assert execution.selected_probe.plan.preserve == ("Torkoal",)
+
+
+
+def _cleanup_public_view() -> dict:
+    view = _gap_public_view(
+        team_species=("LeadA", "LeadB", "Sneasler", "OtherCleaner"),
+        active_species=("LeadA", "LeadB"),
+    )
+    team = view["player"]["team"]
+    profiles = (
+        (100, 2),
+        (90, 2),
+        (190, 3),
+        (120, 3),
+    )
+    for pokemon, (speed, damaging_move_count) in zip(
+        team,
+        profiles,
+        strict=True,
+    ):
+        pokemon["speed"] = speed
+        pokemon["damaging_move_count"] = damaging_move_count
+        pokemon["moves"] = ["Attack", "Attack2", "Protect"]
+
+    view["player"]["active_details"] = [
+        {
+            "species": "LeadA",
+            "moves": ["Attack", "Attack2", "Protect"],
+            "speed": 100,
+            "damaging_move_count": 2,
+        },
+        {
+            "species": "LeadB",
+            "moves": ["Attack", "Attack2", "Protect"],
+            "speed": 90,
+            "damaging_move_count": 2,
+        },
+    ]
+    view["opponent"]["active"][0]["hp_percent"] = 45
+    view["opponent"]["active"][1]["hp_percent"] = 50
+    return view
+
+
+def _cleanup_summary(*, sneasler_active: bool) -> dict:
+    lead_a = _benchmark_mon("LeadA", 100, 100)
+    lead_b = _benchmark_mon("LeadB", 100, 90)
+    sneasler = _benchmark_mon("Sneasler", 100, 190)
+    other = _benchmark_mon("OtherCleaner", 100, 120)
+    foe_a = _benchmark_mon("BoostedFoe", 45, 105)
+    foe_b = _benchmark_mon("FoeB", 50, 95)
+    active = [sneasler, lead_b] if sneasler_active else [lead_a, lead_b]
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [lead_a, lead_b, sneasler, other],
+            "active": active,
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class CleanupWorker:
+    preserve = "move attack +1, move attack +2"
+    spend = "switch 3, move attack +2"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.preserve, self.spend] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        return [
+            {
+                "index": index,
+                "summary": _cleanup_summary(
+                    sneasler_active=branch["p1_choice"] == self.spend,
+                ),
+            }
+            for index, branch in enumerate(branches)
+        ]
+
+
+def test_cleanup_role_generation_passes_exact_reserve_evidence() -> None:
+    execution = run_generated_strategy_benchmark(
+        CleanupWorker(),
+        case=_case("auto-generate-cleanup-purpose"),
+        view=_cleanup_public_view(),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "cleanup"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        plan_limit=2,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low", "high"),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names == ("reserve-sneasler-cleanup",)
+    assert execution.probed_plan_names == ("reserve-sneasler-cleanup",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.chosen.choice == CleanupWorker.preserve
+    assert execution.selected_probe.sampled_robust is True
+    purpose = execution.selected_probe.plan.desired_board.resource_purposes[0]
+    assert purpose == ResourcePurpose(
+        species="Sneasler",
+        purpose="cleanup",
+        position="bench",
+    )
+    outcome = execution.selected_probe.chosen.worst_world_outcomes[0]
+    assert "Sneasler" not in outcome.active_resources
