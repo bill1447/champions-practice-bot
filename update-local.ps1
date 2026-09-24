@@ -9,6 +9,8 @@ $Root = $PSScriptRoot
 $Python = Join-Path $Root ".venv\Scripts\python.exe"
 $Showdown = Join-Path $Root "external\pokemon-showdown"
 
+. (Join-Path $Root "scripts\showdown-utils.ps1")
+
 if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
     throw "Git is not available."
 }
@@ -35,15 +37,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 if ($UpdateShowdown) {
-    if (-not (Test-Path (Join-Path $Showdown ".git"))) {
-        throw "Pokemon Showdown checkout is missing. Run .\setup.ps1 first."
-    }
-
-    Write-Host "Updating Pokemon Showdown..."
-    & git -C $Showdown pull --ff-only
-    if ($LASTEXITCODE -ne 0) {
-        throw "Showdown git pull failed."
-    }
+    Write-Host "Synchronizing Pokemon Showdown to the project pin..."
+    Sync-ChampionsShowdownCheckout
 
     Push-Location $Showdown
     try {
@@ -61,7 +56,6 @@ if ($UpdateShowdown) {
         Pop-Location
     }
 
-    . (Join-Path $Root "scripts\showdown-utils.ps1")
     Set-ChampionsShowdownLocalConfig
 }
 
