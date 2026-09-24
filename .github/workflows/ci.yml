@@ -110,6 +110,10 @@ jobs:
         shell: pwsh
         run: .\belief-search-smoke.ps1
 
+      - name: Executable strategic benchmark smoke test
+        shell: pwsh
+        run: .\strategic-benchmark-smoke.ps1
+
       - name: Exact one-ply search smoke test
         shell: pwsh
         run: .\exact-search-smoke.ps1
