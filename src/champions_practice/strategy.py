@@ -110,6 +110,8 @@ class BeliefBoardOutcome:
     living_resources: tuple[str, ...]
     effective_turns: int
     triggered_failures: tuple[str, ...] = ()
+    active_resources: tuple[str, ...] = ()
+    newly_active_resources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -419,33 +421,71 @@ def assess_trade_against_win_condition(
         )
     )
 
-    required_conditions = set(win_condition.desired_board.required_conditions)
-    required_resources = set(win_condition.desired_board.required_resources)
+    desired = win_condition.desired_board
+    required_conditions = set(desired.required_conditions)
+    required_resources = set(desired.required_resources)
+    required_active_pair = set(desired.required_active_pair)
+    safe_entry_resources = set(desired.safe_entry_resources)
     declared_failures = set(win_condition.failure_conditions)
     viable_weight = 0.0
     total_weight = sum(outcome.weight for outcome in outcome_values)
     failed_worlds = 0
+    positioning_failures = 0
 
     for outcome in outcome_values:
+        living = set(outcome.living_resources)
+        active = set(outcome.active_resources)
+        newly_active = set(outcome.newly_active_resources)
         conditions_ok = required_conditions.issubset(outcome.conditions)
-        resources_ok = required_resources.issubset(outcome.living_resources)
-        turns_ok = outcome.effective_turns >= win_condition.desired_board.minimum_effective_turns
+        resources_ok = required_resources.issubset(living)
+        turns_ok = outcome.effective_turns >= desired.minimum_effective_turns
         failures_ok = not declared_failures.intersection(outcome.triggered_failures)
-        viable = conditions_ok and resources_ok and turns_ok and failures_ok
+        active_pair_ok = required_active_pair.issubset(active)
+        safe_entry_ok = safe_entry_resources.issubset(newly_active)
+
+        purpose_ok = True
+        for purpose in desired.resource_purposes:
+            if purpose.species not in living:
+                purpose_ok = False
+                break
+            if purpose.position == "active" and purpose.species not in active:
+                purpose_ok = False
+                break
+            if purpose.position == "bench" and purpose.species in active:
+                purpose_ok = False
+                break
+
+        viable = (
+            conditions_ok
+            and resources_ok
+            and turns_ok
+            and failures_ok
+            and active_pair_ok
+            and safe_entry_ok
+            and purpose_ok
+        )
         if viable:
             viable_weight += outcome.weight
         else:
             failed_worlds += 1
+            if not active_pair_ok or not safe_entry_ok or not purpose_ok:
+                positioning_failures += 1
 
     coverage = viable_weight / total_weight
     supports = coverage >= robust_threshold and not preserve_losses and not unacceptable_losses
-    reasons = [f"win-condition coverage {coverage:.1%} across {len(outcome_values)} belief worlds"]
+    reasons = [
+        f"win-condition coverage {coverage:.1%} across {len(outcome_values)} belief worlds"
+    ]
     if preserve_losses:
         reasons.append("lost protected resource(s): " + ", ".join(preserve_losses))
     if unacceptable_losses:
         reasons.append("additional non-acceptable losses: " + ", ".join(unacceptable_losses))
     if failed_worlds:
         reasons.append(f"{failed_worlds} belief world(s) fail the desired-board requirements")
+    if positioning_failures:
+        reasons.append(
+            f"{positioning_failures} belief world(s) fail pairing, entry, or resource-purpose requirements"
+        )
     if supports:
         reasons.append("trade converts material into a robust path to the declared win condition")
     else:
@@ -459,7 +499,6 @@ def assess_trade_against_win_condition(
         supports_win_condition=supports,
         reasons=tuple(reasons),
     )
-
 
 def format_strategic_assessment(assessment: StrategicAssessment) -> str:
     """Render the read-only assessment for smoke output and later UI reuse."""
