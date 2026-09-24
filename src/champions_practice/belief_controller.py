@@ -736,6 +736,7 @@ class BeliefBattleController:
                     None,
                     None,
                     None,
+                    None,
                     len(probes),
                     strategic_branch_count,
                 )
@@ -746,6 +747,7 @@ class BeliefBattleController:
             )
             if not guidance.active:
                 return (
+                    None,
                     None,
                     None,
                     None,
@@ -761,6 +763,7 @@ class BeliefBattleController:
                 guided_pruning,
                 guided_search,
                 selected_probe,
+                guidance,
                 len(probes),
                 strategic_branch_count,
             )
@@ -786,6 +789,7 @@ class BeliefBattleController:
             guided_pruning,
             guided_search,
             selected_probe,
+            selected_guidance,
             probe_count,
             strategic_branch_count,
         ) = augmentation
@@ -794,6 +798,7 @@ class BeliefBattleController:
             guided_pruning is None
             or guided_search is None
             or selected_probe is None
+            or selected_guidance is None
         ):
             return decision_from_tactical(
                 baseline_pruning,
@@ -825,7 +830,7 @@ class BeliefBattleController:
         plan_aligned = (
             choice_matches_guidance(
                 guided_search.chosen.choice,
-                guidance,
+                selected_guidance,
             )
             and probed_candidate is not None
             and probed_candidate.evaluation.robust
