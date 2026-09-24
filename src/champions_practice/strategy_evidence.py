@@ -45,8 +45,14 @@ class StrategicPlanProbe:
     response_screening_branch_count: int
     unsupported_conditions: tuple[str, ...]
     unresolved_failure_conditions: tuple[str, ...]
-    proven_robust: bool
+    sampled_robust: bool
+    rng_sample_count: int
     total_seconds: float = field(compare=False)
+
+    @property
+    def proven_robust(self) -> bool:
+        """Compatibility alias; sampled exact futures are evidence, not a proof."""
+        return self.sampled_robust
 
 
 def _id(value: object) -> str:
@@ -571,7 +577,7 @@ def probe_strategic_plan(
         )
     )
     chosen = ranking[0]
-    proven_robust = (
+    sampled_robust = (
         chosen.evaluation.robust
         and not unsupported
         and not unresolved
@@ -585,7 +591,8 @@ def probe_strategic_plan(
         response_screening_branch_count=response_screening_count,
         unsupported_conditions=unsupported,
         unresolved_failure_conditions=unresolved,
-        proven_robust=proven_robust,
+        sampled_robust=sampled_robust,
+        rng_sample_count=len(rng_seeds),
         total_seconds=perf_counter() - started,
     )
 
@@ -600,7 +607,13 @@ def format_strategic_plan_probe(probe: StrategicPlanProbe) -> str:
         f"  Posterior coverage: {probe.chosen.evaluation.viable_belief_mass:.1%}",
         f"  Cross-plan board utility: worst {probe.chosen.worst_board_score:.1f}; "
         f"weighted {probe.chosen.weighted_board_score:.1f}",
-        f"  Evidence status: {'proven robust' if probe.proven_robust else 'incomplete/fragile'}",
+        "  Evidence status: "
+        + (
+            "sampled robust"
+            if probe.sampled_robust
+            else "incomplete/fragile"
+        ),
+        f"  RNG futures sampled per reply/world: {probe.rng_sample_count}",
     ]
     desired = probe.plan.desired_board
     if desired.required_active_pair:
@@ -639,13 +652,14 @@ def format_strategic_plan_probe(probe: StrategicPlanProbe) -> str:
 def select_supported_plan(
     probes: tuple[StrategicPlanProbe, ...],
 ) -> StrategicPlanProbe | None:
-    """Choose the strongest fully supported robust plan, if one exists.
+    """Choose the strongest fully supported sampled-robust plan, if one exists.
 
-    Unsupported or unresolved plans receive no live strategic authority. Among proven
-    plans, prefer posterior coverage, then the stronger exact resulting board, then
-    lower aggregate failure mass. Plan names are only a deterministic final tie-breaker.
+    Unsupported or unresolved plans receive no live strategic authority. Among plans that
+    survive every sampled exact branch, prefer posterior coverage, then the stronger exact
+    resulting board, then lower aggregate failure mass. Plan names are only a deterministic
+    final tie-breaker.
     """
-    supported = [probe for probe in probes if probe.proven_robust]
+    supported = [probe for probe in probes if probe.sampled_robust]
     if not supported:
         return None
     return min(
