@@ -18,7 +18,7 @@ def _case(case_id: str):
     return next(case for case in STRATEGIC_BENCHMARKS if case.case_id == case_id)
 
 
-def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
+def test_benchmark_catalog_has_unique_ids_and_no_known_gaps() -> None:
     ids = [case.case_id for case in STRATEGIC_BENCHMARKS]
 
     assert len(ids) == len(set(ids))
@@ -101,7 +101,7 @@ def test_resolved_cleanup_case_missing_observation_is_a_regression() -> None:
     assert any("DesiredBoard" in failure for failure in result.failures)
 
 
-def test_baseline_suite_separates_known_gap_from_regressions() -> None:
+def test_baseline_suite_has_no_regressions_or_known_gaps() -> None:
     observations = {
         "sneasler-neutral-trick-room": observation_from_plan(
             StrategicPlan(
@@ -1005,19 +1005,6 @@ class TargetingWorker:
             }
             for index, branch in enumerate(branches)
         ]
-
-
-class GapWorker:
-    def legal_choices(self, *, state, side):
-        if side == "p1":
-            return [
-                "move attack +1, move attack +1",
-                "move attack +2, move attack +2",
-            ]
-        return ["move attack +1, move attack +2"]
-
-    def branch_many(self, *, state, branches):
-        raise AssertionError("known-gap plan should not reach exact probing")
 
 
 def test_boosted_threat_targeting_passes_exact_evidence() -> None:
