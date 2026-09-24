@@ -26,7 +26,6 @@ def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
     assert [case.case_id for case in known_gaps] == [
-        "auto-generate-sacrifice-endgame",
         "auto-generate-cleanup-purpose",
     ]
 
@@ -212,6 +211,28 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             choice="switch 3, move attack +1",
             robust=True,
         ),
+        "auto-generate-sacrifice-endgame": observation_from_plan(
+            StrategicPlan(
+                name="sacrifice-support-for-torkoal-endgame",
+                objective="trade spent supports for the Torkoal endgame",
+                desired_board=DesiredBoard(
+                    required_resources=("Torkoal",),
+                    resource_purposes=(
+                        ResourcePurpose(
+                            species="Torkoal",
+                            purpose="endgame",
+                            position="bench",
+                        ),
+                    ),
+                ),
+                required_resources=("Torkoal",),
+                preserve=("Torkoal",),
+                acceptable_losses=("Indeedee-F", "Porygon2"),
+                failure_conditions=("critical-resource-lost:torkoal",),
+            ),
+            choice="move attack +1, move attack +2",
+            robust=True,
+        ),
     }
 
     suite = evaluate_strategic_benchmark_suite(
@@ -222,12 +243,11 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
     assert suite.passed is True
     assert suite.regressions == ()
     assert [result.case.case_id for result in suite.known_gaps] == [
-        "auto-generate-sacrifice-endgame",
         "auto-generate-cleanup-purpose",
     ]
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 9 | known-gap 2 | fail 0" in report
+    assert "pass 10 | known-gap 1 | fail 0" in report
     assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
 
 
@@ -1121,26 +1141,112 @@ def test_active_pair_generation_passes_exact_safe_entry_evidence() -> None:
     assert outcome.newly_active_resources == ("Gardevoir",)
 
 
-def test_sacrifice_generation_gap_remains_explicit() -> None:
-    sacrifice = run_generated_strategy_benchmark(
-        GapWorker(),
+def _sacrifice_public_view() -> dict:
+    view = _gap_public_view(
+        team_species=("Indeedee-F", "Porygon2", "Torkoal", "Partner"),
+        active_species=("Indeedee-F", "Porygon2"),
+    )
+    team = view["player"]["team"]
+    team[0]["hp_percent"] = 20
+    team[0]["moves"] = ["Follow Me", "Attack"]
+    team[1]["hp_percent"] = 25
+    team[1]["moves"] = ["Helping Hand", "Attack"]
+    team[2]["ability"] = "Drought"
+    team[2]["moves"] = ["Attack"]
+    view["player"]["active_details"] = [
+        {"species": "Indeedee-F", "moves": ["Follow Me", "Attack"]},
+        {"species": "Porygon2", "moves": ["Helping Hand", "Attack"]},
+    ]
+    return view
+
+
+def _sacrifice_summary(*, trade_supports: bool) -> dict:
+    indeedee = _benchmark_mon("Indeedee-F", 0 if trade_supports else 20, 90)
+    porygon = _benchmark_mon("Porygon2", 0 if trade_supports else 25, 60)
+    torkoal = _benchmark_mon("Torkoal", 100, 20)
+    partner = _benchmark_mon("Partner", 100, 100)
+    foe_a = _benchmark_mon("FoeA", 0 if trade_supports else 100, 105)
+    foe_b = _benchmark_mon("FoeB", 0 if trade_supports else 100, 95)
+    foe_c = _benchmark_mon("FoeC", 100, 85)
+    foe_d = _benchmark_mon("FoeD", 100, 75)
+    own_active = [] if trade_supports else [indeedee, porygon]
+    foe_active = [] if trade_supports else [foe_a, foe_b]
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "switch" if trade_supports else "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [indeedee, porygon, torkoal, partner],
+            "active": own_active,
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b, foe_c, foe_d],
+            "active": foe_active,
+            "sideConditions": [],
+        },
+    }
+
+
+class SacrificeWorker:
+    trade = "move attack +1, move attack +2"
+    preserve = "move protect, move protect"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.trade, self.preserve] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        return [
+            {
+                "index": index,
+                "summary": _sacrifice_summary(
+                    trade_supports=branch["p1_choice"] == self.trade,
+                ),
+            }
+            for index, branch in enumerate(branches)
+        ]
+
+
+def test_sacrifice_generation_passes_exact_trade_evidence() -> None:
+    execution = run_generated_strategy_benchmark(
+        SacrificeWorker(),
         case=_case("auto-generate-sacrifice-endgame"),
-        view=_gap_public_view(
-            team_species=("Indeedee-F", "Porygon2", "Torkoal", "Partner"),
-            active_species=("Indeedee-F", "Porygon2"),
-        ),
+        view=_sacrifice_public_view(),
         particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
         worlds=(
             ExactBeliefWorldState(
-                state={"id": "sacrifice-gap"},
+                state={"id": "sacrifice"},
                 weight=1.0,
                 label="world-a",
             ),
         ),
         side="p1",
-        rng_seeds=("low",),
+        plan_limit=2,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low", "high"),
     )
 
-    assert sacrifice.result.status == "known-gap"
-    assert sacrifice.generated_plan_names == ()
-    assert sacrifice.selected_probe is None
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names[0] == (
+        "sacrifice-support-for-torkoal-endgame"
+    )
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.plan.name == (
+        "sacrifice-support-for-torkoal-endgame"
+    )
+    assert execution.selected_probe.chosen.choice == SacrificeWorker.trade
+    assert execution.selected_probe.sampled_robust is True
+    assert execution.selected_probe.plan.acceptable_losses == (
+        "Indeedee-F",
+        "Porygon2",
+    )
+    assert execution.selected_probe.plan.preserve == ("Torkoal",)
