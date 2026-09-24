@@ -62,10 +62,34 @@ class PosteriorAssessment:
 
 
 @dataclass(frozen=True)
+class ResourcePurpose:
+    """Why a specific Pokemon must remain available for the intended endgame."""
+
+    species: str
+    purpose: str
+    position: str = "any"
+
+    def __post_init__(self) -> None:
+        if self.position not in {"any", "active", "bench"}:
+            raise ValueError("resource purpose position must be any, active, or bench")
+        if not self.species.strip() or not self.purpose.strip():
+            raise ValueError("resource purpose species and purpose must be non-empty")
+
+
+@dataclass(frozen=True)
 class DesiredBoard:
     required_conditions: tuple[str, ...] = ()
     required_resources: tuple[str, ...] = ()
     minimum_effective_turns: int = 0
+    required_active_pair: tuple[str, ...] = ()
+    safe_entry_resources: tuple[str, ...] = ()
+    resource_purposes: tuple[ResourcePurpose, ...] = ()
+
+    def __post_init__(self) -> None:
+        if len(self.required_active_pair) > 2:
+            raise ValueError("required_active_pair may contain at most two Pokemon")
+        if self.minimum_effective_turns < 0:
+            raise ValueError("minimum_effective_turns must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -86,6 +110,8 @@ class BeliefBoardOutcome:
     living_resources: tuple[str, ...]
     effective_turns: int
     triggered_failures: tuple[str, ...] = ()
+    active_resources: tuple[str, ...] = ()
+    newly_active_resources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -395,33 +421,72 @@ def assess_trade_against_win_condition(
         )
     )
 
-    required_conditions = set(win_condition.desired_board.required_conditions)
-    required_resources = set(win_condition.desired_board.required_resources)
+    desired = win_condition.desired_board
+    required_conditions = set(desired.required_conditions)
+    required_resources = set(desired.required_resources)
+    required_active_pair = set(desired.required_active_pair)
+    safe_entry_resources = set(desired.safe_entry_resources)
     declared_failures = set(win_condition.failure_conditions)
     viable_weight = 0.0
     total_weight = sum(outcome.weight for outcome in outcome_values)
     failed_worlds = 0
+    positioning_failures = 0
 
     for outcome in outcome_values:
+        living = set(outcome.living_resources)
+        active = set(outcome.active_resources)
+        newly_active = set(outcome.newly_active_resources)
         conditions_ok = required_conditions.issubset(outcome.conditions)
-        resources_ok = required_resources.issubset(outcome.living_resources)
-        turns_ok = outcome.effective_turns >= win_condition.desired_board.minimum_effective_turns
+        resources_ok = required_resources.issubset(living)
+        turns_ok = outcome.effective_turns >= desired.minimum_effective_turns
         failures_ok = not declared_failures.intersection(outcome.triggered_failures)
-        viable = conditions_ok and resources_ok and turns_ok and failures_ok
+        active_pair_ok = required_active_pair.issubset(active)
+        safe_entry_ok = safe_entry_resources.issubset(newly_active)
+
+        purpose_ok = True
+        for purpose in desired.resource_purposes:
+            if purpose.species not in living:
+                purpose_ok = False
+                break
+            if purpose.position == "active" and purpose.species not in active:
+                purpose_ok = False
+                break
+            if purpose.position == "bench" and purpose.species in active:
+                purpose_ok = False
+                break
+
+        viable = (
+            conditions_ok
+            and resources_ok
+            and turns_ok
+            and failures_ok
+            and active_pair_ok
+            and safe_entry_ok
+            and purpose_ok
+        )
         if viable:
             viable_weight += outcome.weight
         else:
             failed_worlds += 1
+            if not active_pair_ok or not safe_entry_ok or not purpose_ok:
+                positioning_failures += 1
 
     coverage = viable_weight / total_weight
     supports = coverage >= robust_threshold and not preserve_losses and not unacceptable_losses
-    reasons = [f"win-condition coverage {coverage:.1%} across {len(outcome_values)} belief worlds"]
+    reasons = [
+        f"win-condition coverage {coverage:.1%} across {len(outcome_values)} belief worlds"
+    ]
     if preserve_losses:
         reasons.append("lost protected resource(s): " + ", ".join(preserve_losses))
     if unacceptable_losses:
         reasons.append("additional non-acceptable losses: " + ", ".join(unacceptable_losses))
     if failed_worlds:
         reasons.append(f"{failed_worlds} belief world(s) fail the desired-board requirements")
+    if positioning_failures:
+        reasons.append(
+            f"{positioning_failures} belief world(s) fail pairing, entry, "
+            "or resource-purpose requirements"
+        )
     if supports:
         reasons.append("trade converts material into a robust path to the declared win condition")
     else:
@@ -435,7 +500,6 @@ def assess_trade_against_win_condition(
         supports_win_condition=supports,
         reasons=tuple(reasons),
     )
-
 
 def format_strategic_assessment(assessment: StrategicAssessment) -> str:
     """Render the read-only assessment for smoke output and later UI reuse."""
@@ -498,6 +562,8 @@ class PlanWorldOutcome:
     effective_turns: int
     lost_resources: tuple[str, ...] = ()
     triggered_failures: tuple[str, ...] = ()
+    active_resources: tuple[str, ...] = ()
+    newly_active_resources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -512,6 +578,9 @@ class StrategicPlanEvaluation:
     timing_failure_mass: float
     declared_failure_mass: float
     unacceptable_loss_mass: float
+    active_pair_failure_mass: float
+    safe_entry_failure_mass: float
+    purpose_failure_mass: float
     reasons: tuple[str, ...]
 
 
@@ -726,6 +795,9 @@ def evaluate_strategic_plan(
     required_resources = set(plan.required_resources).union(
         plan.desired_board.required_resources
     )
+    required_active_pair = set(plan.desired_board.required_active_pair)
+    safe_entry_resources = set(plan.desired_board.safe_entry_resources)
+    purposes = tuple(plan.desired_board.resource_purposes)
     preserve = set(plan.preserve)
     acceptable_losses = set(plan.acceptable_losses)
     declared_failures = set(plan.failure_conditions)
@@ -737,10 +809,15 @@ def evaluate_strategic_plan(
     timing_failure = 0.0
     declared_failure = 0.0
     unacceptable_loss = 0.0
+    active_pair_failure = 0.0
+    safe_entry_failure = 0.0
+    purpose_failure = 0.0
     failed_worlds = 0
 
     for outcome in outcomes:
         living = set(outcome.living_resources)
+        active = set(outcome.active_resources)
+        newly_active = set(outcome.newly_active_resources)
         lost = set(outcome.lost_resources)
         preserve_ok = preserve.issubset(living) and not preserve.intersection(lost)
         resources_ok = required_resources.issubset(living)
@@ -749,6 +826,20 @@ def evaluate_strategic_plan(
         failures_ok = not declared_failures.intersection(outcome.triggered_failures)
         extra_losses = lost.difference(acceptable_losses).difference(preserve)
         losses_ok = not extra_losses
+        active_pair_ok = required_active_pair.issubset(active)
+        safe_entry_ok = safe_entry_resources.issubset(newly_active)
+
+        purpose_ok = True
+        for purpose in purposes:
+            if purpose.species not in living:
+                purpose_ok = False
+                break
+            if purpose.position == "active" and purpose.species not in active:
+                purpose_ok = False
+                break
+            if purpose.position == "bench" and purpose.species in active:
+                purpose_ok = False
+                break
 
         if not preserve_ok:
             preserve_failure += outcome.weight
@@ -762,6 +853,12 @@ def evaluate_strategic_plan(
             declared_failure += outcome.weight
         if not losses_ok:
             unacceptable_loss += outcome.weight
+        if not active_pair_ok:
+            active_pair_failure += outcome.weight
+        if not safe_entry_ok:
+            safe_entry_failure += outcome.weight
+        if not purpose_ok:
+            purpose_failure += outcome.weight
 
         if (
             preserve_ok
@@ -770,6 +867,9 @@ def evaluate_strategic_plan(
             and timing_ok
             and failures_ok
             and losses_ok
+            and active_pair_ok
+            and safe_entry_ok
+            and purpose_ok
         ):
             viable_weight += outcome.weight
         else:
@@ -785,7 +885,9 @@ def evaluate_strategic_plan(
         f"{failed_worlds} of {len(outcomes)} belief world(s) fail at least one requirement",
     ]
     if mass(preserve_failure):
-        reasons.append(f"preserve failures cover {mass(preserve_failure):.1%} posterior mass")
+        reasons.append(
+            f"preserve failures cover {mass(preserve_failure):.1%} posterior mass"
+        )
     if mass(resource_failure):
         reasons.append(
             f"required-resource failures cover {mass(resource_failure):.1%} posterior mass"
@@ -795,7 +897,9 @@ def evaluate_strategic_plan(
             f"desired-board failures cover {mass(condition_failure):.1%} posterior mass"
         )
     if mass(timing_failure):
-        reasons.append(f"timing failures cover {mass(timing_failure):.1%} posterior mass")
+        reasons.append(
+            f"timing failures cover {mass(timing_failure):.1%} posterior mass"
+        )
     if mass(declared_failure):
         reasons.append(
             f"declared failure conditions occur in {mass(declared_failure):.1%} posterior mass"
@@ -803,6 +907,18 @@ def evaluate_strategic_plan(
     if mass(unacceptable_loss):
         reasons.append(
             f"unacceptable losses occur in {mass(unacceptable_loss):.1%} posterior mass"
+        )
+    if mass(active_pair_failure):
+        reasons.append(
+            f"active-pair failures cover {mass(active_pair_failure):.1%} posterior mass"
+        )
+    if mass(safe_entry_failure):
+        reasons.append(
+            f"safe-entry failures cover {mass(safe_entry_failure):.1%} posterior mass"
+        )
+    if mass(purpose_failure):
+        reasons.append(
+            f"resource-purpose failures cover {mass(purpose_failure):.1%} posterior mass"
         )
 
     return StrategicPlanEvaluation(
@@ -816,9 +932,11 @@ def evaluate_strategic_plan(
         timing_failure_mass=mass(timing_failure),
         declared_failure_mass=mass(declared_failure),
         unacceptable_loss_mass=mass(unacceptable_loss),
+        active_pair_failure_mass=mass(active_pair_failure),
+        safe_entry_failure_mass=mass(safe_entry_failure),
+        purpose_failure_mass=mass(purpose_failure),
         reasons=tuple(reasons),
     )
-
 
 def rank_strategic_plans(
     plans: Iterable[StrategicPlan],
@@ -857,6 +975,9 @@ def rank_strategic_plans(
                 -evaluation.viable_belief_mass,
                 evaluation.preserve_failure_mass,
                 evaluation.required_resource_failure_mass,
+                evaluation.active_pair_failure_mass,
+                evaluation.safe_entry_failure_mass,
+                evaluation.purpose_failure_mass,
                 evaluation.declared_failure_mass,
                 evaluation.unacceptable_loss_mass,
                 evaluation.plan.name,
@@ -886,6 +1007,24 @@ def format_strategic_plan_ranking(ranking: StrategicPlanRanking) -> str:
         if evaluation.plan.acceptable_losses:
             lines.append(
                 "     acceptable losses: " + ", ".join(evaluation.plan.acceptable_losses)
+            )
+        desired = evaluation.plan.desired_board
+        if desired.required_active_pair:
+            lines.append(
+                "     desired active pair: "
+                + " + ".join(desired.required_active_pair)
+            )
+        if desired.safe_entry_resources:
+            lines.append(
+                "     safe entry: " + ", ".join(desired.safe_entry_resources)
+            )
+        if desired.resource_purposes:
+            lines.append(
+                "     resource purposes: "
+                + ", ".join(
+                    f"{purpose.species}={purpose.purpose} ({purpose.position})"
+                    for purpose in desired.resource_purposes
+                )
             )
         lines.append("     " + "; ".join(evaluation.reasons))
     return "\n".join(lines)

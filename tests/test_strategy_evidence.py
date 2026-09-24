@@ -4,6 +4,7 @@ from champions_practice.strategy import (
     FieldControlAssessment,
     PosteriorAssessment,
     ResourceAssessment,
+    ResourcePurpose,
     SpeedControlAssessment,
     StrategicAssessment,
     StrategicPlan,
@@ -519,3 +520,191 @@ def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:
     assert worse.proven_robust is True
     assert better.proven_robust is True
     assert selected is better
+
+
+
+def _positioning_summary(*, gardevoir_active: bool) -> dict:
+    lead = _mon("LeadA", 100)
+    rillaboom = _mon("Rillaboom", 100)
+    gardevoir = _mon("Gardevoir", 100)
+    sneasler = _mon("Sneasler", 100)
+    active = (
+        [gardevoir, rillaboom]
+        if gardevoir_active
+        else [lead, rillaboom]
+    )
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [lead, rillaboom, gardevoir, sneasler],
+            "active": active,
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [_mon("FoeA", 100), _mon("FoeB", 100)],
+            "active": [_mon("FoeA", 100), _mon("FoeB", 100)],
+            "sideConditions": [],
+        },
+    }
+
+
+def _positioning_assessment() -> StrategicAssessment:
+    return StrategicAssessment(
+        turn=5,
+        phase="move",
+        threats=(),
+        resources=(
+            ResourceAssessment(
+                species="LeadA",
+                hp_percent=100,
+                active=True,
+                fainted=False,
+                strategic_roles=("protect",),
+                preservation_priority="unassigned",
+                reasons=(),
+            ),
+            ResourceAssessment(
+                species="Rillaboom",
+                hp_percent=100,
+                active=True,
+                fainted=False,
+                strategic_roles=("protect",),
+                preservation_priority="contextual",
+                reasons=(),
+            ),
+            ResourceAssessment(
+                species="Gardevoir",
+                hp_percent=100,
+                active=False,
+                fainted=False,
+                strategic_roles=("protect",),
+                preservation_priority="contextual",
+                reasons=(),
+            ),
+            ResourceAssessment(
+                species="Sneasler",
+                hp_percent=100,
+                active=False,
+                fainted=False,
+                strategic_roles=("protect",),
+                preservation_priority="contextual",
+                reasons=(),
+            ),
+        ),
+        speed_control=SpeedControlAssessment(
+            trick_room_active=False,
+            our_tailwind=False,
+            opponent_tailwind=False,
+            available_our_tools=(),
+        ),
+        field_control=FieldControlAssessment(
+            terrain=None,
+            weather=None,
+            our_side_conditions=(),
+            opponent_side_conditions=(),
+            available_our_setters=(),
+        ),
+        posterior=PosteriorAssessment(
+            particle_count=1,
+            world_count=1,
+            world_mass=(("world-a", 1.0),),
+        ),
+        key_resources=(),
+        notes=(),
+    )
+
+
+def _positioning_view() -> dict:
+    return {
+        "player": {
+            "active_details": [
+                {"species": "LeadA", "moves": ["Protect"]},
+                {"species": "Rillaboom", "moves": ["Protect"]},
+            ]
+        },
+        "opponent": {
+            "active": [
+                {"species": "FoeA", "base_species": "FoeA"},
+                {"species": "FoeB", "base_species": "FoeB"},
+            ]
+        },
+    }
+
+
+class PositioningWorker:
+    switch = "switch 3, move protect"
+    stay = "move protect, move protect"
+    response = "move protect, move protect"
+
+    def legal_choices(self, *, state, side):
+        return [self.switch, self.stay] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        return [
+            {
+                "index": index,
+                "summary": _positioning_summary(
+                    gardevoir_active=branch["p1_choice"] == self.switch,
+                ),
+            }
+            for index, branch in enumerate(branches)
+        ]
+
+
+def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
+    plan = StrategicPlan(
+        name="gard-rilla-with-sneasler-cleanup",
+        objective="enter Gardevoir beside Rillaboom while holding Sneasler for cleanup",
+        desired_board=DesiredBoard(
+            required_active_pair=("Gardevoir", "Rillaboom"),
+            safe_entry_resources=("Gardevoir",),
+            resource_purposes=(
+                ResourcePurpose(
+                    species="Sneasler",
+                    purpose="cleanup",
+                    position="bench",
+                ),
+            ),
+        ),
+        tactical_priorities=("prefer-switch",),
+    )
+
+    probe = probe_strategic_plan(
+        PositioningWorker(),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "positioning"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        assessment=_positioning_assessment(),
+        view=_positioning_view(),
+        side="p1",
+        plan=plan,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+
+    assert probe.chosen.choice == PositioningWorker.switch
+    assert probe.chosen.evaluation.robust is True
+    assert probe.proven_robust is True
+    outcome = probe.chosen.worst_world_outcomes[0]
+    assert set(outcome.active_resources) == {"Gardevoir", "Rillaboom"}
+    assert outcome.newly_active_resources == ("Gardevoir",)
+    assert "Sneasler" in outcome.living_resources
+
+    rendered = format_strategic_plan_probe(probe)
+    assert "Desired active pair: Gardevoir + Rillaboom" in rendered
+    assert "Safe entry: Gardevoir" in rendered
+    assert "Sneasler=cleanup (bench)" in rendered

@@ -6,6 +6,7 @@ from champions_practice.strategy import (
     BeliefBoardOutcome,
     DesiredBoard,
     PlanWorldOutcome,
+    ResourcePurpose,
     StrategicPlan,
     WinCondition,
     assess_strategic_position,
@@ -420,3 +421,155 @@ def test_plan_ranking_prefers_robust_coverage_without_fixed_species_values() -> 
     assert "[TOP PLAN] trick-room-endgame" in rendered
     assert "coverage 85.0%" in rendered
     assert "live move selection is unchanged" in rendered
+
+
+
+def test_cleanup_purpose_is_more_specific_than_merely_living() -> None:
+    plan = StrategicPlan(
+        name="preserve-sneasler-cleanup",
+        objective="hold Sneasler for late-game cleanup",
+        desired_board=DesiredBoard(
+            resource_purposes=(
+                ResourcePurpose(
+                    species="Sneasler",
+                    purpose="cleanup",
+                    position="bench",
+                ),
+            ),
+        ),
+    )
+
+    preserved_for_cleanup = evaluate_strategic_plan(
+        plan,
+        outcomes=(
+            PlanWorldOutcome(
+                label="held-back",
+                weight=1.0,
+                conditions=(),
+                living_resources=("Sneasler", "Indeedee-F", "Gardevoir"),
+                effective_turns=0,
+                active_resources=("Indeedee-F", "Gardevoir"),
+            ),
+        ),
+    )
+    spent_on_board = evaluate_strategic_plan(
+        plan,
+        outcomes=(
+            PlanWorldOutcome(
+                label="prematurely-active",
+                weight=1.0,
+                conditions=(),
+                living_resources=("Sneasler", "Indeedee-F", "Gardevoir"),
+                effective_turns=0,
+                active_resources=("Sneasler", "Indeedee-F"),
+            ),
+        ),
+    )
+
+    assert preserved_for_cleanup.robust is True
+    assert preserved_for_cleanup.purpose_failure_mass == 0.0
+    assert spent_on_board.robust is False
+    assert spent_on_board.purpose_failure_mass == 1.0
+
+
+def test_desired_active_pair_and_safe_entry_are_independent_requirements() -> None:
+    plan = StrategicPlan(
+        name="gard-rilla-board",
+        objective="bring Gardevoir in safely beside Rillaboom",
+        desired_board=DesiredBoard(
+            required_active_pair=("Gardevoir", "Rillaboom"),
+            safe_entry_resources=("Gardevoir",),
+        ),
+    )
+
+    evaluation = evaluate_strategic_plan(
+        plan,
+        outcomes=(
+            PlanWorldOutcome(
+                label="clean-entry",
+                weight=0.5,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Rillaboom"),
+                newly_active_resources=("Gardevoir",),
+            ),
+            PlanWorldOutcome(
+                label="wrong-partner",
+                weight=0.25,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Sneasler"),
+                newly_active_resources=("Gardevoir",),
+            ),
+            PlanWorldOutcome(
+                label="already-exposed",
+                weight=0.25,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Rillaboom"),
+                newly_active_resources=(),
+            ),
+        ),
+    )
+
+    assert evaluation.viable_belief_mass == 0.5
+    assert evaluation.robust is False
+    assert evaluation.active_pair_failure_mass == 0.25
+    assert evaluation.safe_entry_failure_mass == 0.25
+
+
+
+def test_trade_evaluation_respects_positioning_and_resource_purpose() -> None:
+    win_condition = WinCondition(
+        name="positioned-endgame",
+        objective="enter Gardevoir beside Rillaboom and keep Sneasler in reserve",
+        desired_board=DesiredBoard(
+            required_active_pair=("Gardevoir", "Rillaboom"),
+            safe_entry_resources=("Gardevoir",),
+            resource_purposes=(
+                ResourcePurpose(
+                    species="Sneasler",
+                    purpose="cleanup",
+                    position="bench",
+                ),
+            ),
+        ),
+    )
+
+    good = assess_trade_against_win_condition(
+        win_condition,
+        lost_resources=(),
+        outcomes=(
+            BeliefBoardOutcome(
+                label="good",
+                weight=1.0,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Rillaboom"),
+                newly_active_resources=("Gardevoir",),
+            ),
+        ),
+    )
+    wrong_board = assess_trade_against_win_condition(
+        win_condition,
+        lost_resources=(),
+        outcomes=(
+            BeliefBoardOutcome(
+                label="wrong",
+                weight=1.0,
+                conditions=(),
+                living_resources=("Gardevoir", "Rillaboom", "Sneasler"),
+                effective_turns=0,
+                active_resources=("Gardevoir", "Sneasler"),
+                newly_active_resources=("Gardevoir",),
+            ),
+        ),
+    )
+
+    assert good.supports_win_condition is True
+    assert wrong_board.supports_win_condition is False
+    assert any("pairing" in reason for reason in wrong_board.reasons)

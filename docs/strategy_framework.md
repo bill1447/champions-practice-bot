@@ -29,6 +29,9 @@ Their value is contextual rather than a fixed material score.
 
 Implementation consequence: strategy must be able to value a low-HP but necessary resource,
 a temporary sacrifice, and a move that improves the next board even when it deals no damage.
+DesiredBoard therefore represents not only living resources and field conditions, but also
+specific active pairings, newly safe-entered resources, and purpose-specific endgame pieces
+such as a cleanup Pokemon intentionally preserved on the bench.
 
 ### Speed control is a timed strategic resource
 
@@ -98,3 +101,8 @@ PR #57 adds explicit `StrategicPlan` generation and posterior-aware plan ranking
 express objectives such as exploiting Trick Room, stalling opposing Tailwind, preserving a
 unique resource, or neutralizing a boosted threat. The ranking remains read-only and does
 not choose a Showdown command.
+
+Later Phase 9 work extends `DesiredBoard` so a plan can distinguish "Sneasler is still
+alive" from "Sneasler is intentionally preserved as the cleanup piece," require a specific
+active pairing such as Gardevoir + Rillaboom, and require that a Pokemon entered safely on
+the current exact branch.
