@@ -114,8 +114,10 @@ Completed so far:
   authority is labeled sampled robust rather than proven robust;
 - executable benchmarks now cover Protect-based preservation and switching a unique
   resource when Protect is unsafe;
-- known-gap benchmarks explicitly locate missing boosted-threat evidence, active-pair
-  generation, and sacrifice/endgame generation.
+- boosted-threat targeting now has one-turn exact evidence for neutralization and public
+  boost snowball, turning that benchmark from known gap into a resolved regression;
+- remaining known-gap benchmarks locate active-pair generation and sacrifice/endgame
+  generation.
 
 Current work:
 - preserve exact belief search as the final command selector while richer strategic state
@@ -125,9 +127,8 @@ Current work:
   to add species-specific rules.
 
 Next:
-- implement one-turn evidence for boosted-threat snowball risk and make the targeting
-  benchmark pass for the right reason;
-- then tackle automatic active-pair/safe-entry and sacrifice/endgame plan generation;
+- tackle automatic active-pair/safe-entry generation;
+- then add sacrifice/endgame plan generation from position state;
 - only after those benchmarks pass should strategic authority or plan depth increase.
 
 ## Phase 10 — Benchmark and playing-strength development — started
