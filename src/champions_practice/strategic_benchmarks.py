@@ -527,23 +527,19 @@ STRATEGIC_BENCHMARKS = (
         case_id="boosted-threat-targeting-evidence",
         label="Target a boosted immediate threat with exact evidence",
         category="targeting",
-        stage="one-turn-evidence",
+        stage="generated-exact-plan",
         scenario=(
             "A boosted opposing attacker is the immediate strategic threat and can be "
             "removed by focusing the correct opposing slot."
         ),
         principle=(
-            "Threat-targeting plans should receive authority only when the one-turn "
-            "evidence model can evaluate both neutralization and snowball risk."
+            "Threat-targeting plans receive authority only when exact one-turn evidence "
+            "both demonstrates neutralization and detects additional public boost snowball."
         ),
         expectation=StrategicBenchmarkExpectation(
             accepted_plan_names=("neutralize-boosted-boostedfoe",),
             accepted_choices=("move attack +1, move attack +1",),
             require_robust=True,
-        ),
-        known_gap=(
-            "Plan generation identifies the boosted threat, but the one-turn evidence "
-            "filter still treats threat-snowballs:* as unsupported."
         ),
     ),
     StrategicBenchmarkCase(
