@@ -484,6 +484,117 @@ STRATEGIC_BENCHMARKS = (
         ),
     ),
     StrategicBenchmarkCase(
+        case_id="protect-unique-resource",
+        label="Protect a unique resource when attacking spends it",
+        category="protect",
+        stage="generated-exact-plan",
+        scenario=(
+            "Anchor is the only living redirection provider. An aggressive line loses "
+            "Anchor, while Protect preserves it for the endgame."
+        ),
+        principle=(
+            "Protect is strategically valuable when it preserves a uniquely required "
+            "resource rather than merely delaying the game."
+        ),
+        expectation=StrategicBenchmarkExpectation(
+            accepted_plan_names=("preserve-anchor",),
+            accepted_choices=("move protect, move attack +1",),
+            require_robust=True,
+            required_preserve=("Anchor",),
+        ),
+    ),
+    StrategicBenchmarkCase(
+        case_id="switch-unique-resource",
+        label="Switch a unique resource when Protect is unsafe",
+        category="switch",
+        stage="generated-exact-plan",
+        scenario=(
+            "Anchor is the only living redirection provider. Protect still loses it "
+            "under the sampled reply, while switching Anchor to the bench preserves it."
+        ),
+        principle=(
+            "Preservation guidance must allow switching when exact evidence shows that "
+            "Protect does not actually preserve the required resource."
+        ),
+        expectation=StrategicBenchmarkExpectation(
+            accepted_plan_names=("preserve-anchor",),
+            accepted_choices=("switch 3, move attack +1",),
+            require_robust=True,
+            required_preserve=("Anchor",),
+        ),
+    ),
+    StrategicBenchmarkCase(
+        case_id="boosted-threat-targeting-evidence",
+        label="Target a boosted immediate threat with exact evidence",
+        category="targeting",
+        stage="one-turn-evidence",
+        scenario=(
+            "A boosted opposing attacker is the immediate strategic threat and can be "
+            "removed by focusing the correct opposing slot."
+        ),
+        principle=(
+            "Threat-targeting plans should receive authority only when the one-turn "
+            "evidence model can evaluate both neutralization and snowball risk."
+        ),
+        expectation=StrategicBenchmarkExpectation(
+            accepted_plan_names=("neutralize-boosted-boostedfoe",),
+            accepted_choices=("move attack +1, move attack +1",),
+            require_robust=True,
+        ),
+        known_gap=(
+            "Plan generation identifies the boosted threat, but the one-turn evidence "
+            "filter still treats threat-snowballs:* as unsupported."
+        ),
+    ),
+    StrategicBenchmarkCase(
+        case_id="auto-generate-active-pair",
+        label="Infer a desired active pairing and safe entry",
+        category="positioning",
+        stage="plan-generation",
+        scenario=(
+            "The position calls for bringing Gardevoir in beside Rillaboom while "
+            "preserving the remaining offensive resource in back."
+        ),
+        principle=(
+            "The richer DesiredBoard representation should eventually be populated from "
+            "position and matchup evidence rather than only from hand-authored plans."
+        ),
+        expectation=StrategicBenchmarkExpectation(
+            accepted_plan_names=("create-gardevoir-rillaboom-board",),
+            require_robust=None,
+            required_active_pair=("Gardevoir", "Rillaboom"),
+            safe_entry_resources=("Gardevoir",),
+        ),
+        known_gap=(
+            "Current automatic plan generation does not infer desired active pairings "
+            "or safe-entry objectives from the public position."
+        ),
+    ),
+    StrategicBenchmarkCase(
+        case_id="auto-generate-sacrifice-endgame",
+        label="Infer acceptable support sacrifices for a declared endgame",
+        category="sacrifice",
+        stage="plan-generation",
+        scenario=(
+            "Trading two support Pokemon is correct only when it secures a Torkoal "
+            "endgame and those losses are explicitly acceptable."
+        ),
+        principle=(
+            "The generator should eventually infer when support material can be converted "
+            "into a specific endgame instead of preserving every living resource equally."
+        ),
+        expectation=StrategicBenchmarkExpectation(
+            accepted_plan_names=("sacrifice-support-for-torkoal-endgame",),
+            require_robust=None,
+            required_preserve=("Torkoal",),
+            required_acceptable_losses=("Indeedee-F", "Porygon2"),
+        ),
+        known_gap=(
+            "Trade evaluation can score declared acceptable losses, but automatic plan "
+            "generation does not yet create sacrifice/endgame plans from position state."
+        ),
+    ),
+    StrategicBenchmarkCase(
         case_id="auto-generate-cleanup-purpose",
         label="Infer an offensive cleanup role from the position",
         category="plan-generation",
