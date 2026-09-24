@@ -94,6 +94,7 @@ function publicLastOpponentActions(battle, sideId) {
     const previous = actions.get(actor.slot);
     if (previous === undefined) {
       actions.set(actor.slot, {
+        turn: logTurn,
         slot: actor.slot,
         move,
         target: targetLocation,
