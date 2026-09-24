@@ -8,9 +8,24 @@ strategy work can be measured before it is granted more authority.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable, Protocol
+from typing import Any, Iterable, Protocol
 
-from champions_practice.strategy import DesiredBoard, ResourcePurpose, StrategicPlan
+from champions_practice.belief_search import ExactBeliefWorldState
+from champions_practice.exact_search import SideId
+from champions_practice.strategy import (
+    DesiredBoard,
+    ResourcePurpose,
+    StrategicAssessment,
+    StrategicPlan,
+    assess_strategic_position,
+    generate_strategic_plans,
+)
+from champions_practice.strategy_evidence import (
+    StrategicPlanProbe,
+    filter_supported_plans,
+    probe_strategic_plan,
+    select_supported_plan,
+)
 
 
 @dataclass(frozen=True)
@@ -75,6 +90,22 @@ class StrategicBenchmarkResult:
         if self.case.known_gap is not None:
             return "known-gap"
         return "fail"
+
+
+@dataclass(frozen=True)
+class StrategicBenchmarkExecution:
+    case: StrategicBenchmarkCase
+    assessment: StrategicAssessment
+    generated_plan_names: tuple[str, ...]
+    probed_plan_names: tuple[str, ...]
+    selected_probe: StrategicPlanProbe | None
+    result: StrategicBenchmarkResult
+    exact_branch_count: int
+    response_screening_branch_count: int
+
+    @property
+    def passed(self) -> bool:
+        return self.result.passed
 
 
 @dataclass(frozen=True)
@@ -259,6 +290,68 @@ def evaluate_strategic_benchmark_suite(
     return StrategicBenchmarkSuite(results=tuple(results))
 
 
+def run_generated_strategy_benchmark(
+    worker: Any,
+    *,
+    case: StrategicBenchmarkCase,
+    view: dict[str, Any],
+    particles: Iterable[Any],
+    worlds: tuple[ExactBeliefWorldState, ...],
+    side: SideId,
+    plan_limit: int = 4,
+    candidate_limit: int = 4,
+    response_limit: int = 3,
+    rng_seeds: tuple[str, ...] | None = None,
+) -> StrategicBenchmarkExecution:
+    """Run the production-shaped strategy pipeline for one labeled position.
+
+    The path is intentionally the same sequence used by the live controller:
+    public assessment -> plan generation -> one-turn support filtering -> exact plan probes
+    -> supported-plan selection -> benchmark scoring.
+    """
+    if plan_limit <= 0:
+        raise ValueError("plan_limit must be positive")
+    if candidate_limit <= 0 or response_limit <= 0:
+        raise ValueError("benchmark search limits must be positive")
+    if not worlds:
+        raise ValueError("benchmark requires at least one exact belief world")
+
+    assessment = assess_strategic_position(view, particles=tuple(particles))
+    generated = generate_strategic_plans(assessment, limit=None)
+    supported = filter_supported_plans(generated, limit=plan_limit)
+
+    probes = []
+    for plan in supported:
+        kwargs: dict[str, Any] = {
+            "worlds": worlds,
+            "assessment": assessment,
+            "view": view,
+            "side": side,
+            "plan": plan,
+            "candidate_limit": candidate_limit,
+            "response_limit": response_limit,
+        }
+        if rng_seeds is not None:
+            kwargs["rng_seeds"] = rng_seeds
+        probes.append(probe_strategic_plan(worker, **kwargs))
+
+    selected = select_supported_plan(tuple(probes))
+    observation = observation_from_probe(selected)
+    result = evaluate_strategic_benchmark(case, observation)
+    return StrategicBenchmarkExecution(
+        case=case,
+        assessment=assessment,
+        generated_plan_names=tuple(plan.name for plan in generated),
+        probed_plan_names=tuple(probe.plan.name for probe in probes),
+        selected_probe=selected,
+        result=result,
+        exact_branch_count=sum(probe.branch_count for probe in probes),
+        response_screening_branch_count=sum(
+            probe.response_screening_branch_count for probe in probes
+        ),
+    )
+
+
 def format_strategic_benchmark_report(suite: StrategicBenchmarkSuite) -> str:
     """Render a compact benchmark report for CI artifacts and manual review."""
     passed = sum(result.status == "pass" for result in suite.results)
@@ -298,6 +391,25 @@ STRATEGIC_BENCHMARKS = (
             accepted_plan_names=("preserve-indeedeef",),
             forbidden_plan_names=("establish-speed-control-indeedeef",),
             accepted_choices=("move psychic +1, move protect",),
+            require_robust=True,
+        ),
+    ),
+    StrategicBenchmarkCase(
+        case_id="sneasler-neutral-trick-room-showdown",
+        label="Real Showdown must not prefer neutral Trick Room beside Sneasler",
+        category="speed-control",
+        stage="showdown-integration",
+        scenario=(
+            "A real Showdown state places fast Sneasler beside slower Indeedee-F "
+            "against two opponents whose speeds lie between them."
+        ),
+        principle=(
+            "The real simulator-backed strategy stack must reject speed control that "
+            "does not improve the active pair's speed relationship."
+        ),
+        expectation=StrategicBenchmarkExpectation(
+            accepted_plan_names=("preserve-indeedeef",),
+            forbidden_plan_names=("establish-speed-control-indeedeef",),
             require_robust=True,
         ),
     ),
