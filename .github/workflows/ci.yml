@@ -36,11 +36,33 @@ jobs:
           .\.venv\Scripts\python.exe -m pip install --upgrade pip
           .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 
-      - name: Clone Pokemon Showdown
+      - name: Validate PowerShell syntax
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force external | Out-Null
-          git clone --depth 1 https://github.com/smogon/pokemon-showdown.git external/pokemon-showdown
+          $AllErrors = @()
+          foreach ($Script in Get-ChildItem -Path . -Filter *.ps1 -Recurse) {
+            $Tokens = $null
+            $Errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $Script.FullName,
+              [ref]$Tokens,
+              [ref]$Errors
+            ) | Out-Null
+            foreach ($ParseError in $Errors) {
+              $AllErrors += "$($Script.FullName): $($ParseError.Message)"
+            }
+          }
+
+          if ($AllErrors.Count -gt 0) {
+            $AllErrors | ForEach-Object { Write-Error $_ }
+            throw "PowerShell syntax validation failed."
+          }
+
+      - name: Sync pinned Pokemon Showdown
+        shell: pwsh
+        run: |
+          . .\scripts\showdown-utils.ps1
+          Sync-ChampionsShowdownCheckout -CloneIfMissing
 
       - name: Install and build Pokemon Showdown
         shell: pwsh

@@ -27,13 +27,13 @@ The public `Nolelle/pokemon-vgc-ai` repository is useful as a reference implemen
 .\setup.ps1 -IncludeReferenceRepo
 ```
 
-The setup script creates the Python environment, installs dependencies, clones/builds Pokémon Showdown, configures Showdown to listen on **127.0.0.1 only**, and runs the unit tests.
+The setup script creates the Python environment, installs dependencies, checks out the Pokémon Showdown revision pinned in `showdown-version.txt`, builds it, configures Showdown to listen on **127.0.0.1 only**, and runs the unit tests.
 
 The localhost-only binding is intentional. Chrome Remote Desktop gives you access to the home PC; there is no reason to expose the Showdown development server to the LAN or Internet.
 
 ## Continuous integration
 
-Every pull request and push to `main` now runs a Windows GitHub Actions job that installs the Python environment, clones/builds official Pokémon Showdown, lints the project, runs unit tests, validates the Reg M-C team, completes a baseline Champions battle, and completes a heuristic-opponent battle. Runtime logs and battle outputs are uploaded as workflow artifacts for seven days.
+Every pull request and push to `main` runs a Windows GitHub Actions job against the exact Pokémon Showdown revision in `showdown-version.txt`. CI builds that pinned engine, lints the project, runs unit tests and integration smokes, validates the Reg M-C team, and completes full-battle checks. Runtime logs and battle outputs are uploaded as workflow artifacts for seven days.
 
 This means most code changes can be validated in GitHub without requiring the home PC. The local machine remains useful for interactive testing and later UI work.
 
@@ -47,11 +47,13 @@ After merging changes in GitHub:
 
 That fast-forwards the project checkout, syncs Python dependencies, and runs unit tests.
 
-Only when we intentionally want to update the upstream Showdown checkout too:
+Only when the local Showdown checkout needs to be synchronized to the project pin:
 
 ```powershell
 .\update-local.ps1 -UpdateShowdown
 ```
+
+`-UpdateShowdown` does **not** move to upstream HEAD. It checks out the exact revision recorded in `showdown-version.txt`, so local mechanics match CI. Updating that pin is an intentional repository change and should go through the full CI suite.
 
 Server controls:
 

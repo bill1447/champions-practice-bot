@@ -5,6 +5,92 @@ $ChampionShowdownPidFile = Join-Path $ChampionRuntimeRoot "showdown.pid"
 $ChampionShowdownStdout = Join-Path $ChampionRuntimeRoot "showdown.stdout.log"
 $ChampionShowdownStderr = Join-Path $ChampionRuntimeRoot "showdown.stderr.log"
 
+$ChampionShowdownVersionFile = Join-Path $ChampionProjectRoot "showdown-version.txt"
+
+function Get-ChampionsShowdownCommit {
+    if (-not (Test-Path $ChampionShowdownVersionFile)) {
+        throw "Pokemon Showdown pin file is missing: $ChampionShowdownVersionFile"
+    }
+
+    $Commit = (Get-Content -Path $ChampionShowdownVersionFile -Raw).Trim().ToLowerInvariant()
+    if ($Commit -notmatch '^[0-9a-f]{40}$') {
+        throw "Pokemon Showdown pin must be a full 40-character git SHA. Found '$Commit'."
+    }
+
+    return $Commit
+}
+
+function Sync-ChampionsShowdownCheckout {
+    param(
+        [switch]$CloneIfMissing
+    )
+
+    $Commit = Get-ChampionsShowdownCommit
+    $GitDir = Join-Path $ChampionShowdownRoot ".git"
+    $FreshClone = $false
+
+    if (-not (Test-Path $GitDir)) {
+        if (Test-Path $ChampionShowdownRoot) {
+            throw "$ChampionShowdownRoot exists but is not a git checkout."
+        }
+        if (-not $CloneIfMissing) {
+            throw "Pokemon Showdown checkout is missing. Run .\setup.ps1 first."
+        }
+
+        $ShowdownParent = Split-Path -Parent $ChampionShowdownRoot
+        New-Item -ItemType Directory -Force -Path $ShowdownParent | Out-Null
+
+        Write-Host "Cloning Pokemon Showdown dependency..."
+        & git clone --filter=blob:none --no-checkout "https://github.com/smogon/pokemon-showdown.git" $ChampionShowdownRoot
+        if ($LASTEXITCODE -ne 0) {
+            throw "Pokemon Showdown clone failed."
+        }
+        $FreshClone = $true
+    }
+
+    if (-not $FreshClone) {
+        $Changes = @(& git -C $ChampionShowdownRoot status --porcelain)
+        if ($Changes.Count -gt 0) {
+            throw "Pokemon Showdown checkout has local changes. Clean or stash them before synchronizing the pinned revision."
+        }
+    }
+
+    & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Fetching Pokemon Showdown history for pinned revision..."
+        $IsShallowOutput = & git -C $ChampionShowdownRoot rev-parse --is-shallow-repository
+        $IsShallow = "$IsShallowOutput".Trim()
+        if ($IsShallow -eq "true") {
+            & git -C $ChampionShowdownRoot fetch --unshallow --filter=blob:none origin
+        }
+        else {
+            & git -C $ChampionShowdownRoot fetch --filter=blob:none origin
+        }
+        if ($LASTEXITCODE -ne 0) {
+            throw "Pokemon Showdown fetch failed."
+        }
+    }
+
+    & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pinned Pokemon Showdown revision $Commit is not available from origin."
+    }
+
+    Write-Host "Checking out pinned Pokemon Showdown revision $Commit"
+    & git -C $ChampionShowdownRoot checkout --detach $Commit
+    if ($LASTEXITCODE -ne 0) {
+        throw "Pokemon Showdown checkout of pinned revision failed."
+    }
+
+    $ActualOutput = & git -C $ChampionShowdownRoot rev-parse HEAD
+    $Actual = "$ActualOutput".Trim().ToLowerInvariant()
+    if ($Actual -ne $Commit) {
+        throw "Pokemon Showdown revision mismatch: expected $Commit, found $Actual."
+    }
+
+    Write-Host "Pokemon Showdown revision verified: $Commit"
+}
+
 function Initialize-ChampionsRuntime {
     New-Item -ItemType Directory -Force -Path $ChampionRuntimeRoot | Out-Null
 }
