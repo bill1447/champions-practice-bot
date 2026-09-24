@@ -1001,3 +1001,21 @@ def test_same_moves_on_new_turn_are_fresh_public_evidence() -> None:
     assert worker.validate_calls == 1
     assert worker.legal_calls == 0
     assert update.generated == 1
+
+
+
+def test_public_signature_ignores_auxiliary_action_history() -> None:
+    left = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "psychic", "target": 1},
+        ],
+        "opponent": {"active": ["A"]},
+    }
+    right = {
+        "turn": 2,
+        "opponent_last_actions": [],
+        "opponent": {"active": ["A"]},
+    }
+
+    assert public_observation_signature(left) == public_observation_signature(right)
