@@ -78,7 +78,7 @@ then spend the saved budget on additional RNG futures. Stale move observations a
 from switch-only transitions by comparing the previous and current public views. The
 production damaging-turn smoke now requires public damage on both sides in one turn.
 
-## Phase 9 — Strategic reasoning layer — baseline complete for tech demo
+## Phase 9 — Strategic reasoning layer — feature baseline complete
 
 Add explicit strategic state and plan generation: threat assessment, resource valuation,
 win conditions, desired future boards, speed-control objectives, sacrifice/trade logic,
@@ -128,16 +128,42 @@ Completed so far:
 Current work:
 - freeze further strategy expansion until gameplay produces concrete failures;
 - preserve exact belief search as the final command selector;
+- complete Phase 9.5 pre-demo authority and isolation hardening;
 - keep the 11-case strategic corpus as a regression floor rather than evidence that strategy
   is complete or optimal.
 
 Next:
-- build the interactive battle tech demo;
-- seal the AI's selected command and all decision diagnostics until the human player has
-  committed a legal action for that turn;
-- reveal the AI choice and decision trace only after both choices have been handed to
-  Showdown for resolution;
+- finish the focused pre-demo hardening sequence;
+- build the interactive battle tech demo on the restricted sealed-choice boundary;
 - use complete demo games to identify the next strategy/search improvements.
+
+## Phase 9.5 — Pre-demo authority and isolation hardening — current objective
+
+The strategy feature baseline is frozen until complete-game evidence justifies new strategic
+capabilities. Before the playable demo, harden the boundaries around that intelligence so
+advisory reasoning cannot suppress exact tactics or gain access to information it should
+not own.
+
+Current hardening sequence:
+
+- tactical-first decision budgeting: secure a valid unguided exact tactical result before
+  spending residual decision time on strategy; a strategy timeout or error must retain the
+  completed tactical result rather than fall back;
+- strategy authority correctness: prioritize plans explicitly, repair or remove dead plans,
+  target intended switches rather than generic switching, and only report plans that align
+  with the final command;
+- comparable strategic evidence: improve response-family diversity and align response/RNG
+  samples enough that competing plans are judged on comparable evidence;
+- capability-separated battle coordination: keep complete human team data, unrevealed human
+  choices, and live session snapshots outside the restricted decision engine;
+- sealed-choice demo API: retain the AI command and diagnostics server-side until the human
+  player has committed a legal action;
+- runtime engine verification and real-Showdown negative controls before the interactive
+  demo is considered ready.
+
+The first item is now implemented in the current hardening branch. The persistent-controller
+smoke uses the production-default eight-second decision budget so strategy cannot hide a
+deadline regression behind an oversized test allowance.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
