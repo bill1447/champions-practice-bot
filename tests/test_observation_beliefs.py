@@ -880,3 +880,49 @@ def test_public_action_filter_fails_open_when_parser_cannot_match_legal_set() ->
 
     assert update.generated == len(worker.choices)
     assert update.matched == 0
+
+
+
+class DirectValidationWorker(PublicActionFilterWorker):
+    def __init__(self):
+        self.legal_calls = 0
+        self.validate_calls = 0
+
+    def legal_choices(self, *, state, side):
+        self.legal_calls += 1
+        return super().legal_choices(state=state, side=side)
+
+    def validate_choices(self, *, state, side, candidates):
+        self.validate_calls += 1
+        legal = set(self.choices)
+        return [candidate for candidate in candidates if candidate in legal]
+
+
+def test_fully_observed_moves_use_bounded_validation_not_full_enumeration() -> None:
+    worker = DirectValidationWorker()
+    actual = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"slot": 1, "move": "psychic", "target": 1},
+            {"slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.validate_calls == 1
+    assert worker.legal_calls == 0
+    assert update.generated == 1
