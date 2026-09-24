@@ -26,7 +26,6 @@ def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
     assert [case.case_id for case in known_gaps] == [
-        "boosted-threat-targeting-evidence",
         "auto-generate-active-pair",
         "auto-generate-sacrifice-endgame",
         "auto-generate-cleanup-purpose",
@@ -185,6 +184,19 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             choice="switch 3, move attack +1",
             robust=True,
         ),
+        "boosted-threat-targeting-evidence": observation_from_plan(
+            StrategicPlan(
+                name="neutralize-boosted-boostedfoe",
+                objective="remove the boosted immediate threat",
+                desired_board=DesiredBoard(
+                    required_conditions=("threat-neutralized:boostedfoe",),
+                ),
+                failure_conditions=("threat-snowballs:boostedfoe",),
+                tactical_priorities=("target:BoostedFoe",),
+            ),
+            choice="move attack +1, move attack +1",
+            robust=True,
+        ),
     }
 
     suite = evaluate_strategic_benchmark_suite(
@@ -195,14 +207,13 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
     assert suite.passed is True
     assert suite.regressions == ()
     assert [result.case.case_id for result in suite.known_gaps] == [
-        "boosted-threat-targeting-evidence",
         "auto-generate-active-pair",
         "auto-generate-sacrifice-endgame",
         "auto-generate-cleanup-purpose",
     ]
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 7 | known-gap 4 | fail 0" in report
+    assert "pass 8 | known-gap 3 | fail 0" in report
     assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
 
 
@@ -886,6 +897,64 @@ def _gap_public_view(
     }
 
 
+def _targeting_summary(*, focus_boosted: bool) -> dict:
+    attacker_a = _benchmark_mon("AttackerA", 100, 120)
+    attacker_b = _benchmark_mon("AttackerB", 100, 110)
+    bench_a = _benchmark_mon("BenchA", 100, 100)
+    bench_b = _benchmark_mon("BenchB", 100, 90)
+    boosted = _benchmark_mon(
+        "BoostedFoe",
+        0 if focus_boosted else 100,
+        105,
+    )
+    boosted["boosts"] = {"atk": 1 if focus_boosted else 2}
+    foe_b = _benchmark_mon("FoeB", 100 if focus_boosted else 0, 95)
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [attacker_a, attacker_b, bench_a, bench_b],
+            "active": [attacker_a, attacker_b],
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [boosted, foe_b],
+            "active": [boosted, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class TargetingWorker:
+    focus_boosted = "move attack +1, move attack +1"
+    focus_other = "move attack +2, move attack +2"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        if side == "p1":
+            return [self.focus_boosted, self.focus_other]
+        return [self.response]
+
+    def branch_many(self, *, state, branches):
+        return [
+            {
+                "index": index,
+                "summary": _targeting_summary(
+                    focus_boosted=branch["p1_choice"] == self.focus_boosted,
+                ),
+            }
+            for index, branch in enumerate(branches)
+        ]
+
+
 class GapWorker:
     def legal_choices(self, *, state, side):
         if side == "p1":
@@ -899,9 +968,9 @@ class GapWorker:
         raise AssertionError("known-gap plan should not reach exact probing")
 
 
-def test_boosted_threat_targeting_gap_is_at_evidence_filter() -> None:
+def test_boosted_threat_targeting_passes_exact_evidence() -> None:
     execution = run_generated_strategy_benchmark(
-        GapWorker(),
+        TargetingWorker(),
         case=_case("boosted-threat-targeting-evidence"),
         view=_gap_public_view(
             team_species=("AttackerA", "AttackerB", "BenchA", "BenchB"),
@@ -917,13 +986,27 @@ def test_boosted_threat_targeting_gap_is_at_evidence_filter() -> None:
             ),
         ),
         side="p1",
-        rng_seeds=("low",),
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low", "high"),
     )
 
-    assert execution.result.status == "known-gap"
-    assert "neutralize-boosted-boostedfoe" in execution.generated_plan_names
-    assert execution.probed_plan_names == ()
-    assert execution.selected_probe is None
+    assert execution.result.status == "pass"
+    assert execution.probed_plan_names == ("neutralize-boosted-boostedfoe",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.chosen.choice == TargetingWorker.focus_boosted
+    assert execution.selected_probe.sampled_robust is True
+
+    probe = execution.selected_probe
+    wrong = next(
+        candidate
+        for candidate in probe.ranking
+        if candidate.choice == TargetingWorker.focus_other
+    )
+    assert wrong.evaluation.robust is False
+    assert wrong.worst_world_outcomes[0].triggered_failures == (
+        "threat-snowballs:boostedfoe",
+    )
 
 
 def test_pairing_and_sacrifice_generation_gaps_remain_explicit() -> None:

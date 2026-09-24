@@ -434,7 +434,13 @@ def test_unsupported_plans_are_filtered_before_plan_budget() -> None:
         desired_board=DesiredBoard(required_conditions=("trickroom-progress",)),
         failure_conditions=("trickroom-reversed",),
     )
-    unsupported_threat = StrategicPlan(
+    unsupported_custom = StrategicPlan(
+        name="unknown-risk",
+        objective="avoid an unmodeled catastrophe",
+        desired_board=DesiredBoard(required_resources=("Keeper",)),
+        failure_conditions=("unmodeled-catastrophe",),
+    )
+    supported_threat = StrategicPlan(
         name="neutralize-boosted-threat",
         objective="stop a boosted threat",
         desired_board=DesiredBoard(required_conditions=("threat-neutralized:foe",)),
@@ -449,11 +455,16 @@ def test_unsupported_plans_are_filtered_before_plan_budget() -> None:
     )
 
     filtered = filter_supported_plans(
-        (unsupported_room, unsupported_threat, supported_preserve),
+        (
+            unsupported_room,
+            unsupported_custom,
+            supported_threat,
+            supported_preserve,
+        ),
         limit=2,
     )
 
-    assert filtered == (supported_preserve,)
+    assert filtered == (supported_threat, supported_preserve)
 
 
 def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:

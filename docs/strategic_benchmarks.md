@@ -138,12 +138,16 @@ under the sampled reply. Exact plan evidence must therefore prefer switching Anc
 bench. This verifies that preservation guidance is not synonymous with always clicking
 Protect.
 
-### Boosted-threat targeting — known evidence gap
+### Boosted-threat targeting — resolved
 
-The assessment and generator already identify a boosted immediate threat and create a
-`neutralize-boosted-*` plan with target guidance. The live one-turn evidence filter still
-rejects that plan because `threat-snowballs:*` is not modeled as a supported failure
-condition. The benchmark records that boundary explicitly.
+The assessment and generator identify a boosted immediate threat and create a
+`neutralize-boosted-*` plan with target guidance. One-turn evidence now supports
+`threat-snowballs:*` by comparing the threat's public positive boost mass with the exact
+resulting Showdown state.
+
+The benchmark requires the generated plan to focus the boosted opposing slot, KO that
+threat, and receive sampled-robust authority. A competing line that attacks the other slot
+lets the threat increase its public boost state and is recorded as a snowball failure.
 
 ### Active pairing and safe entry — known generation gap
 
