@@ -92,10 +92,12 @@ Completed so far:
   tactically strongest screened action;
 - exact strategic plan probes over bounded candidates, adversarial replies, belief worlds,
   and RNG futures;
-- explicit unsupported/unresolved evidence reporting before a plan can be called robust;
+- explicit unsupported/unresolved evidence reporting before a plan can receive sampled
+  robust authority;
 - strategic desirability is separated from mere feasibility for supported plans;
 - speed-control plans require a favorable exact speed relationship;
-- equally robust plans compare exact resulting-board utility before deterministic ties;
+- equally sampled-robust plans compare exact resulting-board utility before deterministic
+  ties;
 - unsupported one-turn plans are filtered before the live plan budget;
 - DesiredBoard can now require an active pairing, a newly safe-entered resource, and
   purpose-specific endgame resources such as a cleanup piece held in back;
@@ -107,7 +109,9 @@ Completed so far:
 - executable benchmarks can now run the production-shaped strategy path from public
   assessment through generation, exact plan probing, supported-plan selection, and scoring;
 - CI includes a real-Showdown strategic smoke so at least one labeled strategy case crosses
-  the Python/Showdown boundary rather than relying only on synthetic branch summaries.
+  the Python/Showdown boundary rather than relying only on synthetic branch summaries;
+- live strategic probes now sample two deterministic RNG futures instead of one, and probe
+  authority is labeled sampled robust rather than proven robust.
 
 Current work:
 - preserve exact belief search as the final command selector while richer strategic state
@@ -117,7 +121,6 @@ Current work:
   to add species-specific rules.
 
 Next:
-- expand strategic RNG coverage and calibrate evidence terminology;
 - benchmark live strategic guidance on labeled sacrifice, Protect, switch, speed-control,
   targeting, positioning, and endgame positions;
 - only then increase strategic authority or add deeper plan continuation.
