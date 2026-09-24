@@ -6,6 +6,7 @@ import copy
 import json
 import random
 from dataclasses import dataclass
+from itertools import product
 from typing import Any, Iterable
 
 from .search_worker import ShowdownSearchWorker
@@ -141,6 +142,44 @@ def _filter_responses_by_public_actions(
     # Public action parsing is an optimization, not a posterior-deletion rule.
     # If the parsed evidence cannot be reconciled with the legal set, fail open.
     return filtered or responses
+
+
+def _observed_joint_move_candidates(
+    actual_public_view: dict[str, Any],
+) -> tuple[str, ...]:
+    actions = _observed_opponent_actions(actual_public_view)
+    opponent = actual_public_view.get("opponent")
+    active = opponent.get("active") if isinstance(opponent, dict) else None
+    if not isinstance(active, list) or not active:
+        return ()
+    expected_slots = set(range(1, len(active) + 1))
+    if {slot for slot, _, _ in actions} != expected_slots:
+        return ()
+
+    per_slot: list[tuple[str, ...]] = []
+    for slot, move_id, target in actions:
+        bases = [f"move {move_id}"]
+        if target is not None and target != -slot:
+            bases.append(f"move {move_id} {target:+d}")
+
+        variants = []
+        for base in bases:
+            variants.append(base)
+            variants.extend(
+                f"{base} {event}"
+                for event in ("mega", "megax", "megay", "ultra")
+            )
+        per_slot.append(tuple(dict.fromkeys(variants)))
+
+    return tuple(
+        ", ".join(commands)
+        for commands in product(*per_slot)
+    )
+
+
+def public_opponent_moves_fully_observed(view: dict[str, Any]) -> bool:
+    """Return whether every opponent active slot produced one direct public move event."""
+    return bool(_observed_joint_move_candidates(view))
 
 
 def _normalize(particles: Iterable[BeliefParticle]) -> tuple[BeliefParticle, ...]:
@@ -295,21 +334,45 @@ def condition_particles(
     generated = 0
     matched = 0
 
+    observed_candidates = _observed_joint_move_candidates(actual_public_view)
+
     for particle in particles:
-        legal_responses = tuple(
-            worker.legal_choices(state=particle.state, side=opponent_side)
-        )
-        if opponent_choices is None:
-            responses = legal_responses
+        responses: tuple[str, ...]
+        validator = getattr(worker, "validate_choices", None)
+        if (
+            opponent_choices is None
+            and observed_candidates
+            and callable(validator)
+        ):
+            validated = tuple(
+                validator(
+                    state=particle.state,
+                    side=opponent_side,
+                    candidates=list(observed_candidates),
+                )
+            )
+            if validated:
+                responses = validated
+            else:
+                responses = tuple(
+                    worker.legal_choices(state=particle.state, side=opponent_side)
+                )
         else:
-            requested = opponent_choices.get(particle.world_id)
-            if requested is None:
+            legal_responses = tuple(
+                worker.legal_choices(state=particle.state, side=opponent_side)
+            )
+            if opponent_choices is None:
                 responses = legal_responses
             else:
-                legal_set = set(legal_responses)
-                responses = tuple(
-                    response for response in requested if response in legal_set
-                )
+                requested = opponent_choices.get(particle.world_id)
+                if requested is None:
+                    responses = legal_responses
+                else:
+                    legal_set = set(legal_responses)
+                    responses = tuple(
+                        response for response in requested if response in legal_set
+                    )
+
         responses = _filter_responses_by_public_actions(
             tuple(responses),
             actual_public_view,
