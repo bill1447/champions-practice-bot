@@ -193,7 +193,9 @@ def _supported_failure(condition: str) -> bool:
         "speed-control-denied",
         "trickroom-expired-before-progress",
         "tailwind-expired-before-progress",
-    } or condition.startswith("critical-resource-lost:")
+    } or condition.startswith(
+        ("critical-resource-lost:", "threat-snowballs:")
+    )
 
 
 def plan_is_one_turn_supported(plan: StrategicPlan) -> bool:
@@ -255,10 +257,61 @@ def _favorable_speed_control(summary: dict[str, Any], side: SideId) -> bool:
     return advantage > 0
 
 
+def _positive_boost_mass(value: Any) -> int:
+    if not isinstance(value, dict):
+        return 0
+    return sum(max(0, int(stage)) for stage in value.values())
+
+
+def _public_threat_boost_mass(
+    view: dict[str, Any],
+    species_id: str,
+) -> int | None:
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return None
+    active = opponent.get("active")
+    if not isinstance(active, list):
+        return None
+
+    wanted = _resource_id(species_id)
+    for pokemon in active:
+        if not isinstance(pokemon, dict):
+            continue
+        species = pokemon.get("base_species") or pokemon.get("species") or ""
+        if _resource_id(species) != wanted:
+            continue
+        return _positive_boost_mass(pokemon.get("boosts", {}))
+    return None
+
+
+def _summary_threat_boost_mass(
+    summary: dict[str, Any],
+    opponent: SideId,
+    species_id: str,
+) -> int | None:
+    pokemon = _find_species(_pokemon_entries(summary, opponent), species_id)
+    if pokemon is None or not _is_living(pokemon):
+        return None
+    return _positive_boost_mass(pokemon.get("boosts", {}))
+
+
+def _threat_snowballed(
+    view: dict[str, Any],
+    summary: dict[str, Any],
+    opponent: SideId,
+    species_id: str,
+) -> bool:
+    before = _public_threat_boost_mass(view, species_id)
+    after = _summary_threat_boost_mass(summary, opponent, species_id)
+    return before is not None and after is not None and after > before
+
+
 def _outcome_from_summary(
     plan: StrategicPlan,
     assessment: StrategicAssessment,
     *,
+    view: dict[str, Any],
     summary: dict[str, Any],
     side: SideId,
     label: str,
@@ -353,6 +406,10 @@ def _outcome_from_summary(
             species = failure.split(":", 1)[1]
             if _resource_id(species) in lost_ids:
                 failures.add(failure)
+        elif failure.startswith("threat-snowballs:"):
+            species = failure.split(":", 1)[1]
+            if _threat_snowballed(view, summary, opponent, species):
+                failures.add(failure)
 
     demonstrated = bool(set(plan.desired_board.required_conditions).intersection(conditions))
     return PlanWorldOutcome(
@@ -386,6 +443,7 @@ def _worst_branch(
     plan: StrategicPlan,
     assessment: StrategicAssessment,
     *,
+    view: dict[str, Any],
     side: SideId,
     label: str,
     weight: float,
@@ -396,6 +454,7 @@ def _worst_branch(
         outcome = _outcome_from_summary(
             plan,
             assessment,
+            view=view,
             summary=summary,
             side=side,
             label=label,
@@ -517,6 +576,7 @@ def probe_strategic_plan(
             outcome, board_score = _worst_branch(
                 plan,
                 assessment,
+                view=view,
                 side=side,
                 label=label,
                 weight=world.weight,
