@@ -1148,14 +1148,20 @@ def _sacrifice_public_view() -> dict:
     )
     team = view["player"]["team"]
     team[0]["hp_percent"] = 20
-    team[0]["moves"] = ["Follow Me", "Attack"]
+    team[0]["moves"] = ["Follow Me", "Attack", "Protect"]
     team[1]["hp_percent"] = 25
-    team[1]["moves"] = ["Helping Hand", "Attack"]
+    team[1]["moves"] = ["Helping Hand", "Attack", "Protect"]
     team[2]["ability"] = "Drought"
     team[2]["moves"] = ["Attack"]
     view["player"]["active_details"] = [
-        {"species": "Indeedee-F", "moves": ["Follow Me", "Attack"]},
-        {"species": "Porygon2", "moves": ["Helping Hand", "Attack"]},
+        {
+            "species": "Indeedee-F",
+            "moves": ["Follow Me", "Attack", "Protect"],
+        },
+        {
+            "species": "Porygon2",
+            "moves": ["Helping Hand", "Attack", "Protect"],
+        },
     ]
     return view
 
