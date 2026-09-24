@@ -103,9 +103,9 @@ Completed so far:
   purpose-specific endgame resources such as a cleanup piece held in back;
 - exact plan evidence records active and newly active resources and evaluates those richer
   positioning requirements;
-- an initial labeled strategic benchmark corpus now separates resolved regressions from
-  explicit known gaps across speed control, sacrifice, resource preservation, positioning,
-  and cleanup-role generation;
+- a labeled strategic benchmark corpus now spans speed control, sacrifice, resource
+  preservation, targeting, positioning, and cleanup-role generation while keeping the
+  remaining unfinished capability explicit;
 - executable benchmarks can now run the production-shaped strategy path from public
   assessment through generation, exact plan probing, supported-plan selection, and scoring;
 - CI includes a real-Showdown strategic smoke so at least one labeled strategy case crosses
