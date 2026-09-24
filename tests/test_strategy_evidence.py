@@ -703,3 +703,8 @@ def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
     assert set(outcome.active_resources) == {"Gardevoir", "Rillaboom"}
     assert outcome.newly_active_resources == ("Gardevoir",)
     assert "Sneasler" in outcome.living_resources
+
+    rendered = format_strategic_plan_probe(probe)
+    assert "Desired active pair: Gardevoir + Rillaboom" in rendered
+    assert "Safe entry: Gardevoir" in rendered
+    assert "Sneasler=cleanup (bench)" in rendered
