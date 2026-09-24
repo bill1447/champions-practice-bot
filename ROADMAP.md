@@ -153,8 +153,9 @@ Current hardening sequence:
   order, dead speed-window plans are probeable, safe-entry guidance targets the intended
   switch while retaining the active anchor, and a reported plan must match a robust
   plan-probed final command;
-- comparable strategic evidence: improve response-family diversity and align response/RNG
-  samples enough that competing plans are judged on comparable evidence;
+- comparable strategic evidence: response pruning preserves distinct opponent action
+  families, competing plans share the same per-world opponent replies and RNG futures, and
+  any strategy-guided final exact search uses the same strategic RNG sample tuple;
 - capability-separated battle coordination: keep complete human team data, unrevealed human
   choices, and live session snapshots outside the restricted decision engine;
 - sealed-choice demo API: retain the AI command and diagnostics server-side until the human
@@ -162,10 +163,10 @@ Current hardening sequence:
 - runtime engine verification and real-Showdown negative controls before the interactive
   demo is considered ready.
 
-The first two items are now implemented across the tactical-first and strategy-authority
-hardening branches. The persistent-controller smoke uses the production-default eight-second
-decision budget so strategy cannot hide a deadline regression behind an oversized test
-allowance.
+The first three items are now implemented across the tactical-first, strategy-authority,
+and comparable-evidence hardening branches. The persistent-controller smoke uses the
+production-default eight-second decision budget so strategy cannot hide a deadline
+regression behind an oversized test allowance.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
