@@ -581,7 +581,10 @@ class BeliefBattleController:
                             self.response_limit,
                             self.strategic_response_limit,
                         ),
-                        rng_seeds=("sodium,1111111111111111111111111111111111111111111111111111111111111111",),
+                        rng_seeds=(
+                            "sodium,"
+                            "1111111111111111111111111111111111111111111111111111111111111111",
+                        ),
                     )
                     probes.append(probe)
                     probe_count += 1
