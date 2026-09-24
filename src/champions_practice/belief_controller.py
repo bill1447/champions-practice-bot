@@ -35,7 +35,10 @@ from champions_practice.strategy_evidence import (
     probe_strategic_plan,
     select_supported_plan,
 )
-from champions_practice.strategy_tactics import guidance_from_plan
+from champions_practice.strategy_tactics import (
+    choice_matches_guidance,
+    guidance_from_plan,
+)
 
 
 FallbackSelector = Callable[[list[str]], str]
@@ -805,6 +808,35 @@ class BeliefBattleController:
                 baseline_search,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
+            )
+
+        guided_tactical_branches = tactical_branch_count(
+            guided_pruning,
+            guided_search,
+        )
+        probed_candidate = next(
+            (
+                candidate
+                for candidate in selected_probe.ranking
+                if candidate.choice == guided_search.chosen.choice
+            ),
+            None,
+        )
+        plan_aligned = (
+            choice_matches_guidance(
+                guided_search.chosen.choice,
+                guidance,
+            )
+            and probed_candidate is not None
+            and probed_candidate.evaluation.robust
+        )
+        if not plan_aligned:
+            return decision_from_tactical(
+                baseline_pruning,
+                baseline_search,
+                strategic_probe_count=probe_count,
+                strategic_branch_count=strategic_branch_count,
+                include_extra_tactical_branches=guided_tactical_branches,
             )
 
         return decision_from_tactical(
