@@ -394,3 +394,188 @@ def test_executable_benchmark_runs_real_strategy_generation_probe_and_selection(
         "preserve-indeedeef",
     }
     assert execution.exact_branch_count > 0
+
+
+
+def _keeper_public_view() -> dict:
+    return {
+        "turn": 4,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudo_weather": [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": [
+                {
+                    "species": "Keeper",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Attack", "Psychic Terrain", "Protect"],
+                },
+                {
+                    "species": "Partner",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+                {
+                    "species": "BenchA",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+                {
+                    "species": "BenchB",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+            ],
+            "active_details": [
+                {
+                    "species": "Keeper",
+                    "moves": ["Attack", "Psychic Terrain", "Protect"],
+                },
+                {
+                    "species": "Partner",
+                    "moves": ["Attack", "Protect"],
+                },
+            ],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["FoeA", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "FoeA",
+                    "base_species": "FoeA",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+def _keeper_summary(
+    *,
+    keeper_hp: int,
+    partner_hp: int,
+    foe_a_hp: int,
+    foe_b_hp: int,
+) -> dict:
+    keeper = _benchmark_mon("Keeper", keeper_hp, 100)
+    partner = _benchmark_mon("Partner", partner_hp, 100)
+    foe_a = _benchmark_mon("FoeA", foe_a_hp, 100)
+    foe_b = _benchmark_mon("FoeB", foe_b_hp, 100)
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [keeper, partner],
+            "active": [keeper, partner],
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class GeneratedKeeperWorker:
+    material = "move attack +1, move attack +2"
+    preserve = "move protect, move protect"
+    response = "move counter +1, move counter +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.material, self.preserve] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        resolved = []
+        for index, branch in enumerate(branches):
+            choice = branch["p1_choice"]
+            resolved.append(
+                {
+                    "index": index,
+                    "summary": (
+                        _keeper_summary(
+                            keeper_hp=0,
+                            partner_hp=100,
+                            foe_a_hp=0,
+                            foe_b_hp=0,
+                        )
+                        if choice == self.material
+                        else _keeper_summary(
+                            keeper_hp=100,
+                            partner_hp=100,
+                            foe_a_hp=100,
+                            foe_b_hp=100,
+                        )
+                    ),
+                }
+            )
+        return resolved
+
+
+def test_executable_benchmark_generates_resource_preservation_from_position() -> None:
+    case = _case("critical-resource-over-material")
+
+    execution = run_generated_strategy_benchmark(
+        GeneratedKeeperWorker(),
+        case=case,
+        view=_keeper_public_view(),
+        particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
+        worlds=(
+            ExactBeliefWorldState(
+                state={"id": "keeper"},
+                weight=1.0,
+                label="world-a",
+            ),
+        ),
+        side="p1",
+        plan_limit=4,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+
+    assert execution.result.status == "pass"
+    assert execution.generated_plan_names == ("preserve-keeper",)
+    assert execution.probed_plan_names == ("preserve-keeper",)
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.plan.name == "preserve-keeper"
+    assert execution.selected_probe.chosen.choice == "move protect, move protect"
