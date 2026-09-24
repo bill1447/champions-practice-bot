@@ -476,25 +476,46 @@ def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:
         response_limit=1,
         rng_seeds=("low",),
     )
+    robust_evaluation = replace(
+        base_probe.chosen.evaluation,
+        viable_belief_mass=1.0,
+        robust=True,
+        failed_worlds=0,
+        preserve_failure_mass=0.0,
+        required_resource_failure_mass=0.0,
+        condition_failure_mass=0.0,
+        timing_failure_mass=0.0,
+        declared_failure_mass=0.0,
+        unacceptable_loss_mass=0.0,
+    )
+    robust_choice = replace(
+        base_probe.chosen,
+        evaluation=robust_evaluation,
+        failure_penalty=0.0,
+    )
     worse = replace(
         base_probe,
         plan=plan_a,
         chosen=replace(
-            base_probe.chosen,
+            robust_choice,
             worst_board_score=10.0,
             weighted_board_score=10.0,
         ),
+        proven_robust=True,
     )
     better = replace(
         base_probe,
         plan=plan_z,
         chosen=replace(
-            base_probe.chosen,
+            robust_choice,
             worst_board_score=20.0,
             weighted_board_score=20.0,
         ),
+        proven_robust=True,
     )
 
     selected = select_supported_plan((worse, better))
 
+    assert worse.proven_robust is True
+    assert better.proven_robust is True
     assert selected is better
