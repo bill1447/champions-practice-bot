@@ -187,7 +187,9 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
     )
 
     def fake_pruning(*args, **kwargs):
-        seen["guidance"] = kwargs.get("guidance")
+        guidance_value = kwargs.get("guidance")
+        seen["guidance"] = guidance_value
+        seen.setdefault("pruning_guidance", []).append(guidance_value)
         return SimpleNamespace(
             candidate_shortlist=("move safe",),
             screening_branch_count=2,
@@ -226,6 +228,7 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] is None
+    assert seen["pruning_guidance"] == [None]
     assert decision.branch_count == 32
 
 
@@ -300,3 +303,5 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance
+    assert seen["pruning_guidance"] == [None, guidance]
+    assert decision.branch_count == 41
