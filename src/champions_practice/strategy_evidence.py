@@ -38,6 +38,7 @@ class PlanProbeCandidate:
 @dataclass(frozen=True)
 class SharedStrategicResponses:
     response_shortlists: tuple[tuple[str, ...], ...]
+    rng_seeds: tuple[str, ...]
     screening_branch_count: int
     total_seconds: float = field(compare=False)
 
@@ -530,6 +531,7 @@ def prepare_shared_strategic_responses(
     side: SideId,
     candidate_references: tuple[str, ...],
     response_limit: int,
+    rng_seeds: tuple[str, ...],
 ) -> SharedStrategicResponses:
     """Prune one common opponent response set per world for all competing plans."""
     if not worlds:
@@ -538,6 +540,8 @@ def prepare_shared_strategic_responses(
         raise ValueError("candidate_references must not be empty")
     if response_limit <= 0:
         raise ValueError("response_limit must be positive")
+    if not rng_seeds:
+        raise ValueError("strategic rng_seeds must not be empty")
 
     started = perf_counter()
     opponent: SideId = "p2" if side == "p1" else "p1"
@@ -562,6 +566,7 @@ def prepare_shared_strategic_responses(
 
     return SharedStrategicResponses(
         response_shortlists=tuple(shortlists),
+        rng_seeds=rng_seeds,
         screening_branch_count=screening_branch_count,
         total_seconds=perf_counter() - started,
     )
@@ -599,6 +604,13 @@ def probe_strategic_plan(
         and len(shared_responses.response_shortlists) != len(worlds)
     ):
         raise ValueError("shared response sets must align one-to-one with worlds")
+    sample_rng_seeds = (
+        shared_responses.rng_seeds
+        if shared_responses is not None
+        else rng_seeds
+    )
+    if not sample_rng_seeds:
+        raise ValueError("shared strategic rng_seeds must not be empty")
 
     started = perf_counter()
     guidance = guidance_from_plan(plan, view=view)
@@ -651,7 +663,7 @@ def probe_strategic_plan(
         metadata: list[tuple[str, str, str]] = []
         for choice in choices:
             for response in responses:
-                for rng_seed in rng_seeds:
+                for rng_seed in sample_rng_seeds:
                     branch = (
                         {"p1_choice": choice, "p2_choice": response, "rng_seed": rng_seed}
                         if side == "p1"
@@ -756,7 +768,7 @@ def probe_strategic_plan(
         unsupported_conditions=unsupported,
         unresolved_failure_conditions=unresolved,
         sampled_robust=sampled_robust,
-        rng_sample_count=len(rng_seeds),
+        rng_sample_count=len(sample_rng_seeds),
         total_seconds=perf_counter() - started,
     )
 
