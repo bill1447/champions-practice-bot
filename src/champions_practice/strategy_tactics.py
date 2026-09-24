@@ -40,6 +40,7 @@ class StrategicCandidateGuidance:
     prefer_switch: bool = False
     protected_slots: tuple[int, ...] = ()
     target_slots: tuple[int, ...] = ()
+    stay_active_slots: tuple[int, ...] = ()
     switch_in_slots: tuple[int, ...] = ()
     reserved_bench_slots: tuple[int, ...] = ()
     reasons: tuple[str, ...] = ()
@@ -51,6 +52,7 @@ class StrategicCandidateGuidance:
             or self.prefer_switch
             or self.protected_slots
             or self.target_slots
+            or self.stay_active_slots
             or self.switch_in_slots
             or self.reserved_bench_slots
         )
@@ -120,6 +122,7 @@ def guidance_from_plan(
     preferred_moves: set[str] = set()
     protected_slots: set[int] = set()
     target_slots: set[int] = set()
+    stay_active_slots: set[int] = set()
     switch_in_slots: set[int] = set()
     reserved_bench_slots: set[int] = set()
     prefer_switch = False
@@ -155,6 +158,15 @@ def guidance_from_plan(
                 reasons.append(f"plan targets active {species} in opposing slot {slot}")
             continue
 
+    for species in plan.desired_board.required_active_pair:
+        slot = own_slots.get(_id(species))
+        if slot is None:
+            continue
+        stay_active_slots.add(slot)
+        reasons.append(
+            f"plan requires active {species} to remain in slot {slot}"
+        )
+
     for species in plan.desired_board.safe_entry_resources:
         slot = team_slots.get(_id(species))
         if slot is None:
@@ -181,6 +193,7 @@ def guidance_from_plan(
         prefer_switch=prefer_switch,
         protected_slots=tuple(sorted(protected_slots)),
         target_slots=tuple(sorted(target_slots)),
+        stay_active_slots=tuple(sorted(stay_active_slots)),
         switch_in_slots=tuple(sorted(switch_in_slots)),
         reserved_bench_slots=tuple(sorted(reserved_bench_slots)),
         reasons=tuple(reasons),
@@ -206,7 +219,14 @@ def choice_matches_guidance(
             and tokens[1].isdigit()
         )
     }
+    switched_out_slots = {
+        slot
+        for slot, tokens in enumerate(commands, start=1)
+        if tokens and tokens[0] == "switch"
+    }
 
+    if switched_out_slots.intersection(guidance.stay_active_slots):
+        return False
     if (
         guidance.switch_in_slots
         and not switched_in_slots.intersection(guidance.switch_in_slots)
