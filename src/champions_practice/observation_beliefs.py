@@ -72,9 +72,11 @@ def _id(value: object) -> str:
     )
 
 
-def _observed_opponent_actions(
-    view: dict[str, Any],
-) -> tuple[tuple[int, str, int | None], ...]:
+def _public_action_fingerprint(
+    view: dict[str, Any] | None,
+) -> tuple[tuple[int | None, int, str, int | None], ...]:
+    if not isinstance(view, dict):
+        return ()
     values = view.get("opponent_last_actions")
     if not isinstance(values, list):
         return ()
@@ -83,17 +85,33 @@ def _observed_opponent_actions(
     for value in values:
         if not isinstance(value, dict):
             continue
+        turn = value.get("turn")
         slot = value.get("slot")
         move = value.get("move")
         target = value.get("target")
+        if turn is not None and not isinstance(turn, int):
+            continue
         if not isinstance(slot, int) or slot <= 0 or not isinstance(move, str):
             continue
         if target is not None and not isinstance(target, int):
             continue
         move_id = _id(move)
         if move_id:
-            actions.append((slot, move_id, target))
+            actions.append((turn, slot, move_id, target))
     return tuple(sorted(actions))
+
+
+def _observed_opponent_actions(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[tuple[int, str, int | None], ...]:
+    current = _public_action_fingerprint(view)
+    if previous_public_view is not None:
+        previous = _public_action_fingerprint(previous_public_view)
+        if current == previous:
+            return ()
+    return tuple((slot, move_id, target) for _, slot, move_id, target in current)
 
 
 def _choice_matches_observed_actions(
@@ -130,8 +148,13 @@ def _choice_matches_observed_actions(
 def _filter_responses_by_public_actions(
     responses: tuple[str, ...],
     actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
 ) -> tuple[str, ...]:
-    actions = _observed_opponent_actions(actual_public_view)
+    actions = _observed_opponent_actions(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
     if not actions:
         return responses
     filtered = tuple(
@@ -146,8 +169,13 @@ def _filter_responses_by_public_actions(
 
 def _observed_joint_move_candidates(
     actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
 ) -> tuple[str, ...]:
-    actions = _observed_opponent_actions(actual_public_view)
+    actions = _observed_opponent_actions(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
     opponent = actual_public_view.get("opponent")
     active = opponent.get("active") if isinstance(opponent, dict) else None
     if not isinstance(active, list) or not active:
@@ -177,9 +205,18 @@ def _observed_joint_move_candidates(
     )
 
 
-def public_opponent_moves_fully_observed(view: dict[str, Any]) -> bool:
-    """Return whether every opponent active slot produced one direct public move event."""
-    return bool(_observed_joint_move_candidates(view))
+def public_opponent_moves_fully_observed(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> bool:
+    """Return whether every opponent slot produced a fresh direct public move event."""
+    return bool(
+        _observed_joint_move_candidates(
+            view,
+            previous_public_view=previous_public_view,
+        )
+    )
 
 
 def _normalize(particles: Iterable[BeliefParticle]) -> tuple[BeliefParticle, ...]:
@@ -319,6 +356,7 @@ def condition_particles(
     ai_side: str,
     ai_choice: str,
     actual_public_view: dict[str, Any],
+    previous_public_view: dict[str, Any] | None = None,
     opponent_choices: dict[str, tuple[str, ...]] | None = None,
     rng_seeds: tuple[str | None, ...] = (None,),
     previews: dict[str, list[str]] | None = None,
@@ -334,7 +372,10 @@ def condition_particles(
     generated = 0
     matched = 0
 
-    observed_candidates = _observed_joint_move_candidates(actual_public_view)
+    observed_candidates = _observed_joint_move_candidates(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
 
     for particle in particles:
         responses: tuple[str, ...]
@@ -376,6 +417,7 @@ def condition_particles(
         responses = _filter_responses_by_public_actions(
             tuple(responses),
             actual_public_view,
+            previous_public_view=previous_public_view,
         )
         if not responses:
             continue
