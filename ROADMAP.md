@@ -103,9 +103,9 @@ Completed so far:
   purpose-specific endgame resources such as a cleanup piece held in back;
 - exact plan evidence records active and newly active resources and evaluates those richer
   positioning requirements;
-- an initial labeled strategic benchmark corpus now separates resolved regressions from
-  explicit known gaps across speed control, sacrifice, resource preservation, positioning,
-  and cleanup-role generation;
+- a labeled strategic benchmark corpus now spans speed control, sacrifice, resource
+  preservation, targeting, positioning, and cleanup-role generation while keeping the
+  remaining unfinished capability explicit;
 - executable benchmarks can now run the production-shaped strategy path from public
   assessment through generation, exact plan probing, supported-plan selection, and scoring;
 - CI includes a real-Showdown strategic smoke so at least one labeled strategy case crosses
@@ -118,8 +118,10 @@ Completed so far:
   boost snowball, turning that benchmark from known gap into a resolved regression;
 - active-pair/safe-entry generation now derives a positioning objective from active and
   benched unique-role resources, with exact evidence deciding whether the entry is safe;
-- remaining known-gap benchmarks locate sacrifice/endgame generation and cleanup-role
-  generation.
+- support-sacrifice generation now activates only for heavily spent active support pieces
+  with a healthy benched unique-role endgame resource, while exact evidence decides whether
+  the trade is worthwhile;
+- the remaining known-gap benchmark is offensive cleanup-role generation.
 
 Current work:
 - preserve exact belief search as the final command selector while richer strategic state
@@ -129,9 +131,10 @@ Current work:
   to add species-specific rules.
 
 Next:
-- add sacrifice/endgame plan generation from position state;
-- then infer offensive cleanup roles from matchup state;
-- only after those benchmarks pass should strategic authority or plan depth increase.
+- infer offensive cleanup roles from matchup state;
+- then stop strategy expansion temporarily and build the interactive battle tech demo with
+  sealed AI choices until the human player commits;
+- only after demo/gameplay evidence should strategic authority or plan depth increase.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 

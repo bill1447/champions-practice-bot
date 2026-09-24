@@ -335,6 +335,120 @@ def test_positioning_generation_keeps_immediate_threats_ahead_of_board_setup() -
     assert pairing.preserve == ("Anchor", "BenchKey")
 
 
+def _sacrifice_generation_view(*, support_hp: float) -> dict:
+    return {
+        "turn": 6,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudo_weather": [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": [
+                {
+                    "species": "Redirector",
+                    "hp_percent": support_hp,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Follow Me", "Protect"],
+                },
+                {
+                    "species": "Helper",
+                    "hp_percent": support_hp,
+                    "fainted": False,
+                    "active": True,
+                    "ability": "",
+                    "moves": ["Helping Hand", "Protect"],
+                },
+                {
+                    "species": "Endgame",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "Drought",
+                    "moves": ["Attack", "Protect"],
+                },
+                {
+                    "species": "Partner",
+                    "hp_percent": 100,
+                    "fainted": False,
+                    "active": False,
+                    "ability": "",
+                    "moves": ["Attack", "Protect"],
+                },
+            ],
+            "active_details": [
+                {
+                    "species": "Redirector",
+                    "moves": ["Follow Me", "Protect"],
+                },
+                {
+                    "species": "Helper",
+                    "moves": ["Helping Hand", "Protect"],
+                },
+            ],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["FoeA", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "FoeA",
+                    "base_species": "FoeA",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": 100,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+def test_sacrifice_generation_requires_spent_support_resources() -> None:
+    spent = assess_strategic_position(_sacrifice_generation_view(support_hp=40))
+    healthy = assess_strategic_position(_sacrifice_generation_view(support_hp=80))
+
+    helper = next(
+        resource
+        for resource in spent.resources
+        if resource.species == "Helper"
+    )
+    assert "support" in helper.strategic_roles
+
+    spent_plans = generate_strategic_plans(spent, limit=None)
+    healthy_plans = generate_strategic_plans(healthy, limit=None)
+    sacrifice_name = "sacrifice-support-for-endgame-endgame"
+
+    assert sacrifice_name in {plan.name for plan in spent_plans}
+    assert sacrifice_name not in {plan.name for plan in healthy_plans}
+
+    sacrifice = next(plan for plan in spent_plans if plan.name == sacrifice_name)
+    assert sacrifice.preserve == ("Endgame",)
+    assert sacrifice.acceptable_losses == ("Redirector", "Helper")
+    assert sacrifice.desired_board.resource_purposes == (
+        ResourcePurpose(
+            species="Endgame",
+            purpose="endgame",
+            position="bench",
+        ),
+    )
+
+
 def test_win_condition_can_be_promoted_to_plan_without_losing_trade_semantics() -> None:
     win_condition = WinCondition(
         name="trick-room-sweep",

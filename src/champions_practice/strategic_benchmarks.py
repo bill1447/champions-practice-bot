@@ -569,24 +569,29 @@ STRATEGIC_BENCHMARKS = (
         case_id="auto-generate-sacrifice-endgame",
         label="Infer acceptable support sacrifices for a declared endgame",
         category="sacrifice",
-        stage="plan-generation",
+        stage="generated-exact-plan",
         scenario=(
-            "Trading two support Pokemon is correct only when it secures a Torkoal "
-            "endgame and those losses are explicitly acceptable."
+            "Indeedee-F and Porygon2 are both heavily spent active support pieces. "
+            "A healthy benched Torkoal is the only living field-control resource."
         ),
         principle=(
-            "The generator should eventually infer when support material can be converted "
-            "into a specific endgame instead of preserving every living resource equally."
+            "Already-spent support material may be intentionally traded when exact "
+            "evidence shows that the trade preserves the declared endgame resource and "
+            "improves the resulting board."
         ),
         expectation=StrategicBenchmarkExpectation(
             accepted_plan_names=("sacrifice-support-for-torkoal-endgame",),
-            require_robust=None,
+            accepted_choices=("move attack +1, move attack +2",),
+            require_robust=True,
+            resource_purposes=(
+                ResourcePurpose(
+                    species="Torkoal",
+                    purpose="endgame",
+                    position="bench",
+                ),
+            ),
             required_preserve=("Torkoal",),
             required_acceptable_losses=("Indeedee-F", "Porygon2"),
-        ),
-        known_gap=(
-            "Trade evaluation can score declared acceptable losses, but automatic plan "
-            "generation does not yet create sacrifice/endgame plans from position state."
         ),
     ),
     StrategicBenchmarkCase(
