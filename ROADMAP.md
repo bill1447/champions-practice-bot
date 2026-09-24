@@ -69,9 +69,14 @@ Replay reconstruction remains available only for controlled diagnostics and test
 
 Production conditioning now samples fresh bounded RNG continuations, adaptively expands
 after zero-match batches, preserves surviving hidden-world diversity, retains the last good
-posterior after sampling misses, and retries unresolved public transitions. A production-like
-ordinary damaging turn survives conditioning within the configured deadline and resumes
-belief search on the next decision.
+posterior after sampling misses, and retries unresolved public transitions.
+
+Current hardening uses channel-filtered public move/target observations to constrain opponent
+responses before exact replay. Fully observed doubles move turns validate a tiny reconstructed
+candidate set directly in Showdown instead of enumerating the entire legal response space,
+then spend the saved budget on additional RNG futures. Stale move observations are excluded
+from switch-only transitions by comparing the previous and current public views. The
+production damaging-turn smoke now requires public damage on both sides in one turn.
 
 ## Phase 9 — Strategic reasoning layer — current objective
 
