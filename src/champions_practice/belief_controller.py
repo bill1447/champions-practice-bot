@@ -32,6 +32,7 @@ from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.strategy import assess_strategic_position, generate_strategic_plans
 from champions_practice.strategy_evidence import (
     filter_supported_plans,
+    prepare_shared_strategic_responses,
     probe_strategic_plan,
     select_supported_plan,
 )
@@ -704,7 +705,21 @@ class BeliefBattleController:
                 limit=self.strategic_plan_limit,
             )
             probes = []
-            strategic_branch_count = 0
+            shared_responses = prepare_shared_strategic_responses(
+                worker,
+                worlds=worlds,
+                side="p2",
+                candidate_references=tuple(
+                    baseline_pruning.candidate_shortlist
+                ),
+                response_limit=min(
+                    self.response_limit,
+                    self.strategic_response_limit,
+                ),
+            )
+            strategic_branch_count = (
+                shared_responses.screening_branch_count
+            )
             for plan in plans:
                 probe = probe_strategic_plan(
                     worker,
@@ -722,6 +737,7 @@ class BeliefBattleController:
                         self.strategic_response_limit,
                     ),
                     rng_seeds=self.strategic_rng_seeds,
+                    shared_responses=shared_responses,
                 )
                 probes.append(probe)
                 strategic_branch_count += (
