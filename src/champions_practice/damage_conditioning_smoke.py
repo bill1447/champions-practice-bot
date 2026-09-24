@@ -10,7 +10,7 @@ LIVE_SEED = "sodium,87654321000000020000000300000004"
 HUMAN_PREVIEW = "team 1256"
 AI_PREVIEW = "team 4512"
 HUMAN_TURN_ONE = "move psychic +1, move protect"
-AI_TURN_ONE = "move wideguard, move protect"
+AI_TURN_ONE = "move expandingforce, move protect"
 
 
 def main() -> None:
@@ -40,6 +40,9 @@ def main() -> None:
                 human_choice=HUMAN_PREVIEW,
                 ai_choice=AI_PREVIEW,
             )
+            before = controller.last_public_view
+            if not isinstance(before, dict):
+                raise SystemExit("ERROR: damaging-turn smoke has no preview view")
             if not controller.particles:
                 raise SystemExit("ERROR: damaging-turn smoke created no particles")
 
@@ -60,6 +63,55 @@ def main() -> None:
                 human_choice=HUMAN_TURN_ONE,
                 decision=forced,
             )
+
+            actions = update.public_view.get("opponent_last_actions")
+            expected_actions = [
+                {"slot": 1, "move": "psychic", "target": 1},
+                {"slot": 2, "move": "protect", "target": -2},
+            ]
+            if actions != expected_actions:
+                raise SystemExit(
+                    "ERROR: public action extraction did not recover the human choice: "
+                    f"{actions!r}"
+                )
+
+            before_our = {
+                pokemon["species"]: pokemon["hp_percent"]
+                for pokemon in before["player"]["active_details"]
+                if isinstance(pokemon, dict)
+            }
+            after_our = {
+                pokemon["species"]: pokemon["hp_percent"]
+                for pokemon in update.public_view["player"]["active_details"]
+                if isinstance(pokemon, dict)
+            }
+            before_their = {
+                pokemon["base_species"]: pokemon["hp_percent"]
+                for pokemon in before["opponent"]["active"]
+                if isinstance(pokemon, dict)
+            }
+            after_their = {
+                pokemon["base_species"]: pokemon["hp_percent"]
+                for pokemon in update.public_view["opponent"]["active"]
+                if isinstance(pokemon, dict)
+            }
+            our_damage = any(
+                after_our.get(species, hp) < hp
+                for species, hp in before_our.items()
+            )
+            their_damage = any(
+                after_their.get(species, hp) < hp
+                for species, hp in before_their.items()
+            )
+            if not our_damage or not their_damage:
+                raise SystemExit(
+                    "ERROR: damaging-turn smoke did not produce public damage on both sides"
+                )
+            if update.generated_branches > 768:
+                raise SystemExit(
+                    "ERROR: observed-action conditioning exceeded bounded branch budget: "
+                    f"{update.generated_branches}"
+                )
 
             if update.conditioning_over_budget:
                 raise SystemExit("ERROR: damaging-turn conditioning exceeded 8 seconds")
@@ -83,8 +135,9 @@ def main() -> None:
             if next_decision.choice not in controller.ai_legal_choices():
                 raise SystemExit("ERROR: post-damage search choice is not live-legal")
 
-            print("Production-like damaging-turn belief conditioning")
+            print("Production-like two-damage-turn belief conditioning")
             print(f"Initial particles: {update.particles_before}")
+            print(f"Observed opponent actions: {actions}")
             print(f"Branches generated: {update.generated_branches}")
             print(f"Matching branches: {update.matched_branches}")
             print(f"Posterior particles: {update.particles_after}")
@@ -92,7 +145,7 @@ def main() -> None:
             print(f"Next belief-search choice: {next_decision.choice}")
             print(f"Next search time: {next_decision.elapsed_seconds:.3f} seconds")
             print("Production conditioning deadline: 8.0 seconds")
-            print("RESULT: ordinary damage RNG survives and belief search resumes")
+            print("RESULT: two-sided damage RNG survives and belief search resumes")
         finally:
             controller.close()
 
