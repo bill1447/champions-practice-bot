@@ -273,6 +273,27 @@ def _outcome_from_summary(
         if _resource_id(resource.species) not in living_after_ids
     )
 
+    active_after_ids = {
+        _resource_id(pokemon.get("species", ""))
+        for pokemon in _active_entries(summary, own)
+        if _is_living(pokemon)
+    }
+    active_before_ids = {
+        _resource_id(resource.species)
+        for resource in assessment.resources
+        if resource.active and not resource.fainted
+    }
+    active_resources = tuple(
+        resource.species
+        for resource in living_before
+        if _resource_id(resource.species) in active_after_ids
+    )
+    newly_active_resources = tuple(
+        species
+        for species in active_resources
+        if _resource_id(species) not in active_before_ids
+    )
+
     pseudo = _pseudo_weather(summary)
     own_conditions = _side_conditions(summary, own)
     opponent_conditions = _side_conditions(summary, opponent)
@@ -336,6 +357,8 @@ def _outcome_from_summary(
         effective_turns=1 if demonstrated else 0,
         lost_resources=lost_resources,
         triggered_failures=tuple(sorted(failures)),
+        active_resources=active_resources,
+        newly_active_resources=newly_active_resources,
     )
 
 
@@ -347,6 +370,9 @@ def _failure_penalty(evaluation: StrategicPlanEvaluation) -> float:
         + evaluation.timing_failure_mass
         + evaluation.declared_failure_mass
         + evaluation.unacceptable_loss_mass
+        + evaluation.active_pair_failure_mass
+        + evaluation.safe_entry_failure_mass
+        + evaluation.purpose_failure_mass
     )
 
 
