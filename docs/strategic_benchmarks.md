@@ -160,8 +160,15 @@ pairs the benched resource with the active anchor and requires the benched resou
 newly active. This is role-derived rather than species-derived; exact evidence still decides
 whether any legal switch actually reaches the board safely.
 
-### Sacrifice into a specific endgame — known generation gap
+### Sacrifice into a specific endgame — resolved for spent supports
 
-Trade evaluation can score acceptable losses against a declared win condition, but
-automatic generation still does not infer when support Pokemon should be intentionally
-spent to secure a specific endgame.
+Generation now identifies a bounded sacrifice pattern when both active resources are
+support-oriented and already at 40% HP or lower while a healthy benched high-priority
+resource remains available.
+
+The generated plan explicitly preserves the benched endgame resource, marks the two active
+supports as acceptable losses, and labels the endgame resource with an `endgame` purpose
+while it remains in reserve. Exact evidence then decides whether a sacrificial line actually
+improves the resulting board enough to justify those losses.
+
+Healthy support resources do not trigger this plan.
