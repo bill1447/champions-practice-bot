@@ -98,6 +98,7 @@ class StrategicBenchmarkExecution:
     assessment: StrategicAssessment
     generated_plan_names: tuple[str, ...]
     probed_plan_names: tuple[str, ...]
+    probes: tuple[StrategicPlanProbe, ...]
     selected_probe: StrategicPlanProbe | None
     result: StrategicBenchmarkResult
     exact_branch_count: int
@@ -343,6 +344,7 @@ def run_generated_strategy_benchmark(
         assessment=assessment,
         generated_plan_names=tuple(plan.name for plan in generated),
         probed_plan_names=tuple(probe.plan.name for probe in probes),
+        probes=tuple(probes),
         selected_probe=selected,
         result=result,
         exact_branch_count=sum(probe.branch_count for probe in probes),
