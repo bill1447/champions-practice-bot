@@ -1004,5 +1004,23 @@ def format_strategic_plan_ranking(ranking: StrategicPlanRanking) -> str:
             lines.append(
                 "     acceptable losses: " + ", ".join(evaluation.plan.acceptable_losses)
             )
+        desired = evaluation.plan.desired_board
+        if desired.required_active_pair:
+            lines.append(
+                "     desired active pair: "
+                + " + ".join(desired.required_active_pair)
+            )
+        if desired.safe_entry_resources:
+            lines.append(
+                "     safe entry: " + ", ".join(desired.safe_entry_resources)
+            )
+        if desired.resource_purposes:
+            lines.append(
+                "     resource purposes: "
+                + ", ".join(
+                    f"{purpose.species}={purpose.purpose} ({purpose.position})"
+                    for purpose in desired.resource_purposes
+                )
+            )
         lines.append("     " + "; ".join(evaluation.reasons))
     return "\n".join(lines)
