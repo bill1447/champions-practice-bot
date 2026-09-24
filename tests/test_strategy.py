@@ -449,6 +449,136 @@ def test_sacrifice_generation_requires_spent_support_resources() -> None:
     )
 
 
+def _cleanup_generation_view(
+    *,
+    trick_room: bool,
+    opponent_hp: float = 50.0,
+) -> dict:
+    team = [
+        {
+            "species": "LeadA",
+            "hp_percent": 100,
+            "fainted": False,
+            "active": True,
+            "ability": "",
+            "moves": ["Attack", "Attack2", "Protect"],
+            "speed": 100,
+            "damaging_move_count": 2,
+        },
+        {
+            "species": "LeadB",
+            "hp_percent": 100,
+            "fainted": False,
+            "active": True,
+            "ability": "",
+            "moves": ["Attack", "Attack2", "Protect"],
+            "speed": 90,
+            "damaging_move_count": 2,
+        },
+        {
+            "species": "FastCleaner",
+            "hp_percent": 100,
+            "fainted": False,
+            "active": False,
+            "ability": "",
+            "moves": ["Attack", "Attack2", "Attack3", "Protect"],
+            "speed": 180,
+            "damaging_move_count": 3,
+        },
+        {
+            "species": "SlowCleaner",
+            "hp_percent": 100,
+            "fainted": False,
+            "active": False,
+            "ability": "",
+            "moves": ["Attack", "Attack2", "Attack3", "Protect"],
+            "speed": 40,
+            "damaging_move_count": 3,
+        },
+    ]
+    return {
+        "turn": 7,
+        "phase": "move",
+        "field": {
+            "weather": None,
+            "terrain": None,
+            "pseudo_weather": ["trickroom"] if trick_room else [],
+        },
+        "player": {
+            "name": "Practice AI",
+            "side_conditions": [],
+            "team": team,
+            "active_details": [team[0], team[1]],
+        },
+        "opponent": {
+            "name": "Human",
+            "preview_species": ["FoeA", "FoeB", "FoeC", "FoeD"],
+            "side_conditions": [],
+            "active": [
+                {
+                    "species": "FoeA",
+                    "base_species": "FoeA",
+                    "hp_percent": opponent_hp,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+                {
+                    "species": "FoeB",
+                    "base_species": "FoeB",
+                    "hp_percent": opponent_hp,
+                    "status": None,
+                    "boosts": {},
+                    "fainted": False,
+                },
+            ],
+            "revealed": [],
+        },
+    }
+
+
+def test_cleanup_generation_uses_offense_health_and_speed_mode() -> None:
+    normal = assess_strategic_position(
+        _cleanup_generation_view(trick_room=False),
+    )
+    trick_room = assess_strategic_position(
+        _cleanup_generation_view(trick_room=True),
+    )
+    unchipped = assess_strategic_position(
+        _cleanup_generation_view(
+            trick_room=False,
+            opponent_hp=80,
+        ),
+    )
+
+    normal_names = {
+        plan.name
+        for plan in generate_strategic_plans(normal, limit=None)
+    }
+    trick_room_names = {
+        plan.name
+        for plan in generate_strategic_plans(trick_room, limit=None)
+    }
+    unchipped_names = {
+        plan.name
+        for plan in generate_strategic_plans(unchipped, limit=None)
+    }
+
+    assert "reserve-fastcleaner-cleanup" in normal_names
+    assert "reserve-slowcleaner-cleanup" not in normal_names
+    assert "reserve-slowcleaner-cleanup" in trick_room_names
+    assert "reserve-fastcleaner-cleanup" not in trick_room_names
+    assert not any(name.endswith("-cleanup") for name in unchipped_names)
+
+    fast = next(
+        resource
+        for resource in normal.resources
+        if resource.species == "FastCleaner"
+    )
+    assert fast.speed == 180
+    assert fast.damaging_move_count == 3
+
+
 def test_win_condition_can_be_promoted_to_plan_without_losing_trade_semantics() -> None:
     win_condition = WinCondition(
         name="trick-room-sweep",
