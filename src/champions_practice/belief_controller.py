@@ -765,7 +765,9 @@ class BeliefBattleController:
                 generated = update.generated
                 matched = update.matched
             else:
-                self.pending_observations.append((decision.choice, view))
+                self.pending_observations.append(
+                    (decision.choice, previous_view, view)
+                )
                 self.degraded = True
                 generated = update.generated
                 matched = 0
