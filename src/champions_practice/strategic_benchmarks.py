@@ -598,17 +598,20 @@ STRATEGIC_BENCHMARKS = (
         case_id="auto-generate-cleanup-purpose",
         label="Infer an offensive cleanup role from the position",
         category="plan-generation",
-        stage="plan-generation",
+        stage="generated-exact-plan",
         scenario=(
-            "Sneasler should be preserved specifically as a late-game offensive "
-            "cleanup piece rather than merely because it owns a generic utility role."
+            "Both opposing active Pokemon are already chipped. Sneasler and another "
+            "healthy attacker are in reserve, but Sneasler is the faster offensive "
+            "reserve outside Trick Room."
         ),
         principle=(
-            "Purpose-specific endgame roles should eventually be generated from "
-            "position and matchup evidence, not hard-coded by species."
+            "A cleanup purpose should be inferred from current board state, offensive "
+            "density, health, and speed mode rather than from species identity."
         ),
         expectation=StrategicBenchmarkExpectation(
-            require_robust=None,
+            accepted_plan_names=("reserve-sneasler-cleanup",),
+            accepted_choices=("move attack +1, move attack +2",),
+            require_robust=True,
             resource_purposes=(
                 ResourcePurpose(
                     species="Sneasler",
@@ -616,10 +619,7 @@ STRATEGIC_BENCHMARKS = (
                     position="bench",
                 ),
             ),
-        ),
-        known_gap=(
-            "Current plan generation identifies generic/unique utility roles but does "
-            "not yet infer offensive cleanup roles from matchup state."
+            required_preserve=("Sneasler",),
         ),
     ),
 )
