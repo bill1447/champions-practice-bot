@@ -1039,9 +1039,9 @@ def _pairing_public_view() -> dict:
 
 
 def _pairing_summary(*, gardevoir_active: bool) -> dict:
-    partner = _benchmark_mon("Partner", 100, 100)
-    rillaboom = _benchmark_mon("Rillaboom", 100, 95)
-    gardevoir = _benchmark_mon("Gardevoir", 100, 80)
+    partner = _benchmark_mon("Partner", 100, 60)
+    rillaboom = _benchmark_mon("Rillaboom", 100, 85)
+    gardevoir = _benchmark_mon("Gardevoir", 100, 100)
     sneasler = _benchmark_mon("Sneasler", 100, 120)
     foe_a = _benchmark_mon("BoostedFoe", 100, 105)
     foe_b = _benchmark_mon("FoeB", 100, 90)
