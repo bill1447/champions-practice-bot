@@ -60,7 +60,7 @@ class _ProbeChoice(Protocol):
 class _PlanProbe(Protocol):
     plan: StrategicPlan
     chosen: _ProbeChoice
-    proven_robust: bool
+    sampled_robust: bool
 
 
 @dataclass(frozen=True)
@@ -159,7 +159,7 @@ def observation_from_probe(
     return observation_from_plan(
         probe.plan,
         choice=probe.chosen.choice,
-        robust=probe.proven_robust,
+        robust=probe.sampled_robust,
     )
 
 
