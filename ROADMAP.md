@@ -92,9 +92,7 @@ Completed so far:
   tactically strongest screened action;
 - exact strategic plan probes over bounded candidates, adversarial replies, belief worlds,
   and RNG futures;
-- explicit unsupported/unresolved evidence reporting before a plan can be called robust.
-
-Completed so far:
+- explicit unsupported/unresolved evidence reporting before a plan can be called robust;
 - strategic desirability is separated from mere feasibility for supported plans;
 - speed-control plans require a favorable exact speed relationship;
 - equally robust plans compare exact resulting-board utility before deterministic ties;
@@ -102,13 +100,17 @@ Completed so far:
 - DesiredBoard can now require an active pairing, a newly safe-entered resource, and
   purpose-specific endgame resources such as a cleanup piece held in back;
 - exact plan evidence records active and newly active resources and evaluates those richer
-  positioning requirements.
+  positioning requirements;
+- an initial labeled strategic benchmark corpus now separates resolved regressions from
+  explicit known gaps across speed control, sacrifice, resource preservation, positioning,
+  and cleanup-role generation.
 
 Current work:
 - preserve exact belief search as the final command selector while richer strategic state
-  becomes inspectable and regression-tested;
-- use labeled positions to decide which richer board objectives should be generated
-  automatically instead of adding species-specific rules.
+  becomes inspectable and benchmarked;
+- grow the labeled corpus before adding more automatic plan-generation heuristics;
+- treat benchmark misses as evidence for specific missing reasoning rather than as a reason
+  to add species-specific rules.
 
 Next:
 - expand strategic RNG coverage and calibrate evidence terminology;
@@ -116,12 +118,17 @@ Next:
   targeting, positioning, and endgame positions;
 - only then increase strategic authority or add deeper plan continuation.
 
-## Phase 10 — Benchmark and playing-strength development
+## Phase 10 — Benchmark and playing-strength development — started
 
-Build labeled positions and complete games. Compare bounded belief search with exhaustive
-search where tractable and with perfect-information search only as a diagnostic oracle.
-Track missed KOs, sacrifices, targets, switches, Protects, speed control, field control,
-setup recognition, conservatism, strategic-plan quality, and latency.
+The first labeled strategic benchmark corpus is in place. It records expected plans,
+actions, desired boards, preserved resources, and known gaps independently from the live
+controller. Known gaps are reported separately from regressions so unfinished capabilities
+do not hide new breakage.
+
+Continue adding labeled positions and complete games. Compare bounded belief search with
+exhaustive search where tractable and with perfect-information search only as a diagnostic
+oracle. Track missed KOs, sacrifices, targets, switches, Protects, speed control, field
+control, setup recognition, conservatism, strategic-plan quality, and latency.
 
 ## Phase 11 — Selective deeper reasoning
 
