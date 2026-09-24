@@ -305,7 +305,9 @@ class BeliefBattleController:
         self.last_public_view: dict | None = None
         self.preview_mismatch_paths: tuple[str, ...] = ()
         self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
-        self.pending_observations: list[tuple[str, dict]] = []
+        self.pending_observations: list[
+            tuple[str, dict[str, object] | None, dict]
+        ] = []
         self.degraded = False
 
     def start(
@@ -449,13 +451,17 @@ class BeliefBattleController:
         particles: tuple[BeliefParticle, ...],
         ai_choice: str,
         view: dict,
+        previous_view: dict[str, object] | None = None,
         batches: tuple[int, ...],
     ) -> ParticleUpdate:
         generated = 0
         deduplicated = 0
         multiplier = (
             self.observed_action_rng_multiplier
-            if public_opponent_moves_fully_observed(view)
+            if public_opponent_moves_fully_observed(
+                view,
+                previous_public_view=previous_view,
+            )
             else 1
         )
         for sample_count in batches:
@@ -467,6 +473,7 @@ class BeliefBattleController:
                 ai_side="p2",
                 ai_choice=ai_choice,
                 actual_public_view=view,
+                previous_public_view=previous_view,
                 rng_seeds=seeds,
                 previews=self.previews,
             )
@@ -490,12 +497,13 @@ class BeliefBattleController:
 
         def recover(worker: ShowdownSearchWorker):
             particles = starting_particles
-            for ai_choice, view in pending:
+            for ai_choice, previous_view, view in pending:
                 update = self._condition_adaptive(
                     worker,
                     particles=particles,
                     ai_choice=ai_choice,
                     view=view,
+                    previous_view=previous_view,
                     batches=self.recovery_rng_sample_batches,
                 )
                 if not update.particles:
@@ -701,6 +709,7 @@ class BeliefBattleController:
     ) -> BeliefTurnUpdate:
         session_id = self._require_session()
         particles_before = len(self.particles)
+        previous_view = self.last_public_view
 
         self.worker.choose_session(
             session_id,
@@ -713,7 +722,9 @@ class BeliefBattleController:
         conditioning_started = perf_counter()
 
         if self.pending_observations:
-            self.pending_observations.append((decision.choice, view))
+            self.pending_observations.append(
+                (decision.choice, previous_view, view)
+            )
             update = None
             timed_out = False
             conditioning_seconds = perf_counter() - conditioning_started
@@ -727,6 +738,7 @@ class BeliefBattleController:
                     particles=self.particles,
                     ai_choice=decision.choice,
                     view=view,
+                    previous_view=previous_view,
                     batches=self.rng_sample_batches,
                 )
 
@@ -737,7 +749,9 @@ class BeliefBattleController:
             conditioning_seconds = perf_counter() - conditioning_started
 
             if timed_out or update is None:
-                self.pending_observations.append((decision.choice, view))
+                self.pending_observations.append(
+                    (decision.choice, previous_view, view)
+                )
                 self.degraded = True
                 generated = 0
                 matched = 0
