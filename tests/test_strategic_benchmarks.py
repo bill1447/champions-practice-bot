@@ -26,7 +26,6 @@ def test_benchmark_catalog_has_unique_ids_and_expected_known_gap() -> None:
 
     known_gaps = [case for case in STRATEGIC_BENCHMARKS if case.known_gap]
     assert [case.case_id for case in known_gaps] == [
-        "auto-generate-active-pair",
         "auto-generate-sacrifice-endgame",
         "auto-generate-cleanup-purpose",
     ]
@@ -197,6 +196,22 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
             choice="move attack +1, move attack +1",
             robust=True,
         ),
+        "auto-generate-active-pair": observation_from_plan(
+            StrategicPlan(
+                name="create-gardevoir-rillaboom-board",
+                objective="combine two unique strategic resources",
+                desired_board=DesiredBoard(
+                    required_resources=("Rillaboom", "Gardevoir"),
+                    required_active_pair=("Gardevoir", "Rillaboom"),
+                    safe_entry_resources=("Gardevoir",),
+                ),
+                required_resources=("Rillaboom", "Gardevoir"),
+                preserve=("Rillaboom", "Gardevoir"),
+                tactical_priorities=("prefer-switch", "preserve:Rillaboom"),
+            ),
+            choice="switch 3, move attack +1",
+            robust=True,
+        ),
     }
 
     suite = evaluate_strategic_benchmark_suite(
@@ -207,13 +222,12 @@ def test_baseline_suite_separates_known_gap_from_regressions() -> None:
     assert suite.passed is True
     assert suite.regressions == ()
     assert [result.case.case_id for result in suite.known_gaps] == [
-        "auto-generate-active-pair",
         "auto-generate-sacrifice-endgame",
         "auto-generate-cleanup-purpose",
     ]
 
     report = format_strategic_benchmark_report(suite)
-    assert "pass 8 | known-gap 3 | fail 0" in report
+    assert "pass 9 | known-gap 2 | fail 0" in report
     assert "[KNOWN-GAP] auto-generate-cleanup-purpose" in report
 
 
@@ -1009,25 +1023,105 @@ def test_boosted_threat_targeting_passes_exact_evidence() -> None:
     )
 
 
-def test_pairing_and_sacrifice_generation_gaps_remain_explicit() -> None:
-    pairing = run_generated_strategy_benchmark(
-        GapWorker(),
+def _pairing_public_view() -> dict:
+    view = _gap_public_view(
+        team_species=("Partner", "Rillaboom", "Gardevoir", "Sneasler"),
+        active_species=("Partner", "Rillaboom"),
+    )
+    team = view["player"]["team"]
+    team[1]["ability"] = "Grassy Surge"
+    team[2]["moves"] = ["Trick Room", "Attack"]
+    view["player"]["active_details"] = [
+        {"species": "Partner", "moves": ["Attack"]},
+        {"species": "Rillaboom", "moves": ["Attack"]},
+    ]
+    return view
+
+
+def _pairing_summary(*, gardevoir_active: bool) -> dict:
+    partner = _benchmark_mon("Partner", 100, 100)
+    rillaboom = _benchmark_mon("Rillaboom", 100, 95)
+    gardevoir = _benchmark_mon("Gardevoir", 100, 80)
+    sneasler = _benchmark_mon("Sneasler", 100, 120)
+    foe_a = _benchmark_mon("BoostedFoe", 100, 105)
+    foe_b = _benchmark_mon("FoeB", 100, 90)
+    active = [gardevoir, rillaboom] if gardevoir_active else [partner, rillaboom]
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": "grassyterrain",
+            "pseudoWeather": [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [partner, rillaboom, gardevoir, sneasler],
+            "active": active,
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+class PairingWorker:
+    switch = "switch 3, move attack +1"
+    stay = "move attack +1, move attack +1"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.switch, self.stay] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        return [
+            {
+                "index": index,
+                "summary": _pairing_summary(
+                    gardevoir_active=branch["p1_choice"] == self.switch,
+                ),
+            }
+            for index, branch in enumerate(branches)
+        ]
+
+
+def test_active_pair_generation_passes_exact_safe_entry_evidence() -> None:
+    execution = run_generated_strategy_benchmark(
+        PairingWorker(),
         case=_case("auto-generate-active-pair"),
-        view=_gap_public_view(
-            team_species=("Rillaboom", "Partner", "Gardevoir", "Sneasler"),
-            active_species=("Rillaboom", "Partner"),
-        ),
+        view=_pairing_public_view(),
         particles=(SimpleNamespace(weight=1.0, world_id="world-a"),),
         worlds=(
             ExactBeliefWorldState(
-                state={"id": "pairing-gap"},
+                state={"id": "pairing"},
                 weight=1.0,
                 label="world-a",
             ),
         ),
         side="p1",
-        rng_seeds=("low",),
+        plan_limit=4,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low", "high"),
     )
+
+    assert execution.result.status == "pass"
+    assert "create-gardevoir-rillaboom-board" in execution.generated_plan_names
+    assert execution.selected_probe is not None
+    assert execution.selected_probe.plan.name == "create-gardevoir-rillaboom-board"
+    assert execution.selected_probe.chosen.choice == PairingWorker.switch
+    assert execution.selected_probe.sampled_robust is True
+    outcome = execution.selected_probe.chosen.worst_world_outcomes[0]
+    assert set(outcome.active_resources) == {"Gardevoir", "Rillaboom"}
+    assert outcome.newly_active_resources == ("Gardevoir",)
+
+
+def test_sacrifice_generation_gap_remains_explicit() -> None:
     sacrifice = run_generated_strategy_benchmark(
         GapWorker(),
         case=_case("auto-generate-sacrifice-endgame"),
@@ -1046,10 +1140,6 @@ def test_pairing_and_sacrifice_generation_gaps_remain_explicit() -> None:
         side="p1",
         rng_seeds=("low",),
     )
-
-    assert pairing.result.status == "known-gap"
-    assert pairing.generated_plan_names == ()
-    assert pairing.selected_probe is None
 
     assert sacrifice.result.status == "known-gap"
     assert sacrifice.generated_plan_names == ()
