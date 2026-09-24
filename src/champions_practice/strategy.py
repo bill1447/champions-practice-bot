@@ -141,6 +141,21 @@ _SPEED_CONTROL_MOVES = {"trickroom", "tailwind", "icywind", "electroweb"}
 _REDIRECTION_MOVES = {"followme", "ragepowder"}
 _PROTECT_MOVES = {"protect", "detect", "spikyshield", "kingsshield", "banefulbunker"}
 _PIVOT_MOVES = {"uturn", "voltswitch", "partingshot", "flipturn"}
+_SUPPORT_MOVES = {
+    "helpinghand",
+    "healpulse",
+    "lifedew",
+    "coaching",
+    "wideguard",
+    "quickguard",
+}
+_SACRIFICIAL_SUPPORT_ROLES = {
+    "redirection",
+    "speed-control",
+    "field-control",
+    "pivot",
+    "support",
+}
 _FIELD_MOVES = {
     "electricterrain",
     "grassyterrain",
@@ -179,6 +194,8 @@ def _roles(pokemon: dict[str, Any]) -> tuple[str, ...]:
         roles.add("protect")
     if moves.intersection(_PIVOT_MOVES):
         roles.add("pivot")
+    if moves.intersection(_SUPPORT_MOVES):
+        roles.add("support")
     if moves.intersection(_FIELD_MOVES) or ability in _FIELD_ABILITIES:
         roles.add("field-control")
     return tuple(sorted(roles))
@@ -794,6 +811,66 @@ def generate_strategic_plans(
                     tactical_priorities=(
                         "prefer-switch",
                         f"preserve:{anchor.species}",
+                    ),
+                )
+            )
+
+    active_supports = tuple(
+        resource
+        for resource in living
+        if (
+            resource.active
+            and resource.hp_percent <= 40.0
+            and set(resource.strategic_roles).intersection(
+                _SACRIFICIAL_SUPPORT_ROLES
+            )
+        )
+    )
+    healthy_bench_keys = tuple(
+        resource
+        for resource in living
+        if (
+            not resource.active
+            and resource.preservation_priority == "high"
+            and resource.hp_percent >= 60.0
+        )
+    )
+    if len(active_supports) == 2:
+        acceptable_losses = tuple(resource.species for resource in active_supports)
+        for endgame in healthy_bench_keys:
+            plans.append(
+                StrategicPlan(
+                    name=(
+                        "sacrifice-support-for-"
+                        f"{_id(endgame.species)}-endgame"
+                    ),
+                    objective=(
+                        "Allow already-spent active support resources to be traded "
+                        f"if doing so preserves {endgame.species} and improves the board."
+                    ),
+                    desired_board=DesiredBoard(
+                        required_resources=(endgame.species,),
+                        resource_purposes=(
+                            ResourcePurpose(
+                                species=endgame.species,
+                                purpose="endgame",
+                                position="bench",
+                            ),
+                        ),
+                    ),
+                    required_resources=(endgame.species,),
+                    preserve=(endgame.species,),
+                    acceptable_losses=acceptable_losses,
+                    failure_conditions=(
+                        f"critical-resource-lost:{_id(endgame.species)}",
+                    ),
+                    rationale=(
+                        "Both active support resources are at 40% HP or lower.",
+                        (
+                            f"{endgame.species} is a healthy benched unique-role "
+                            "resource."
+                        ),
+                        "Exact evidence must still justify the material trade.",
                     ),
                 )
             )
