@@ -237,6 +237,8 @@ def test_response_pruning_scores_target_variants_before_truncating() -> None:
     )
 
     assert "move hit +1, move hit +1" in pruning.response_shortlist
+    assert "move protect, move hit +1" in pruning.response_shortlist
+    assert "move hit +2, move hit +1" not in pruning.response_shortlist
 
 
 def test_autonomous_response_pruning_is_bounded() -> None:
