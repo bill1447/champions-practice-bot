@@ -36,26 +36,28 @@ if (Get-Command node -ErrorAction SilentlyContinue) {
     Write-Host "Node:     $((& node --version).Trim())"
 }
 
-if (
-    (Get-Command git -ErrorAction SilentlyContinue)
-    -and (Test-Path (Join-Path $ChampionShowdownRoot ".git"))
-) {
+$GitCommand = Get-Command git -ErrorAction SilentlyContinue
+$ShowdownGitDir = Join-Path $ChampionShowdownRoot ".git"
+
+if ($null -ne $GitCommand -and (Test-Path $ShowdownGitDir)) {
     $PinnedShowdown = Get-ChampionsShowdownCommit
-    $ActualShowdown = "$(& git -C $ChampionShowdownRoot rev-parse HEAD)".Trim().ToLowerInvariant()
-    $PinState = if ($ActualShowdown -eq $PinnedShowdown) { "matches pin" } else { "PIN MISMATCH" }
-    Write-Host (
-        "Engine:   "
-        + $ActualShowdown.Substring(0, 8)
-        + " (pin "
-        + $PinnedShowdown.Substring(0, 8)
-        + "; "
-        + $PinState
-        + ")"
-    )
+    $ActualOutput = & git -C $ChampionShowdownRoot rev-parse HEAD
+    $ActualShowdown = "$ActualOutput".Trim().ToLowerInvariant()
+    if ($ActualShowdown -eq $PinnedShowdown) {
+        $PinState = "matches pin"
+    }
+    else {
+        $PinState = "PIN MISMATCH"
+    }
+
+    $ShortActual = $ActualShowdown.Substring(0, 8)
+    $ShortPinned = $PinnedShowdown.Substring(0, 8)
+    Write-Host "Engine:   $ShortActual (pin $ShortPinned; $PinState)"
 }
 elseif (Test-Path $ChampionShowdownVersionFile) {
     $PinnedShowdown = Get-ChampionsShowdownCommit
-    Write-Host "Engine:   checkout missing (pin $($PinnedShowdown.Substring(0, 8)))"
+    $ShortPinned = $PinnedShowdown.Substring(0, 8)
+    Write-Host "Engine:   checkout missing (pin $ShortPinned)"
 }
 
 $TrackedPid = Get-ChampionsTrackedShowdownPid
