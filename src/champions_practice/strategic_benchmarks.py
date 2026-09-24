@@ -131,8 +131,6 @@ def observation_from_probe(
     )
 
 
-
-
 def _purpose_keys(
     purposes: Iterable[ResourcePurpose],
 ) -> set[tuple[str, str, str]]:
