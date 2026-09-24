@@ -9,6 +9,7 @@ from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.strategic_benchmarks import (
     STRATEGIC_BENCHMARKS,
+    StrategicBenchmarkSuite,
     format_strategic_benchmark_report,
     run_generated_strategy_benchmark,
 )
@@ -194,7 +195,7 @@ def main() -> None:
         print(format_strategic_plan_probe(preserve_probe))
         print(
             format_strategic_benchmark_report(
-                type("_Suite", (), {"results": (execution.result,)})()
+                StrategicBenchmarkSuite(results=(execution.result,))
             )
         )
         print("RESULT: real Showdown state passes labeled strategic plan selection")
