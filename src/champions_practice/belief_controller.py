@@ -24,6 +24,7 @@ from champions_practice.observation_beliefs import (
     ParticleUpdate,
     condition_particles,
     public_observation_signature,
+    public_opponent_moves_fully_observed,
     resample_particles_by_world,
 )
 from champions_practice.search_worker import ShowdownSearchWorker
@@ -251,6 +252,7 @@ class BeliefBattleController:
         conditioning_budget_seconds: float = 8.0,
         rng_sample_batches: tuple[int, ...] = (2, 4),
         recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
+        observed_action_rng_multiplier: int = 16,
         particle_seed: int = 53,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
@@ -274,6 +276,8 @@ class BeliefBattleController:
             count <= 0 for count in recovery_rng_sample_batches
         ):
             raise ValueError("recovery_rng_sample_batches must contain positive counts")
+        if observed_action_rng_multiplier <= 0:
+            raise ValueError("observed_action_rng_multiplier must be positive")
 
         self.worker = worker
         self.battle_format = battle_format
@@ -291,6 +295,7 @@ class BeliefBattleController:
         self.conditioning_budget_seconds = conditioning_budget_seconds
         self.rng_sample_batches = rng_sample_batches
         self.recovery_rng_sample_batches = recovery_rng_sample_batches
+        self.observed_action_rng_multiplier = observed_action_rng_multiplier
         self.fallback_selector = fallback_selector
         self._rng = random.Random(particle_seed)
 
@@ -448,8 +453,14 @@ class BeliefBattleController:
     ) -> ParticleUpdate:
         generated = 0
         deduplicated = 0
+        multiplier = (
+            self.observed_action_rng_multiplier
+            if public_opponent_moves_fully_observed(view)
+            else 1
+        )
         for sample_count in batches:
-            seeds = tuple(self._particle_seed() for _ in range(sample_count))
+            effective_count = sample_count * multiplier
+            seeds = tuple(self._particle_seed() for _ in range(effective_count))
             update = condition_particles(
                 worker,
                 particles=particles,
