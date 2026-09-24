@@ -567,6 +567,22 @@ function legalChoices(request) {
   }
 }
 
+function validateRequestedChoices(request) {
+  if (!request.state) {
+    throw new Error("validate_choices requires a serialized battle state");
+  }
+  if (!Array.isArray(request.candidates) || !request.candidates.length) {
+    throw new Error("validate_choices requires non-empty candidates");
+  }
+  if (!request.candidates.every((candidate) => typeof candidate === "string")) {
+    throw new Error("validate_choices candidates must be strings");
+  }
+  return {
+    side: request.side,
+    choices: validateChoices(request.state, request.side, request.candidates),
+  };
+}
+
 function battleOptions(request) {
   const options = {
     formatid: request.format,
@@ -796,6 +812,8 @@ function handle(request) {
       return branchMany(request);
     case "legal_choices":
       return legalChoices(request);
+    case "validate_choices":
+      return validateRequestedChoices(request);
     case "state_view":
       return stateView(request);
     case "session_start":
