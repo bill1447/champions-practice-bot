@@ -8,9 +8,13 @@ from champions_practice.strategy import (
     StrategicAssessment,
     StrategicPlan,
 )
+from dataclasses import replace
+
 from champions_practice.strategy_evidence import (
+    filter_supported_plans,
     format_strategic_plan_probe,
     probe_strategic_plan,
+    select_supported_plan,
 )
 
 
@@ -231,3 +235,266 @@ def test_unresolved_failure_condition_blocks_proven_robust_status() -> None:
     rendered = format_strategic_plan_probe(probe)
     assert "Evidence status: incomplete/fragile" in rendered
     assert "Unresolved failure conditions: unmodeled-catastrophe" in rendered
+
+
+
+def _speed_summary(*, trick_room: bool, foe_a_hp: int) -> dict:
+    indeedee = _mon("Indeedee-F", 100)
+    indeedee["speed"] = 80
+    sneasler = _mon("Sneasler", 100)
+    sneasler["speed"] = 190
+    foe_a = _mon("FoeA", foe_a_hp)
+    foe_a["speed"] = 120
+    foe_b = _mon("FoeB", 100)
+    foe_b["speed"] = 110
+    return {
+        "ended": False,
+        "winner": None,
+        "requestState": "move",
+        "field": {
+            "weather": None,
+            "terrain": "psychicterrain",
+            "pseudoWeather": ["trickroom"] if trick_room else [],
+        },
+        "p1": {
+            "name": "Practice AI",
+            "pokemon": [indeedee, sneasler],
+            "active": [indeedee, sneasler],
+            "sideConditions": [],
+        },
+        "p2": {
+            "name": "Human",
+            "pokemon": [foe_a, foe_b],
+            "active": [foe_a, foe_b],
+            "sideConditions": [],
+        },
+    }
+
+
+def _sneasler_assessment() -> StrategicAssessment:
+    return StrategicAssessment(
+        turn=2,
+        phase="move",
+        threats=(),
+        resources=(
+            ResourceAssessment(
+                species="Indeedee-F",
+                hp_percent=100,
+                active=True,
+                fainted=False,
+                strategic_roles=("protect", "speed-control"),
+                preservation_priority="high",
+                reasons=("only living speed-control provider",),
+            ),
+            ResourceAssessment(
+                species="Sneasler",
+                hp_percent=100,
+                active=True,
+                fainted=False,
+                strategic_roles=("protect",),
+                preservation_priority="contextual",
+                reasons=(),
+            ),
+        ),
+        speed_control=SpeedControlAssessment(
+            trick_room_active=False,
+            our_tailwind=False,
+            opponent_tailwind=False,
+            available_our_tools=("Indeedee-F",),
+        ),
+        field_control=FieldControlAssessment(
+            terrain="psychicterrain",
+            weather=None,
+            our_side_conditions=(),
+            opponent_side_conditions=(),
+            available_our_setters=("Indeedee-F",),
+        ),
+        posterior=PosteriorAssessment(
+            particle_count=1,
+            world_count=1,
+            world_mass=(("world-a", 1.0),),
+        ),
+        key_resources=("Indeedee-F",),
+        notes=(),
+    )
+
+
+def _sneasler_view() -> dict:
+    return {
+        "player": {
+            "active_details": [
+                {
+                    "species": "Indeedee-F",
+                    "moves": ["Psychic", "Trick Room", "Protect"],
+                },
+                {
+                    "species": "Sneasler",
+                    "moves": ["Close Combat", "Dire Claw", "Protect"],
+                },
+            ]
+        },
+        "opponent": {
+            "active": [
+                {"species": "FoeA", "base_species": "FoeA"},
+                {"species": "FoeB", "base_species": "FoeB"},
+            ]
+        },
+    }
+
+
+class SneaslerRegressionWorker:
+    psychic = "move psychic +1, move protect"
+    trick_room = "move trickroom, move protect"
+    response = "move attack +1, move attack +2"
+
+    def legal_choices(self, *, state, side):
+        if side == "p1":
+            return [self.psychic, self.trick_room]
+        return [self.response]
+
+    def branch_many(self, *, state, branches):
+        results = []
+        for index, branch in enumerate(branches):
+            choice = branch["p1_choice"]
+            summary = (
+                _speed_summary(trick_room=False, foe_a_hp=60)
+                if choice == self.psychic
+                else _speed_summary(trick_room=True, foe_a_hp=100)
+            )
+            results.append({"index": index, "summary": summary})
+        return results
+
+
+def test_sneasler_psychic_protect_regression_does_not_reward_neutral_trick_room() -> None:
+    speed_plan = StrategicPlan(
+        name="establish-speed-control-indeedeef",
+        objective="establish favorable speed control",
+        desired_board=DesiredBoard(
+            required_conditions=("favorable-speed-control",),
+            required_resources=("Indeedee-F",),
+        ),
+        required_resources=("Indeedee-F",),
+        failure_conditions=("speed-control-denied",),
+        tactical_priorities=("prefer-speed-control",),
+    )
+    preserve_plan = StrategicPlan(
+        name="preserve-indeedeef",
+        objective="preserve Indeedee while making progress",
+        desired_board=DesiredBoard(required_resources=("Indeedee-F",)),
+        required_resources=("Indeedee-F",),
+        preserve=("Indeedee-F",),
+        failure_conditions=("critical-resource-lost:indeedeef",),
+        tactical_priorities=("preserve:Indeedee-F",),
+    )
+    worker = SneaslerRegressionWorker()
+    worlds = (
+        ExactBeliefWorldState(state={"id": "sneasler"}, weight=1.0, label="world-a"),
+    )
+    assessment = _sneasler_assessment()
+    view = _sneasler_view()
+
+    speed_probe = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=assessment,
+        view=view,
+        side="p1",
+        plan=speed_plan,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+    preserve_probe = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=assessment,
+        view=view,
+        side="p1",
+        plan=preserve_plan,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+
+    selected = select_supported_plan((speed_probe, preserve_probe))
+
+    assert speed_probe.proven_robust is False
+    assert preserve_probe.proven_robust is True
+    assert preserve_probe.chosen.choice == worker.psychic
+    assert selected is preserve_probe
+    assert selected.chosen.choice == "move psychic +1, move protect"
+
+
+def test_unsupported_plans_are_filtered_before_plan_budget() -> None:
+    unsupported_room = StrategicPlan(
+        name="exploit-trick-room",
+        objective="use Trick Room",
+        desired_board=DesiredBoard(required_conditions=("trickroom-progress",)),
+        failure_conditions=("trickroom-reversed",),
+    )
+    unsupported_threat = StrategicPlan(
+        name="neutralize-boosted-threat",
+        objective="stop a boosted threat",
+        desired_board=DesiredBoard(required_conditions=("threat-neutralized:foe",)),
+        failure_conditions=("threat-snowballs:foe",),
+    )
+    supported_preserve = StrategicPlan(
+        name="preserve-sneasler",
+        objective="preserve Sneasler",
+        desired_board=DesiredBoard(required_resources=("Sneasler",)),
+        preserve=("Sneasler",),
+        failure_conditions=("critical-resource-lost:sneasler",),
+    )
+
+    filtered = filter_supported_plans(
+        (unsupported_room, unsupported_threat, supported_preserve),
+        limit=2,
+    )
+
+    assert filtered == (supported_preserve,)
+
+
+def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:
+    plan_a = StrategicPlan(
+        name="aaa-worse-plan",
+        objective="worse exact board",
+        desired_board=DesiredBoard(required_resources=("Keeper",)),
+        required_resources=("Keeper",),
+        preserve=("Keeper",),
+        failure_conditions=("critical-resource-lost:Keeper",),
+    )
+    plan_z = replace(plan_a, name="zzz-better-plan", objective="better exact board")
+
+    base_probe = probe_strategic_plan(
+        PlanProbeWorker(),
+        worlds=(ExactBeliefWorldState(state={"id": "A"}, weight=1.0, label="world-a"),),
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan_a,
+        candidate_limit=2,
+        response_limit=1,
+        rng_seeds=("low",),
+    )
+    worse = replace(
+        base_probe,
+        plan=plan_a,
+        chosen=replace(
+            base_probe.chosen,
+            worst_board_score=10.0,
+            weighted_board_score=10.0,
+        ),
+    )
+    better = replace(
+        base_probe,
+        plan=plan_z,
+        chosen=replace(
+            base_probe.chosen,
+            worst_board_score=20.0,
+            weighted_board_score=20.0,
+        ),
+    )
+
+    selected = select_supported_plan((worse, better))
+
+    assert selected is better
