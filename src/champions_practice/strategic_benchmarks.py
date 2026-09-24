@@ -8,7 +8,7 @@ strategy work can be measured before it is granted more authority.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Protocol
 
 from champions_practice.strategy import DesiredBoard, ResourcePurpose, StrategicPlan
 
@@ -36,6 +36,16 @@ class StrategicBenchmarkCase:
     principle: str
     expectation: StrategicBenchmarkExpectation
     known_gap: str | None = None
+
+
+class _ProbeChoice(Protocol):
+    choice: str
+
+
+class _PlanProbe(Protocol):
+    plan: StrategicPlan
+    chosen: _ProbeChoice
+    proven_robust: bool
 
 
 @dataclass(frozen=True)
@@ -106,6 +116,21 @@ def observation_from_plan(
         preserve=plan.preserve,
         acceptable_losses=plan.acceptable_losses,
     )
+
+
+def observation_from_probe(
+    probe: _PlanProbe | None,
+) -> StrategicBenchmarkObservation:
+    """Create a benchmark observation from an exact strategic plan probe."""
+    if probe is None:
+        return observation_from_plan(None)
+    return observation_from_plan(
+        probe.plan,
+        choice=probe.chosen.choice,
+        robust=probe.proven_robust,
+    )
+
+
 
 
 def _purpose_keys(
