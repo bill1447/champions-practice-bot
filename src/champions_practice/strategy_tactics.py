@@ -40,6 +40,7 @@ class StrategicCandidateGuidance:
     prefer_switch: bool = False
     protected_slots: tuple[int, ...] = ()
     target_slots: tuple[int, ...] = ()
+    reserved_bench_slots: tuple[int, ...] = ()
     reasons: tuple[str, ...] = ()
 
     @property
@@ -49,6 +50,7 @@ class StrategicCandidateGuidance:
             or self.prefer_switch
             or self.protected_slots
             or self.target_slots
+            or self.reserved_bench_slots
         )
 
 
@@ -62,6 +64,19 @@ def _active_species_slots(values: Any, *, opponent: bool) -> dict[str, int]:
         species = pokemon.get("base_species") if opponent else pokemon.get("species")
         if not species:
             species = pokemon.get("species")
+        if species:
+            result[_id(species)] = slot
+    return result
+
+
+def _team_species_slots(values: Any) -> dict[str, int]:
+    if not isinstance(values, list):
+        return {}
+    result: dict[str, int] = {}
+    for slot, pokemon in enumerate(values, start=1):
+        if not isinstance(pokemon, dict):
+            continue
+        species = pokemon.get("species")
         if species:
             result[_id(species)] = slot
     return result
@@ -98,10 +113,12 @@ def guidance_from_plan(
 
     own_slots = _active_species_slots(player.get("active_details"), opponent=False)
     opponent_slots = _active_species_slots(opponent.get("active"), opponent=True)
+    team_slots = _team_species_slots(player.get("team"))
 
     preferred_moves: set[str] = set()
     protected_slots: set[int] = set()
     target_slots: set[int] = set()
+    reserved_bench_slots: set[int] = set()
     prefer_switch = False
     reasons: list[str] = []
 
@@ -135,12 +152,24 @@ def guidance_from_plan(
                 reasons.append(f"plan targets active {species} in opposing slot {slot}")
             continue
 
+    for purpose in plan.desired_board.resource_purposes:
+        if purpose.position != "bench":
+            continue
+        slot = team_slots.get(_id(purpose.species))
+        if slot is None:
+            continue
+        reserved_bench_slots.add(slot)
+        reasons.append(
+            f"plan keeps {purpose.species} reserved on the bench in team slot {slot}"
+        )
+
     return StrategicCandidateGuidance(
         plan_name=plan.name,
         preferred_move_ids=tuple(sorted(preferred_moves)),
         prefer_switch=prefer_switch,
         protected_slots=tuple(sorted(protected_slots)),
         target_slots=tuple(sorted(target_slots)),
+        reserved_bench_slots=tuple(sorted(reserved_bench_slots)),
         reasons=tuple(reasons),
     )
 
@@ -155,6 +184,19 @@ def choice_matches_guidance(
 ) -> bool:
     """Return whether a legal joint action advances at least one plan priority."""
     commands = _command_tokens(choice)
+
+    if guidance.reserved_bench_slots:
+        switched_in_slots = {
+            int(tokens[1])
+            for tokens in commands
+            if (
+                len(tokens) >= 2
+                and tokens[0] == "switch"
+                and tokens[1].isdigit()
+            )
+        }
+        if not switched_in_slots.intersection(guidance.reserved_bench_slots):
+            return True
 
     for slot, tokens in enumerate(commands, start=1):
         if not tokens:
