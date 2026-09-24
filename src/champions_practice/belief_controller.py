@@ -716,6 +716,7 @@ class BeliefBattleController:
                     self.response_limit,
                     self.strategic_response_limit,
                 ),
+                rng_seeds=self.strategic_rng_seeds,
             )
             strategic_branch_count = (
                 shared_responses.screening_branch_count
