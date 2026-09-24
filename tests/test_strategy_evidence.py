@@ -699,10 +699,16 @@ def _positioning_assessment() -> StrategicAssessment:
 def _positioning_view() -> dict:
     return {
         "player": {
+            "team": [
+                {"species": "LeadA"},
+                {"species": "Rillaboom"},
+                {"species": "Gardevoir"},
+                {"species": "Sneasler"},
+            ],
             "active_details": [
                 {"species": "LeadA", "moves": ["Protect"]},
                 {"species": "Rillaboom", "moves": ["Protect"]},
-            ]
+            ],
         },
         "opponent": {
             "active": [
@@ -748,7 +754,6 @@ def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
                 ),
             ),
         ),
-        tactical_priorities=("prefer-switch",),
     )
 
     probe = probe_strategic_plan(
