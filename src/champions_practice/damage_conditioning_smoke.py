@@ -10,7 +10,7 @@ LIVE_SEED = "sodium,87654321000000020000000300000004"
 HUMAN_PREVIEW = "team 1256"
 AI_PREVIEW = "team 4512"
 HUMAN_TURN_ONE = "move psychic +1, move protect"
-AI_TURN_ONE = "move expandingforce, move protect"
+AI_TURN_ONE = "move expandingforce +1, move protect"
 
 
 def main() -> None:
