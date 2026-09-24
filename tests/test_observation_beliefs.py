@@ -926,3 +926,78 @@ def test_fully_observed_moves_use_bounded_validation_not_full_enumeration() -> N
     assert worker.validate_calls == 1
     assert worker.legal_calls == 0
     assert update.generated == 1
+
+
+
+def test_unchanged_public_actions_do_not_constrain_later_transition() -> None:
+    worker = DirectValidationWorker()
+    previous = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "psychic", "target": 1},
+            {"turn": 1, "slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+    actual = {
+        **previous,
+        "turn": 3,
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 2}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="switch 3, pass",
+        actual_public_view=actual,
+        previous_public_view=previous,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.validate_calls == 0
+    assert worker.legal_calls == 1
+    assert update.generated == len(worker.choices)
+
+
+def test_same_moves_on_new_turn_are_fresh_public_evidence() -> None:
+    worker = DirectValidationWorker()
+    previous = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "psychic", "target": 1},
+            {"turn": 1, "slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+    actual = {
+        "turn": 3,
+        "opponent": previous["opponent"],
+        "opponent_last_actions": [
+            {"turn": 2, "slot": 1, "move": "psychic", "target": 1},
+            {"turn": 2, "slot": 2, "move": "protect", "target": -2},
+        ],
+    }
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 2}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        previous_public_view=previous,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.validate_calls == 1
+    assert worker.legal_calls == 0
+    assert update.generated == 1
