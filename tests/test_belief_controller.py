@@ -9,6 +9,7 @@ from champions_practice.belief_controller import (
     choose_public_fallback,
 )
 from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
+from champions_practice.recommendations import SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
 from champions_practice.strategy_tactics import StrategicCandidateGuidance
 
@@ -149,7 +150,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
     )
     probe = SimpleNamespace(
         plan=plan,
-        proven_robust=True,
+        sampled_robust=True,
         pruning=SimpleNamespace(screening_branch_count=5),
         response_screening_branch_count=7,
         branch_count=11,
@@ -168,9 +169,13 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         "champions_practice.belief_controller.generate_strategic_plans",
         lambda assessment, limit: (plan,),
     )
+    def fake_probe(*args, **kwargs):
+        seen["rng_seeds"] = kwargs.get("rng_seeds")
+        return probe
+
     monkeypatch.setattr(
         "champions_practice.belief_controller.probe_strategic_plan",
-        lambda *args, **kwargs: probe,
+        fake_probe,
     )
     monkeypatch.setattr(
         "champions_practice.belief_controller.select_supported_plan",
@@ -218,6 +223,8 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert decision.strategic_plan is None
     assert decision.strategic_probe_count == 1
     assert decision.strategic_branch_count == 23
+    assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
+    assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] is None
     assert decision.branch_count == 32
 
@@ -234,4 +241,6 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert decision.choice == "move safe"
     assert decision.strategic_plan == plan.name
     assert decision.strategic_probe_count == 1
+    assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
+    assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance

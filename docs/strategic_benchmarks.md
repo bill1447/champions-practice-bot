@@ -81,7 +81,7 @@ controller:
 2. generate the full strategic plan set;
 3. filter plans unsupported by the one-turn evidence model;
 4. probe each retained plan with exact branch resolution;
-5. select the strongest fully supported robust plan;
+5. select the strongest fully supported sampled-robust plan;
 6. score that observed result against the labeled benchmark.
 
 Pytest includes deterministic production-shaped cases for the neutral-Trick-Room regression
@@ -103,3 +103,18 @@ regression reveals a distinct strategic failure mode.
 Do not "fix" a benchmark by adding a species-specific rule unless the underlying strategic
 principle really is species-specific. The preferred result is a general capability that
 makes the labeled case pass for the right reason.
+
+
+## Sampled robustness
+
+Strategic probes do not prove a plan robust against every possible random outcome. They
+resolve a bounded set of exact Showdown branches across selected belief worlds, adversarial
+replies, and deterministic RNG futures.
+
+The live controller now uses two deterministic strategic RNG futures. A plan receives
+`sampled_robust` authority only if its chosen candidate remains robust across every sampled
+branch and has no unsupported desired conditions or unresolved failure conditions.
+
+The older `proven_robust` attribute remains temporarily as a read-only compatibility
+alias, but diagnostics and new code use `sampled_robust`. Increasing the RNG sample count
+later is a search-budget decision, not a change in what the term means.

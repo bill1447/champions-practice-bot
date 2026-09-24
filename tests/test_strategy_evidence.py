@@ -203,10 +203,10 @@ def test_plan_probe_can_reject_generic_material_winner_to_preserve_required_reso
     assert probe.chosen.choice == PlanProbeWorker.choices[1]
     assert probe.chosen.evaluation.viable_belief_mass == 1.0
     assert probe.chosen.evaluation.robust is True
-    assert probe.proven_robust is True
+    assert probe.sampled_robust is True
 
 
-def test_unresolved_failure_condition_blocks_proven_robust_status() -> None:
+def test_unresolved_failure_condition_blocks_sampled_robust_status() -> None:
     plan = StrategicPlan(
         name="unknown-risk",
         objective="preserve Keeper while avoiding an unmodeled strategic failure",
@@ -230,11 +230,12 @@ def test_unresolved_failure_condition_blocks_proven_robust_status() -> None:
     )
 
     assert probe.chosen.evaluation.robust is True
-    assert probe.proven_robust is False
+    assert probe.sampled_robust is False
     assert probe.unresolved_failure_conditions == ("unmodeled-catastrophe",)
 
     rendered = format_strategic_plan_probe(probe)
     assert "Evidence status: incomplete/fragile" in rendered
+    assert "RNG futures sampled per reply/world: 1" in rendered
     assert "Unresolved failure conditions: unmodeled-catastrophe" in rendered
 
 
@@ -419,8 +420,8 @@ def test_sneasler_psychic_protect_regression_does_not_reward_neutral_trick_room(
 
     selected = select_supported_plan((speed_probe, preserve_probe))
 
-    assert speed_probe.proven_robust is False
-    assert preserve_probe.proven_robust is True
+    assert speed_probe.sampled_robust is False
+    assert preserve_probe.sampled_robust is True
     assert preserve_probe.chosen.choice == worker.psychic
     assert selected is preserve_probe
     assert selected.chosen.choice == "move psychic +1, move protect"
@@ -502,7 +503,7 @@ def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:
             worst_board_score=10.0,
             weighted_board_score=10.0,
         ),
-        proven_robust=True,
+        sampled_robust=True,
     )
     better = replace(
         base_probe,
@@ -512,13 +513,13 @@ def test_cross_plan_board_utility_beats_alphabetical_tie_break() -> None:
             worst_board_score=20.0,
             weighted_board_score=20.0,
         ),
-        proven_robust=True,
+        sampled_robust=True,
     )
 
     selected = select_supported_plan((worse, better))
 
-    assert worse.proven_robust is True
-    assert better.proven_robust is True
+    assert worse.sampled_robust is True
+    assert better.sampled_robust is True
     assert selected is better
 
 
@@ -698,7 +699,7 @@ def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
 
     assert probe.chosen.choice == PositioningWorker.switch
     assert probe.chosen.evaluation.robust is True
-    assert probe.proven_robust is True
+    assert probe.sampled_robust is True
     outcome = probe.chosen.worst_world_outcomes[0]
     assert set(outcome.active_resources) == {"Gardevoir", "Rillaboom"}
     assert outcome.newly_active_resources == ("Gardevoir",)
@@ -708,3 +709,80 @@ def test_exact_probe_values_pairing_safe_entry_and_cleanup_position() -> None:
     assert "Desired active pair: Gardevoir + Rillaboom" in rendered
     assert "Safe entry: Gardevoir" in rendered
     assert "Sneasler=cleanup (bench)" in rendered
+
+
+
+class RngFragilityWorker:
+    choice = "move protect, move protect"
+    response = "move counter +1, move counter +2"
+
+    def legal_choices(self, *, state, side):
+        return [self.choice] if side == "p1" else [self.response]
+
+    def branch_many(self, *, state, branches):
+        results = []
+        for index, branch in enumerate(branches):
+            keeper_hp = 0 if branch.get("rng_seed") == "bad" else 100
+            results.append(
+                {
+                    "index": index,
+                    "summary": _summary(
+                        keeper_hp=keeper_hp,
+                        partner_hp=100,
+                        foe_a_hp=100,
+                        foe_b_hp=100,
+                    ),
+                }
+            )
+        return results
+
+
+def test_second_rng_future_can_revoke_sampled_robust_authority() -> None:
+    plan = StrategicPlan(
+        name="preserve-keeper",
+        objective="keep Keeper alive across sampled RNG futures",
+        desired_board=DesiredBoard(required_resources=("Keeper",)),
+        required_resources=("Keeper",),
+        preserve=("Keeper",),
+        failure_conditions=("critical-resource-lost:Keeper",),
+        tactical_priorities=("preserve:Keeper",),
+    )
+    worker = RngFragilityWorker()
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "rng-fragility"},
+            weight=1.0,
+            label="world-a",
+        ),
+    )
+
+    one_seed = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan,
+        candidate_limit=1,
+        response_limit=1,
+        rng_seeds=("safe",),
+    )
+    two_seeds = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan,
+        candidate_limit=1,
+        response_limit=1,
+        rng_seeds=("safe", "bad"),
+    )
+
+    assert one_seed.sampled_robust is True
+    assert one_seed.rng_sample_count == 1
+    assert one_seed.branch_count == 1
+    assert two_seeds.sampled_robust is False
+    assert two_seeds.rng_sample_count == 2
+    assert two_seeds.branch_count == 2
+    assert two_seeds.chosen.evaluation.preserve_failure_mass == 1.0

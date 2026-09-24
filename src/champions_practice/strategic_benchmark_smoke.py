@@ -144,7 +144,11 @@ def main() -> None:
             plan_limit=4,
             candidate_limit=4,
             response_limit=2,
-            rng_seeds=(RNG_SEED,),
+            rng_seeds=(
+                RNG_SEED,
+                "sodium,"
+                "cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            ),
         )
 
         probes = {probe.plan.name: probe for probe in execution.probes}
@@ -156,13 +160,13 @@ def main() -> None:
                 f"generated={execution.generated_plan_names!r}; "
                 f"probed={execution.probed_plan_names!r}"
             )
-        if speed_probe.proven_robust:
+        if speed_probe.sampled_robust:
             raise SystemExit(
-                "ERROR: neutral Trick Room received robust strategic authority"
+                "ERROR: neutral Trick Room received sampled-robust strategic authority"
             )
-        if not preserve_probe.proven_robust:
+        if not preserve_probe.sampled_robust:
             raise SystemExit(
-                "ERROR: preserve-Indeedee plan was not robust in harmless benchmark state"
+                "ERROR: preserve-Indeedee plan was not sampled robust in harmless benchmark state"
             )
         if execution.selected_probe is None:
             raise SystemExit("ERROR: executable benchmark selected no supported plan")

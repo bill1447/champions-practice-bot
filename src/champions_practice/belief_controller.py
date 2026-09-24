@@ -19,6 +19,7 @@ from champions_practice.belief_worlds import (
     preview_choice_for_world,
 )
 from champions_practice.beliefs import build_public_opponent_belief
+from champions_practice.recommendations import SCREENING_RNG_SEEDS
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
@@ -53,6 +54,7 @@ class BeliefDecision:
     strategic_plan: str | None = None
     strategic_probe_count: int = 0
     strategic_branch_count: int = 0
+    strategic_rng_sample_count: int = 0
 
 
 @dataclass(frozen=True)
@@ -248,6 +250,7 @@ class BeliefBattleController:
         strategic_plan_limit: int = 2,
         strategic_candidate_limit: int = 3,
         strategic_response_limit: int = 2,
+        strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
         decision_budget_seconds: float = 8.0,
         conditioning_budget_seconds: float = 8.0,
         rng_sample_batches: tuple[int, ...] = (2, 4),
@@ -268,6 +271,8 @@ class BeliefBattleController:
             raise ValueError("strategic_plan_limit must be positive")
         if strategic_candidate_limit <= 0 or strategic_response_limit <= 0:
             raise ValueError("strategic probe limits must be positive")
+        if not strategic_rng_seeds:
+            raise ValueError("strategic_rng_seeds must not be empty")
         if decision_budget_seconds <= 0 or conditioning_budget_seconds <= 0:
             raise ValueError("budgets must be positive")
         if not rng_sample_batches or any(count <= 0 for count in rng_sample_batches):
@@ -291,6 +296,7 @@ class BeliefBattleController:
         self.strategic_plan_limit = strategic_plan_limit
         self.strategic_candidate_limit = strategic_candidate_limit
         self.strategic_response_limit = strategic_response_limit
+        self.strategic_rng_seeds = strategic_rng_seeds
         self.decision_budget_seconds = decision_budget_seconds
         self.conditioning_budget_seconds = conditioning_budget_seconds
         self.rng_sample_batches = rng_sample_batches
@@ -604,10 +610,7 @@ class BeliefBattleController:
                             self.response_limit,
                             self.strategic_response_limit,
                         ),
-                        rng_seeds=(
-                            "sodium,"
-                            "1111111111111111111111111111111111111111111111111111111111111111",
-                        ),
+                        rng_seeds=self.strategic_rng_seeds,
                     )
                     probes.append(probe)
                     probe_count += 1
@@ -693,6 +696,9 @@ class BeliefBattleController:
                 ),
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
+                strategic_rng_sample_count=(
+                    len(self.strategic_rng_seeds) if probe_count else 0
+                ),
             )
         except (RuntimeError, ValueError) as error:
             return self._fallback_decision(
