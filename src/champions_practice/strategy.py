@@ -62,10 +62,34 @@ class PosteriorAssessment:
 
 
 @dataclass(frozen=True)
+class ResourcePurpose:
+    """Why a specific Pokemon must remain available for the intended endgame."""
+
+    species: str
+    purpose: str
+    position: str = "any"
+
+    def __post_init__(self) -> None:
+        if self.position not in {"any", "active", "bench"}:
+            raise ValueError("resource purpose position must be any, active, or bench")
+        if not self.species.strip() or not self.purpose.strip():
+            raise ValueError("resource purpose species and purpose must be non-empty")
+
+
+@dataclass(frozen=True)
 class DesiredBoard:
     required_conditions: tuple[str, ...] = ()
     required_resources: tuple[str, ...] = ()
     minimum_effective_turns: int = 0
+    required_active_pair: tuple[str, ...] = ()
+    safe_entry_resources: tuple[str, ...] = ()
+    resource_purposes: tuple[ResourcePurpose, ...] = ()
+
+    def __post_init__(self) -> None:
+        if len(self.required_active_pair) > 2:
+            raise ValueError("required_active_pair may contain at most two Pokemon")
+        if self.minimum_effective_turns < 0:
+            raise ValueError("minimum_effective_turns must be non-negative")
 
 
 @dataclass(frozen=True)
@@ -498,6 +522,8 @@ class PlanWorldOutcome:
     effective_turns: int
     lost_resources: tuple[str, ...] = ()
     triggered_failures: tuple[str, ...] = ()
+    active_resources: tuple[str, ...] = ()
+    newly_active_resources: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -512,6 +538,9 @@ class StrategicPlanEvaluation:
     timing_failure_mass: float
     declared_failure_mass: float
     unacceptable_loss_mass: float
+    active_pair_failure_mass: float
+    safe_entry_failure_mass: float
+    purpose_failure_mass: float
     reasons: tuple[str, ...]
 
 
@@ -726,6 +755,9 @@ def evaluate_strategic_plan(
     required_resources = set(plan.required_resources).union(
         plan.desired_board.required_resources
     )
+    required_active_pair = set(plan.desired_board.required_active_pair)
+    safe_entry_resources = set(plan.desired_board.safe_entry_resources)
+    purposes = tuple(plan.desired_board.resource_purposes)
     preserve = set(plan.preserve)
     acceptable_losses = set(plan.acceptable_losses)
     declared_failures = set(plan.failure_conditions)
@@ -737,10 +769,15 @@ def evaluate_strategic_plan(
     timing_failure = 0.0
     declared_failure = 0.0
     unacceptable_loss = 0.0
+    active_pair_failure = 0.0
+    safe_entry_failure = 0.0
+    purpose_failure = 0.0
     failed_worlds = 0
 
     for outcome in outcomes:
         living = set(outcome.living_resources)
+        active = set(outcome.active_resources)
+        newly_active = set(outcome.newly_active_resources)
         lost = set(outcome.lost_resources)
         preserve_ok = preserve.issubset(living) and not preserve.intersection(lost)
         resources_ok = required_resources.issubset(living)
@@ -749,6 +786,20 @@ def evaluate_strategic_plan(
         failures_ok = not declared_failures.intersection(outcome.triggered_failures)
         extra_losses = lost.difference(acceptable_losses).difference(preserve)
         losses_ok = not extra_losses
+        active_pair_ok = required_active_pair.issubset(active)
+        safe_entry_ok = safe_entry_resources.issubset(newly_active)
+
+        purpose_ok = True
+        for purpose in purposes:
+            if purpose.species not in living:
+                purpose_ok = False
+                break
+            if purpose.position == "active" and purpose.species not in active:
+                purpose_ok = False
+                break
+            if purpose.position == "bench" and purpose.species in active:
+                purpose_ok = False
+                break
 
         if not preserve_ok:
             preserve_failure += outcome.weight
@@ -762,6 +813,12 @@ def evaluate_strategic_plan(
             declared_failure += outcome.weight
         if not losses_ok:
             unacceptable_loss += outcome.weight
+        if not active_pair_ok:
+            active_pair_failure += outcome.weight
+        if not safe_entry_ok:
+            safe_entry_failure += outcome.weight
+        if not purpose_ok:
+            purpose_failure += outcome.weight
 
         if (
             preserve_ok
@@ -770,6 +827,9 @@ def evaluate_strategic_plan(
             and timing_ok
             and failures_ok
             and losses_ok
+            and active_pair_ok
+            and safe_entry_ok
+            and purpose_ok
         ):
             viable_weight += outcome.weight
         else:
@@ -785,7 +845,9 @@ def evaluate_strategic_plan(
         f"{failed_worlds} of {len(outcomes)} belief world(s) fail at least one requirement",
     ]
     if mass(preserve_failure):
-        reasons.append(f"preserve failures cover {mass(preserve_failure):.1%} posterior mass")
+        reasons.append(
+            f"preserve failures cover {mass(preserve_failure):.1%} posterior mass"
+        )
     if mass(resource_failure):
         reasons.append(
             f"required-resource failures cover {mass(resource_failure):.1%} posterior mass"
@@ -795,7 +857,9 @@ def evaluate_strategic_plan(
             f"desired-board failures cover {mass(condition_failure):.1%} posterior mass"
         )
     if mass(timing_failure):
-        reasons.append(f"timing failures cover {mass(timing_failure):.1%} posterior mass")
+        reasons.append(
+            f"timing failures cover {mass(timing_failure):.1%} posterior mass"
+        )
     if mass(declared_failure):
         reasons.append(
             f"declared failure conditions occur in {mass(declared_failure):.1%} posterior mass"
@@ -803,6 +867,18 @@ def evaluate_strategic_plan(
     if mass(unacceptable_loss):
         reasons.append(
             f"unacceptable losses occur in {mass(unacceptable_loss):.1%} posterior mass"
+        )
+    if mass(active_pair_failure):
+        reasons.append(
+            f"active-pair failures cover {mass(active_pair_failure):.1%} posterior mass"
+        )
+    if mass(safe_entry_failure):
+        reasons.append(
+            f"safe-entry failures cover {mass(safe_entry_failure):.1%} posterior mass"
+        )
+    if mass(purpose_failure):
+        reasons.append(
+            f"resource-purpose failures cover {mass(purpose_failure):.1%} posterior mass"
         )
 
     return StrategicPlanEvaluation(
@@ -816,9 +892,11 @@ def evaluate_strategic_plan(
         timing_failure_mass=mass(timing_failure),
         declared_failure_mass=mass(declared_failure),
         unacceptable_loss_mass=mass(unacceptable_loss),
+        active_pair_failure_mass=mass(active_pair_failure),
+        safe_entry_failure_mass=mass(safe_entry_failure),
+        purpose_failure_mass=mass(purpose_failure),
         reasons=tuple(reasons),
     )
-
 
 def rank_strategic_plans(
     plans: Iterable[StrategicPlan],
