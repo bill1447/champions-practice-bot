@@ -116,7 +116,9 @@ Completed so far:
   resource when Protect is unsafe;
 - boosted-threat targeting now has one-turn exact evidence for neutralization and public
   boost snowball, turning that benchmark from known gap into a resolved regression;
-- remaining known-gap benchmarks locate active-pair generation and sacrifice/endgame
+- active-pair/safe-entry generation now derives a positioning objective from active and
+  benched unique-role resources, with exact evidence deciding whether the entry is safe;
+- remaining known-gap benchmarks locate sacrifice/endgame generation and cleanup-role
   generation.
 
 Current work:
@@ -127,8 +129,8 @@ Current work:
   to add species-specific rules.
 
 Next:
-- tackle automatic active-pair/safe-entry generation;
-- then add sacrifice/endgame plan generation from position state;
+- add sacrifice/endgame plan generation from position state;
+- then infer offensive cleanup roles from matchup state;
 - only after those benchmarks pass should strategic authority or plan depth increase.
 
 ## Phase 10 — Benchmark and playing-strength development — started
