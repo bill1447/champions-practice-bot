@@ -36,6 +36,28 @@ jobs:
           .\.venv\Scripts\python.exe -m pip install --upgrade pip
           .\.venv\Scripts\python.exe -m pip install -e ".[dev]"
 
+      - name: Validate PowerShell syntax
+        shell: pwsh
+        run: |
+          $AllErrors = @()
+          foreach ($Script in Get-ChildItem -Path . -Filter *.ps1 -Recurse) {
+            $Tokens = $null
+            $Errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile(
+              $Script.FullName,
+              [ref]$Tokens,
+              [ref]$Errors
+            ) | Out-Null
+            foreach ($ParseError in $Errors) {
+              $AllErrors += "$($Script.FullName): $($ParseError.Message)"
+            }
+          }
+
+          if ($AllErrors.Count -gt 0) {
+            $AllErrors | ForEach-Object { Write-Error $_ }
+            throw "PowerShell syntax validation failed."
+          }
+
       - name: Sync pinned Pokemon Showdown
         shell: pwsh
         run: |
