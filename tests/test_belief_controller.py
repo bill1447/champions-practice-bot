@@ -1,3 +1,5 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
@@ -606,3 +608,335 @@ def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence
     assert seen["search_rng_seeds"][1] == SCREENING_RNG_SEEDS
     assert decision.choice == "move baseline"
     assert decision.strategic_plan is None
+
+
+
+def _stub_sealed_engine(
+    controller,
+    monkeypatch,
+    *,
+    choice="move secret-ai",
+):
+    decision = BeliefDecision(
+        choice=choice,
+        mode="belief-search",
+        particle_count=3,
+        candidate_count=2,
+        branch_count=10,
+        elapsed_seconds=0.1,
+        strategic_plan="secret-plan",
+    )
+    monkeypatch.setattr(
+        controller._engine,
+        "choose_ai_action",
+        lambda *, legal_live: decision,
+    )
+    monkeypatch.setattr(
+        controller._engine,
+        "observe_public_turn",
+        lambda *, decision, view: SimpleNamespace(
+            decision=decision,
+            public_view=view,
+            particles_before=3,
+            particles_after=3,
+            generated_branches=4,
+            matched_branches=2,
+            conditioning_seconds=0.01,
+            conditioning_over_budget=False,
+            degraded=False,
+        ),
+    )
+    return decision
+
+
+def test_concurrent_double_lock_allows_only_one_computation(monkeypatch) -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    started = Event()
+    release = Event()
+    secret = BeliefDecision(
+        choice="move secret-ai",
+        mode="belief-search",
+        particle_count=1,
+        candidate_count=1,
+        branch_count=1,
+        elapsed_seconds=0.1,
+    )
+
+    def slow_choose(*, legal_live):
+        started.set()
+        assert release.wait(timeout=2)
+        return secret
+
+    monkeypatch.setattr(
+        controller._engine,
+        "choose_ai_action",
+        slow_choose,
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(controller.lock_ai_action)
+        assert started.wait(timeout=1)
+        second = pool.submit(controller.lock_ai_action)
+        with pytest.raises(RuntimeError, match="computing"):
+            second.result(timeout=1)
+        release.set()
+        ready = first.result(timeout=2)
+
+    assert ready.token
+    assert controller.turn_state is SealedTurnState.LOCKED
+
+
+class _BlockingCommitWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.submit_started = Event()
+        self.release_submit = Event()
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.submit_started.set()
+        assert self.release_submit.wait(timeout=2)
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        return {}
+
+
+def test_concurrent_repeated_commit_submits_once(monkeypatch) -> None:
+    worker = _BlockingCommitWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            controller.commit_human_action,
+            token=ready.token,
+            human_choice="move human",
+        )
+        assert worker.submit_started.wait(timeout=1)
+        second = pool.submit(
+            controller.commit_human_action,
+            token=ready.token,
+            human_choice="move human",
+        )
+        with pytest.raises(RuntimeError, match="submitting"):
+            second.result(timeout=1)
+        worker.release_submit.set()
+        result = first.result(timeout=2)
+
+    assert result.decision.choice == "move secret-ai"
+    assert worker.submissions == [
+        ("live-1", "move human", "move secret-ai"),
+    ]
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _FailBeforeAdvanceWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.fail_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        if self.fail_once:
+            self.fail_once = False
+            raise RuntimeError("submission failed before advance")
+        return super().choose_session(
+            session_id,
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+        )
+
+
+def test_submission_failure_before_advance_retains_lock_for_retry(monkeypatch) -> None:
+    worker = _FailBeforeAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="before advance"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.LOCKED
+    result = controller.commit_human_action(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert result.decision.choice == "move secret-ai"
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _FailAfterAdvanceWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        raise RuntimeError("response lost after live advance")
+
+
+def test_submission_error_after_advance_is_reconciled_without_resubmit(
+    monkeypatch,
+) -> None:
+    worker = _FailAfterAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    result = controller.commit_human_action(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert result.decision.choice == "move secret-ai"
+    assert len(worker.submissions) == 1
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _ViewFailureAfterAdvanceWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.after_submit = False
+        self.fail_view_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        self.after_submit = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.after_submit and side == "p2" and self.fail_view_once:
+            self.fail_view_once = False
+            raise RuntimeError("post-submit view unavailable")
+        return super().session_view(session_id, side=side)
+
+
+def test_failed_post_submit_view_can_reconcile_without_second_submission(
+    monkeypatch,
+) -> None:
+    worker = _ViewFailureAfterAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="post-submit view unavailable"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.FAILED
+    recovered = controller.reconcile_failed_turn(token=ready.token)
+
+    assert recovered.decision.choice == "move secret-ai"
+    assert len(worker.submissions) == 1
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _TerminalCommitWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+            "ended": True,
+            "winner": "Human",
+        }
+        return {}
+
+
+def test_terminal_resolution_blocks_another_ai_lock(monkeypatch) -> None:
+    worker = _TerminalCommitWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    result = controller.commit_human_action(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert result.terminal is True
+    assert result.winner == "Human"
+    assert controller.turn_state is SealedTurnState.TERMINAL
+    with pytest.raises(RuntimeError, match="terminal"):
+        controller.lock_ai_action()
+
+
+def test_demo_facade_exposes_no_direct_decision_or_live_session_handles(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.ShowdownSearchWorker",
+        lambda project_root=None: _CoordinatorWorker(),
+    )
+    facade = SealedBattleFacade(
+        battle_format="test",
+        ai_team="own-team",
+        ai_preview_choice="team 1234",
+        opponent_priors={},
+    )
+
+    for forbidden in (
+        "choose_ai_action",
+        "resolve_turn",
+        "engine",
+        "worker",
+        "session_id",
+        "_locked_decision",
+    ):
+        assert not hasattr(facade, forbidden)
+    assert not hasattr(facade, "__dict__")
