@@ -59,6 +59,8 @@ class _CoordinatorWorker:
         self.closed = []
         self.public_view = {
             "turn": 1,
+            "ended": False,
+            "winner": None,
             "opponent": {"preview_species": ["FoeA", "FoeB"]},
             "player": {
                 "team": [{"species": "OwnA"}, {"species": "OwnB"}],
