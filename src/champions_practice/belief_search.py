@@ -29,6 +29,9 @@ from champions_practice.strategy_tactics import (
 
 BELIEF_RESPONSE_SCREENING_RNG_SEEDS = (SCREENING_RNG_SEEDS[0],)
 
+_REDIRECTION_MOVES = frozenset({"followme", "ragepowder"})
+_REDIRECTION_REFERENCE_LIMIT = 4
+
 
 class BeliefSearchWorker(Protocol):
     def legal_choices(self, *, state: dict[str, Any], side: str) -> list[str]: ...
@@ -470,6 +473,107 @@ def _family_diverse_response_shortlist(
     return tuple(selected)
 
 
+def _choice_uses_redirection(choice: str) -> bool:
+    return any(
+        len(tokens) >= 2
+        and tokens[0] == "move"
+        and tokens[1] in _REDIRECTION_MOVES
+        for tokens in (command.strip().split() for command in choice.split(","))
+    )
+
+
+def _branch_score_for_response(
+    result,
+    response: str,
+) -> tuple[str, float]:
+    best_choice = ""
+    best_score = float("-inf")
+    for candidate in result.ranking:
+        branch = next(
+            (
+                branch
+                for branch in candidate.branches
+                if branch.response == response
+            ),
+            None,
+        )
+        if branch is None:
+            continue
+        if branch.score > best_score:
+            best_choice = candidate.choice
+            best_score = branch.score
+    if not best_choice:
+        raise RuntimeError("screening result is missing an expected response")
+    return best_choice, best_score
+
+
+def _reserve_redirection_counters(
+    worker: BeliefSearchWorker,
+    *,
+    state: dict[str, Any],
+    opponent: SideId,
+    families,
+    candidate_references: list[str],
+    fallback: tuple[str, ...],
+    limit: int,
+) -> tuple[tuple[str, ...], int]:
+    """Reserve concrete redirection variants that beat the normal shortlist."""
+    redirection_choices = [
+        choice
+        for family in families
+        for choice in family.choices
+        if _choice_uses_redirection(choice)
+    ]
+    references = candidate_references[:_REDIRECTION_REFERENCE_LIMIT]
+    if not redirection_choices or not references or not fallback or limit <= 0:
+        return (), 0
+
+    redirection_screening = search_exact_turn(
+        worker,
+        state=state,
+        side=opponent,
+        choices=redirection_choices,
+        opponent_responses=references,
+        rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
+    )
+    fallback_screening = search_exact_turn(
+        worker,
+        state=state,
+        side=opponent,
+        choices=list(fallback),
+        opponent_responses=references,
+        rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
+    )
+    branch_count = (
+        redirection_screening.branch_count
+        + fallback_screening.branch_count
+    )
+
+    opportunities: list[tuple[float, str]] = []
+    for reference in references:
+        counter, redirection_score = _branch_score_for_response(
+            redirection_screening,
+            reference,
+        )
+        _, fallback_score = _branch_score_for_response(
+            fallback_screening,
+            reference,
+        )
+        improvement = redirection_score - fallback_score
+        if improvement > 0.0:
+            opportunities.append((improvement, counter))
+
+    opportunities.sort(reverse=True)
+    selected: list[str] = []
+    for _, counter in opportunities:
+        if counter in selected:
+            continue
+        selected.append(counter)
+        if len(selected) >= limit:
+            break
+
+    return tuple(selected), branch_count
+
 def shortlist_belief_responses(
     worker: BeliefSearchWorker,
     *,
@@ -480,7 +584,7 @@ def shortlist_belief_responses(
     legal_responses: list[str] | None = None,
     reference_limit: int = 1,
 ) -> BeliefResponsePruning:
-    """Select dangerous, strategically diverse opponent replies in one belief world."""
+    """Select dangerous replies while reserving high-impact redirection counterplay."""
     if response_limit <= 0:
         raise ValueError("response_limit must be positive")
     if not candidate_references:
@@ -498,6 +602,7 @@ def shortlist_belief_responses(
         raise ValueError("opponent has no legal responses in belief world")
     families = _strategy_families(responses)
     representatives = [family.representative for family in families]
+
     # The final matrix still uses every requested RNG future. This is only the cheap
     # per-world funnel, so one shared reference and seed are enough to rank broad plans
     # before their targeting variants receive a second screening pass.
@@ -536,16 +641,46 @@ def shortlist_belief_responses(
         by_representative[representative]
         for representative in representative_shortlist
     ]
-    shortlist = _family_diverse_response_shortlist(
+    fallback = _family_diverse_response_shortlist(
         target_screening.ranking,
         retained_families,
         limit=response_limit,
     )
+    redirection_limit = (
+        min(2, max(1, response_limit // 2))
+        if response_limit >= 2
+        else 0
+    )
+    reserved_redirection, redirection_branch_count = _reserve_redirection_counters(
+        worker,
+        state=world.state,
+        opponent=opponent,
+        families=families,
+        candidate_references=candidate_references,
+        fallback=fallback,
+        limit=redirection_limit,
+    )
+
+    shortlist = list(fallback)
+    replacement_index = len(shortlist) - 1
+    for response in reserved_redirection:
+        if response in shortlist:
+            continue
+        if replacement_index >= 0:
+            shortlist[replacement_index] = response
+            replacement_index -= 1
+        elif len(shortlist) < response_limit:
+            shortlist.append(response)
+
     return BeliefResponsePruning(
         legal_response_count=len(responses),
         strategic_response_count=len(families),
-        response_shortlist=shortlist,
-        screening_branch_count=(family_screening.branch_count + target_screening.branch_count),
+        response_shortlist=tuple(shortlist),
+        screening_branch_count=(
+            redirection_branch_count
+            + family_screening.branch_count
+            + target_screening.branch_count
+        ),
         screening_seconds=perf_counter() - screening_started,
     )
 

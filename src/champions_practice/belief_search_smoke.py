@@ -9,6 +9,7 @@ from champions_practice.belief_search import (
     search_exact_belief_turn,
     search_selective_continuation,
     shortlist_belief_candidates,
+    shortlist_belief_responses,
 )
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_smoke import _hidden_variant_team, _public_priors
@@ -85,8 +86,112 @@ def _world_states(worker, belief, worlds):
     return tuple(reconstructed)
 
 
+def _assert_demo_redirection_counter(worker: ShowdownSearchWorker) -> None:
+    state = worker.create_state(
+        battle_format=CHAMPIONS_FORMAT,
+        p1_team=SMOKE_TEAM,
+        p2_team=SMOKE_TEAM,
+        p1_preview="team 1324",
+        p2_preview="team 2135",
+        p1_name="Human",
+        p2_name="Practice AI",
+        seed=SEED,
+    )
+    ai_choices = worker.legal_choices(state=state, side="p2")
+    human_choices = worker.legal_choices(state=state, side="p1")
+
+    dire_claw_switch = next(
+        choice
+        for choice in ai_choices
+        if "move direclaw +2" in choice and "switch 4" in choice
+    )
+    safe_reference = next(
+        choice
+        for choice in ai_choices
+        if "move protect" in choice and "move followme" in choice
+    )
+    human_punish = next(
+        choice
+        for choice in human_choices
+        if (
+            "move followme" in choice
+            and "move expandingforce +1 mega" in choice
+        )
+    )
+
+    resolved = worker.branch_many(
+        state=state,
+        branches=[
+            {
+                "p1_choice": human_punish,
+                "p2_choice": dire_claw_switch,
+            }
+        ],
+    )
+    if len(resolved) != 1:
+        raise SystemExit("ERROR: demo regression branch did not resolve exactly once")
+    summary = resolved[0].get("summary")
+    if not isinstance(summary, dict):
+        raise SystemExit("ERROR: demo regression branch returned no exact summary")
+    if summary.get("field", {}).get("terrain") != "grassyterrain":
+        raise SystemExit("ERROR: demo regression branch did not overwrite Psychic Terrain")
+    p2_active = summary.get("p2", {}).get("active", [])
+    if not p2_active or not p2_active[0] or not p2_active[0].get("fainted"):
+        raise SystemExit(
+            "ERROR: demo Mega Gardevoir punish did not actually KO AI Sneasler"
+        )
+
+    pruning = shortlist_belief_responses(
+        worker,
+        world=ExactBeliefWorldState(
+            state=state,
+            weight=1.0,
+            label="demo-turn-one",
+        ),
+        ai_side="p2",
+        candidate_references=[safe_reference, dire_claw_switch],
+        response_limit=2,
+    )
+    shortlist_branches = worker.branch_many(
+        state=state,
+        branches=[
+            {
+                "p1_choice": response,
+                "p2_choice": dire_claw_switch,
+            }
+            for response in pruning.response_shortlist
+        ],
+    )
+    if len(shortlist_branches) != len(pruning.response_shortlist):
+        raise SystemExit(
+            "ERROR: demo shortlist counter branches did not resolve one-for-one"
+        )
+
+    redirection_punishes = []
+    for response, branch in zip(
+        pruning.response_shortlist,
+        shortlist_branches,
+        strict=True,
+    ):
+        if "move followme" not in response and "move ragepowder" not in response:
+            continue
+        branch_summary = branch.get("summary")
+        if not isinstance(branch_summary, dict):
+            continue
+        branch_active = branch_summary.get("p2", {}).get("active", [])
+        if branch_active and branch_active[0] and branch_active[0].get("fainted"):
+            redirection_punishes.append(response)
+
+    if not redirection_punishes:
+        raise SystemExit(
+            "ERROR: response pruning kept no redirection reply that exposes "
+            f"the demo Sneasler loss; shortlist={pruning.response_shortlist}"
+        )
+
+
 def main() -> None:
     with ShowdownSearchWorker() as worker:
+        _assert_demo_redirection_counter(worker)
         standard_id, standard_view = _start_ai_view(worker, SMOKE_TEAM)
         variant_id, variant_view = _start_ai_view(worker, _hidden_variant_team())
 

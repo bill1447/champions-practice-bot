@@ -241,6 +241,48 @@ def test_response_pruning_scores_target_variants_before_truncating() -> None:
     assert "move hit +2, move hit +1" not in pruning.response_shortlist
 
 
+def test_response_pruning_keeps_candidate_specific_redirection_punish() -> None:
+    class CounterWorker:
+        responses = [
+            "move followme, move expandingforce +1",
+            "move protect, move protect",
+            "switch 3, move protect",
+        ]
+
+        def legal_choices(self, *, state, side):
+            return self.responses if side == "p1" else []
+
+        def branch_many(self, *, state, branches):
+            results = []
+            for index, branch in enumerate(branches):
+                response = branch["p1_choice"]
+                ai_choice = branch["p2_choice"]
+                if response == "move followme, move expandingforce +1":
+                    hp = (100, 0) if "direclaw" in ai_choice else (20, 100)
+                elif response == "move protect, move protect":
+                    hp = (100, 40) if "safe" in ai_choice else (100, 80)
+                else:
+                    hp = (70, 70)
+                results.append(
+                    {"index": index, "summary": _summary(*hp)}
+                )
+            return results
+
+    pruning = shortlist_belief_responses(
+        CounterWorker(),
+        world=ExactBeliefWorldState(state={"id": "redirect"}, weight=1.0),
+        ai_side="p2",
+        candidate_references=[
+            "move safe, move safe",
+            "move direclaw +2, switch 4",
+        ],
+        response_limit=2,
+    )
+
+    assert "move protect, move protect" in pruning.response_shortlist
+    assert "move followme, move expandingforce +1" in pruning.response_shortlist
+
+
 def test_autonomous_response_pruning_is_bounded() -> None:
     worker = FakeBeliefWorker()
     worlds = (ExactBeliefWorldState(state={"id": "A"}, weight=1.0),)
