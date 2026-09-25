@@ -85,6 +85,30 @@ Server controls:
 
 `run.ps1` is a convenience command: it starts Showdown if needed, runs the live connectivity check, and deliberately leaves Showdown running.
 
+## Playable local demo
+
+After setup or an `update-local.ps1 -UpdateShowdown` that produced a verified Showdown build:
+
+```powershell
+.\demo.ps1
+```
+
+The launcher verifies the pinned Showdown runtime and opens a browser on
+`http://127.0.0.1:8765/`. The demo is bound to localhost only.
+
+The first playable slice deliberately uses a fixed current-roster mirror fixture. It supports
+human team preview selection, sanitized public battle-state display, legal human command
+selection, sealed AI computation before human submission, post-commit decision traces, and
+multi-turn play through forced switches and terminal battle states.
+
+The browser never receives the current sealed AI command or the facade lock token. A decision
+trace becomes browser-visible only after the human command has been accepted and the turn has
+been submitted.
+
+This v0 is intentionally plain. Arbitrary team import, richer move/target controls, battle-log
+presentation, replay/postgame analysis, and team-preview intelligence are follow-on demo work
+driven by actual games rather than more pre-demo architecture.
+
 ## Remote-PC preparation
 
 Before leaving the home PC, run:
