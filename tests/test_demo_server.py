@@ -63,6 +63,13 @@ class FakeFacade:
                 branch_count=24,
                 elapsed_seconds=0.25,
                 strategic_plan="preserve-resource",
+                worst_response="move followme, move hypervoice mega",
+                worst_world_score=-321.5,
+                weighted_score=-120.0,
+                searched_responses=(
+                    "move followme, move hypervoice mega",
+                    "move followme, move expandingforce +1 mega",
+                ),
             ),
             public_view=self.view,
             particles_before=4,
@@ -106,7 +113,15 @@ def test_demo_session_does_not_expose_locked_ai_decision_or_token() -> None:
     assert resolved["turn_state"] == "resolved"
     assert resolved["ai_ready"] is False
     assert resolved["history"][0]["decision"]["choice"] == "move secret-ai"
-    assert resolved["history"][0]["decision"]["strategic_plan"] == "preserve-resource"
+    decision = resolved["history"][0]["decision"]
+    assert decision["strategic_plan"] == "preserve-resource"
+    assert decision["worst_response"] == "move followme, move hypervoice mega"
+    assert decision["worst_world_score"] == -321.5
+    assert decision["weighted_score"] == -120.0
+    assert decision["searched_responses"] == [
+        "move followme, move hypervoice mega",
+        "move followme, move expandingforce +1 mega",
+    ]
     assert facade.submissions == [("opaque-server-token", "move human")]
 
 
