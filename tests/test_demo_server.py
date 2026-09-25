@@ -8,7 +8,7 @@ from champions_practice.belief_controller import (
     SealedTurnResult,
     SealedTurnState,
 )
-from champions_practice.demo_server import DemoBattleSession, _choice_label
+from champions_practice.demo_server import DEMO_HTML, DemoBattleSession, _choice_label
 
 
 class FakeFacade:
@@ -326,4 +326,9 @@ def test_demo_snapshot_surfaces_public_field_conditions() -> None:
     snapshot = session.start()
 
     assert snapshot["field_status"] == "Field: Grassy Terrain · Rain · Trick Room"
+
+def test_demo_html_prefers_active_details_and_formats_hp_percent() -> None:
+    assert "side?.active_details" in DEMO_HTML
+    assert "mon.hp_percent" in DEMO_HTML
+    assert "% HP" in DEMO_HTML
 
