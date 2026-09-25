@@ -58,9 +58,17 @@ def _decision_payload(decision: BeliefDecision) -> dict[str, object]:
     }
 
 
-def _result_payload(result: SealedTurnResult) -> dict[str, object]:
+def _result_payload(
+    result: SealedTurnResult,
+    *,
+    decision_turn: int | None = None,
+) -> dict[str, object]:
     return {
-        "turn": result.public_view.get("turn"),
+        "turn": (
+            decision_turn
+            if decision_turn is not None
+            else result.public_view.get("turn")
+        ),
         "decision": _decision_payload(result.decision),
         "conditioning": {
             "particles_before": result.particles_before,
@@ -294,6 +302,7 @@ class DemoBattleSession:
         self._facade_factory = facade_factory
         self._facade: SealedBattleFacade | None = None
         self._ready_token: str | None = None
+        self._ready_turn: int | None = None
         self._last_public_view: dict | None = None
         self._history: list[dict[str, object]] = []
         self._ended_manually = False
@@ -360,6 +369,7 @@ class DemoBattleSession:
             old = self._facade
             self._facade = None
             self._ready_token = None
+            self._ready_turn = None
             self._last_public_view = None
             self._history = []
             self._ended_manually = False
@@ -387,6 +397,7 @@ class DemoBattleSession:
                 human_choice=human_choice
             )
             self._ready_token = None
+            self._ready_turn = None
             return self._snapshot_locked()
 
     def lock_ai_action(self) -> dict[str, object]:
@@ -394,6 +405,12 @@ class DemoBattleSession:
             facade = self._require_facade()
             ready = facade.lock_ai_action()
             self._ready_token = ready.token
+            turn = (
+                self._last_public_view.get("turn")
+                if isinstance(self._last_public_view, dict)
+                else None
+            )
+            self._ready_turn = turn if isinstance(turn, int) else None
             return self._snapshot_locked()
 
     def commit_human_action(self, human_choice: str) -> dict[str, object]:
@@ -405,9 +422,13 @@ class DemoBattleSession:
                 token=self._ready_token,
                 human_choice=human_choice,
             )
+            decision_turn = self._ready_turn
             self._ready_token = None
+            self._ready_turn = None
             self._last_public_view = result.public_view
-            self._history.append(_result_payload(result))
+            self._history.append(
+                _result_payload(result, decision_turn=decision_turn)
+            )
             return self._snapshot_locked()
 
     def reconcile_failed_turn(self) -> dict[str, object]:
@@ -416,9 +437,13 @@ class DemoBattleSession:
             if self._ready_token is None:
                 raise RuntimeError("no sealed action is available for reconciliation")
             result = facade.reconcile_failed_turn(token=self._ready_token)
+            decision_turn = self._ready_turn
             self._ready_token = None
+            self._ready_turn = None
             self._last_public_view = result.public_view
-            self._history.append(_result_payload(result))
+            self._history.append(
+                _result_payload(result, decision_turn=decision_turn)
+            )
             return self._snapshot_locked()
 
     def end_battle(self) -> dict[str, object]:
@@ -427,6 +452,7 @@ class DemoBattleSession:
             facade = self._require_facade()
             self._facade = None
             self._ready_token = None
+            self._ready_turn = None
             self._last_public_view = None
             self._ended_manually = True
             facade.close()
@@ -437,6 +463,7 @@ class DemoBattleSession:
             facade = self._facade
             self._facade = None
             self._ready_token = None
+            self._ready_turn = None
             self._last_public_view = None
             if facade is not None:
                 facade.close()
