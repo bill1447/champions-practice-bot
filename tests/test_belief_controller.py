@@ -574,3 +574,35 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert seen["search_rng_seeds"] == [None, SCREENING_RNG_SEEDS]
     assert seen["search_response_shortlists"][1] == (("move counter",),)
     assert decision.branch_count == 33
+
+
+
+def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence(
+    monkeypatch,
+) -> None:
+    engine = _decision_engine()
+    _, probe, _, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+        baseline_choices=("move baseline",),
+        guided_choices=("move guided",),
+        final_choice="move baseline",
+    )
+
+    decision = engine.choose_ai_action(
+        legal_live=["move baseline", "move guided"],
+    )
+
+    assert probe.ranking[0].choice == "move guided"
+    assert seen["shared_candidate_references"] == (
+        "move baseline",
+        "move guided",
+    )
+    assert seen["search_choices"] == [
+        ("move baseline",),
+        ("move baseline", "move guided"),
+    ]
+    assert seen["search_response_shortlists"][1] == (("move counter",),)
+    assert seen["search_rng_seeds"][1] == SCREENING_RNG_SEEDS
+    assert decision.choice == "move baseline"
+    assert decision.strategic_plan is None
