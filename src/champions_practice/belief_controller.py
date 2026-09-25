@@ -66,6 +66,8 @@ class BeliefDecision:
     worst_world_score: float | None = None
     weighted_score: float | None = None
     searched_responses: tuple[str, ...] = ()
+    evaluated_choices: tuple[str, ...] = ()
+    candidate_scores: tuple[tuple[str, float, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -684,6 +686,19 @@ class BeliefDecisionEngine:
                         None,
                     ),
                     "searched_responses": tuple(searched_responses),
+                    "evaluated_choices": tuple(
+                        getattr(search, "evaluated_choices", ())
+                    ),
+                    "candidate_scores": tuple(
+                        (
+                            candidate.choice,
+                            candidate.worst_world_score,
+                            candidate.weighted_score,
+                        )
+                        for candidate in getattr(search, "ranking", ())
+                        if hasattr(candidate, "worst_world_score")
+                        and hasattr(candidate, "weighted_score")
+                    ),
                 }
 
             worst_world = min(
@@ -699,6 +714,17 @@ class BeliefDecisionEngine:
                     None,
                 ),
                 "searched_responses": tuple(searched_responses),
+                "evaluated_choices": tuple(
+                    getattr(search, "evaluated_choices", ())
+                ),
+                "candidate_scores": tuple(
+                    (
+                        candidate.choice,
+                        candidate.worst_world_score,
+                        candidate.weighted_score,
+                    )
+                    for candidate in getattr(search, "ranking", ())
+                ),
             }
 
         def decision_from_baseline(
