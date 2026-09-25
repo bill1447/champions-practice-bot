@@ -13,6 +13,7 @@ from typing import Callable, TypeVar
 
 from champions_practice.belief_search import (
     ExactBeliefWorldState,
+    _protect_chain_slots,
     search_exact_belief_turn,
     shortlist_belief_candidates,
 )
@@ -22,7 +23,7 @@ from champions_practice.belief_worlds import (
     preview_choice_for_world,
 )
 from champions_practice.beliefs import build_public_opponent_belief
-from champions_practice.recommendations import SCREENING_RNG_SEEDS
+from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
@@ -47,6 +48,42 @@ from champions_practice.strategy_tactics import (
 
 FallbackSelector = Callable[[list[str]], str]
 T = TypeVar("T")
+
+
+def _choice_repeats_protect(
+    choice: str,
+    protect_chain_slots: tuple[int, ...],
+) -> bool:
+    commands = [command.strip().split() for command in choice.split(",")]
+    for slot in protect_chain_slots:
+        index = slot - 1
+        if index < 0 or index >= len(commands):
+            continue
+        tokens = commands[index]
+        if len(tokens) >= 2 and tokens[0] == "move" and tokens[1] == "protect":
+            return True
+    return False
+
+
+def _protect_risk_choices(
+    search,
+    protect_chain_slots: tuple[int, ...],
+    *,
+    alternative_limit: int = 2,
+) -> tuple[str, ...]:
+    chosen = search.chosen.choice
+    if not _choice_repeats_protect(chosen, protect_chain_slots):
+        return ()
+    alternatives = [
+        candidate.choice
+        for candidate in search.ranking
+        if not _choice_repeats_protect(candidate.choice, protect_chain_slots)
+    ]
+    if not alternatives:
+        return ()
+    return tuple([chosen, *alternatives[:alternative_limit]])
+
+
 
 
 @dataclass(frozen=True)
@@ -731,6 +768,7 @@ class BeliefDecisionEngine:
             pruning,
             search,
             *,
+            tactical_extra_branch_count: int = 0,
             strategic_probe_count: int = 0,
             strategic_branch_count: int = 0,
         ) -> BeliefDecision:
@@ -742,6 +780,7 @@ class BeliefDecisionEngine:
                 candidate_count=len(search.evaluated_choices),
                 branch_count=(
                     tactical_branch_count(pruning, search)
+                    + tactical_extra_branch_count
                     + strategic_branch_count
                 ),
                 elapsed_seconds=perf_counter() - started,
@@ -793,16 +832,71 @@ class BeliefDecisionEngine:
             baseline_pruning,
             baseline_search,
         )
+        tactical_search = baseline_search
+        tactical_extra_branch_count = 0
+        protect_risk_branch_count = 0
+
+        protect_chain_slots = tuple(
+            sorted(
+                {
+                    slot
+                    for world in worlds
+                    for slot in _protect_chain_slots(world.state, "p2")
+                }
+            )
+        )
+        protect_risk_choices = _protect_risk_choices(
+            baseline_search,
+            protect_chain_slots,
+        )
+        if protect_risk_choices and perf_counter() < decision_deadline:
+            def run_protect_risk(worker: HypotheticalSearchWorker):
+                return search_exact_belief_turn(
+                    worker,
+                    worlds=worlds,
+                    side="p2",
+                    choices=list(protect_risk_choices),
+                    rng_seeds=FINAL_RNG_SEEDS,
+                    response_shortlists=baseline_search.response_shortlists,
+                )
+
+            try:
+                protect_risk_search, protect_risk_timed_out = (
+                    self._run_until_deadline(
+                        run_protect_risk,
+                        deadline=decision_deadline,
+                    )
+                )
+            except (RuntimeError, ValueError):
+                protect_risk_search = None
+                protect_risk_timed_out = False
+
+            if (
+                not protect_risk_timed_out
+                and protect_risk_search is not None
+                and protect_risk_search.chosen.choice in legal_live
+            ):
+                tactical_search = protect_risk_search
+                protect_risk_branch_count = (
+                    protect_risk_search.response_screening_branch_count
+                    + protect_risk_search.branch_count
+                )
+                tactical_extra_branch_count = (
+                    baseline_search.response_screening_branch_count
+                    + baseline_search.branch_count
+                )
         if self.last_public_view is None:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         if perf_counter() >= decision_deadline:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         def run_strategy_augmentation(worker: HypotheticalSearchWorker):
@@ -942,13 +1036,15 @@ class BeliefDecisionEngine:
         except (RuntimeError, ValueError):
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         if strategy_timed_out or augmentation is None:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         (
@@ -961,7 +1057,8 @@ class BeliefDecisionEngine:
         if final_search is None or selected is None:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
@@ -969,7 +1066,8 @@ class BeliefDecisionEngine:
         if final_search.chosen.choice not in legal_live:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
@@ -997,7 +1095,11 @@ class BeliefDecisionEngine:
             mode="belief-search",
             particle_count=len(self.particles),
             candidate_count=len(final_search.evaluated_choices),
-            branch_count=baseline_branches + strategic_branch_count,
+            branch_count=(
+                baseline_branches
+                + protect_risk_branch_count
+                + strategic_branch_count
+            ),
             elapsed_seconds=perf_counter() - started,
             strategic_plan=(
                 selected_probe.plan.name
