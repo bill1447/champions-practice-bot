@@ -478,12 +478,15 @@ def shortlist_belief_responses(
     candidate_references: list[str],
     response_limit: int = 8,
     legal_responses: list[str] | None = None,
+    reference_limit: int = 1,
 ) -> BeliefResponsePruning:
     """Select dangerous, strategically diverse opponent replies in one belief world."""
     if response_limit <= 0:
         raise ValueError("response_limit must be positive")
     if not candidate_references:
         raise ValueError("candidate_references must not be empty")
+    if reference_limit <= 0:
+        raise ValueError("reference_limit must be positive")
     screening_started = perf_counter()
     opponent: SideId = "p2" if ai_side == "p1" else "p1"
     responses = (
@@ -498,7 +501,7 @@ def shortlist_belief_responses(
     # The final matrix still uses every requested RNG future. This is only the cheap
     # per-world funnel, so one shared reference and seed are enough to rank broad plans
     # before their targeting variants receive a second screening pass.
-    references = _reference_choices(candidate_references, 1)
+    references = _reference_choices(candidate_references, reference_limit)
     family_screening = search_exact_turn(
         worker,
         state=world.state,
