@@ -321,6 +321,7 @@ def test_exact_search_can_reuse_precomputed_response_shortlists() -> None:
     assert result.response_screening_branch_count == 0
     assert result.branch_count == 8
     assert result.evaluated_choices == ("attack", "safe")
+    assert result.response_shortlists == (("counter",), ("switch",))
     assert result.ranking[0].worlds[0].legal_response_count == 1
     assert result.ranking[0].worlds[1].legal_response_count == 1
 
