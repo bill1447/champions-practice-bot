@@ -87,7 +87,7 @@ Sync-ChampionsShowdownCheckout -CloneIfMissing
 Write-Host "Installing Pokemon Showdown dependencies"
 Push-Location $Showdown
 try {
-    & npm install
+    & npm ci
     & npm run build
 }
 finally {
