@@ -113,8 +113,33 @@ def _assert_demo_redirection_counter(worker: ShowdownSearchWorker) -> None:
     human_punish = next(
         choice
         for choice in human_choices
-        if "move followme" in choice and "move expandingforce +1" in choice
+        if (
+            "move followme" in choice
+            and "move expandingforce +1 mega" in choice
+        )
     )
+
+    resolved = worker.branch_many(
+        state=state,
+        branches=[
+            {
+                "p1_choice": human_punish,
+                "p2_choice": dire_claw_switch,
+            }
+        ],
+    )
+    if len(resolved) != 1:
+        raise SystemExit("ERROR: demo regression branch did not resolve exactly once")
+    summary = resolved[0].get("summary")
+    if not isinstance(summary, dict):
+        raise SystemExit("ERROR: demo regression branch returned no exact summary")
+    if summary.get("field", {}).get("terrain") != "grassyterrain":
+        raise SystemExit("ERROR: demo regression branch did not overwrite Psychic Terrain")
+    p2_active = summary.get("p2", {}).get("active", [])
+    if not p2_active or not p2_active[0] or not p2_active[0].get("fainted"):
+        raise SystemExit(
+            "ERROR: demo Mega Gardevoir punish did not actually KO AI Sneasler"
+        )
 
     pruning = shortlist_belief_responses(
         worker,
@@ -129,7 +154,7 @@ def _assert_demo_redirection_counter(worker: ShowdownSearchWorker) -> None:
     )
     if human_punish not in pruning.response_shortlist:
         raise SystemExit(
-            "ERROR: response pruning dropped the demo Follow Me + Expanding Force punish"
+            "ERROR: response pruning dropped the demo Follow Me + Mega Expanding Force punish"
         )
 
 
