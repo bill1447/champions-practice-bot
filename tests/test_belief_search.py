@@ -403,6 +403,59 @@ def test_selective_continuation_can_reject_a_myopic_one_ply_winner() -> None:
 
 
 
+def test_candidate_pruning_preserves_alternate_actions_in_each_slot() -> None:
+    class SlotDiversityWorker:
+        choices = [
+            "move direclaw +1, switch 4",
+            "move direclaw +1, move psychic +1",
+            "move direclaw +1, move followme",
+            "move direclaw +2, move psychic +1",
+            "move protect, switch 4",
+            "move rockslide, switch 4",
+        ]
+
+        def legal_choices(self, *, state, side):
+            if side == "p1":
+                return self.choices
+            return ["move counter +1, move counter +1"]
+
+        def branch_many(self, *, state, branches):
+            scores = {
+                self.choices[0]: 100,
+                self.choices[1]: 95,
+                self.choices[2]: 94,
+                self.choices[3]: 93,
+                self.choices[4]: 70,
+                self.choices[5]: 60,
+            }
+            return [
+                {
+                    "index": index,
+                    "summary": _summary(
+                        scores[branch["p1_choice"]],
+                        100,
+                    ),
+                }
+                for index, branch in enumerate(branches)
+            ]
+
+    pruning = shortlist_belief_candidates(
+        SlotDiversityWorker(),
+        worlds=(ExactBeliefWorldState(state={"id": "slot-diverse"}, weight=1.0),),
+        side="p1",
+        candidate_limit=4,
+        reference_limit=1,
+    )
+
+    first_actions = {
+        choice.split(",", 1)[0].strip().split()[1]
+        for choice in pruning.candidate_shortlist
+    }
+
+    assert "direclaw" in first_actions
+    assert len(first_actions) >= 2
+
+
 def test_candidate_pruning_can_reserve_plan_compatible_family_without_replacing_top() -> None:
     class GuidanceWorker:
         choices = [
