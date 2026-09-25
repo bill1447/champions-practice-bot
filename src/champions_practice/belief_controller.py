@@ -62,6 +62,12 @@ class BeliefDecision:
     strategic_probe_count: int = 0
     strategic_branch_count: int = 0
     strategic_rng_sample_count: int = 0
+    worst_response: str | None = None
+    worst_world_score: float | None = None
+    weighted_score: float | None = None
+    searched_responses: tuple[str, ...] = ()
+    evaluated_choices: tuple[str, ...] = ()
+    candidate_scores: tuple[tuple[str, float, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -659,6 +665,68 @@ class BeliefDecisionEngine:
                 + search.branch_count
             )
 
+        def search_diagnostics(search):
+            seen: set[str] = set()
+            searched_responses: list[str] = []
+            for shortlist in getattr(search, "response_shortlists", ()):
+                for response in shortlist:
+                    if response in seen:
+                        continue
+                    seen.add(response)
+                    searched_responses.append(response)
+
+            worlds = tuple(getattr(search.chosen, "worlds", ()))
+            if not worlds:
+                return {
+                    "worst_response": None,
+                    "worst_world_score": None,
+                    "weighted_score": getattr(
+                        search.chosen,
+                        "weighted_score",
+                        None,
+                    ),
+                    "searched_responses": tuple(searched_responses),
+                    "evaluated_choices": tuple(
+                        getattr(search, "evaluated_choices", ())
+                    ),
+                    "candidate_scores": tuple(
+                        (
+                            candidate.choice,
+                            candidate.worst_world_score,
+                            candidate.weighted_score,
+                        )
+                        for candidate in getattr(search, "ranking", ())
+                        if hasattr(candidate, "worst_world_score")
+                        and hasattr(candidate, "weighted_score")
+                    ),
+                }
+
+            worst_world = min(
+                worlds,
+                key=lambda outcome: (outcome.worst_score, outcome.label),
+            )
+            return {
+                "worst_response": worst_world.worst_response,
+                "worst_world_score": worst_world.worst_score,
+                "weighted_score": getattr(
+                    search.chosen,
+                    "weighted_score",
+                    None,
+                ),
+                "searched_responses": tuple(searched_responses),
+                "evaluated_choices": tuple(
+                    getattr(search, "evaluated_choices", ())
+                ),
+                "candidate_scores": tuple(
+                    (
+                        candidate.choice,
+                        candidate.worst_world_score,
+                        candidate.weighted_score,
+                    )
+                    for candidate in getattr(search, "ranking", ())
+                ),
+            }
+
         def decision_from_baseline(
             pruning,
             search,
@@ -666,6 +734,7 @@ class BeliefDecisionEngine:
             strategic_probe_count: int = 0,
             strategic_branch_count: int = 0,
         ) -> BeliefDecision:
+            diagnostics = search_diagnostics(search)
             return BeliefDecision(
                 choice=search.chosen.choice,
                 mode="belief-search",
@@ -683,6 +752,7 @@ class BeliefDecisionEngine:
                     if strategic_probe_count
                     else 0
                 ),
+                **diagnostics,
             )
 
         if perf_counter() >= decision_deadline:
@@ -921,6 +991,7 @@ class BeliefDecisionEngine:
             and probed_candidate is not None
             and probed_candidate.evaluation.robust
         )
+        diagnostics = search_diagnostics(final_search)
         return BeliefDecision(
             choice=final_search.chosen.choice,
             mode="belief-search",
@@ -936,6 +1007,7 @@ class BeliefDecisionEngine:
             strategic_probe_count=probe_count,
             strategic_branch_count=strategic_branch_count,
             strategic_rng_sample_count=len(self.strategic_rng_seeds),
+            **diagnostics,
         )
 
     def observe_public_turn(
