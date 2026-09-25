@@ -291,6 +291,7 @@ def main() -> None:
         finally:
             coordinator.close()
 
+    with ShowdownSearchWorker() as worker:
         _run_human_forced_switch_ai_wait(worker)
 
 
