@@ -416,14 +416,14 @@ def reconstruct_midgame_belief_worlds(
 ) -> tuple[ReconstructedBeliefWorld, ...]:
     """Legacy replay reconstruction for tests/debugging, not live decisions.
 
-    Live battle decisions must carry sequential particles through BeliefBattleController.
+    Live battle decisions must carry sequential particles through SealedBattleFacade.
     This helper replays complete public command history and may accept an exact seed, so
     using it in the live opponent would reintroduce the reconstruction path that the
     persistent controller replaced.
     """
     warnings.warn(
         "reconstruct_midgame_belief_worlds() is legacy debug/test-only; "
-        "use BeliefBattleController for live decisions",
+        "use SealedBattleFacade for live decisions",
         DeprecationWarning,
         stacklevel=2,
     )
