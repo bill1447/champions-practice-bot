@@ -79,6 +79,7 @@ jobs:
 
           . .\scripts\showdown-utils.ps1
           Set-ChampionsShowdownLocalConfig
+          .\.venv\Scripts\python.exe -m champions_practice.showdown_build_stamp
 
       - name: Runtime Showdown pin gate
         shell: pwsh
