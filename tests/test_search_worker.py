@@ -32,8 +32,10 @@ def test_showdown_runtime_verification_accepts_pinned_clean_checkout(
     monkeypatch.setattr("champions_practice.search_worker.subprocess.run", fake_run)
 
     actual = verify_showdown_checkout(root)
+    cached = verify_showdown_checkout(root)
 
     assert actual == PIN
+    assert cached == PIN
     assert len(calls) == 3
 
 
