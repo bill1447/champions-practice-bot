@@ -15,7 +15,7 @@ from champions_practice.belief_controller import (
     choose_public_fallback,
 )
 from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
-from champions_practice.recommendations import SCREENING_RNG_SEEDS
+from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
 from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.strategy_tactics import StrategicCandidateGuidance
@@ -424,6 +424,95 @@ def _patch_live_strategy_pipeline(
         fake_search,
     )
     return plan, probe, guidance, seen
+
+
+def test_repeated_protect_gets_focused_multi_rng_risk_check(monkeypatch) -> None:
+    engine = _decision_engine()
+    engine.last_public_view = None
+    engine.particles = (
+        BeliefParticle(
+            {
+                "id": "protect-chain",
+                "sides": [
+                    {"active": [], "pokemon": []},
+                    {
+                        "active": ["p2a"],
+                        "pokemon": [
+                            {
+                                "position": 0,
+                                "volatiles": {"stall": {}},
+                            }
+                        ],
+                    },
+                ],
+            },
+            1.0,
+            world_id="world-1",
+            history_id="rng-1",
+        ),
+    )
+
+    protect = "move protect, move psychic +1"
+    safe = "switch 4, move psychic +1"
+    pruning = SimpleNamespace(
+        candidate_shortlist=(protect, safe),
+        screening_branch_count=2,
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.shortlist_belief_candidates",
+        lambda *args, **kwargs: pruning,
+    )
+
+    calls = []
+
+    def candidate(choice, worst, weighted):
+        return SimpleNamespace(
+            choice=choice,
+            worst_world_score=worst,
+            weighted_score=weighted,
+            worlds=(),
+        )
+
+    def fake_search(*args, **kwargs):
+        calls.append(kwargs)
+        if kwargs.get("rng_seeds") == FINAL_RNG_SEEDS:
+            ranking = (
+                candidate(safe, -20.0, -10.0),
+                candidate(protect, -900.0, -600.0),
+            )
+            chosen = ranking[0]
+            branch_count = 6
+            screening = 0
+        else:
+            ranking = (
+                candidate(protect, -10.0, -5.0),
+                candidate(safe, -20.0, -10.0),
+            )
+            chosen = ranking[0]
+            branch_count = 4
+            screening = 3
+        return SimpleNamespace(
+            chosen=chosen,
+            ranking=ranking,
+            evaluated_choices=tuple(kwargs.get("choices") or ()),
+            response_screening_branch_count=screening,
+            branch_count=branch_count,
+            response_shortlists=(("move counter",),),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.search_exact_belief_turn",
+        fake_search,
+    )
+
+    decision = engine.choose_ai_action(legal_live=[protect, safe])
+
+    assert decision.choice == safe
+    assert len(calls) == 2
+    assert calls[0].get("rng_seeds") is None
+    assert calls[1]["rng_seeds"] == FINAL_RNG_SEEDS
+    assert calls[1]["response_shortlists"] == (("move counter",),)
+    assert calls[1]["choices"] == [protect, safe]
 
 
 def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkeypatch) -> None:
