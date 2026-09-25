@@ -5,13 +5,179 @@ import pytest
 from champions_practice.belief_controller import (
     BeliefBattleController,
     BeliefDecision,
+    BeliefDecisionEngine,
+    SealedDecisionReady,
     _pin_known_team_genders,
     choose_public_fallback,
 )
 from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
 from champions_practice.recommendations import SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
+from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.strategy_tactics import StrategicCandidateGuidance
+
+
+def test_hypothetical_worker_exposes_no_live_session_capabilities() -> None:
+    forbidden = {
+        "start_session",
+        "session_view",
+        "session_legal_choices",
+        "session_snapshot",
+        "choose_session",
+        "close_session",
+    }
+
+    for name in forbidden:
+        assert not hasattr(HypotheticalSearchWorker, name)
+
+
+def test_decision_engine_owns_no_live_worker_or_session_identifier() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+
+    assert not hasattr(engine, "worker")
+    assert not hasattr(engine, "session_id")
+    assert not hasattr(engine, "start")
+    assert not hasattr(engine, "human_legal_choices")
+    assert not hasattr(engine, "resolve_turn")
+
+
+class _CoordinatorWorker:
+    project_root = "."
+
+    def __init__(self) -> None:
+        self.started_with = None
+        self.submissions = []
+        self.closed = []
+        self.public_view = {
+            "turn": 1,
+            "opponent": {"preview_species": ["FoeA", "FoeB"]},
+            "player": {
+                "team": [{"species": "OwnA"}, {"species": "OwnB"}],
+            },
+            "request": {},
+        }
+
+    def start_session(self, **kwargs):
+        self.started_with = kwargs
+        return {"session_id": "live-1"}
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        return {}
+
+    def session_view(self, session_id, *, side):
+        assert side == "p2"
+        return {"view": self.public_view}
+
+    def session_legal_choices(self, session_id, *, side):
+        if side == "p1":
+            return ["move human"]
+        return ["move secret-ai"]
+
+    def close_session(self, session_id):
+        self.closed.append(session_id)
+
+
+def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> None:
+    worker = _CoordinatorWorker()
+    controller = BeliefBattleController(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    seen = {}
+
+    def initialize_preview(*, view, ai_choice):
+        seen["view"] = view
+        seen["ai_choice"] = ai_choice
+        return view
+
+    monkeypatch.setattr(
+        controller.engine,
+        "initialize_preview",
+        initialize_preview,
+    )
+
+    controller.start(opponent_team="HIDDEN HUMAN TEAM")
+    controller.submit_preview(
+        human_choice="team 4321",
+        ai_choice="team 1234",
+    )
+
+    assert worker.started_with["p1_team"] == "HIDDEN HUMAN TEAM"
+    assert worker.submissions[-1] == ("live-1", "team 4321", "team 1234")
+    assert seen == {
+        "view": worker.public_view,
+        "ai_choice": "team 1234",
+    }
+    assert "HIDDEN HUMAN TEAM" not in repr(seen)
+    assert "team 4321" not in repr(seen)
+
+
+def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
+    worker = _CoordinatorWorker()
+    controller = BeliefBattleController(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller.session_id = "live-1"
+    secret = BeliefDecision(
+        choice="move secret-ai",
+        mode="belief-search",
+        particle_count=3,
+        candidate_count=2,
+        branch_count=10,
+        elapsed_seconds=0.1,
+        strategic_plan="secret-plan",
+    )
+    monkeypatch.setattr(
+        controller,
+        "choose_ai_action",
+        lambda: secret,
+    )
+    monkeypatch.setattr(
+        controller.engine,
+        "observe_public_turn",
+        lambda *, decision, view: SimpleNamespace(
+            decision=decision,
+            public_view=view,
+        ),
+    )
+
+    ready = controller.lock_ai_action()
+
+    assert isinstance(ready, SealedDecisionReady)
+    assert ready.token
+    assert not hasattr(ready, "choice")
+    assert "secret-ai" not in repr(ready)
+    assert "secret-plan" not in repr(ready)
+    assert worker.submissions == []
+
+    with pytest.raises(ValueError, match="live-session legal"):
+        controller.resolve_locked_turn(
+            token=ready.token,
+            human_choice="move illegal",
+        )
+    assert worker.submissions == []
+
+    update = controller.resolve_locked_turn(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert worker.submissions == [
+        ("live-1", "move human", "move secret-ai"),
+    ]
+    assert update.decision is secret
+    assert update.decision.choice == "move secret-ai"
 
 
 def test_public_fallback_returns_legal_choice_without_friendly_fire() -> None:
