@@ -45,6 +45,16 @@ def _decision_payload(decision: BeliefDecision) -> dict[str, object]:
         "worst_world_score": decision.worst_world_score,
         "weighted_score": decision.weighted_score,
         "searched_responses": list(decision.searched_responses),
+        "evaluated_choices": list(decision.evaluated_choices),
+        "candidate_scores": [
+            {
+                "choice": choice,
+                "worst_world_score": worst_world_score,
+                "weighted_score": weighted_score,
+            }
+            for choice, worst_world_score, weighted_score
+            in decision.candidate_scores
+        ],
     }
 
 
@@ -648,6 +658,20 @@ function renderHistory(history) {
         ` · score ${d.worst_world_score.toFixed(1)}` : "";
       worst.textContent = `Worst searched reply: ${d.worst_response}${score}`;
       box.appendChild(worst);
+    }
+
+    if (d.candidate_scores?.length) {
+      const candidates = document.createElement("details");
+      candidates.className = "muted";
+      const summary = document.createElement("summary");
+      summary.textContent = `AI candidate ranking (${d.candidate_scores.length})`;
+      candidates.appendChild(summary);
+      const candidateList = document.createElement("pre");
+      candidateList.textContent = d.candidate_scores.map((candidate, index) =>
+        `${index + 1}. ${candidate.choice} | worst ${candidate.worst_world_score.toFixed(1)} | weighted ${candidate.weighted_score.toFixed(1)}`
+      ).join("\n");
+      candidates.appendChild(candidateList);
+      box.appendChild(candidates);
     }
 
     if (d.searched_responses?.length) {
