@@ -8,7 +8,7 @@ from champions_practice.belief_controller import (
     SealedTurnResult,
     SealedTurnState,
 )
-from champions_practice.demo_server import DemoBattleSession
+from champions_practice.demo_server import DemoBattleSession, _choice_label
 
 
 class FakeFacade:
@@ -166,4 +166,70 @@ def test_demo_snapshot_uses_last_good_view_when_live_view_read_fails() -> None:
 
     assert snapshot["public_view"] == started["public_view"]
     assert "temporary view read failure" in snapshot["public_view_error"]
+
+def test_preview_choice_label_names_leads_and_back_pokemon() -> None:
+    view = {
+        "player": {
+            "team": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+                {"species": "Gardevoir"},
+                {"species": "Armarouge"},
+                {"species": "Rillaboom"},
+                {"species": "Metagross"},
+            ]
+        }
+    }
+
+    label = _choice_label("team 2, 1, 3, 5", view)
+
+    assert label == (
+        "Lead: Sneasler + Indeedee-F | Back: Gardevoir + Rillaboom"
+    )
+
+
+def test_turn_choice_label_names_moves_targets_mega_and_switches() -> None:
+    view = {
+        "player": {
+            "active": ["Sneasler", "Indeedee-F"],
+            "team": [
+                {"species": "Indeedee-F"},
+                {"species": "Sneasler"},
+                {"species": "Gardevoir"},
+                {"species": "Armarouge"},
+            ],
+        },
+        "request": {
+            "active": [
+                {
+                    "moves": [
+                        {"id": "closecombat", "move": "Close Combat"},
+                        {"id": "protect", "move": "Protect"},
+                    ]
+                },
+                {
+                    "moves": [
+                        {"id": "followme", "move": "Follow Me"},
+                        {"id": "trickroom", "move": "Trick Room"},
+                    ]
+                },
+            ]
+        },
+    }
+
+    attack = _choice_label(
+        "move closecombat 1 mega, move followme",
+        view,
+    )
+    switch = _choice_label(
+        "switch 3, move trickroom",
+        view,
+    )
+
+    assert attack == (
+        "Sneasler: Close Combat → foe left [Mega] | Indeedee-F: Follow Me"
+    )
+    assert switch == (
+        "Sneasler: switch → Gardevoir | Indeedee-F: Trick Room"
+    )
 
