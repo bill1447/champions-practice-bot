@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
+from enum import Enum
 import random
 import secrets
+from threading import RLock
 from time import perf_counter
 from typing import Callable, TypeVar
 
@@ -65,6 +67,45 @@ class BeliefDecision:
 @dataclass(frozen=True)
 class SealedDecisionReady:
     token: str
+
+
+class SealedTurnState(str, Enum):
+    NEW = "new"
+    PREVIEW = "preview"
+    IDLE = "idle"
+    COMPUTING = "computing"
+    LOCKED = "locked"
+    SUBMITTING = "submitting"
+    RESOLVED = "resolved"
+    FAILED = "failed"
+    TERMINAL = "terminal"
+    CLOSED = "closed"
+
+
+@dataclass(frozen=True)
+class SealedTurnResult:
+    decision: BeliefDecision
+    public_view: dict
+    particles_before: int
+    particles_after: int
+    generated_branches: int
+    matched_branches: int
+    conditioning_seconds: float
+    conditioning_over_budget: bool
+    degraded: bool
+    terminal: bool
+    winner: str | None
+
+
+@dataclass(frozen=True)
+class _EngineObservationSnapshot:
+    last_public_view: dict | None
+    particles: tuple[BeliefParticle, ...]
+    pending_observations: tuple[
+        tuple[str, dict[str, object] | None, dict],
+        ...,
+    ]
+    degraded: bool
 
 
 @dataclass(frozen=True)
@@ -950,21 +991,8 @@ class BeliefDecisionEngine:
             degraded=self.degraded,
         )
 
-class BeliefBattleController:
-    """Coordinate the live human-vs-AI session around a restricted decision engine."""
-
-    _ENGINE_PROXY_FIELDS = {
-        "previews",
-        "particles",
-        "last_public_view",
-        "preview_mismatch_paths",
-        "preview_mismatch_values",
-        "pending_observations",
-        "degraded",
-        "decision_budget_seconds",
-        "conditioning_budget_seconds",
-        "fallback_selector",
-    }
+class _BeliefBattleCoordinator:
+    """Private live-session owner behind the sealed demo facade."""
 
     def __init__(
         self,
@@ -990,12 +1018,11 @@ class BeliefBattleController:
         particle_seed: int = 53,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
-        self.worker = worker
-        self.battle_format = battle_format
-        self.ai_team = ai_team
-        self.session_id: str | None = None
-        self._locked_decision: tuple[str, BeliefDecision] | None = None
-        self.engine = BeliefDecisionEngine(
+        self._worker = worker
+        self._battle_format = battle_format
+        self._ai_team = ai_team
+        self._session_id: str | None = None
+        self._engine = BeliefDecisionEngine(
             worker.project_root,
             battle_format=battle_format,
             ai_team=ai_team,
@@ -1017,30 +1044,401 @@ class BeliefBattleController:
             particle_seed=particle_seed,
             fallback_selector=fallback_selector,
         )
+        self._state_lock = RLock()
+        self._turn_state = SealedTurnState.NEW
+        self._sealed_decision: tuple[str, BeliefDecision] | None = None
+        self._pending_human_choice: str | None = None
+        self._pending_public_view: dict | None = None
+        self._pre_submit_signature: dict | None = None
 
-    def __getattr__(self, name: str):
-        if name in self._ENGINE_PROXY_FIELDS:
-            return getattr(self.engine, name)
-        if name == "_run_with_deadline":
-            return self.engine._run_with_deadline
-        raise AttributeError(name)
-
-    def __setattr__(self, name: str, value) -> None:
-        if (
-            name in BeliefBattleController._ENGINE_PROXY_FIELDS
-            and "engine" in self.__dict__
-        ):
-            setattr(self.engine, name, value)
-            return
-        if name == "_run_with_deadline" and "engine" in self.__dict__:
-            self.engine._run_with_deadline = value
-            return
-        object.__setattr__(self, name, value)
+    @property
+    def turn_state(self) -> SealedTurnState:
+        with self._state_lock:
+            return self._turn_state
 
     def _require_session(self) -> str:
-        if self.session_id is None:
-            raise RuntimeError("controller has no active session")
-        return self.session_id
+        if self._session_id is None:
+            raise RuntimeError("battle has no active session")
+        return self._session_id
+
+    def _engine_snapshot(self) -> _EngineObservationSnapshot:
+        return _EngineObservationSnapshot(
+            last_public_view=self._engine.last_public_view,
+            particles=self._engine.particles,
+            pending_observations=tuple(self._engine.pending_observations),
+            degraded=self._engine.degraded,
+        )
+
+    def _restore_engine_snapshot(
+        self,
+        snapshot: _EngineObservationSnapshot,
+    ) -> None:
+        self._engine.last_public_view = snapshot.last_public_view
+        self._engine.particles = snapshot.particles
+        self._engine.pending_observations = list(snapshot.pending_observations)
+        self._engine.degraded = snapshot.degraded
+
+    def start(
+        self,
+        *,
+        opponent_team: str,
+        p1_name: str = "Practice Player",
+        p2_name: str = "Practice AI",
+        session_seed: str | None = None,
+    ) -> None:
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.NEW:
+                raise RuntimeError("battle has already been started")
+            started = self._worker.start_session(
+                battle_format=self._battle_format,
+                p1_team=opponent_team,
+                p2_team=self._ai_team,
+                p1_name=p1_name,
+                p2_name=p2_name,
+                seed=session_seed,
+            )
+            self._session_id = str(started["session_id"])
+            self._turn_state = SealedTurnState.PREVIEW
+
+    def submit_preview(
+        self,
+        *,
+        human_choice: str,
+        ai_choice: str,
+    ) -> None:
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.PREVIEW:
+                raise RuntimeError("battle is not awaiting preview choices")
+            session_id = self._require_session()
+            self._worker.choose_session(
+                session_id,
+                p1_choice=human_choice,
+                p2_choice=ai_choice,
+            )
+            view = self._worker.session_view(session_id, side="p2")["view"]
+            self._engine.initialize_preview(
+                view=view,
+                ai_choice=ai_choice,
+            )
+            self._turn_state = (
+                SealedTurnState.TERMINAL
+                if bool(view.get("ended"))
+                else SealedTurnState.IDLE
+            )
+
+    def human_public_view(self) -> dict:
+        with self._state_lock:
+            session_id = self._require_session()
+            return self._worker.session_view(
+                session_id,
+                side="p1",
+            )["view"]
+
+    def human_legal_choices(self) -> list[str]:
+        with self._state_lock:
+            if self._turn_state in {
+                SealedTurnState.TERMINAL,
+                SealedTurnState.CLOSED,
+            }:
+                return []
+            return self._worker.session_legal_choices(
+                self._require_session(),
+                side="p1",
+            )
+
+    def _ai_legal_choices(self) -> list[str]:
+        return self._worker.session_legal_choices(
+            self._require_session(),
+            side="p2",
+        )
+
+    def lock_ai_action(self) -> SealedDecisionReady:
+        with self._state_lock:
+            if self._turn_state is SealedTurnState.TERMINAL:
+                raise RuntimeError("battle is already terminal")
+            if self._turn_state not in {
+                SealedTurnState.IDLE,
+                SealedTurnState.RESOLVED,
+            }:
+                raise RuntimeError(
+                    f"cannot lock AI action while state is {self._turn_state.value}"
+                )
+            self._turn_state = SealedTurnState.COMPUTING
+
+        try:
+            decision = self._engine.choose_ai_action(
+                legal_live=self._ai_legal_choices(),
+            )
+            token = secrets.token_urlsafe(18)
+        except Exception:
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.COMPUTING:
+                    self._turn_state = SealedTurnState.IDLE
+            raise
+
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.COMPUTING:
+                raise RuntimeError("sealed turn state changed during AI computation")
+            self._sealed_decision = (token, decision)
+            self._turn_state = SealedTurnState.LOCKED
+            return SealedDecisionReady(token=token)
+
+    def _validate_locked_commit(
+        self,
+        *,
+        token: str,
+        human_choice: str,
+    ) -> BeliefDecision:
+        if self._turn_state is not SealedTurnState.LOCKED:
+            raise RuntimeError(
+                f"cannot commit human action while state is {self._turn_state.value}"
+            )
+        if self._sealed_decision is None:
+            raise RuntimeError("sealed decision payload is missing")
+        expected_token, decision = self._sealed_decision
+        if not secrets.compare_digest(token, expected_token):
+            raise ValueError("invalid locked-decision token")
+        legal = self._worker.session_legal_choices(
+            self._require_session(),
+            side="p1",
+        )
+        if human_choice not in legal:
+            raise ValueError("human choice is not live-session legal")
+        return decision
+
+    def _finalize_submitted_turn(
+        self,
+        *,
+        decision: BeliefDecision,
+        public_view: dict,
+    ) -> SealedTurnResult:
+        snapshot = self._engine_snapshot()
+        try:
+            update = self._engine.observe_public_turn(
+                decision=decision,
+                view=public_view,
+            )
+        except Exception:
+            self._restore_engine_snapshot(snapshot)
+            raise
+
+        human_view = self._worker.session_view(
+            self._require_session(),
+            side="p1",
+        )["view"]
+        terminal = bool(public_view.get("ended"))
+        with self._state_lock:
+            self._sealed_decision = None
+            self._pending_human_choice = None
+            self._pending_public_view = None
+            self._pre_submit_signature = None
+            self._turn_state = (
+                SealedTurnState.TERMINAL
+                if terminal
+                else SealedTurnState.RESOLVED
+            )
+
+        return SealedTurnResult(
+            decision=decision,
+            public_view=human_view,
+            particles_before=update.particles_before,
+            particles_after=update.particles_after,
+            generated_branches=update.generated_branches,
+            matched_branches=update.matched_branches,
+            conditioning_seconds=update.conditioning_seconds,
+            conditioning_over_budget=update.conditioning_over_budget,
+            degraded=update.degraded,
+            terminal=terminal,
+            winner=public_view.get("winner"),
+        )
+
+    def commit_human_action(
+        self,
+        *,
+        token: str,
+        human_choice: str,
+    ) -> SealedTurnResult:
+        with self._state_lock:
+            decision = self._validate_locked_commit(
+                token=token,
+                human_choice=human_choice,
+            )
+            session_id = self._require_session()
+            before = self._worker.session_view(
+                session_id,
+                side="p2",
+            )["view"]
+            self._pre_submit_signature = public_observation_signature(before)
+            self._pending_human_choice = human_choice
+            self._pending_public_view = None
+            self._turn_state = SealedTurnState.SUBMITTING
+
+        submission_error: Exception | None = None
+        try:
+            self._worker.choose_session(
+                session_id,
+                p1_choice=human_choice,
+                p2_choice=decision.choice,
+            )
+        except Exception as error:
+            submission_error = error
+
+        try:
+            public_view = self._worker.session_view(
+                session_id,
+                side="p2",
+            )["view"]
+        except Exception:
+            with self._state_lock:
+                self._turn_state = SealedTurnState.FAILED
+            raise
+
+        after_signature = public_observation_signature(public_view)
+        if submission_error is not None and after_signature == self._pre_submit_signature:
+            with self._state_lock:
+                self._pending_human_choice = None
+                self._pre_submit_signature = None
+                self._turn_state = SealedTurnState.LOCKED
+            raise submission_error
+
+        with self._state_lock:
+            self._pending_public_view = public_view
+
+        try:
+            return self._finalize_submitted_turn(
+                decision=decision,
+                public_view=public_view,
+            )
+        except Exception:
+            with self._state_lock:
+                self._turn_state = SealedTurnState.FAILED
+            raise
+
+    def reconcile_failed_turn(
+        self,
+        *,
+        token: str,
+    ) -> SealedTurnResult:
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.FAILED:
+                raise RuntimeError("battle is not awaiting failed-turn reconciliation")
+            if self._sealed_decision is None:
+                raise RuntimeError("failed turn has no retained sealed decision")
+            expected_token, decision = self._sealed_decision
+            if not secrets.compare_digest(token, expected_token):
+                raise ValueError("invalid locked-decision token")
+            session_id = self._require_session()
+
+        public_view = self._pending_public_view
+        if public_view is None:
+            public_view = self._worker.session_view(
+                session_id,
+                side="p2",
+            )["view"]
+
+        if (
+            self._pre_submit_signature is not None
+            and public_observation_signature(public_view)
+            == self._pre_submit_signature
+        ):
+            with self._state_lock:
+                self._pending_human_choice = None
+                self._pending_public_view = None
+                self._pre_submit_signature = None
+                self._turn_state = SealedTurnState.LOCKED
+            raise RuntimeError(
+                "live session did not advance; original sealed action can be retried"
+            )
+
+        with self._state_lock:
+            self._pending_public_view = public_view
+            self._turn_state = SealedTurnState.SUBMITTING
+
+        try:
+            return self._finalize_submitted_turn(
+                decision=decision,
+                public_view=public_view,
+            )
+        except Exception:
+            with self._state_lock:
+                self._turn_state = SealedTurnState.FAILED
+            raise
+
+    def close(self) -> None:
+        with self._state_lock:
+            if self._turn_state is SealedTurnState.CLOSED:
+                return
+            session_id = self._session_id
+            self._turn_state = SealedTurnState.CLOSED
+            self._sealed_decision = None
+            self._pending_human_choice = None
+            self._pending_public_view = None
+            self._pre_submit_signature = None
+            self._session_id = None
+
+        if session_id is not None:
+            self._worker.close_session(session_id)
+        self._worker.close()
+
+
+class SealedBattleFacade:
+    """Narrow human-facing API for the playable practice battle."""
+
+    __slots__ = ("__coordinator", "__ai_preview_choice")
+
+    def __init__(
+        self,
+        *,
+        battle_format: str,
+        ai_team: str,
+        ai_preview_choice: str,
+        opponent_priors: PublicSetPriorCatalog,
+        project_root=None,
+        world_limit: int = 8,
+        particles_per_world: int = 1,
+        max_particles: int = 8,
+        candidate_limit: int = 4,
+        response_limit: int = 4,
+        strategic_plan_limit: int = 2,
+        strategic_candidate_limit: int = 3,
+        strategic_response_limit: int = 2,
+        strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
+        decision_budget_seconds: float = 8.0,
+        conditioning_budget_seconds: float = 8.0,
+        rng_sample_batches: tuple[int, ...] = (2, 4),
+        recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
+        observed_action_rng_multiplier: int = 16,
+        particle_seed: int = 53,
+        fallback_selector: FallbackSelector = choose_public_fallback,
+    ):
+        worker = ShowdownSearchWorker(project_root)
+        self.__coordinator = _BeliefBattleCoordinator(
+            worker,
+            battle_format=battle_format,
+            ai_team=ai_team,
+            opponent_priors=opponent_priors,
+            world_limit=world_limit,
+            particles_per_world=particles_per_world,
+            max_particles=max_particles,
+            candidate_limit=candidate_limit,
+            response_limit=response_limit,
+            strategic_plan_limit=strategic_plan_limit,
+            strategic_candidate_limit=strategic_candidate_limit,
+            strategic_response_limit=strategic_response_limit,
+            strategic_rng_seeds=strategic_rng_seeds,
+            decision_budget_seconds=decision_budget_seconds,
+            conditioning_budget_seconds=conditioning_budget_seconds,
+            rng_sample_batches=rng_sample_batches,
+            recovery_rng_sample_batches=recovery_rng_sample_batches,
+            observed_action_rng_multiplier=observed_action_rng_multiplier,
+            particle_seed=particle_seed,
+            fallback_selector=fallback_selector,
+        )
+        self.__ai_preview_choice = ai_preview_choice
+
+    @property
+    def turn_state(self) -> SealedTurnState:
+        return self.__coordinator.turn_state
 
     def start(
         self,
@@ -1050,102 +1448,54 @@ class BeliefBattleController:
         p2_name: str = "Practice AI",
         session_seed: str | None = None,
     ) -> dict:
-        if self.session_id is not None:
-            raise RuntimeError("controller already has an active session")
-        started = self.worker.start_session(
-            battle_format=self.battle_format,
-            p1_team=opponent_team,
-            p2_team=self.ai_team,
+        self.__coordinator.start(
+            opponent_team=opponent_team,
             p1_name=p1_name,
             p2_name=p2_name,
-            seed=session_seed,
+            session_seed=session_seed,
         )
-        self.session_id = str(started["session_id"])
-        return started
+        return self.__coordinator.human_public_view()
 
-    def submit_preview(self, *, human_choice: str, ai_choice: str) -> dict:
-        session_id = self._require_session()
-        self.worker.choose_session(
-            session_id,
-            p1_choice=human_choice,
-            p2_choice=ai_choice,
+    def commit_preview(self, *, human_choice: str) -> dict:
+        self.__coordinator.submit_preview(
+            human_choice=human_choice,
+            ai_choice=self.__ai_preview_choice,
         )
-        view = self.worker.session_view(session_id, side="p2")["view"]
-        return self.engine.initialize_preview(
-            view=view,
-            ai_choice=ai_choice,
-        )
+        return self.__coordinator.human_public_view()
 
-    def human_legal_choices(self) -> list[str]:
-        return self.worker.session_legal_choices(
-            self._require_session(),
-            side="p1",
-        )
+    def public_state(self) -> dict:
+        return self.__coordinator.human_public_view()
 
-    def ai_legal_choices(self) -> list[str]:
-        return self.worker.session_legal_choices(
-            self._require_session(),
-            side="p2",
-        )
-
-    def choose_ai_action(self) -> BeliefDecision:
-        return self.engine.choose_ai_action(
-            legal_live=self.ai_legal_choices(),
-        )
+    def legal_human_choices(self) -> tuple[str, ...]:
+        return tuple(self.__coordinator.human_legal_choices())
 
     def lock_ai_action(self) -> SealedDecisionReady:
-        """Compute and retain the AI action without exposing its decision payload."""
-        if self._locked_decision is not None:
-            raise RuntimeError("AI action is already locked for this turn")
-        decision = self.choose_ai_action()
-        token = secrets.token_urlsafe(18)
-        self._locked_decision = (token, decision)
-        return SealedDecisionReady(token=token)
+        return self.__coordinator.lock_ai_action()
 
-    def resolve_locked_turn(
+    def commit_human_action(
         self,
         *,
         token: str,
         human_choice: str,
-    ) -> BeliefTurnUpdate:
-        """Accept the human action before revealing/submitting the locked AI decision."""
-        locked = self._locked_decision
-        if locked is None:
-            raise RuntimeError("no AI action is locked")
-        expected_token, decision = locked
-        if not secrets.compare_digest(token, expected_token):
-            raise ValueError("invalid locked-decision token")
-        if human_choice not in self.human_legal_choices():
-            raise ValueError("human choice is not live-session legal")
-
-        self._locked_decision = None
-        return self.resolve_turn(
+    ) -> SealedTurnResult:
+        return self.__coordinator.commit_human_action(
+            token=token,
             human_choice=human_choice,
-            decision=decision,
         )
 
-    def resolve_turn(
+    def reconcile_failed_turn(
         self,
         *,
-        human_choice: str,
-        decision: BeliefDecision,
-    ) -> BeliefTurnUpdate:
-        session_id = self._require_session()
-        self.worker.choose_session(
-            session_id,
-            p1_choice=human_choice,
-            p2_choice=decision.choice,
-        )
-        view = self.worker.session_view(session_id, side="p2")["view"]
-        return self.engine.observe_public_turn(
-            decision=decision,
-            view=view,
-        )
+        token: str,
+    ) -> SealedTurnResult:
+        return self.__coordinator.reconcile_failed_turn(token=token)
 
     def close(self) -> None:
-        self._locked_decision = None
-        if self.session_id is None:
-            return
-        self.worker.close_session(self.session_id)
-        self.session_id = None
+        self.__coordinator.close()
+
+    def __enter__(self) -> "SealedBattleFacade":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 
