@@ -560,6 +560,7 @@ def prepare_shared_strategic_responses(
             candidate_references=list(candidate_references),
             response_limit=response_limit,
             legal_responses=legal_responses,
+            reference_limit=len(candidate_references),
         )
         shortlists.append(pruning.response_shortlist)
         screening_branch_count += pruning.screening_branch_count
