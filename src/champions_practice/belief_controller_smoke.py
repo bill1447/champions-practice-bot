@@ -52,6 +52,7 @@ def main() -> None:
                     f"values={controller.preview_mismatch_values}"
                 )
 
+            turn_one_ai_legal = controller.ai_legal_choices()
             ready = controller.lock_ai_action()
             if hasattr(ready, "choice") or "move " in repr(ready):
                 raise SystemExit("ERROR: sealed AI payload leaked before human commit")
@@ -68,7 +69,7 @@ def main() -> None:
                     "ERROR: first live decision did not come from belief search: "
                     f"{decision.fallback_reason}"
                 )
-            if decision.choice not in controller.ai_legal_choices():
+            if decision.choice not in turn_one_ai_legal:
                 raise SystemExit("ERROR: belief search returned a non-live-legal choice")
             if update.degraded or not controller.particles:
                 raise SystemExit(
@@ -83,6 +84,7 @@ def main() -> None:
                 else choices[0]
             )
             controller.decision_budget_seconds = 1e-9
+            turn_two_ai_legal = controller.ai_legal_choices()
             fallback_ready = controller.lock_ai_action()
             if hasattr(fallback_ready, "choice") or "move " in repr(fallback_ready):
                 raise SystemExit("ERROR: sealed fallback payload leaked before human commit")
@@ -101,6 +103,8 @@ def main() -> None:
                     "ERROR: unexpected deadline fallback reason: "
                     f"{fallback.fallback_reason}"
                 )
+            if fallback.choice not in turn_two_ai_legal:
+                raise SystemExit("ERROR: deadline fallback returned a non-live-legal choice")
             if fallback.choice != AI_TURN_TWO:
                 raise SystemExit("ERROR: controlled deadline fallback did not double-switch")
             if second_update.degraded or not controller.particles:
