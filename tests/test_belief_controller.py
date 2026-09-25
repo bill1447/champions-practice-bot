@@ -422,7 +422,7 @@ def _patch_live_strategy_pipeline(
 
 def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkeypatch) -> None:
     engine = _decision_engine()
-    _, probe, _, seen = _patch_live_strategy_pipeline(
+    _, probe, guidance, seen = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=False,
     )
