@@ -96,6 +96,115 @@ def _pick_ai_choice(legal: list[str]) -> str:
     raise SystemExit(f"ERROR: unexpected AI transition choices: {legal}")
 
 
+def _run_human_forced_switch_ai_wait(worker: ShowdownSearchWorker) -> None:
+    coordinator = _BeliefBattleCoordinator(
+        worker,
+        battle_format=CHAMPIONS_FORMAT,
+        ai_team=HUMAN_TEAM,
+        opponent_priors={},
+    )
+    try:
+        coordinator._engine.initialize_preview = lambda **kwargs: kwargs["view"]
+        coordinator._engine.observe_public_turn = (
+            lambda *, decision, view: SimpleNamespace(
+                decision=decision,
+                public_view=view,
+                particles_before=1,
+                particles_after=1,
+                generated_branches=1,
+                matched_branches=1,
+                conditioning_seconds=0.0,
+                conditioning_over_budget=False,
+                degraded=False,
+            )
+        )
+        coordinator._engine.choose_ai_action = (
+            lambda *, legal_live: _decision(PROTECT)
+        )
+
+        coordinator.start(
+            opponent_team=SELF_KO_TEAM,
+            p1_name="Forced Human",
+            p2_name="Waiting AI",
+        )
+        coordinator.submit_preview(
+            human_choice=PREVIEW,
+            ai_choice=PREVIEW,
+        )
+
+        human_legal = coordinator.human_legal_choices()
+        human_explosion = next(
+            (
+                choice
+                for choice in human_legal
+                if choice.count("move explosion") == 2
+            ),
+            None,
+        )
+        if human_explosion is None:
+            raise SystemExit(
+                f"ERROR: human self-KO setup lacks double Explosion: {human_legal}"
+            )
+
+        first = coordinator.lock_ai_action()
+        first_result = coordinator.commit_human_action(
+            token=first.token,
+            human_choice=human_explosion,
+        )
+        if first_result.terminal:
+            raise SystemExit(
+                "ERROR: human self-KO turn ended battle before replacements"
+            )
+
+        human_force = coordinator.human_legal_choices()
+        replacement = next(
+            (
+                choice
+                for choice in human_force
+                if choice.count("switch ") == 2
+            ),
+            None,
+        )
+        if replacement is None:
+            raise SystemExit(
+                f"ERROR: human side did not enter forced-switch phase: {human_force}"
+            )
+
+        ai_wait = coordinator._ai_legal_choices()
+        if ai_wait != [""]:
+            raise SystemExit(
+                f"ERROR: waiting AI did not expose one empty choice: {ai_wait}"
+            )
+
+        forced = coordinator.lock_ai_action()
+        sealed = coordinator._sealed_decision
+        if sealed is None or sealed[1].mode != "forced-wait":
+            raise SystemExit(
+                "ERROR: human forced switch did not seal immediate AI wait"
+            )
+
+        forced_result = coordinator.commit_human_action(
+            token=forced.token,
+            human_choice=replacement,
+        )
+        if forced_result.terminal:
+            raise SystemExit(
+                "ERROR: human forced replacement incorrectly ended battle"
+            )
+        if coordinator.turn_state is not SealedTurnState.RESOLVED:
+            raise SystemExit(
+                "ERROR: human forced replacement did not resolve cleanly"
+            )
+        if forced_result.decision.choice != "":
+            raise SystemExit(
+                "ERROR: waiting AI submitted a non-empty forced-switch choice"
+            )
+
+        print("Human forced-switch / AI-wait choice: <empty>")
+    finally:
+        coordinator.close()
+
+
 def main() -> None:
     with ShowdownSearchWorker() as worker:
         coordinator = _BeliefBattleCoordinator(
@@ -181,6 +290,9 @@ def main() -> None:
             print("RESULT: forced switch and terminal sealing transitions passed")
         finally:
             coordinator.close()
+
+    with ShowdownSearchWorker() as worker:
+        _run_human_forced_switch_ai_wait(worker)
 
 
 if __name__ == "__main__":

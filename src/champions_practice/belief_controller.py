@@ -1366,9 +1366,20 @@ class _BeliefBattleCoordinator:
             self._turn_state = SealedTurnState.COMPUTING
 
         try:
-            decision = self._engine.choose_ai_action(
-                legal_live=self._ai_legal_choices(),
-            )
+            legal_live = self._ai_legal_choices()
+            if legal_live == [""]:
+                decision = BeliefDecision(
+                    choice="",
+                    mode="forced-wait",
+                    particle_count=len(self._engine.particles),
+                    candidate_count=1,
+                    branch_count=0,
+                    elapsed_seconds=0.0,
+                )
+            else:
+                decision = self._engine.choose_ai_action(
+                    legal_live=legal_live,
+                )
             token = secrets.token_urlsafe(18)
         except Exception:
             with self._state_lock:

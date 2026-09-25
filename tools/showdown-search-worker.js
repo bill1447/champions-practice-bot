@@ -511,7 +511,13 @@ function validateChoices(state, sideId, candidates) {
       try {
         side.clearChoice();
         if (candidate === "") {
-          if (side.requestState === "") legal.add("");
+          if (
+            side.requestState === "" ||
+            !side.activeRequest ||
+            side.activeRequest.wait
+          ) {
+            legal.add("");
+          }
           continue;
         }
         if (!side.choose(candidate) || !side.isChoiceDone()) continue;
