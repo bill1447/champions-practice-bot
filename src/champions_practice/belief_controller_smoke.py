@@ -130,6 +130,48 @@ def main() -> None:
         print("Human client received AI-side private view: NO")
         print("RESULT: sealed facade drives persistent decisions across live turns")
 
+    # Keep the deadline fallback on the same public sealed API used by the demo. A
+    # microscopic budget must reveal only a legal fallback after the human commits.
+    with SealedBattleFacade(
+        battle_format=CHAMPIONS_FORMAT,
+        ai_team=SMOKE_TEAM,
+        ai_preview_choice=AI_PREVIEW,
+        opponent_priors=_public_priors(),
+        world_limit=1,
+        particles_per_world=1,
+        max_particles=1,
+        candidate_limit=1,
+        response_limit=1,
+        decision_budget_seconds=1e-9,
+        conditioning_budget_seconds=1e-9,
+        particle_seed=5302,
+    ) as fallback_battle:
+        fallback_battle.start(
+            opponent_team=SMOKE_TEAM,
+            p1_name="Fallback Human",
+            p2_name="Fallback AI",
+            session_seed=LIVE_SEED,
+        )
+        fallback_battle.commit_preview(human_choice=HUMAN_PREVIEW)
+        ready = fallback_battle.lock_ai_action()
+        if hasattr(ready, "choice") or "move " in repr(ready):
+            raise SystemExit("ERROR: sealed fallback payload leaked before human commit")
+        fallback_update = fallback_battle.commit_human_action(
+            token=ready.token,
+            human_choice=HUMAN_TURN_ONE,
+        )
+        fallback = fallback_update.decision
+        if fallback.mode != "fallback":
+            raise SystemExit("ERROR: tiny decision budget did not trigger fallback")
+        if fallback.fallback_reason != "belief-search-deadline":
+            raise SystemExit(
+                "ERROR: unexpected deadline fallback reason: "
+                f"{fallback.fallback_reason}"
+            )
+
+        print(f"Tiny-budget sealed fallback: {fallback.choice}")
+        print("RESULT: public facade preserves deadline fallback behavior")
+
 
 if __name__ == "__main__":
     main()
