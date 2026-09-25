@@ -470,6 +470,51 @@ def _family_diverse_response_shortlist(
     return tuple(selected)
 
 
+def _candidate_specific_response_counters(
+    worker: BeliefSearchWorker,
+    *,
+    state: dict[str, Any],
+    opponent: SideId,
+    families,
+    candidate_references: list[str],
+    limit: int,
+) -> tuple[tuple[str, ...], int]:
+    """Keep one strongest exact reply for each AI candidate while budget allows."""
+    representatives = [family.representative for family in families]
+    by_representative = {family.representative: family for family in families}
+    selected: list[str] = []
+    branch_count = 0
+
+    for reference in candidate_references:
+        family_screening = search_exact_turn(
+            worker,
+            state=state,
+            side=opponent,
+            choices=representatives,
+            opponent_responses=[reference],
+            rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
+        )
+        branch_count += family_screening.branch_count
+        family = by_representative[family_screening.chosen.choice]
+
+        target_screening = search_exact_turn(
+            worker,
+            state=state,
+            side=opponent,
+            choices=list(family.choices),
+            opponent_responses=[reference],
+            rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
+        )
+        branch_count += target_screening.branch_count
+        counter = target_screening.chosen.choice
+        if counter not in selected:
+            selected.append(counter)
+            if len(selected) >= limit:
+                break
+
+    return tuple(selected), branch_count
+
+
 def shortlist_belief_responses(
     worker: BeliefSearchWorker,
     *,
@@ -480,7 +525,7 @@ def shortlist_belief_responses(
     legal_responses: list[str] | None = None,
     reference_limit: int = 1,
 ) -> BeliefResponsePruning:
-    """Select dangerous, strategically diverse opponent replies in one belief world."""
+    """Select dangerous replies while protecting a best counter to each AI candidate."""
     if response_limit <= 0:
         raise ValueError("response_limit must be positive")
     if not candidate_references:
@@ -498,6 +543,24 @@ def shortlist_belief_responses(
         raise ValueError("opponent has no legal responses in belief world")
     families = _strategy_families(responses)
     representatives = [family.representative for family in families]
+
+    protected, protected_branch_count = _candidate_specific_response_counters(
+        worker,
+        state=world.state,
+        opponent=opponent,
+        families=families,
+        candidate_references=candidate_references,
+        limit=response_limit,
+    )
+    if len(protected) >= response_limit:
+        return BeliefResponsePruning(
+            legal_response_count=len(responses),
+            strategic_response_count=len(families),
+            response_shortlist=protected,
+            screening_branch_count=protected_branch_count,
+            screening_seconds=perf_counter() - screening_started,
+        )
+
     # The final matrix still uses every requested RNG future. This is only the cheap
     # per-world funnel, so one shared reference and seed are enough to rank broad plans
     # before their targeting variants receive a second screening pass.
@@ -536,16 +599,28 @@ def shortlist_belief_responses(
         by_representative[representative]
         for representative in representative_shortlist
     ]
-    shortlist = _family_diverse_response_shortlist(
+    fallback = _family_diverse_response_shortlist(
         target_screening.ranking,
         retained_families,
         limit=response_limit,
     )
+    shortlist = list(protected)
+    for response in fallback:
+        if response in shortlist:
+            continue
+        shortlist.append(response)
+        if len(shortlist) >= response_limit:
+            break
+
     return BeliefResponsePruning(
         legal_response_count=len(responses),
         strategic_response_count=len(families),
-        response_shortlist=shortlist,
-        screening_branch_count=(family_screening.branch_count + target_screening.branch_count),
+        response_shortlist=tuple(shortlist),
+        screening_branch_count=(
+            protected_branch_count
+            + family_screening.branch_count
+            + target_screening.branch_count
+        ),
         screening_seconds=perf_counter() - screening_started,
     )
 
