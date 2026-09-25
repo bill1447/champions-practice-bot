@@ -9,6 +9,7 @@ from champions_practice.belief_search import (
     search_exact_belief_turn,
     search_selective_continuation,
     shortlist_belief_candidates,
+    shortlist_belief_responses,
 )
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_smoke import _hidden_variant_team, _public_priors
@@ -85,8 +86,56 @@ def _world_states(worker, belief, worlds):
     return tuple(reconstructed)
 
 
+def _assert_demo_redirection_counter(worker: ShowdownSearchWorker) -> None:
+    state = worker.create_state(
+        battle_format=CHAMPIONS_FORMAT,
+        p1_team=SMOKE_TEAM,
+        p2_team=SMOKE_TEAM,
+        p1_preview="team 1324",
+        p2_preview="team 2135",
+        p1_name="Human",
+        p2_name="Practice AI",
+        seed=SEED,
+    )
+    ai_choices = worker.legal_choices(state=state, side="p2")
+    human_choices = worker.legal_choices(state=state, side="p1")
+
+    dire_claw_switch = next(
+        choice
+        for choice in ai_choices
+        if "move direclaw +2" in choice and "switch 4" in choice
+    )
+    safe_reference = next(
+        choice
+        for choice in ai_choices
+        if "move protect" in choice and "move followme" in choice
+    )
+    human_punish = next(
+        choice
+        for choice in human_choices
+        if "move followme" in choice and "move expandingforce +1" in choice
+    )
+
+    pruning = shortlist_belief_responses(
+        worker,
+        world=ExactBeliefWorldState(
+            state=state,
+            weight=1.0,
+            label="demo-turn-one",
+        ),
+        ai_side="p2",
+        candidate_references=[safe_reference, dire_claw_switch],
+        response_limit=2,
+    )
+    if human_punish not in pruning.response_shortlist:
+        raise SystemExit(
+            "ERROR: response pruning dropped the demo Follow Me + Expanding Force punish"
+        )
+
+
 def main() -> None:
     with ShowdownSearchWorker() as worker:
+        _assert_demo_redirection_counter(worker)
         standard_id, standard_view = _start_ai_view(worker, SMOKE_TEAM)
         variant_id, variant_view = _start_ai_view(worker, _hidden_variant_team())
 
