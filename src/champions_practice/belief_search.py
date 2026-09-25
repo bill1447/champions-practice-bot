@@ -135,6 +135,10 @@ class BeliefSearchResult:
     branch_count: int
     response_screening_branch_count: int
     timing: BeliefSearchTiming = field(compare=False)
+    response_shortlists: tuple[tuple[str, ...], ...] = field(
+        default=(),
+        compare=False,
+    )
 
 
 @dataclass(frozen=True)
@@ -740,6 +744,7 @@ def search_exact_belief_turn(
     response_screening_seconds = 0.0
     branch_seconds = 0.0
     scoring_seconds = 0.0
+    used_response_shortlists: list[tuple[str, ...]] = []
 
     for world_index, world in enumerate(worlds):
         response_legal_started = perf_counter()
@@ -770,6 +775,7 @@ def search_exact_belief_turn(
             responses = responses[:response_limit]
         if not responses:
             raise ValueError(f"opponent has no legal responses in belief world {world_index}")
+        used_response_shortlists.append(tuple(responses))
 
         requested: list[dict[str, str]] = []
         metadata: list[tuple[str, str, str | None]] = []
@@ -893,6 +899,7 @@ def search_exact_belief_turn(
             legal_cache_hits=legal_cache_hits,
             legal_cache_misses=legal_cache_misses,
         ),
+        response_shortlists=tuple(used_response_shortlists),
     )
 
 
