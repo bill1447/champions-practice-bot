@@ -221,6 +221,47 @@ def _legal_action_payload(
     ]
 
 
+_FIELD_LABELS = {
+    "electricterrain": "Electric Terrain",
+    "grassyterrain": "Grassy Terrain",
+    "mistyterrain": "Misty Terrain",
+    "psychicterrain": "Psychic Terrain",
+    "raindance": "Rain",
+    "sunnyday": "Sun",
+    "sandstorm": "Sandstorm",
+    "snow": "Snow",
+    "hail": "Hail",
+    "trickroom": "Trick Room",
+    "gravity": "Gravity",
+    "magicroom": "Magic Room",
+    "wonderroom": "Wonder Room",
+}
+
+
+def _field_status(view: dict | None) -> str:
+    if not isinstance(view, dict):
+        return "Field: —"
+    field = view.get("field")
+    if not isinstance(field, dict):
+        return "Field: —"
+
+    active: list[str] = []
+    for key in ("terrain", "weather"):
+        value = field.get(key)
+        if isinstance(value, str) and value:
+            active.append(_FIELD_LABELS.get(value, value))
+
+    pseudo_weather = field.get("pseudo_weather")
+    if isinstance(pseudo_weather, list):
+        active.extend(
+            _FIELD_LABELS.get(value, value)
+            for value in pseudo_weather
+            if isinstance(value, str) and value
+        )
+
+    return "Field: " + (" · ".join(active) if active else "Neutral")
+
+
 def _default_facade() -> SealedBattleFacade:
     return SealedBattleFacade(
         battle_format=CHAMPIONS_FORMAT,
@@ -256,6 +297,7 @@ class DemoBattleSession:
                 "ai_ready": False,
                 "can_reconcile": False,
                 "public_view": None,
+                "field_status": "Field: —",
                 "legal_choices": [],
                 "legal_actions": [],
                 "history": list(self._history),
@@ -283,6 +325,7 @@ class DemoBattleSession:
                 self._ready_token is not None and turn_state == "failed"
             ),
             "public_view": self._last_public_view,
+            "field_status": _field_status(self._last_public_view),
             "public_view_error": public_view_error,
             "legal_choices": legal_choices,
             "legal_actions": _legal_action_payload(
@@ -467,6 +510,7 @@ pre {
 
 <section class="panel">
   <div>Status: <span id="status" class="status">loading</span></div>
+  <div id="fieldState" class="muted">Field: —</div>
   <div id="error" class="error"></div>
   <div id="hint" class="muted"></div>
 </section>
@@ -597,6 +641,8 @@ function render(next) {
   const turnState = state.turn_state || "new";
   document.getElementById("status").textContent =
     state.started ? turnState.toUpperCase() : "NOT STARTED";
+  document.getElementById("fieldState").textContent =
+    state.field_status || "Field: —";
   const viewError = state.public_view_error ? ` · view read: ${state.public_view_error}` : "";
   document.getElementById("hint").textContent = hintFor(turnState) + viewError;
   document.getElementById("raw").textContent =
