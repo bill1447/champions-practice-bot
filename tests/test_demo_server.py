@@ -233,3 +233,20 @@ def test_turn_choice_label_names_moves_targets_mega_and_switches() -> None:
         "Sneasler: switch → Gardevoir | Indeedee-F: Trick Room"
     )
 
+def test_end_battle_closes_facade_and_preserves_committed_history() -> None:
+    facade = FakeFacade()
+    session = DemoBattleSession(facade_factory=lambda: facade)
+    session.start()
+    session.commit_preview("team 1234")
+    session.lock_ai_action()
+    session.commit_human_action("move human")
+
+    ended = session.end_battle()
+
+    assert facade.closed is True
+    assert ended["started"] is False
+    assert ended["turn_state"] == "ended"
+    assert ended["ai_ready"] is False
+    assert ended["legal_choices"] == []
+    assert ended["history"][0]["decision"]["choice"] == "move secret-ai"
+
