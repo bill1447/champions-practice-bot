@@ -11,6 +11,7 @@ from typing import Any
 
 
 _VERIFIED_SHOWDOWN_ROOTS: dict[Path, str] = {}
+_ACTIVE_SHOWDOWN_PROCESSES: dict[int, subprocess.Popen[str]] = {}
 _BUILD_STAMP_NAME = "showdown-build.json"
 
 
@@ -162,6 +163,18 @@ def verify_showdown_checkout(
     return actual
 
 
+def active_showdown_worker_pids() -> tuple[int, ...]:
+    """Return currently live Node worker PIDs, pruning completed processes."""
+    finished = [
+        pid
+        for pid, process in _ACTIVE_SHOWDOWN_PROCESSES.items()
+        if process.poll() is not None
+    ]
+    for pid in finished:
+        _ACTIVE_SHOWDOWN_PROCESSES.pop(pid, None)
+    return tuple(sorted(_ACTIVE_SHOWDOWN_PROCESSES))
+
+
 class HypotheticalSearchWorker:
     """Restricted worker surface for exact hypothetical states only.
 
@@ -289,6 +302,7 @@ class ShowdownSearchWorker:
             encoding="utf-8",
             bufsize=1,
         )
+        _ACTIVE_SHOWDOWN_PROCESSES[self._process.pid] = self._process
 
     def request(self, op: str, **payload: Any) -> dict[str, Any]:
         if self._process.poll() is not None:
