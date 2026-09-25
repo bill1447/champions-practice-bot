@@ -1,12 +1,16 @@
+from concurrent.futures import ThreadPoolExecutor
+from threading import Event
 from types import SimpleNamespace
 
 import pytest
 
 from champions_practice.belief_controller import (
-    BeliefBattleController,
     BeliefDecision,
     BeliefDecisionEngine,
+    SealedBattleFacade,
     SealedDecisionReady,
+    SealedTurnState,
+    _BeliefBattleCoordinator,
     _pin_known_team_genders,
     choose_public_fallback,
 )
@@ -55,6 +59,8 @@ class _CoordinatorWorker:
         self.closed = []
         self.public_view = {
             "turn": 1,
+            "ended": False,
+            "winner": None,
             "opponent": {"preview_species": ["FoeA", "FoeB"]},
             "player": {
                 "team": [{"species": "OwnA"}, {"species": "OwnB"}],
@@ -71,8 +77,12 @@ class _CoordinatorWorker:
         return {}
 
     def session_view(self, session_id, *, side):
-        assert side == "p2"
-        return {"view": self.public_view}
+        view = {
+            **self.public_view,
+            "ended": self.public_view.get("ended", False),
+            "winner": self.public_view.get("winner"),
+        }
+        return {"view": view}
 
     def session_legal_choices(self, session_id, *, side):
         if side == "p1":
@@ -85,7 +95,7 @@ class _CoordinatorWorker:
 
 def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> None:
     worker = _CoordinatorWorker()
-    controller = BeliefBattleController(
+    controller = _BeliefBattleCoordinator(
         worker,
         battle_format="test",
         ai_team="own-team",
@@ -99,7 +109,7 @@ def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> 
         return view
 
     monkeypatch.setattr(
-        controller.engine,
+        controller._engine,
         "initialize_preview",
         initialize_preview,
     )
@@ -122,13 +132,14 @@ def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> 
 
 def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     worker = _CoordinatorWorker()
-    controller = BeliefBattleController(
+    controller = _BeliefBattleCoordinator(
         worker,
         battle_format="test",
         ai_team="own-team",
         opponent_priors={},
     )
-    controller.session_id = "live-1"
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
     secret = BeliefDecision(
         choice="move secret-ai",
         mode="belief-search",
@@ -139,16 +150,23 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
         strategic_plan="secret-plan",
     )
     monkeypatch.setattr(
-        controller,
+        controller._engine,
         "choose_ai_action",
-        lambda: secret,
+        lambda *, legal_live: secret,
     )
     monkeypatch.setattr(
-        controller.engine,
+        controller._engine,
         "observe_public_turn",
         lambda *, decision, view: SimpleNamespace(
             decision=decision,
             public_view=view,
+            particles_before=3,
+            particles_after=3,
+            generated_branches=4,
+            matched_branches=2,
+            conditioning_seconds=0.01,
+            conditioning_over_budget=False,
+            degraded=False,
         ),
     )
 
@@ -162,13 +180,13 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     assert worker.submissions == []
 
     with pytest.raises(ValueError, match="live-session legal"):
-        controller.resolve_locked_turn(
+        controller.commit_human_action(
             token=ready.token,
             human_choice="move illegal",
         )
     assert worker.submissions == []
 
-    update = controller.resolve_locked_turn(
+    update = controller.commit_human_action(
         token=ready.token,
         human_choice="move human",
     )
@@ -225,37 +243,25 @@ Level: 50
     assert "Gender:" not in pinned
 
 
-class _ZeroMatchWorker:
-    project_root = "."
-
-    def choose_session(self, session_id, *, p1_choice, p2_choice):
-        return None
-
-    def session_view(self, session_id, *, side):
-        return {"view": {"turn": 2, "opponent": {}, "player": {}, "request": {}}}
-
-
 def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> None:
-    worker = _ZeroMatchWorker()
-    controller = BeliefBattleController(
-        worker,
+    engine = BeliefDecisionEngine(
+        ".",
         battle_format="test",
         ai_team="team",
         opponent_priors={},
     )
-    controller.session_id = "session-1"
-    controller.previews = {"p1": [], "p2": []}
+    engine.previews = {"p1": [], "p2": []}
     original = (
         BeliefParticle({"turn": 1}, 1.0, world_id="world-1", history_id="rng-1"),
     )
-    controller.particles = original
-    controller._run_with_deadline = lambda operation, timeout_seconds: (
+    engine.particles = original
+    engine._run_until_deadline = lambda operation, deadline: (
         ParticleUpdate((), 12, 0, 0),
         False,
     )
 
-    update = controller.resolve_turn(
-        human_choice="move a",
+    update = engine.observe_public_turn(
+        view={"turn": 2, "opponent": {}, "player": {}, "request": {}},
         decision=BeliefDecision(
             choice="move b",
             mode="test",
@@ -266,33 +272,25 @@ def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> Non
         ),
     )
 
-    assert controller.particles == original
-    assert controller.degraded is True
-    assert len(controller.pending_observations) == 1
+    assert engine.particles == original
+    assert engine.degraded is True
+    assert len(engine.pending_observations) == 1
     assert update.particles_after == 1
     assert update.matched_branches == 0
 
 
 
-class _DecisionWorker:
-    project_root = "."
-
-    def session_legal_choices(self, session_id, *, side):
-        return ["move safe"]
-
-
-def _decision_controller() -> BeliefBattleController:
-    controller = BeliefBattleController(
-        _DecisionWorker(),
+def _decision_engine() -> BeliefDecisionEngine:
+    engine = BeliefDecisionEngine(
+        ".",
         battle_format="test",
         ai_team="team",
         opponent_priors={},
         candidate_limit=4,
         response_limit=4,
     )
-    controller.session_id = "session-1"
-    controller.last_public_view = {"turn": 2}
-    controller.particles = (
+    engine.last_public_view = {"turn": 2}
+    engine.particles = (
         BeliefParticle(
             {"id": "world"},
             1.0,
@@ -300,14 +298,21 @@ def _decision_controller() -> BeliefBattleController:
             history_id="rng-1",
         ),
     )
-    controller._run_with_deadline = lambda operation, timeout_seconds: (
+    engine._run_until_deadline = lambda operation, deadline: (
         operation(SimpleNamespace()),
         False,
     )
-    return controller
+    return engine
 
 
-def _patch_live_strategy_pipeline(monkeypatch, *, selected):
+def _patch_live_strategy_pipeline(
+    monkeypatch,
+    *,
+    selected,
+    baseline_choices=("move safe",),
+    guided_choices=("move safe",),
+    final_choice="move safe",
+):
     plan = StrategicPlan(
         name="preserve-key",
         objective="preserve the key resource",
@@ -315,11 +320,12 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         tactical_priorities=("prefer-protect",),
     )
     probe_candidate = SimpleNamespace(
-        choice="move safe",
+        choice=guided_choices[0],
         evaluation=SimpleNamespace(robust=True),
     )
     probe = SimpleNamespace(
         plan=plan,
+        chosen=probe_candidate,
         sampled_robust=True,
         pruning=SimpleNamespace(screening_branch_count=5),
         response_screening_branch_count=0,
@@ -343,6 +349,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
     def fake_probe(*args, **kwargs):
         seen["rng_seeds"] = kwargs.get("rng_seeds")
         seen["shared_responses"] = kwargs.get("shared_responses")
+        seen["prepared_pruning"] = kwargs.get("prepared_pruning")
         return probe
 
     monkeypatch.setattr(
@@ -359,6 +366,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         seen["shared_candidate_references"] = kwargs.get(
             "candidate_references"
         )
+        seen["shared_response_limit"] = kwargs.get("response_limit")
         seen["shared_rng_seeds"] = kwargs.get("rng_seeds")
         return shared_responses
 
@@ -379,10 +387,14 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         guidance_value = kwargs.get("guidance")
         seen["guidance"] = guidance_value
         seen.setdefault("pruning_guidance", []).append(guidance_value)
-        return SimpleNamespace(
-            candidate_shortlist=("move safe",),
+        choices = baseline_choices if guidance_value is None else guided_choices
+        pruning = SimpleNamespace(
+            candidate_shortlist=tuple(choices),
             screening_branch_count=2,
         )
+        if guidance_value is not None:
+            seen["guided_pruning"] = pruning
+        return pruning
 
     monkeypatch.setattr(
         "champions_practice.belief_controller.shortlist_belief_candidates",
@@ -392,10 +404,18 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         seen.setdefault("search_rng_seeds", []).append(
             kwargs.get("rng_seeds")
         )
+        seen.setdefault("search_choices", []).append(
+            tuple(kwargs.get("choices") or ())
+        )
+        seen.setdefault("search_response_shortlists", []).append(
+            kwargs.get("response_shortlists")
+        )
+        is_final = kwargs.get("response_shortlists") is not None
+        choice = final_choice if is_final else baseline_choices[0]
         return SimpleNamespace(
-            chosen=SimpleNamespace(choice="move safe"),
-            evaluated_choices=("move safe",),
-            response_screening_branch_count=3,
+            chosen=SimpleNamespace(choice=choice),
+            evaluated_choices=tuple(kwargs.get("choices") or (choice,)),
+            response_screening_branch_count=0 if is_final else 3,
             branch_count=4,
         )
 
@@ -407,51 +427,52 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
 
 
 def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkeypatch) -> None:
-    controller = _decision_controller()
-    _, probe, _, seen = _patch_live_strategy_pipeline(
+    engine = _decision_engine()
+    _, probe, guidance, seen = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=False,
     )
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert decision.choice == "move safe"
     assert decision.mode == "belief-search"
     assert decision.strategic_plan is None
     assert decision.strategic_probe_count == 1
-    assert decision.strategic_branch_count == 23
+    assert decision.strategic_branch_count == 20
     assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["shared_responses"] is not None
     assert seen["shared_candidate_references"] == ("move safe",)
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
-    assert seen["guidance"] is None
-    assert seen["pruning_guidance"] == [None]
+    assert seen["guidance"] == guidance
+    assert seen["pruning_guidance"] == [None, guidance]
+    assert seen["prepared_pruning"] is seen["guided_pruning"]
     assert seen["search_rng_seeds"] == [None]
-    assert decision.branch_count == 32
+    assert decision.branch_count == 29
 
 
 def test_strategy_timeout_never_replaces_completed_tactical_result(monkeypatch) -> None:
-    controller = _decision_controller()
-    controller.decision_budget_seconds = 8.0
+    engine = _decision_engine()
+    engine.decision_budget_seconds = 8.0
     _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
     )
     calls = []
 
-    def staged_deadline(operation, *, timeout_seconds):
-        calls.append(timeout_seconds)
+    def staged_deadline(operation, *, deadline):
+        calls.append(deadline)
         if len(calls) == 1:
             return operation(SimpleNamespace()), False
         return None, True
 
-    controller._run_with_deadline = staged_deadline
+    engine._run_until_deadline = staged_deadline
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert len(calls) == 2
-    assert 0 < calls[1] <= calls[0] <= 8.0
+    assert calls[1] == calls[0]
     assert decision.choice == "move safe"
     assert decision.mode == "belief-search"
     assert decision.fallback_reason is None
@@ -461,23 +482,23 @@ def test_strategy_timeout_never_replaces_completed_tactical_result(monkeypatch) 
 
 
 def test_strategy_error_never_replaces_completed_tactical_result(monkeypatch) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
     )
     calls = 0
 
-    def staged_deadline(operation, *, timeout_seconds):
+    def staged_deadline(operation, *, deadline):
         nonlocal calls
         calls += 1
         if calls == 1:
             return operation(SimpleNamespace()), False
         raise RuntimeError("strategy exploded")
 
-    controller._run_with_deadline = staged_deadline
+    engine._run_until_deadline = staged_deadline
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert calls == 2
     assert decision.choice == "move safe"
@@ -490,7 +511,7 @@ def test_strategy_error_never_replaces_completed_tactical_result(monkeypatch) ->
 def test_controller_does_not_report_plan_when_final_action_misses_guidance(
     monkeypatch,
 ) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     plan, probe, _, _ = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
@@ -504,19 +525,19 @@ def test_controller_does_not_report_plan_when_final_action_misses_guidance(
         lambda selected_plan, view: mismatched,
     )
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert probe.ranking[0].evaluation.robust is True
     assert decision.choice == "move safe"
     assert decision.strategic_plan is None
     assert decision.mode == "belief-search"
-    assert decision.branch_count == 41
+    assert decision.branch_count == 33
 
 
 def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
     monkeypatch,
 ) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     plan, probe, guidance, _ = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
@@ -527,23 +548,23 @@ def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
     )
     probe.ranking = (unproven,)
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert guidance.preferred_move_ids == ("safe",)
     assert decision.choice == "move safe"
     assert decision.strategic_plan is None
     assert decision.mode == "belief-search"
-    assert decision.branch_count == 41
+    assert decision.branch_count == 33
 
 
 def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypatch) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     plan, _, guidance, seen = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
     )
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert decision.choice == "move safe"
     assert decision.strategic_plan == plan.name
@@ -555,5 +576,515 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance
     assert seen["pruning_guidance"] == [None, guidance]
+    assert seen["prepared_pruning"] is seen["guided_pruning"]
     assert seen["search_rng_seeds"] == [None, SCREENING_RNG_SEEDS]
-    assert decision.branch_count == 41
+    assert seen["search_response_shortlists"][1] == (("move counter",),)
+    assert decision.branch_count == 33
+
+
+
+def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence(
+    monkeypatch,
+) -> None:
+    engine = _decision_engine()
+    _, probe, _, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+        baseline_choices=("move baseline",),
+        guided_choices=("move guided",),
+        final_choice="move baseline",
+    )
+
+    decision = engine.choose_ai_action(
+        legal_live=["move baseline", "move guided"],
+    )
+
+    assert probe.ranking[0].choice == "move guided"
+    assert seen["shared_candidate_references"] == (
+        "move baseline",
+        "move guided",
+    )
+    assert seen["shared_response_limit"] == engine.response_limit
+    assert seen["shared_response_limit"] > engine.strategic_response_limit
+    assert seen["search_choices"] == [
+        ("move baseline",),
+        ("move baseline", "move guided"),
+    ]
+    assert seen["search_response_shortlists"][1] == (("move counter",),)
+    assert seen["search_rng_seeds"][1] == SCREENING_RNG_SEEDS
+    assert decision.choice == "move baseline"
+    assert decision.strategic_plan is None
+
+
+
+def _stub_sealed_engine(
+    controller,
+    monkeypatch,
+    *,
+    choice="move secret-ai",
+):
+    decision = BeliefDecision(
+        choice=choice,
+        mode="belief-search",
+        particle_count=3,
+        candidate_count=2,
+        branch_count=10,
+        elapsed_seconds=0.1,
+        strategic_plan="secret-plan",
+    )
+    monkeypatch.setattr(
+        controller._engine,
+        "choose_ai_action",
+        lambda *, legal_live: decision,
+    )
+    monkeypatch.setattr(
+        controller._engine,
+        "observe_public_turn",
+        lambda *, decision, view: SimpleNamespace(
+            decision=decision,
+            public_view=view,
+            particles_before=3,
+            particles_after=3,
+            generated_branches=4,
+            matched_branches=2,
+            conditioning_seconds=0.01,
+            conditioning_over_budget=False,
+            degraded=False,
+        ),
+    )
+    return decision
+
+
+def test_concurrent_double_lock_allows_only_one_computation(monkeypatch) -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    started = Event()
+    release = Event()
+    secret = BeliefDecision(
+        choice="move secret-ai",
+        mode="belief-search",
+        particle_count=1,
+        candidate_count=1,
+        branch_count=1,
+        elapsed_seconds=0.1,
+    )
+
+    def slow_choose(*, legal_live):
+        started.set()
+        assert release.wait(timeout=2)
+        return secret
+
+    monkeypatch.setattr(
+        controller._engine,
+        "choose_ai_action",
+        slow_choose,
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(controller.lock_ai_action)
+        assert started.wait(timeout=1)
+        second = pool.submit(controller.lock_ai_action)
+        with pytest.raises(RuntimeError, match="computing"):
+            second.result(timeout=1)
+        release.set()
+        ready = first.result(timeout=2)
+
+    assert ready.token
+    assert controller.turn_state is SealedTurnState.LOCKED
+
+
+class _BlockingCommitWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.submit_started = Event()
+        self.release_submit = Event()
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.submit_started.set()
+        assert self.release_submit.wait(timeout=2)
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        return {}
+
+
+def test_concurrent_repeated_commit_submits_once(monkeypatch) -> None:
+    worker = _BlockingCommitWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            controller.commit_human_action,
+            token=ready.token,
+            human_choice="move human",
+        )
+        assert worker.submit_started.wait(timeout=1)
+        second = pool.submit(
+            controller.commit_human_action,
+            token=ready.token,
+            human_choice="move human",
+        )
+        with pytest.raises(RuntimeError, match="submitting"):
+            second.result(timeout=1)
+        worker.release_submit.set()
+        result = first.result(timeout=2)
+
+    assert result.decision.choice == "move secret-ai"
+    assert worker.submissions == [
+        ("live-1", "move human", "move secret-ai"),
+    ]
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _FailBeforeAdvanceWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.fail_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        if self.fail_once:
+            self.fail_once = False
+            raise RuntimeError("submission failed before advance")
+        return super().choose_session(
+            session_id,
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+        )
+
+
+def test_submission_failure_before_advance_retains_lock_for_retry(monkeypatch) -> None:
+    worker = _FailBeforeAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="before advance"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.LOCKED
+    result = controller.commit_human_action(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert result.decision.choice == "move secret-ai"
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _FailAfterAdvanceWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        raise RuntimeError("response lost after live advance")
+
+
+def test_submission_error_after_advance_is_reconciled_without_resubmit(
+    monkeypatch,
+) -> None:
+    worker = _FailAfterAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    result = controller.commit_human_action(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert result.decision.choice == "move secret-ai"
+    assert len(worker.submissions) == 1
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _ViewFailureAfterAdvanceWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.after_submit = False
+        self.fail_view_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        self.after_submit = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.after_submit and side == "p2" and self.fail_view_once:
+            self.fail_view_once = False
+            raise RuntimeError("post-submit view unavailable")
+        return super().session_view(session_id, side=side)
+
+
+def test_failed_post_submit_view_can_reconcile_without_second_submission(
+    monkeypatch,
+) -> None:
+    worker = _ViewFailureAfterAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="post-submit view unavailable"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.FAILED
+    recovered = controller.reconcile_failed_turn(token=ready.token)
+
+    assert recovered.decision.choice == "move secret-ai"
+    assert len(worker.submissions) == 1
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _BlockingReconcileWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.after_submit = False
+        self.post_submit_reads = 0
+        self.reconcile_started = Event()
+        self.release_reconcile = Event()
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        self.after_submit = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.after_submit and side == "p2":
+            self.post_submit_reads += 1
+            if self.post_submit_reads == 1:
+                raise RuntimeError("post-submit view unavailable")
+            if self.post_submit_reads == 2:
+                self.reconcile_started.set()
+                assert self.release_reconcile.wait(timeout=2)
+        return super().session_view(session_id, side=side)
+
+
+def test_concurrent_failed_turn_reconciliation_runs_once(monkeypatch) -> None:
+    worker = _BlockingReconcileWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="post-submit view unavailable"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.FAILED
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            controller.reconcile_failed_turn,
+            token=ready.token,
+        )
+        assert worker.reconcile_started.wait(timeout=1)
+        second = pool.submit(
+            controller.reconcile_failed_turn,
+            token=ready.token,
+        )
+        with pytest.raises(RuntimeError, match="submitting"):
+            second.result(timeout=1)
+        worker.release_reconcile.set()
+        result = first.result(timeout=2)
+
+    assert result.decision.choice == "move secret-ai"
+    assert worker.post_submit_reads == 2
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _HumanViewFailureAfterConditioningWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.after_submit = False
+        self.fail_human_view_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        self.after_submit = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.after_submit and side == "p1" and self.fail_human_view_once:
+            self.fail_human_view_once = False
+            raise RuntimeError("human post-submit view unavailable")
+        return super().session_view(session_id, side=side)
+
+
+def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> None:
+    worker = _HumanViewFailureAfterConditioningWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+    observed = 0
+
+    def count_observation(*, decision, view):
+        nonlocal observed
+        observed += 1
+        return SimpleNamespace(
+            decision=decision,
+            public_view=view,
+            particles_before=3,
+            particles_after=3,
+            generated_branches=4,
+            matched_branches=2,
+            conditioning_seconds=0.01,
+            conditioning_over_budget=False,
+            degraded=False,
+        )
+
+    monkeypatch.setattr(
+        controller._engine,
+        "observe_public_turn",
+        count_observation,
+    )
+
+    with pytest.raises(RuntimeError, match="human post-submit view unavailable"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.FAILED
+    assert observed == 0
+
+    result = controller.reconcile_failed_turn(token=ready.token)
+
+    assert result.decision.choice == "move secret-ai"
+    assert observed == 1
+    assert len(worker.submissions) == 1
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _TerminalCommitWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+            "ended": True,
+            "winner": "Human",
+        }
+        return {}
+
+
+def test_terminal_resolution_blocks_another_ai_lock(monkeypatch) -> None:
+    worker = _TerminalCommitWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    result = controller.commit_human_action(
+        token=ready.token,
+        human_choice="move human",
+    )
+
+    assert result.terminal is True
+    assert result.winner == "Human"
+    assert controller.turn_state is SealedTurnState.TERMINAL
+    with pytest.raises(RuntimeError, match="terminal"):
+        controller.lock_ai_action()
+
+
+def test_demo_facade_exposes_no_direct_decision_or_live_session_handles(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.ShowdownSearchWorker",
+        lambda project_root=None: _CoordinatorWorker(),
+    )
+    facade = SealedBattleFacade(
+        battle_format="test",
+        ai_team="own-team",
+        ai_preview_choice="team 1234",
+        opponent_priors={},
+    )
+
+    for forbidden in (
+        "choose_ai_action",
+        "resolve_turn",
+        "engine",
+        "worker",
+        "session_id",
+        "_locked_decision",
+    ):
+        assert not hasattr(facade, forbidden)
+    assert not hasattr(facade, "__dict__")

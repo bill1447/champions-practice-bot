@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
+from enum import Enum
 import random
 import secrets
+from threading import RLock
 from time import perf_counter
 from typing import Callable, TypeVar
 
@@ -65,6 +67,45 @@ class BeliefDecision:
 @dataclass(frozen=True)
 class SealedDecisionReady:
     token: str
+
+
+class SealedTurnState(str, Enum):
+    NEW = "new"
+    PREVIEW = "preview"
+    IDLE = "idle"
+    COMPUTING = "computing"
+    LOCKED = "locked"
+    SUBMITTING = "submitting"
+    RESOLVED = "resolved"
+    FAILED = "failed"
+    TERMINAL = "terminal"
+    CLOSED = "closed"
+
+
+@dataclass(frozen=True)
+class SealedTurnResult:
+    decision: BeliefDecision
+    public_view: dict
+    particles_before: int
+    particles_after: int
+    generated_branches: int
+    matched_branches: int
+    conditioning_seconds: float
+    conditioning_over_budget: bool
+    degraded: bool
+    terminal: bool
+    winner: str | None
+
+
+@dataclass(frozen=True)
+class _EngineObservationSnapshot:
+    last_public_view: dict | None
+    particles: tuple[BeliefParticle, ...]
+    pending_observations: tuple[
+        tuple[str, dict[str, object] | None, dict],
+        ...,
+    ]
+    degraded: bool
 
 
 @dataclass(frozen=True)
@@ -404,27 +445,48 @@ class BeliefDecisionEngine:
         self.degraded = not bool(self.particles)
         return view
 
-    def _run_with_deadline(
+    def _run_until_deadline(
         self,
         operation: Callable[[HypotheticalSearchWorker], T],
         *,
-        timeout_seconds: float,
+        deadline: float,
+        cleanup_reserve_seconds: float = 0.25,
     ) -> tuple[T | None, bool]:
-        """Run hypothetical work off-session and abort its worker on timeout."""
+        """Run hypothetical work inside one absolute startup/work/cleanup deadline."""
+        if perf_counter() >= deadline:
+            return None, True
+
         worker = HypotheticalSearchWorker(self.project_root)
+        remaining = deadline - perf_counter()
+        if remaining <= cleanup_reserve_seconds:
+            worker.abort(timeout_seconds=max(0.0, remaining))
+            return None, True
+
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(operation, worker)
+        result: T | None = None
         timed_out = False
         try:
-            return future.result(timeout=timeout_seconds), False
+            result = future.result(
+                timeout=max(
+                    0.0,
+                    deadline - perf_counter() - cleanup_reserve_seconds,
+                )
+            )
         except FutureTimeoutError:
             timed_out = True
-            worker.abort()
-            return None, True
         finally:
-            if not timed_out:
-                worker.close()
+            worker.abort(
+                timeout_seconds=max(
+                    0.0,
+                    min(cleanup_reserve_seconds, deadline - perf_counter()),
+                )
+            )
             executor.shutdown(wait=False, cancel_futures=True)
+
+        if timed_out or perf_counter() > deadline:
+            return None, True
+        return result, False
 
     def _condition_adaptive(
         self,
@@ -470,7 +532,7 @@ class BeliefDecisionEngine:
                 )
         return ParticleUpdate((), generated, 0, deduplicated)
 
-    def _recover_pending(self) -> bool:
+    def _recover_pending(self, *, deadline: float | None = None) -> bool:
         if not self.pending_observations:
             return bool(self.particles)
 
@@ -497,9 +559,12 @@ class BeliefDecisionEngine:
                 )
             return particles
 
-        recovered, timed_out = self._run_with_deadline(
+        recovery_deadline = perf_counter() + self.conditioning_budget_seconds
+        if deadline is not None:
+            recovery_deadline = min(recovery_deadline, deadline)
+        recovered, timed_out = self._run_until_deadline(
             recover,
-            timeout_seconds=self.conditioning_budget_seconds,
+            deadline=recovery_deadline,
         )
         if timed_out or not recovered:
             return False
@@ -532,10 +597,11 @@ class BeliefDecisionEngine:
         legal_live: list[str],
     ) -> BeliefDecision:
         started = perf_counter()
+        decision_deadline = started + self.decision_budget_seconds
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
         if self.degraded:
-            if not self._recover_pending():
+            if not self._recover_pending(deadline=decision_deadline):
                 return self._fallback_decision(
                     legal_live,
                     started=started,
@@ -557,19 +623,24 @@ class BeliefDecisionEngine:
             for particle in self.particles
         )
 
-        def run_tactical(
-            worker: HypotheticalSearchWorker,
-            *,
-            guidance=None,
-            rng_seeds: tuple[str, ...] | None = None,
-        ):
+        def ordered_union(*groups: tuple[str, ...]) -> tuple[str, ...]:
+            seen: set[str] = set()
+            result: list[str] = []
+            for group in groups:
+                for choice in group:
+                    if choice in seen:
+                        continue
+                    seen.add(choice)
+                    result.append(choice)
+            return tuple(result)
+
+        def run_baseline(worker: HypotheticalSearchWorker):
             pruning = shortlist_belief_candidates(
                 worker,
                 worlds=worlds,
                 side="p2",
                 candidate_limit=self.candidate_limit,
                 reference_limit=1,
-                guidance=guidance,
             )
             search = search_exact_belief_turn(
                 worker,
@@ -578,7 +649,6 @@ class BeliefDecisionEngine:
                 choices=list(pruning.candidate_shortlist),
                 response_limit=self.response_limit,
                 autonomous_responses=True,
-                rng_seeds=rng_seeds,
             )
             return pruning, search
 
@@ -589,14 +659,12 @@ class BeliefDecisionEngine:
                 + search.branch_count
             )
 
-        def decision_from_tactical(
+        def decision_from_baseline(
             pruning,
             search,
             *,
-            strategic_plan: str | None = None,
             strategic_probe_count: int = 0,
             strategic_branch_count: int = 0,
-            include_extra_tactical_branches: int = 0,
         ) -> BeliefDecision:
             return BeliefDecision(
                 choice=search.chosen.choice,
@@ -606,10 +674,8 @@ class BeliefDecisionEngine:
                 branch_count=(
                     tactical_branch_count(pruning, search)
                     + strategic_branch_count
-                    + include_extra_tactical_branches
                 ),
                 elapsed_seconds=perf_counter() - started,
-                strategic_plan=strategic_plan,
                 strategic_probe_count=strategic_probe_count,
                 strategic_branch_count=strategic_branch_count,
                 strategic_rng_sample_count=(
@@ -619,8 +685,7 @@ class BeliefDecisionEngine:
                 ),
             )
 
-        baseline_budget = self.decision_budget_seconds - (perf_counter() - started)
-        if baseline_budget <= 0:
+        if perf_counter() >= decision_deadline:
             return self._fallback_decision(
                 legal_live,
                 started=started,
@@ -628,9 +693,9 @@ class BeliefDecisionEngine:
             )
 
         try:
-            baseline_result, baseline_timed_out = self._run_with_deadline(
-                lambda worker: run_tactical(worker),
-                timeout_seconds=baseline_budget,
+            baseline_result, baseline_timed_out = self._run_until_deadline(
+                run_baseline,
+                deadline=decision_deadline,
             )
         except (RuntimeError, ValueError) as error:
             return self._fallback_decision(
@@ -658,16 +723,14 @@ class BeliefDecisionEngine:
             baseline_pruning,
             baseline_search,
         )
-
         if self.last_public_view is None:
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
 
-        remaining_budget = self.decision_budget_seconds - (perf_counter() - started)
-        if remaining_budget <= 0:
-            return decision_from_tactical(
+        if perf_counter() >= decision_deadline:
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
@@ -682,26 +745,53 @@ class BeliefDecisionEngine:
                 limit=self.strategic_plan_limit,
             )
             if not plans:
-                return (None, None, None, None, 0, 0)
+                return None
 
-            probes = []
+            plan_contexts = []
+            candidate_reference_groups = [
+                tuple(baseline_pruning.candidate_shortlist),
+            ]
+            strategic_branch_count = 0
+            for plan in plans:
+                guidance = guidance_from_plan(
+                    plan,
+                    view=self.last_public_view,
+                )
+                pruning = shortlist_belief_candidates(
+                    worker,
+                    worlds=worlds,
+                    side="p2",
+                    candidate_limit=min(
+                        self.candidate_limit,
+                        self.strategic_candidate_limit,
+                    ),
+                    reference_limit=1,
+                    guidance=guidance,
+                )
+                plan_contexts.append((plan, guidance, pruning))
+                candidate_reference_groups.append(
+                    tuple(pruning.candidate_shortlist)
+                )
+                strategic_branch_count += pruning.screening_branch_count
+
+            shared_candidate_references = ordered_union(
+                *candidate_reference_groups
+            )
+            # Final tactical authority must not see a weaker opponent-response set
+            # than the protected baseline search. Strategy may add candidates, but it
+            # cannot regain authority by shrinking the baseline's adversarial coverage.
             shared_responses = prepare_shared_strategic_responses(
                 worker,
                 worlds=worlds,
                 side="p2",
-                candidate_references=tuple(
-                    baseline_pruning.candidate_shortlist
-                ),
-                response_limit=min(
-                    self.response_limit,
-                    self.strategic_response_limit,
-                ),
+                candidate_references=shared_candidate_references,
+                response_limit=self.response_limit,
                 rng_seeds=self.strategic_rng_seeds,
             )
-            strategic_branch_count = (
-                shared_responses.screening_branch_count
-            )
-            for plan in plans:
+            strategic_branch_count += shared_responses.screening_branch_count
+
+            probes = []
+            for plan, _, pruning in plan_contexts:
                 probe = probe_strategic_plan(
                     worker,
                     worlds=worlds,
@@ -719,11 +809,11 @@ class BeliefDecisionEngine:
                     ),
                     rng_seeds=self.strategic_rng_seeds,
                     shared_responses=shared_responses,
+                    prepared_pruning=pruning,
                 )
                 probes.append(probe)
                 strategic_branch_count += (
-                    probe.pruning.screening_branch_count
-                    + probe.response_screening_branch_count
+                    probe.response_screening_branch_count
                     + probe.branch_count
                 )
 
@@ -732,123 +822,120 @@ class BeliefDecisionEngine:
                 return (
                     None,
                     None,
-                    None,
-                    None,
                     len(probes),
                     strategic_branch_count,
                 )
 
-            guidance = guidance_from_plan(
-                selected_probe.plan,
-                view=self.last_public_view,
+            selected_context = next(
+                (
+                    context
+                    for context in plan_contexts
+                    if context[0].name == selected_probe.plan.name
+                ),
+                None,
             )
-            if not guidance.active:
-                return (
-                    None,
-                    None,
-                    None,
-                    None,
-                    len(probes),
-                    strategic_branch_count,
+            if selected_context is None:
+                raise RuntimeError(
+                    "selected strategic plan has no prepared candidate context"
                 )
+            _, selected_guidance, selected_pruning = selected_context
 
-            guided_pruning, guided_search = run_tactical(
+            final_choices = ordered_union(
+                tuple(baseline_pruning.candidate_shortlist),
+                tuple(selected_pruning.candidate_shortlist),
+                (selected_probe.chosen.choice,),
+            )
+            final_search = search_exact_belief_turn(
                 worker,
-                guidance=guidance,
-                rng_seeds=self.strategic_rng_seeds,
+                worlds=worlds,
+                side="p2",
+                choices=list(final_choices),
+                rng_seeds=shared_responses.rng_seeds,
+                response_shortlists=shared_responses.response_shortlists,
+            )
+            strategic_branch_count += (
+                final_search.response_screening_branch_count
+                + final_search.branch_count
             )
             return (
-                guided_pruning,
-                guided_search,
-                selected_probe,
-                guidance,
+                final_search,
+                (selected_probe, selected_guidance),
                 len(probes),
                 strategic_branch_count,
             )
 
         try:
-            augmentation, strategy_timed_out = self._run_with_deadline(
+            augmentation, strategy_timed_out = self._run_until_deadline(
                 run_strategy_augmentation,
-                timeout_seconds=remaining_budget,
+                deadline=decision_deadline,
             )
         except (RuntimeError, ValueError):
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
 
         if strategy_timed_out or augmentation is None:
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
 
         (
-            guided_pruning,
-            guided_search,
-            selected_probe,
-            selected_guidance,
+            final_search,
+            selected,
             probe_count,
             strategic_branch_count,
         ) = augmentation
 
-        if (
-            guided_pruning is None
-            or guided_search is None
-            or selected_probe is None
-            or selected_guidance is None
-        ):
-            return decision_from_tactical(
+        if final_search is None or selected is None:
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
 
-        if guided_search.chosen.choice not in legal_live:
-            return decision_from_tactical(
+        if final_search.chosen.choice not in legal_live:
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
 
-        guided_tactical_branches = tactical_branch_count(
-            guided_pruning,
-            guided_search,
-        )
+        selected_probe, selected_guidance = selected
         probed_candidate = next(
             (
                 candidate
                 for candidate in selected_probe.ranking
-                if candidate.choice == guided_search.chosen.choice
+                if candidate.choice == final_search.chosen.choice
             ),
             None,
         )
         plan_aligned = (
             choice_matches_guidance(
-                guided_search.chosen.choice,
+                final_search.chosen.choice,
                 selected_guidance,
             )
             and probed_candidate is not None
             and probed_candidate.evaluation.robust
         )
-        if not plan_aligned:
-            return decision_from_tactical(
-                baseline_pruning,
-                baseline_search,
-                strategic_probe_count=probe_count,
-                strategic_branch_count=strategic_branch_count,
-                include_extra_tactical_branches=guided_tactical_branches,
-            )
-
-        return decision_from_tactical(
-            guided_pruning,
-            guided_search,
-            strategic_plan=selected_probe.plan.name,
+        return BeliefDecision(
+            choice=final_search.chosen.choice,
+            mode="belief-search",
+            particle_count=len(self.particles),
+            candidate_count=len(final_search.evaluated_choices),
+            branch_count=baseline_branches + strategic_branch_count,
+            elapsed_seconds=perf_counter() - started,
+            strategic_plan=(
+                selected_probe.plan.name
+                if plan_aligned
+                else None
+            ),
             strategic_probe_count=probe_count,
             strategic_branch_count=strategic_branch_count,
-            include_extra_tactical_branches=baseline_branches,
+            strategic_rng_sample_count=len(self.strategic_rng_seeds),
         )
 
     def observe_public_turn(
@@ -885,9 +972,12 @@ class BeliefDecisionEngine:
                     batches=self.rng_sample_batches,
                 )
 
-            update, timed_out = self._run_with_deadline(
+            update, timed_out = self._run_until_deadline(
                 run_conditioning,
-                timeout_seconds=self.conditioning_budget_seconds,
+                deadline=(
+                    conditioning_started
+                    + self.conditioning_budget_seconds
+                ),
             )
             conditioning_seconds = perf_counter() - conditioning_started
 
@@ -927,21 +1017,8 @@ class BeliefDecisionEngine:
             degraded=self.degraded,
         )
 
-class BeliefBattleController:
-    """Coordinate the live human-vs-AI session around a restricted decision engine."""
-
-    _ENGINE_PROXY_FIELDS = {
-        "previews",
-        "particles",
-        "last_public_view",
-        "preview_mismatch_paths",
-        "preview_mismatch_values",
-        "pending_observations",
-        "degraded",
-        "decision_budget_seconds",
-        "conditioning_budget_seconds",
-        "fallback_selector",
-    }
+class _BeliefBattleCoordinator:
+    """Private live-session owner behind the sealed demo facade."""
 
     def __init__(
         self,
@@ -967,12 +1044,11 @@ class BeliefBattleController:
         particle_seed: int = 53,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
-        self.worker = worker
-        self.battle_format = battle_format
-        self.ai_team = ai_team
-        self.session_id: str | None = None
-        self._locked_decision: tuple[str, BeliefDecision] | None = None
-        self.engine = BeliefDecisionEngine(
+        self._worker = worker
+        self._battle_format = battle_format
+        self._ai_team = ai_team
+        self._session_id: str | None = None
+        self._engine = BeliefDecisionEngine(
             worker.project_root,
             battle_format=battle_format,
             ai_team=ai_team,
@@ -994,30 +1070,417 @@ class BeliefBattleController:
             particle_seed=particle_seed,
             fallback_selector=fallback_selector,
         )
+        self._state_lock = RLock()
+        self._turn_state = SealedTurnState.NEW
+        self._sealed_decision: tuple[str, BeliefDecision] | None = None
+        self._pending_human_choice: str | None = None
+        self._pending_public_view: dict | None = None
+        self._pre_submit_signature: dict | None = None
 
-    def __getattr__(self, name: str):
-        if name in self._ENGINE_PROXY_FIELDS:
-            return getattr(self.engine, name)
-        if name == "_run_with_deadline":
-            return self.engine._run_with_deadline
-        raise AttributeError(name)
-
-    def __setattr__(self, name: str, value) -> None:
-        if (
-            name in BeliefBattleController._ENGINE_PROXY_FIELDS
-            and "engine" in self.__dict__
-        ):
-            setattr(self.engine, name, value)
-            return
-        if name == "_run_with_deadline" and "engine" in self.__dict__:
-            self.engine._run_with_deadline = value
-            return
-        object.__setattr__(self, name, value)
+    @property
+    def turn_state(self) -> SealedTurnState:
+        with self._state_lock:
+            return self._turn_state
 
     def _require_session(self) -> str:
-        if self.session_id is None:
-            raise RuntimeError("controller has no active session")
-        return self.session_id
+        if self._session_id is None:
+            raise RuntimeError("battle has no active session")
+        return self._session_id
+
+    def _engine_snapshot(self) -> _EngineObservationSnapshot:
+        return _EngineObservationSnapshot(
+            last_public_view=self._engine.last_public_view,
+            particles=self._engine.particles,
+            pending_observations=tuple(self._engine.pending_observations),
+            degraded=self._engine.degraded,
+        )
+
+    def _restore_engine_snapshot(
+        self,
+        snapshot: _EngineObservationSnapshot,
+    ) -> None:
+        self._engine.last_public_view = snapshot.last_public_view
+        self._engine.particles = snapshot.particles
+        self._engine.pending_observations = list(snapshot.pending_observations)
+        self._engine.degraded = snapshot.degraded
+
+    def start(
+        self,
+        *,
+        opponent_team: str,
+        p1_name: str = "Practice Player",
+        p2_name: str = "Practice AI",
+        session_seed: str | None = None,
+    ) -> None:
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.NEW:
+                raise RuntimeError("battle has already been started")
+            started = self._worker.start_session(
+                battle_format=self._battle_format,
+                p1_team=opponent_team,
+                p2_team=self._ai_team,
+                p1_name=p1_name,
+                p2_name=p2_name,
+                seed=session_seed,
+            )
+            self._session_id = str(started["session_id"])
+            self._turn_state = SealedTurnState.PREVIEW
+
+    def submit_preview(
+        self,
+        *,
+        human_choice: str,
+        ai_choice: str,
+    ) -> None:
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.PREVIEW:
+                raise RuntimeError("battle is not awaiting preview choices")
+            session_id = self._require_session()
+            self._worker.choose_session(
+                session_id,
+                p1_choice=human_choice,
+                p2_choice=ai_choice,
+            )
+            view = self._worker.session_view(session_id, side="p2")["view"]
+            self._engine.initialize_preview(
+                view=view,
+                ai_choice=ai_choice,
+            )
+            self._turn_state = (
+                SealedTurnState.TERMINAL
+                if bool(view.get("ended"))
+                else SealedTurnState.IDLE
+            )
+
+    def human_public_view(self) -> dict:
+        with self._state_lock:
+            session_id = self._require_session()
+            return self._worker.session_view(
+                session_id,
+                side="p1",
+            )["view"]
+
+    def human_legal_choices(self) -> list[str]:
+        with self._state_lock:
+            if self._turn_state in {
+                SealedTurnState.TERMINAL,
+                SealedTurnState.CLOSED,
+            }:
+                return []
+            return self._worker.session_legal_choices(
+                self._require_session(),
+                side="p1",
+            )
+
+    def _ai_legal_choices(self) -> list[str]:
+        return self._worker.session_legal_choices(
+            self._require_session(),
+            side="p2",
+        )
+
+    def lock_ai_action(self) -> SealedDecisionReady:
+        with self._state_lock:
+            if self._turn_state is SealedTurnState.TERMINAL:
+                raise RuntimeError("battle is already terminal")
+            if self._turn_state not in {
+                SealedTurnState.IDLE,
+                SealedTurnState.RESOLVED,
+            }:
+                raise RuntimeError(
+                    f"cannot lock AI action while state is {self._turn_state.value}"
+                )
+            self._turn_state = SealedTurnState.COMPUTING
+
+        try:
+            decision = self._engine.choose_ai_action(
+                legal_live=self._ai_legal_choices(),
+            )
+            token = secrets.token_urlsafe(18)
+        except Exception:
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.COMPUTING:
+                    self._turn_state = SealedTurnState.IDLE
+            raise
+
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.COMPUTING:
+                raise RuntimeError("sealed turn state changed during AI computation")
+            self._sealed_decision = (token, decision)
+            self._turn_state = SealedTurnState.LOCKED
+            return SealedDecisionReady(token=token)
+
+    def _validate_locked_commit(
+        self,
+        *,
+        token: str,
+        human_choice: str,
+    ) -> BeliefDecision:
+        if self._turn_state is not SealedTurnState.LOCKED:
+            raise RuntimeError(
+                f"cannot commit human action while state is {self._turn_state.value}"
+            )
+        if self._sealed_decision is None:
+            raise RuntimeError("sealed decision payload is missing")
+        expected_token, decision = self._sealed_decision
+        if not secrets.compare_digest(token, expected_token):
+            raise ValueError("invalid locked-decision token")
+        legal = self._worker.session_legal_choices(
+            self._require_session(),
+            side="p1",
+        )
+        if human_choice not in legal:
+            raise ValueError("human choice is not live-session legal")
+        return decision
+
+    def _finalize_submitted_turn(
+        self,
+        *,
+        decision: BeliefDecision,
+        public_view: dict,
+    ) -> SealedTurnResult:
+        # Fetch every live-session view needed for the result before mutating belief
+        # state. If this read fails, reconciliation can retry without conditioning the
+        # same submitted turn twice.
+        human_view = self._worker.session_view(
+            self._require_session(),
+            side="p1",
+        )["view"]
+
+        snapshot = self._engine_snapshot()
+        try:
+            update = self._engine.observe_public_turn(
+                decision=decision,
+                view=public_view,
+            )
+        except Exception:
+            self._restore_engine_snapshot(snapshot)
+            raise
+
+        terminal = bool(public_view.get("ended"))
+        with self._state_lock:
+            self._sealed_decision = None
+            self._pending_human_choice = None
+            self._pending_public_view = None
+            self._pre_submit_signature = None
+            self._turn_state = (
+                SealedTurnState.TERMINAL
+                if terminal
+                else SealedTurnState.RESOLVED
+            )
+
+        return SealedTurnResult(
+            decision=decision,
+            public_view=human_view,
+            particles_before=update.particles_before,
+            particles_after=update.particles_after,
+            generated_branches=update.generated_branches,
+            matched_branches=update.matched_branches,
+            conditioning_seconds=update.conditioning_seconds,
+            conditioning_over_budget=update.conditioning_over_budget,
+            degraded=update.degraded,
+            terminal=terminal,
+            winner=public_view.get("winner"),
+        )
+
+    def commit_human_action(
+        self,
+        *,
+        token: str,
+        human_choice: str,
+    ) -> SealedTurnResult:
+        with self._state_lock:
+            decision = self._validate_locked_commit(
+                token=token,
+                human_choice=human_choice,
+            )
+            session_id = self._require_session()
+            before = self._worker.session_view(
+                session_id,
+                side="p2",
+            )["view"]
+            self._pre_submit_signature = public_observation_signature(before)
+            self._pending_human_choice = human_choice
+            self._pending_public_view = None
+            self._turn_state = SealedTurnState.SUBMITTING
+
+        submission_error: Exception | None = None
+        try:
+            self._worker.choose_session(
+                session_id,
+                p1_choice=human_choice,
+                p2_choice=decision.choice,
+            )
+        except Exception as error:
+            submission_error = error
+
+        try:
+            public_view = self._worker.session_view(
+                session_id,
+                side="p2",
+            )["view"]
+        except Exception:
+            with self._state_lock:
+                self._turn_state = SealedTurnState.FAILED
+            raise
+
+        after_signature = public_observation_signature(public_view)
+        if submission_error is not None and after_signature == self._pre_submit_signature:
+            with self._state_lock:
+                self._pending_human_choice = None
+                self._pre_submit_signature = None
+                self._turn_state = SealedTurnState.LOCKED
+            raise submission_error
+
+        with self._state_lock:
+            self._pending_public_view = public_view
+
+        try:
+            return self._finalize_submitted_turn(
+                decision=decision,
+                public_view=public_view,
+            )
+        except Exception:
+            with self._state_lock:
+                self._turn_state = SealedTurnState.FAILED
+            raise
+
+    def reconcile_failed_turn(
+        self,
+        *,
+        token: str,
+    ) -> SealedTurnResult:
+        with self._state_lock:
+            if self._turn_state is not SealedTurnState.FAILED:
+                raise RuntimeError(
+                    "cannot reconcile failed turn while state is "
+                    f"{self._turn_state.value}"
+                )
+            if self._sealed_decision is None:
+                raise RuntimeError("failed turn has no retained sealed decision")
+            expected_token, decision = self._sealed_decision
+            if not secrets.compare_digest(token, expected_token):
+                raise ValueError("invalid locked-decision token")
+            session_id = self._require_session()
+            public_view = self._pending_public_view
+            # Claim the reconciliation atomically before any live-session read. A
+            # repeated concurrent reconciliation must fail rather than condition twice.
+            self._turn_state = SealedTurnState.SUBMITTING
+
+        try:
+            if public_view is None:
+                public_view = self._worker.session_view(
+                    session_id,
+                    side="p2",
+                )["view"]
+        except Exception:
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.SUBMITTING:
+                    self._turn_state = SealedTurnState.FAILED
+            raise
+
+        if (
+            self._pre_submit_signature is not None
+            and public_observation_signature(public_view)
+            == self._pre_submit_signature
+        ):
+            with self._state_lock:
+                self._pending_human_choice = None
+                self._pending_public_view = None
+                self._pre_submit_signature = None
+                self._turn_state = SealedTurnState.LOCKED
+            raise RuntimeError(
+                "live session did not advance; original sealed action can be retried"
+            )
+
+        with self._state_lock:
+            self._pending_public_view = public_view
+
+        try:
+            return self._finalize_submitted_turn(
+                decision=decision,
+                public_view=public_view,
+            )
+        except Exception:
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.SUBMITTING:
+                    self._turn_state = SealedTurnState.FAILED
+            raise
+
+    def close(self) -> None:
+        with self._state_lock:
+            if self._turn_state is SealedTurnState.CLOSED:
+                return
+            session_id = self._session_id
+            self._turn_state = SealedTurnState.CLOSED
+            self._sealed_decision = None
+            self._pending_human_choice = None
+            self._pending_public_view = None
+            self._pre_submit_signature = None
+            self._session_id = None
+
+        if session_id is not None:
+            self._worker.close_session(session_id)
+        self._worker.close()
+
+
+class SealedBattleFacade:
+    """Narrow human-facing API for the playable practice battle."""
+
+    __slots__ = ("__coordinator", "__ai_preview_choice")
+
+    def __init__(
+        self,
+        *,
+        battle_format: str,
+        ai_team: str,
+        ai_preview_choice: str,
+        opponent_priors: PublicSetPriorCatalog,
+        project_root=None,
+        world_limit: int = 8,
+        particles_per_world: int = 1,
+        max_particles: int = 8,
+        candidate_limit: int = 4,
+        response_limit: int = 4,
+        strategic_plan_limit: int = 2,
+        strategic_candidate_limit: int = 3,
+        strategic_response_limit: int = 2,
+        strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
+        decision_budget_seconds: float = 8.0,
+        conditioning_budget_seconds: float = 8.0,
+        rng_sample_batches: tuple[int, ...] = (2, 4),
+        recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
+        observed_action_rng_multiplier: int = 16,
+        particle_seed: int = 53,
+        fallback_selector: FallbackSelector = choose_public_fallback,
+    ):
+        worker = ShowdownSearchWorker(project_root)
+        self.__coordinator = _BeliefBattleCoordinator(
+            worker,
+            battle_format=battle_format,
+            ai_team=ai_team,
+            opponent_priors=opponent_priors,
+            world_limit=world_limit,
+            particles_per_world=particles_per_world,
+            max_particles=max_particles,
+            candidate_limit=candidate_limit,
+            response_limit=response_limit,
+            strategic_plan_limit=strategic_plan_limit,
+            strategic_candidate_limit=strategic_candidate_limit,
+            strategic_response_limit=strategic_response_limit,
+            strategic_rng_seeds=strategic_rng_seeds,
+            decision_budget_seconds=decision_budget_seconds,
+            conditioning_budget_seconds=conditioning_budget_seconds,
+            rng_sample_batches=rng_sample_batches,
+            recovery_rng_sample_batches=recovery_rng_sample_batches,
+            observed_action_rng_multiplier=observed_action_rng_multiplier,
+            particle_seed=particle_seed,
+            fallback_selector=fallback_selector,
+        )
+        self.__ai_preview_choice = ai_preview_choice
+
+    @property
+    def turn_state(self) -> SealedTurnState:
+        return self.__coordinator.turn_state
 
     def start(
         self,
@@ -1027,102 +1490,54 @@ class BeliefBattleController:
         p2_name: str = "Practice AI",
         session_seed: str | None = None,
     ) -> dict:
-        if self.session_id is not None:
-            raise RuntimeError("controller already has an active session")
-        started = self.worker.start_session(
-            battle_format=self.battle_format,
-            p1_team=opponent_team,
-            p2_team=self.ai_team,
+        self.__coordinator.start(
+            opponent_team=opponent_team,
             p1_name=p1_name,
             p2_name=p2_name,
-            seed=session_seed,
+            session_seed=session_seed,
         )
-        self.session_id = str(started["session_id"])
-        return started
+        return self.__coordinator.human_public_view()
 
-    def submit_preview(self, *, human_choice: str, ai_choice: str) -> dict:
-        session_id = self._require_session()
-        self.worker.choose_session(
-            session_id,
-            p1_choice=human_choice,
-            p2_choice=ai_choice,
+    def commit_preview(self, *, human_choice: str) -> dict:
+        self.__coordinator.submit_preview(
+            human_choice=human_choice,
+            ai_choice=self.__ai_preview_choice,
         )
-        view = self.worker.session_view(session_id, side="p2")["view"]
-        return self.engine.initialize_preview(
-            view=view,
-            ai_choice=ai_choice,
-        )
+        return self.__coordinator.human_public_view()
 
-    def human_legal_choices(self) -> list[str]:
-        return self.worker.session_legal_choices(
-            self._require_session(),
-            side="p1",
-        )
+    def public_state(self) -> dict:
+        return self.__coordinator.human_public_view()
 
-    def ai_legal_choices(self) -> list[str]:
-        return self.worker.session_legal_choices(
-            self._require_session(),
-            side="p2",
-        )
-
-    def choose_ai_action(self) -> BeliefDecision:
-        return self.engine.choose_ai_action(
-            legal_live=self.ai_legal_choices(),
-        )
+    def legal_human_choices(self) -> tuple[str, ...]:
+        return tuple(self.__coordinator.human_legal_choices())
 
     def lock_ai_action(self) -> SealedDecisionReady:
-        """Compute and retain the AI action without exposing its decision payload."""
-        if self._locked_decision is not None:
-            raise RuntimeError("AI action is already locked for this turn")
-        decision = self.choose_ai_action()
-        token = secrets.token_urlsafe(18)
-        self._locked_decision = (token, decision)
-        return SealedDecisionReady(token=token)
+        return self.__coordinator.lock_ai_action()
 
-    def resolve_locked_turn(
+    def commit_human_action(
         self,
         *,
         token: str,
         human_choice: str,
-    ) -> BeliefTurnUpdate:
-        """Accept the human action before revealing/submitting the locked AI decision."""
-        locked = self._locked_decision
-        if locked is None:
-            raise RuntimeError("no AI action is locked")
-        expected_token, decision = locked
-        if not secrets.compare_digest(token, expected_token):
-            raise ValueError("invalid locked-decision token")
-        if human_choice not in self.human_legal_choices():
-            raise ValueError("human choice is not live-session legal")
-
-        self._locked_decision = None
-        return self.resolve_turn(
+    ) -> SealedTurnResult:
+        return self.__coordinator.commit_human_action(
+            token=token,
             human_choice=human_choice,
-            decision=decision,
         )
 
-    def resolve_turn(
+    def reconcile_failed_turn(
         self,
         *,
-        human_choice: str,
-        decision: BeliefDecision,
-    ) -> BeliefTurnUpdate:
-        session_id = self._require_session()
-        self.worker.choose_session(
-            session_id,
-            p1_choice=human_choice,
-            p2_choice=decision.choice,
-        )
-        view = self.worker.session_view(session_id, side="p2")["view"]
-        return self.engine.observe_public_turn(
-            decision=decision,
-            view=view,
-        )
+        token: str,
+    ) -> SealedTurnResult:
+        return self.__coordinator.reconcile_failed_turn(token=token)
 
     def close(self) -> None:
-        self._locked_decision = None
-        if self.session_id is None:
-            return
-        self.worker.close_session(self.session_id)
-        self.session_id = None
+        self.__coordinator.close()
+
+    def __enter__(self) -> "SealedBattleFacade":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
 

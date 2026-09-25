@@ -560,6 +560,7 @@ def prepare_shared_strategic_responses(
             candidate_references=list(candidate_references),
             response_limit=response_limit,
             legal_responses=legal_responses,
+            reference_limit=len(candidate_references),
         )
         shortlists.append(pruning.response_shortlist)
         screening_branch_count += pruning.screening_branch_count
@@ -585,6 +586,7 @@ def probe_strategic_plan(
     rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
     robust_threshold: float = 0.8,
     shared_responses: SharedStrategicResponses | None = None,
+    prepared_pruning: BeliefPruningResult | None = None,
 ) -> StrategicPlanProbe:
     """Probe whether a plan has a robust exact one-turn tactical path.
 
@@ -613,15 +615,18 @@ def probe_strategic_plan(
         raise ValueError("shared strategic rng_seeds must not be empty")
 
     started = perf_counter()
-    guidance = guidance_from_plan(plan, view=view)
-    pruning = shortlist_belief_candidates(
-        worker,
-        worlds=worlds,
-        side=side,
-        candidate_limit=candidate_limit,
-        reference_limit=1,
-        guidance=guidance,
-    )
+    if prepared_pruning is None:
+        guidance = guidance_from_plan(plan, view=view)
+        pruning = shortlist_belief_candidates(
+            worker,
+            worlds=worlds,
+            side=side,
+            candidate_limit=candidate_limit,
+            reference_limit=1,
+            guidance=guidance,
+        )
+    else:
+        pruning = prepared_pruning
     choices = list(pruning.candidate_shortlist)
     opponent: SideId = "p2" if side == "p1" else "p1"
 

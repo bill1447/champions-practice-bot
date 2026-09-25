@@ -79,6 +79,7 @@ jobs:
 
           . .\scripts\showdown-utils.ps1
           Set-ChampionsShowdownLocalConfig
+          .\.venv\Scripts\python.exe -m champions_practice.showdown_build_stamp
 
       - name: Runtime Showdown pin gate
         shell: pwsh
@@ -128,9 +129,17 @@ jobs:
         shell: pwsh
         run: .\belief-controller-smoke.ps1
 
+      - name: Sealed forced-switch and terminal smoke test
+        shell: pwsh
+        run: .\sealed-transition-smoke.ps1
+
       - name: Production-like damaging-turn conditioning smoke test
         shell: pwsh
         run: .\damage-conditioning-smoke.ps1
+
+      - name: Absolute deadline lifecycle smoke test
+        shell: pwsh
+        run: .\timeout-lifecycle-smoke.ps1
 
       - name: Belief-aware exact search smoke test
         shell: pwsh

@@ -57,6 +57,10 @@ if ($UpdateShowdown) {
     }
 
     Set-ChampionsShowdownLocalConfig
+    & $Python -m champions_practice.showdown_build_stamp
+    if ($LASTEXITCODE -ne 0) {
+        throw "Showdown build provenance stamping failed."
+    }
 }
 
 Write-Host "Running unit tests..."

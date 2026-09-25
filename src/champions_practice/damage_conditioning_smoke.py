@@ -1,6 +1,9 @@
 """Production-like damaging-turn smoke for adaptive RNG conditioning."""
 
-from champions_practice.belief_controller import BeliefBattleController, BeliefDecision
+from champions_practice.belief_controller import (
+    BeliefDecision,
+    _BeliefBattleCoordinator,
+)
 from champions_practice.belief_smoke import _public_priors
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.search_worker import ShowdownSearchWorker
@@ -15,7 +18,7 @@ AI_TURN_ONE = "move expandingforce +1, move protect"
 
 def main() -> None:
     with ShowdownSearchWorker() as worker:
-        controller = BeliefBattleController(
+        coordinator = _BeliefBattleCoordinator(
             worker,
             battle_format=CHAMPIONS_FORMAT,
             ai_team=SMOKE_TEAM,
@@ -30,41 +33,54 @@ def main() -> None:
             particle_seed=5501,
         )
         try:
-            controller.start(
+            coordinator.start(
                 opponent_team=SMOKE_TEAM,
                 p1_name="Human",
                 p2_name="Belief AI",
                 session_seed=LIVE_SEED,
             )
-            controller.submit_preview(
+            coordinator.submit_preview(
                 human_choice=HUMAN_PREVIEW,
                 ai_choice=AI_PREVIEW,
             )
-            before = controller.last_public_view
+            before = coordinator._engine.last_public_view
             if not isinstance(before, dict):
                 raise SystemExit("ERROR: damaging-turn smoke has no preview view")
-            if not controller.particles:
+            if not coordinator._engine.particles:
                 raise SystemExit("ERROR: damaging-turn smoke created no particles")
 
-            if HUMAN_TURN_ONE not in controller.human_legal_choices():
+            if HUMAN_TURN_ONE not in coordinator.human_legal_choices():
                 raise SystemExit("ERROR: controlled damaging human action is not legal")
-            if AI_TURN_ONE not in controller.ai_legal_choices():
+            ai_legal = coordinator._ai_legal_choices()
+            if AI_TURN_ONE not in ai_legal:
                 raise SystemExit("ERROR: controlled AI action is not legal")
 
             forced = BeliefDecision(
                 choice=AI_TURN_ONE,
                 mode="controlled-smoke",
-                particle_count=len(controller.particles),
+                particle_count=len(coordinator._engine.particles),
                 candidate_count=0,
                 branch_count=0,
                 elapsed_seconds=0.0,
             )
-            update = controller.resolve_turn(
-                human_choice=HUMAN_TURN_ONE,
-                decision=forced,
+            original_choose = coordinator._engine.choose_ai_action
+            coordinator._engine.choose_ai_action = (
+                lambda *, legal_live: forced
             )
+            try:
+                ready = coordinator.lock_ai_action()
+            finally:
+                coordinator._engine.choose_ai_action = original_choose
 
-            actions = update.public_view.get("opponent_last_actions")
+            update = coordinator.commit_human_action(
+                token=ready.token,
+                human_choice=HUMAN_TURN_ONE,
+            )
+            after = coordinator._engine.last_public_view
+            if not isinstance(after, dict):
+                raise SystemExit("ERROR: damaging turn produced no AI public view")
+
+            actions = after.get("opponent_last_actions")
             if not isinstance(actions, list):
                 raise SystemExit("ERROR: public opponent actions are missing")
             action_by_slot = {
@@ -93,7 +109,7 @@ def main() -> None:
             }
             after_our = {
                 pokemon["species"]: pokemon["hp_percent"]
-                for pokemon in update.public_view["player"]["active_details"]
+                for pokemon in after["player"]["active_details"]
                 if isinstance(pokemon, dict)
             }
             before_their = {
@@ -103,7 +119,7 @@ def main() -> None:
             }
             after_their = {
                 pokemon["base_species"]: pokemon["hp_percent"]
-                for pokemon in update.public_view["opponent"]["active"]
+                for pokemon in after["opponent"]["active"]
                 if isinstance(pokemon, dict)
             }
             our_damage = any(
@@ -128,22 +144,25 @@ def main() -> None:
                 raise SystemExit("ERROR: damaging-turn conditioning exceeded 8 seconds")
             if update.degraded:
                 raise SystemExit(
-                    "ERROR: ordinary damage RNG left the controller degraded"
+                    "ERROR: ordinary damage RNG left the coordinator degraded"
                 )
-            if update.matched_branches <= 0 or not controller.particles:
+            if update.matched_branches <= 0 or not coordinator._engine.particles:
                 raise SystemExit(
                     "ERROR: adaptive RNG conditioning retained no posterior particles"
                 )
             if update.conditioning_seconds >= 8.0:
                 raise SystemExit("ERROR: damaging-turn conditioning missed production budget")
 
-            next_decision = controller.choose_ai_action()
+            next_legal = coordinator._ai_legal_choices()
+            next_decision = coordinator._engine.choose_ai_action(
+                legal_live=next_legal,
+            )
             if next_decision.mode != "belief-search":
                 raise SystemExit(
                     "ERROR: belief search did not resume after damaging turn: "
                     f"{next_decision.fallback_reason}"
                 )
-            if next_decision.choice not in controller.ai_legal_choices():
+            if next_decision.choice not in next_legal:
                 raise SystemExit("ERROR: post-damage search choice is not live-legal")
 
             print("Production-like two-damage-turn belief conditioning")
@@ -158,7 +177,7 @@ def main() -> None:
             print("Production conditioning deadline: 8.0 seconds")
             print("RESULT: two-sided damage RNG survives and belief search resumes")
         finally:
-            controller.close()
+            coordinator.close()
 
 
 if __name__ == "__main__":

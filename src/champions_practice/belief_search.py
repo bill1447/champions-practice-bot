@@ -478,12 +478,15 @@ def shortlist_belief_responses(
     candidate_references: list[str],
     response_limit: int = 8,
     legal_responses: list[str] | None = None,
+    reference_limit: int = 1,
 ) -> BeliefResponsePruning:
     """Select dangerous, strategically diverse opponent replies in one belief world."""
     if response_limit <= 0:
         raise ValueError("response_limit must be positive")
     if not candidate_references:
         raise ValueError("candidate_references must not be empty")
+    if reference_limit <= 0:
+        raise ValueError("reference_limit must be positive")
     screening_started = perf_counter()
     opponent: SideId = "p2" if ai_side == "p1" else "p1"
     responses = (
@@ -498,7 +501,7 @@ def shortlist_belief_responses(
     # The final matrix still uses every requested RNG future. This is only the cheap
     # per-world funnel, so one shared reference and seed are enough to rank broad plans
     # before their targeting variants receive a second screening pass.
-    references = _reference_choices(candidate_references, 1)
+    references = _reference_choices(candidate_references, reference_limit)
     family_screening = search_exact_turn(
         worker,
         state=world.state,
@@ -556,6 +559,7 @@ def search_exact_belief_turn(
     response_limit: int | None = None,
     autonomous_responses: bool = False,
     rng_seeds: tuple[str, ...] | None = None,
+    response_shortlists: tuple[tuple[str, ...], ...] | None = None,
 ) -> BeliefSearchResult:
     """Rank actions across exact states generated only from public belief worlds.
 
@@ -569,6 +573,8 @@ def search_exact_belief_turn(
         raise ValueError("response_limit must be positive")
     if rng_seeds is not None and not rng_seeds:
         raise ValueError("rng_seeds must not be empty")
+    if response_shortlists is not None and len(response_shortlists) != len(worlds):
+        raise ValueError("response_shortlists must align one-to-one with worlds")
 
     total_started = perf_counter()
     candidate_legal_started = perf_counter()
@@ -606,7 +612,14 @@ def search_exact_belief_turn(
         legal_cache_hits += int(cache_hit)
         legal_cache_misses += int(not cache_hit)
         response_legal_seconds += perf_counter() - response_legal_started
-        if autonomous_responses and response_limit is not None:
+        if response_shortlists is not None:
+            legal_response_set = set(responses)
+            responses = [
+                response
+                for response in response_shortlists[world_index]
+                if response in legal_response_set
+            ]
+        elif autonomous_responses and response_limit is not None:
             pruning = shortlist_belief_responses(
                 worker,
                 world=world,
