@@ -152,9 +152,40 @@ def _assert_demo_redirection_counter(worker: ShowdownSearchWorker) -> None:
         candidate_references=[safe_reference, dire_claw_switch],
         response_limit=2,
     )
-    if human_punish not in pruning.response_shortlist:
+    shortlist_branches = worker.branch_many(
+        state=state,
+        branches=[
+            {
+                "p1_choice": response,
+                "p2_choice": dire_claw_switch,
+            }
+            for response in pruning.response_shortlist
+        ],
+    )
+    if len(shortlist_branches) != len(pruning.response_shortlist):
         raise SystemExit(
-            "ERROR: response pruning dropped the demo Follow Me + Mega Expanding Force punish"
+            "ERROR: demo shortlist counter branches did not resolve one-for-one"
+        )
+
+    redirection_punishes = []
+    for response, branch in zip(
+        pruning.response_shortlist,
+        shortlist_branches,
+        strict=True,
+    ):
+        if "move followme" not in response and "move ragepowder" not in response:
+            continue
+        branch_summary = branch.get("summary")
+        if not isinstance(branch_summary, dict):
+            continue
+        branch_active = branch_summary.get("p2", {}).get("active", [])
+        if branch_active and branch_active[0] and branch_active[0].get("fainted"):
+            redirection_punishes.append(response)
+
+    if not redirection_punishes:
+        raise SystemExit(
+            "ERROR: response pruning kept no redirection reply that exposes "
+            f"the demo Sneasler loss; shortlist={pruning.response_shortlist}"
         )
 
 
