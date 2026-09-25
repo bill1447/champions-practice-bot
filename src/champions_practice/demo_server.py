@@ -41,6 +41,10 @@ def _decision_payload(decision: BeliefDecision) -> dict[str, object]:
         "strategic_probe_count": decision.strategic_probe_count,
         "strategic_branch_count": decision.strategic_branch_count,
         "strategic_rng_sample_count": decision.strategic_rng_sample_count,
+        "worst_response": decision.worst_response,
+        "worst_world_score": decision.worst_world_score,
+        "weighted_score": decision.weighted_score,
+        "searched_responses": list(decision.searched_responses),
     }
 
 
@@ -268,6 +272,7 @@ def _default_facade() -> SealedBattleFacade:
         ai_team=DEMO_AI_TEAM,
         ai_preview_choice=DEMO_AI_PREVIEW_CHOICE,
         opponent_priors=demo_public_priors(),
+        decision_budget_seconds=10.0,
     )
 
 
@@ -531,7 +536,6 @@ pre {
   <div class="controls">
     <select id="choice"></select>
     <button id="preview">Commit preview</button>
-    <button id="lockAi">Lock AI</button>
     <button id="commit">Submit action</button>
     <button id="reconcile">Reconcile</button>
   </div>
@@ -550,6 +554,7 @@ pre {
 
 <script>
 let state = null;
+let aiLockPending = false;
 
 function monName(mon) {
   if (!mon) return "Unknown";
@@ -595,13 +600,16 @@ function renderSide(targetId, side, previewFallback) {
 }
 
 function hintFor(turnState) {
+  if (aiLockPending) {
+    return "AI is thinking. Your move controls unlock once its action is sealed.";
+  }
   if (!state?.started && turnState === "ended") {
     return "Battle ended. Start a new battle when ready.";
   }
   if (!state?.started) return "Start a battle. v0 uses the current-roster mirror fixture.";
   if (turnState === "preview") return "Choose your bring-four and lead order.";
   if (turnState === "idle" || turnState === "resolved") {
-    return "Lock the AI first. Its command stays server-side while you choose.";
+    return "AI action is being prepared automatically.";
   }
   if (turnState === "computing") return "AI is thinking.";
   if (turnState === "locked") return "AI is sealed. Submit your human command.";
@@ -632,6 +640,27 @@ function renderHistory(history) {
     detail.textContent =
       `${d.mode} · ${d.branch_count} branches · ${d.elapsed_seconds.toFixed(3)}s${plan}`;
     box.appendChild(detail);
+
+    if (d.worst_response) {
+      const worst = document.createElement("div");
+      worst.className = "muted";
+      const score = Number.isFinite(d.worst_world_score) ?
+        ` · score ${d.worst_world_score.toFixed(1)}` : "";
+      worst.textContent = `Worst searched reply: ${d.worst_response}${score}`;
+      box.appendChild(worst);
+    }
+
+    if (d.searched_responses?.length) {
+      const searched = document.createElement("details");
+      searched.className = "muted";
+      const summary = document.createElement("summary");
+      summary.textContent = `Searched opponent replies (${d.searched_responses.length})`;
+      searched.appendChild(summary);
+      const responseList = document.createElement("pre");
+      responseList.textContent = d.searched_responses.join("\n");
+      searched.appendChild(responseList);
+      box.appendChild(searched);
+    }
     target.appendChild(box);
   });
 }
@@ -640,7 +669,8 @@ function render(next) {
   state = next;
   const turnState = state.turn_state || "new";
   document.getElementById("status").textContent =
-    state.started ? turnState.toUpperCase() : "NOT STARTED";
+    aiLockPending ? "AI THINKING" :
+    (state.started ? turnState.toUpperCase() : "NOT STARTED");
   document.getElementById("fieldState").textContent =
     state.field_status || "Field: —";
   const viewError = state.public_view_error ? ` · view read: ${state.public_view_error}` : "";
@@ -667,12 +697,14 @@ function render(next) {
     select.value = previous;
   }
 
-  document.getElementById("preview").disabled = turnState !== "preview";
-  document.getElementById("lockAi").disabled =
-    !(turnState === "idle" || turnState === "resolved");
+  select.disabled =
+    aiLockPending || !(turnState === "preview" || turnState === "locked");
+  document.getElementById("preview").disabled =
+    aiLockPending || turnState !== "preview";
   document.getElementById("commit").disabled =
-    !(turnState === "locked" && state.ai_ready && select.value);
-  document.getElementById("reconcile").disabled = !state.can_reconcile;
+    aiLockPending || !(turnState === "locked" && state.ai_ready && select.value);
+  document.getElementById("reconcile").disabled =
+    aiLockPending || !state.can_reconcile;
   document.getElementById("endBattle").disabled = !state.started;
   renderHistory(state.history || []);
 }
@@ -699,6 +731,29 @@ async function run(action) {
   }
 }
 
+async function renderAndAutoLock(next) {
+  render(next);
+  const turnState = next.turn_state || "new";
+  if (
+    !next.started ||
+    next.ai_ready ||
+    !(turnState === "idle" || turnState === "resolved")
+  ) {
+    return;
+  }
+
+  aiLockPending = true;
+  render(next);
+  try {
+    const locked = await request("/api/lock", "POST", {});
+    aiLockPending = false;
+    render(locked);
+  } catch (error) {
+    aiLockPending = false;
+    throw error;
+  }
+}
+
 document.getElementById("newBattle").onclick = () => run(async () => {
   render(await request("/api/start", "POST", {}));
 });
@@ -709,28 +764,26 @@ document.getElementById("endBattle").onclick = () => run(async () => {
 });
 
 document.getElementById("preview").onclick = () => run(async () => {
-  render(await request("/api/preview", "POST", {
+  const next = await request("/api/preview", "POST", {
     choice: document.getElementById("choice").value
-  }));
-});
-
-document.getElementById("lockAi").onclick = () => run(async () => {
-  document.getElementById("status").textContent = "AI THINKING";
-  render(await request("/api/lock", "POST", {}));
+  });
+  await renderAndAutoLock(next);
 });
 
 document.getElementById("commit").onclick = () => run(async () => {
   document.getElementById("status").textContent = "RESOLVING";
-  render(await request("/api/commit", "POST", {
+  const next = await request("/api/commit", "POST", {
     choice: document.getElementById("choice").value
-  }));
+  });
+  await renderAndAutoLock(next);
 });
 
 document.getElementById("reconcile").onclick = () => run(async () => {
-  render(await request("/api/reconcile", "POST", {}));
+  const next = await request("/api/reconcile", "POST", {});
+  await renderAndAutoLock(next);
 });
 
-request("/api/state").then(render).catch(error => {
+request("/api/state").then(renderAndAutoLock).catch(error => {
   document.getElementById("error").textContent = String(error);
 });
 </script>
