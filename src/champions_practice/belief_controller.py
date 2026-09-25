@@ -557,19 +557,24 @@ class BeliefDecisionEngine:
             for particle in self.particles
         )
 
-        def run_tactical(
-            worker: HypotheticalSearchWorker,
-            *,
-            guidance=None,
-            rng_seeds: tuple[str, ...] | None = None,
-        ):
+        def ordered_union(*groups: tuple[str, ...]) -> tuple[str, ...]:
+            seen: set[str] = set()
+            result: list[str] = []
+            for group in groups:
+                for choice in group:
+                    if choice in seen:
+                        continue
+                    seen.add(choice)
+                    result.append(choice)
+            return tuple(result)
+
+        def run_baseline(worker: HypotheticalSearchWorker):
             pruning = shortlist_belief_candidates(
                 worker,
                 worlds=worlds,
                 side="p2",
                 candidate_limit=self.candidate_limit,
                 reference_limit=1,
-                guidance=guidance,
             )
             search = search_exact_belief_turn(
                 worker,
@@ -578,7 +583,6 @@ class BeliefDecisionEngine:
                 choices=list(pruning.candidate_shortlist),
                 response_limit=self.response_limit,
                 autonomous_responses=True,
-                rng_seeds=rng_seeds,
             )
             return pruning, search
 
@@ -589,14 +593,12 @@ class BeliefDecisionEngine:
                 + search.branch_count
             )
 
-        def decision_from_tactical(
+        def decision_from_baseline(
             pruning,
             search,
             *,
-            strategic_plan: str | None = None,
             strategic_probe_count: int = 0,
             strategic_branch_count: int = 0,
-            include_extra_tactical_branches: int = 0,
         ) -> BeliefDecision:
             return BeliefDecision(
                 choice=search.chosen.choice,
@@ -606,10 +608,8 @@ class BeliefDecisionEngine:
                 branch_count=(
                     tactical_branch_count(pruning, search)
                     + strategic_branch_count
-                    + include_extra_tactical_branches
                 ),
                 elapsed_seconds=perf_counter() - started,
-                strategic_plan=strategic_plan,
                 strategic_probe_count=strategic_probe_count,
                 strategic_branch_count=strategic_branch_count,
                 strategic_rng_sample_count=(
@@ -629,7 +629,7 @@ class BeliefDecisionEngine:
 
         try:
             baseline_result, baseline_timed_out = self._run_with_deadline(
-                lambda worker: run_tactical(worker),
+                run_baseline,
                 timeout_seconds=baseline_budget,
             )
         except (RuntimeError, ValueError) as error:
@@ -658,16 +658,15 @@ class BeliefDecisionEngine:
             baseline_pruning,
             baseline_search,
         )
-
         if self.last_public_view is None:
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
 
         remaining_budget = self.decision_budget_seconds - (perf_counter() - started)
         if remaining_budget <= 0:
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
@@ -682,26 +681,53 @@ class BeliefDecisionEngine:
                 limit=self.strategic_plan_limit,
             )
             if not plans:
-                return (None, None, None, None, 0, 0)
+                return None
 
-            probes = []
+            plan_contexts = []
+            candidate_reference_groups = [
+                tuple(baseline_pruning.candidate_shortlist),
+            ]
+            strategic_branch_count = 0
+            for plan in plans:
+                guidance = guidance_from_plan(
+                    plan,
+                    view=self.last_public_view,
+                )
+                pruning = shortlist_belief_candidates(
+                    worker,
+                    worlds=worlds,
+                    side="p2",
+                    candidate_limit=min(
+                        self.candidate_limit,
+                        self.strategic_candidate_limit,
+                    ),
+                    reference_limit=1,
+                    guidance=guidance,
+                )
+                plan_contexts.append((plan, guidance, pruning))
+                candidate_reference_groups.append(
+                    tuple(pruning.candidate_shortlist)
+                )
+                strategic_branch_count += pruning.screening_branch_count
+
+            shared_candidate_references = ordered_union(
+                *candidate_reference_groups
+            )
             shared_responses = prepare_shared_strategic_responses(
                 worker,
                 worlds=worlds,
                 side="p2",
-                candidate_references=tuple(
-                    baseline_pruning.candidate_shortlist
-                ),
+                candidate_references=shared_candidate_references,
                 response_limit=min(
                     self.response_limit,
                     self.strategic_response_limit,
                 ),
                 rng_seeds=self.strategic_rng_seeds,
             )
-            strategic_branch_count = (
-                shared_responses.screening_branch_count
-            )
-            for plan in plans:
+            strategic_branch_count += shared_responses.screening_branch_count
+
+            probes = []
+            for plan, _, pruning in plan_contexts:
                 probe = probe_strategic_plan(
                     worker,
                     worlds=worlds,
@@ -719,11 +745,11 @@ class BeliefDecisionEngine:
                     ),
                     rng_seeds=self.strategic_rng_seeds,
                     shared_responses=shared_responses,
+                    prepared_pruning=pruning,
                 )
                 probes.append(probe)
                 strategic_branch_count += (
-                    probe.pruning.screening_branch_count
-                    + probe.response_screening_branch_count
+                    probe.response_screening_branch_count
                     + probe.branch_count
                 )
 
@@ -732,36 +758,44 @@ class BeliefDecisionEngine:
                 return (
                     None,
                     None,
-                    None,
-                    None,
                     len(probes),
                     strategic_branch_count,
                 )
 
-            guidance = guidance_from_plan(
-                selected_probe.plan,
-                view=self.last_public_view,
+            selected_context = next(
+                (
+                    context
+                    for context in plan_contexts
+                    if context[0].name == selected_probe.plan.name
+                ),
+                None,
             )
-            if not guidance.active:
-                return (
-                    None,
-                    None,
-                    None,
-                    None,
-                    len(probes),
-                    strategic_branch_count,
+            if selected_context is None:
+                raise RuntimeError(
+                    "selected strategic plan has no prepared candidate context"
                 )
+            _, selected_guidance, selected_pruning = selected_context
 
-            guided_pruning, guided_search = run_tactical(
+            final_choices = ordered_union(
+                tuple(baseline_pruning.candidate_shortlist),
+                tuple(selected_pruning.candidate_shortlist),
+                (selected_probe.chosen.choice,),
+            )
+            final_search = search_exact_belief_turn(
                 worker,
-                guidance=guidance,
-                rng_seeds=self.strategic_rng_seeds,
+                worlds=worlds,
+                side="p2",
+                choices=list(final_choices),
+                rng_seeds=shared_responses.rng_seeds,
+                response_shortlists=shared_responses.response_shortlists,
+            )
+            strategic_branch_count += (
+                final_search.response_screening_branch_count
+                + final_search.branch_count
             )
             return (
-                guided_pruning,
-                guided_search,
-                selected_probe,
-                guidance,
+                final_search,
+                (selected_probe, selected_guidance),
                 len(probes),
                 strategic_branch_count,
             )
@@ -772,83 +806,72 @@ class BeliefDecisionEngine:
                 timeout_seconds=remaining_budget,
             )
         except (RuntimeError, ValueError):
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
 
         if strategy_timed_out or augmentation is None:
-            return decision_from_tactical(
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
             )
 
         (
-            guided_pruning,
-            guided_search,
-            selected_probe,
-            selected_guidance,
+            final_search,
+            selected,
             probe_count,
             strategic_branch_count,
         ) = augmentation
 
-        if (
-            guided_pruning is None
-            or guided_search is None
-            or selected_probe is None
-            or selected_guidance is None
-        ):
-            return decision_from_tactical(
+        if final_search is None or selected is None:
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
 
-        if guided_search.chosen.choice not in legal_live:
-            return decision_from_tactical(
+        if final_search.chosen.choice not in legal_live:
+            return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
 
-        guided_tactical_branches = tactical_branch_count(
-            guided_pruning,
-            guided_search,
-        )
+        selected_probe, selected_guidance = selected
         probed_candidate = next(
             (
                 candidate
                 for candidate in selected_probe.ranking
-                if candidate.choice == guided_search.chosen.choice
+                if candidate.choice == final_search.chosen.choice
             ),
             None,
         )
         plan_aligned = (
             choice_matches_guidance(
-                guided_search.chosen.choice,
+                final_search.chosen.choice,
                 selected_guidance,
             )
             and probed_candidate is not None
             and probed_candidate.evaluation.robust
         )
-        if not plan_aligned:
-            return decision_from_tactical(
-                baseline_pruning,
-                baseline_search,
-                strategic_probe_count=probe_count,
-                strategic_branch_count=strategic_branch_count,
-                include_extra_tactical_branches=guided_tactical_branches,
-            )
-
-        return decision_from_tactical(
-            guided_pruning,
-            guided_search,
-            strategic_plan=selected_probe.plan.name,
+        return BeliefDecision(
+            choice=final_search.chosen.choice,
+            mode="belief-search",
+            particle_count=len(self.particles),
+            candidate_count=len(final_search.evaluated_choices),
+            branch_count=baseline_branches + strategic_branch_count,
+            elapsed_seconds=perf_counter() - started,
+            strategic_plan=(
+                selected_probe.plan.name
+                if plan_aligned
+                else None
+            ),
             strategic_probe_count=probe_count,
             strategic_branch_count=strategic_branch_count,
-            include_extra_tactical_branches=baseline_branches,
+            strategic_rng_sample_count=len(self.strategic_rng_seeds),
         )
 
     def observe_public_turn(
