@@ -52,22 +52,25 @@ def main() -> None:
                     f"values={controller.preview_mismatch_values}"
                 )
 
-            decision = controller.choose_ai_action()
+            turn_one_ai_legal = controller.ai_legal_choices()
+            ready = controller.lock_ai_action()
+            if hasattr(ready, "choice") or "move " in repr(ready):
+                raise SystemExit("ERROR: sealed AI payload leaked before human commit")
+            if HUMAN_TURN_ONE not in controller.human_legal_choices():
+                raise SystemExit("ERROR: controlled human turn-one action is not legal")
+
+            update = controller.resolve_locked_turn(
+                token=ready.token,
+                human_choice=HUMAN_TURN_ONE,
+            )
+            decision = update.decision
             if decision.mode != "belief-search":
                 raise SystemExit(
                     "ERROR: first live decision did not come from belief search: "
                     f"{decision.fallback_reason}"
                 )
-            if decision.choice not in controller.ai_legal_choices():
+            if decision.choice not in turn_one_ai_legal:
                 raise SystemExit("ERROR: belief search returned a non-live-legal choice")
-
-            if HUMAN_TURN_ONE not in controller.human_legal_choices():
-                raise SystemExit("ERROR: controlled human turn-one action is not legal")
-
-            update = controller.resolve_turn(
-                human_choice=HUMAN_TURN_ONE,
-                decision=decision,
-            )
             if update.degraded or not controller.particles:
                 raise SystemExit(
                     "ERROR: live public observation collapsed the persistent posterior"
@@ -81,7 +84,18 @@ def main() -> None:
                 else choices[0]
             )
             controller.decision_budget_seconds = 1e-9
-            fallback = controller.choose_ai_action()
+            turn_two_ai_legal = controller.ai_legal_choices()
+            fallback_ready = controller.lock_ai_action()
+            if hasattr(fallback_ready, "choice") or "move " in repr(fallback_ready):
+                raise SystemExit("ERROR: sealed fallback payload leaked before human commit")
+            if HUMAN_TURN_TWO not in controller.human_legal_choices():
+                raise SystemExit("ERROR: controlled human turn-two switch is not legal")
+
+            second_update = controller.resolve_locked_turn(
+                token=fallback_ready.token,
+                human_choice=HUMAN_TURN_TWO,
+            )
+            fallback = second_update.decision
             if fallback.mode != "fallback":
                 raise SystemExit("ERROR: tiny decision budget did not trigger fallback")
             if fallback.fallback_reason != "belief-search-deadline":
@@ -89,17 +103,10 @@ def main() -> None:
                     "ERROR: unexpected deadline fallback reason: "
                     f"{fallback.fallback_reason}"
                 )
-            if fallback.choice not in controller.ai_legal_choices():
+            if fallback.choice not in turn_two_ai_legal:
                 raise SystemExit("ERROR: deadline fallback returned a non-live-legal choice")
             if fallback.choice != AI_TURN_TWO:
                 raise SystemExit("ERROR: controlled deadline fallback did not double-switch")
-            if HUMAN_TURN_TWO not in controller.human_legal_choices():
-                raise SystemExit("ERROR: controlled human turn-two switch is not legal")
-
-            second_update = controller.resolve_turn(
-                human_choice=HUMAN_TURN_TWO,
-                decision=fallback,
-            )
             if second_update.degraded or not controller.particles:
                 raise SystemExit(
                     "ERROR: second live observation collapsed the persistent posterior"
@@ -132,7 +139,9 @@ def main() -> None:
             print(f"Turn-two posterior particles: {second_update.particles_after}")
             print(f"Turn-three belief-search choice: {third_decision.choice}")
             print(f"Turn-three search seconds: {third_decision.elapsed_seconds:.3f}")
-            print("Live session snapshot read by controller: NO")
+            print("Decision engine live-session capability: NO")
+            print("Pre-commit AI decision payload exposed: NO")
+            print("Live session snapshot read by decision engine: IMPOSSIBLE")
             print("Live hidden RNG seed supplied to particles: NO")
             print("RESULT: persistent posterior drives decisions across multiple live turns")
         finally:

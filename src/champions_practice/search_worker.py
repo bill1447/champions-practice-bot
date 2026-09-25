@@ -8,6 +8,95 @@ from pathlib import Path
 from typing import Any
 
 
+class HypotheticalSearchWorker:
+    """Restricted worker surface for exact hypothetical states only.
+
+    This wrapper intentionally exposes no persistent-session operations. Decision code can
+    create, inspect, validate, and branch hypothetical states, but cannot open or inspect a
+    live battle session through this capability.
+    """
+
+    def __init__(self, project_root: str | Path | None = None):
+        self.__worker = ShowdownSearchWorker(project_root)
+
+    def create_state(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_preview: str | None = None,
+        p2_preview: str | None = None,
+        p1_name: str = "Search P1",
+        p2_name: str = "Search P2",
+        seed: str | None = None,
+    ) -> dict[str, Any]:
+        return self.__worker.create_state(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+        )
+
+    def branch_many(
+        self,
+        *,
+        state: dict[str, Any],
+        branches: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return self.__worker.branch_many(state=state, branches=branches)
+
+    def state_view(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        previews: dict[str, list[str]] | None = None,
+    ) -> dict[str, Any]:
+        return self.__worker.state_view(
+            state=state,
+            side=side,
+            previews=previews,
+        )
+
+    def legal_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+    ) -> list[str]:
+        return self.__worker.legal_choices(state=state, side=side)
+
+    def validate_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        candidates: list[str],
+    ) -> list[str]:
+        return self.__worker.validate_choices(
+            state=state,
+            side=side,
+            candidates=candidates,
+        )
+
+    def abort(self) -> None:
+        self.__worker.abort()
+
+    def close(self) -> None:
+        self.__worker.close()
+
+    def __enter__(self) -> "HypotheticalSearchWorker":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
 class ShowdownSearchWorker:
     """Send JSONL requests to a persistent Node.js Showdown search worker."""
 

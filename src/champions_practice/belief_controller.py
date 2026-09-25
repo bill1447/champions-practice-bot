@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 import random
+import secrets
 from time import perf_counter
 from typing import Callable, TypeVar
 
@@ -28,7 +29,7 @@ from champions_practice.observation_beliefs import (
     public_opponent_moves_fully_observed,
     resample_particles_by_world,
 )
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import HypotheticalSearchWorker, ShowdownSearchWorker
 from champions_practice.strategy import assess_strategic_position, generate_strategic_plans
 from champions_practice.strategy_evidence import (
     filter_supported_plans,
@@ -59,6 +60,11 @@ class BeliefDecision:
     strategic_probe_count: int = 0
     strategic_branch_count: int = 0
     strategic_rng_sample_count: int = 0
+
+
+@dataclass(frozen=True)
+class SealedDecisionReady:
+    token: str
 
 
 @dataclass(frozen=True)
@@ -231,17 +237,17 @@ def _public_diff_paths(left: object, right: object, path: str = "$") -> tuple[st
     return () if left == right else (path,)
 
 
-class BeliefBattleController:
-    """Drive one p1-human/p2-AI session from persistent public belief particles.
+class BeliefDecisionEngine:
+    """Choose p2 actions from sanitized public views and hypothetical exact states.
 
-    The controller never reads the live session snapshot. The only live-battle input to
-    belief maintenance is the sanitized p2 player view. Exact states exist only as
-    independently seeded hypothetical particles.
+    This engine owns no live-session worker or session identifier. Its inputs are the AI's
+    public player view, the AI's currently legal live choices, and a restricted hypothetical
+    worker capability that exposes no persistent-session operations.
     """
 
     def __init__(
         self,
-        worker: ShowdownSearchWorker,
+        project_root,
         *,
         battle_format: str,
         ai_team: str,
@@ -288,7 +294,7 @@ class BeliefBattleController:
         if observed_action_rng_multiplier <= 0:
             raise ValueError("observed_action_rng_multiplier must be positive")
 
-        self.worker = worker
+        self.project_root = project_root
         self.battle_format = battle_format
         self.ai_team = ai_team
         self.opponent_priors = opponent_priors
@@ -309,7 +315,6 @@ class BeliefBattleController:
         self.fallback_selector = fallback_selector
         self._rng = random.Random(particle_seed)
 
-        self.session_id: str | None = None
         self.previews: dict[str, list[str]] | None = None
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
@@ -320,44 +325,17 @@ class BeliefBattleController:
         ] = []
         self.degraded = False
 
-    def start(
-        self,
-        *,
-        opponent_team: str,
-        p1_name: str = "Practice Player",
-        p2_name: str = "Practice AI",
-        session_seed: str | None = None,
-    ) -> dict:
-        if self.session_id is not None:
-            raise RuntimeError("controller already has an active session")
-        started = self.worker.start_session(
-            battle_format=self.battle_format,
-            p1_team=opponent_team,
-            p2_team=self.ai_team,
-            p1_name=p1_name,
-            p2_name=p2_name,
-            seed=session_seed,
-        )
-        self.session_id = str(started["session_id"])
-        return started
-
-    def _require_session(self) -> str:
-        if self.session_id is None:
-            raise RuntimeError("controller has no active session")
-        return self.session_id
-
     def _particle_seed(self) -> str:
         values = [self._rng.getrandbits(32) for _ in range(4)]
         return "sodium," + "".join(f"{value:08x}" for value in values)
 
-    def submit_preview(self, *, human_choice: str, ai_choice: str) -> dict:
-        session_id = self._require_session()
-        self.worker.choose_session(
-            session_id,
-            p1_choice=human_choice,
-            p2_choice=ai_choice,
-        )
-        view = self.worker.session_view(session_id, side="p2")["view"]
+    def initialize_preview(
+        self,
+        *,
+        view: dict,
+        ai_choice: str,
+    ) -> dict:
+        """Initialize belief particles from the sanitized p2 post-preview view."""
         self.last_public_view = view
         self.previews = {
             "p1": list(view["opponent"]["preview_species"]),
@@ -377,45 +355,46 @@ class BeliefBattleController:
         wanted = public_observation_signature(view)
         particles: list[BeliefParticle] = []
 
-        for world_index, world in enumerate(worlds, 1):
-            opponent_preview = preview_choice_for_world(belief, world)
-            for rng_index in range(self.particles_per_world):
-                state = self.worker.create_state(
-                    battle_format=self.battle_format,
-                    p1_team=world.team_text,
-                    p2_team=particle_ai_team,
-                    p1_preview=opponent_preview,
-                    p2_preview=ai_choice,
-                    seed=self._particle_seed(),
-                )
-                particle_view = self.worker.state_view(
-                    state=state,
-                    side="p2",
-                    previews=self.previews,
-                )
-                if public_observation_signature(particle_view) != wanted:
-                    if not self.preview_mismatch_paths:
-                        self.preview_mismatch_paths = _public_diff_paths(
-                            view,
-                            particle_view,
-                        )
-                        self.preview_mismatch_values = tuple(
-                            (
-                                path,
-                                _value_at_path(view, path),
-                                _value_at_path(particle_view, path),
-                            )
-                            for path in self.preview_mismatch_paths
-                        )
-                    continue
-                particles.append(
-                    BeliefParticle(
-                        state=state,
-                        weight=world.weight / self.particles_per_world,
-                        world_id=f"world-{world_index}",
-                        history_id=f"rng-{rng_index + 1}",
+        with HypotheticalSearchWorker(self.project_root) as worker:
+            for world_index, world in enumerate(worlds, 1):
+                opponent_preview = preview_choice_for_world(belief, world)
+                for rng_index in range(self.particles_per_world):
+                    state = worker.create_state(
+                        battle_format=self.battle_format,
+                        p1_team=world.team_text,
+                        p2_team=particle_ai_team,
+                        p1_preview=opponent_preview,
+                        p2_preview=ai_choice,
+                        seed=self._particle_seed(),
                     )
-                )
+                    particle_view = worker.state_view(
+                        state=state,
+                        side="p2",
+                        previews=self.previews,
+                    )
+                    if public_observation_signature(particle_view) != wanted:
+                        if not self.preview_mismatch_paths:
+                            self.preview_mismatch_paths = _public_diff_paths(
+                                view,
+                                particle_view,
+                            )
+                            self.preview_mismatch_values = tuple(
+                                (
+                                    path,
+                                    _value_at_path(view, path),
+                                    _value_at_path(particle_view, path),
+                                )
+                                for path in self.preview_mismatch_paths
+                            )
+                        continue
+                    particles.append(
+                        BeliefParticle(
+                            state=state,
+                            weight=world.weight / self.particles_per_world,
+                            world_id=f"world-{world_index}",
+                            history_id=f"rng-{rng_index + 1}",
+                        )
+                    )
 
         self.particles = resample_particles_by_world(
             tuple(particles),
@@ -425,21 +404,14 @@ class BeliefBattleController:
         self.degraded = not bool(self.particles)
         return view
 
-    def human_legal_choices(self) -> list[str]:
-        return self.worker.session_legal_choices(self._require_session(), side="p1")
-
-    def ai_legal_choices(self) -> list[str]:
-        return self.worker.session_legal_choices(self._require_session(), side="p2")
-
-
     def _run_with_deadline(
         self,
-        operation: Callable[[ShowdownSearchWorker], T],
+        operation: Callable[[HypotheticalSearchWorker], T],
         *,
         timeout_seconds: float,
     ) -> tuple[T | None, bool]:
         """Run hypothetical work off-session and abort its worker on timeout."""
-        worker = ShowdownSearchWorker(self.worker.project_root)
+        worker = HypotheticalSearchWorker(self.project_root)
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(operation, worker)
         timed_out = False
@@ -456,7 +428,7 @@ class BeliefBattleController:
 
     def _condition_adaptive(
         self,
-        worker: ShowdownSearchWorker,
+        worker: HypotheticalSearchWorker,
         *,
         particles: tuple[BeliefParticle, ...],
         ai_choice: str,
@@ -505,7 +477,7 @@ class BeliefBattleController:
         starting_particles = self.particles
         pending = tuple(self.pending_observations)
 
-        def recover(worker: ShowdownSearchWorker):
+        def recover(worker: HypotheticalSearchWorker):
             particles = starting_particles
             for ai_choice, previous_view, view in pending:
                 update = self._condition_adaptive(
@@ -554,9 +526,12 @@ class BeliefBattleController:
             fallback_reason=reason,
         )
 
-    def choose_ai_action(self) -> BeliefDecision:
+    def choose_ai_action(
+        self,
+        *,
+        legal_live: list[str],
+    ) -> BeliefDecision:
         started = perf_counter()
-        legal_live = self.ai_legal_choices()
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
         if self.degraded:
@@ -583,7 +558,7 @@ class BeliefBattleController:
         )
 
         def run_tactical(
-            worker: ShowdownSearchWorker,
+            worker: HypotheticalSearchWorker,
             *,
             guidance=None,
             rng_seeds: tuple[str, ...] | None = None,
@@ -697,7 +672,7 @@ class BeliefBattleController:
                 baseline_search,
             )
 
-        def run_strategy_augmentation(worker: ShowdownSearchWorker):
+        def run_strategy_augmentation(worker: HypotheticalSearchWorker):
             assessment = assess_strategic_position(
                 self.last_public_view,
                 particles=self.particles,
@@ -876,22 +851,15 @@ class BeliefBattleController:
             include_extra_tactical_branches=baseline_branches,
         )
 
-    def resolve_turn(
+    def observe_public_turn(
         self,
         *,
-        human_choice: str,
         decision: BeliefDecision,
+        view: dict,
     ) -> BeliefTurnUpdate:
-        session_id = self._require_session()
+        """Condition the posterior on a sanitized p2 public observation."""
         particles_before = len(self.particles)
         previous_view = self.last_public_view
-
-        self.worker.choose_session(
-            session_id,
-            p1_choice=human_choice,
-            p2_choice=decision.choice,
-        )
-        view = self.worker.session_view(session_id, side="p2")["view"]
         self.last_public_view = view
 
         conditioning_started = perf_counter()
@@ -907,7 +875,7 @@ class BeliefBattleController:
             generated = 0
             matched = 0
         else:
-            def run_conditioning(worker: ShowdownSearchWorker):
+            def run_conditioning(worker: HypotheticalSearchWorker):
                 return self._condition_adaptive(
                     worker,
                     particles=self.particles,
@@ -959,8 +927,202 @@ class BeliefBattleController:
             degraded=self.degraded,
         )
 
+class BeliefBattleController:
+    """Coordinate the live human-vs-AI session around a restricted decision engine."""
+
+    _ENGINE_PROXY_FIELDS = {
+        "previews",
+        "particles",
+        "last_public_view",
+        "preview_mismatch_paths",
+        "preview_mismatch_values",
+        "pending_observations",
+        "degraded",
+        "decision_budget_seconds",
+        "conditioning_budget_seconds",
+        "fallback_selector",
+    }
+
+    def __init__(
+        self,
+        worker: ShowdownSearchWorker,
+        *,
+        battle_format: str,
+        ai_team: str,
+        opponent_priors: PublicSetPriorCatalog,
+        world_limit: int = 8,
+        particles_per_world: int = 1,
+        max_particles: int = 8,
+        candidate_limit: int = 4,
+        response_limit: int = 4,
+        strategic_plan_limit: int = 2,
+        strategic_candidate_limit: int = 3,
+        strategic_response_limit: int = 2,
+        strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
+        decision_budget_seconds: float = 8.0,
+        conditioning_budget_seconds: float = 8.0,
+        rng_sample_batches: tuple[int, ...] = (2, 4),
+        recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
+        observed_action_rng_multiplier: int = 16,
+        particle_seed: int = 53,
+        fallback_selector: FallbackSelector = choose_public_fallback,
+    ):
+        self.worker = worker
+        self.battle_format = battle_format
+        self.ai_team = ai_team
+        self.session_id: str | None = None
+        self._locked_decision: tuple[str, BeliefDecision] | None = None
+        self.engine = BeliefDecisionEngine(
+            worker.project_root,
+            battle_format=battle_format,
+            ai_team=ai_team,
+            opponent_priors=opponent_priors,
+            world_limit=world_limit,
+            particles_per_world=particles_per_world,
+            max_particles=max_particles,
+            candidate_limit=candidate_limit,
+            response_limit=response_limit,
+            strategic_plan_limit=strategic_plan_limit,
+            strategic_candidate_limit=strategic_candidate_limit,
+            strategic_response_limit=strategic_response_limit,
+            strategic_rng_seeds=strategic_rng_seeds,
+            decision_budget_seconds=decision_budget_seconds,
+            conditioning_budget_seconds=conditioning_budget_seconds,
+            rng_sample_batches=rng_sample_batches,
+            recovery_rng_sample_batches=recovery_rng_sample_batches,
+            observed_action_rng_multiplier=observed_action_rng_multiplier,
+            particle_seed=particle_seed,
+            fallback_selector=fallback_selector,
+        )
+
+    def __getattr__(self, name: str):
+        if name in self._ENGINE_PROXY_FIELDS:
+            return getattr(self.engine, name)
+        if name == "_run_with_deadline":
+            return self.engine._run_with_deadline
+        raise AttributeError(name)
+
+    def __setattr__(self, name: str, value) -> None:
+        if (
+            name in BeliefBattleController._ENGINE_PROXY_FIELDS
+            and "engine" in self.__dict__
+        ):
+            setattr(self.engine, name, value)
+            return
+        if name == "_run_with_deadline" and "engine" in self.__dict__:
+            self.engine._run_with_deadline = value
+            return
+        object.__setattr__(self, name, value)
+
+    def _require_session(self) -> str:
+        if self.session_id is None:
+            raise RuntimeError("controller has no active session")
+        return self.session_id
+
+    def start(
+        self,
+        *,
+        opponent_team: str,
+        p1_name: str = "Practice Player",
+        p2_name: str = "Practice AI",
+        session_seed: str | None = None,
+    ) -> dict:
+        if self.session_id is not None:
+            raise RuntimeError("controller already has an active session")
+        started = self.worker.start_session(
+            battle_format=self.battle_format,
+            p1_team=opponent_team,
+            p2_team=self.ai_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=session_seed,
+        )
+        self.session_id = str(started["session_id"])
+        return started
+
+    def submit_preview(self, *, human_choice: str, ai_choice: str) -> dict:
+        session_id = self._require_session()
+        self.worker.choose_session(
+            session_id,
+            p1_choice=human_choice,
+            p2_choice=ai_choice,
+        )
+        view = self.worker.session_view(session_id, side="p2")["view"]
+        return self.engine.initialize_preview(
+            view=view,
+            ai_choice=ai_choice,
+        )
+
+    def human_legal_choices(self) -> list[str]:
+        return self.worker.session_legal_choices(
+            self._require_session(),
+            side="p1",
+        )
+
+    def ai_legal_choices(self) -> list[str]:
+        return self.worker.session_legal_choices(
+            self._require_session(),
+            side="p2",
+        )
+
+    def choose_ai_action(self) -> BeliefDecision:
+        return self.engine.choose_ai_action(
+            legal_live=self.ai_legal_choices(),
+        )
+
+    def lock_ai_action(self) -> SealedDecisionReady:
+        """Compute and retain the AI action without exposing its decision payload."""
+        if self._locked_decision is not None:
+            raise RuntimeError("AI action is already locked for this turn")
+        decision = self.choose_ai_action()
+        token = secrets.token_urlsafe(18)
+        self._locked_decision = (token, decision)
+        return SealedDecisionReady(token=token)
+
+    def resolve_locked_turn(
+        self,
+        *,
+        token: str,
+        human_choice: str,
+    ) -> BeliefTurnUpdate:
+        """Accept the human action before revealing/submitting the locked AI decision."""
+        locked = self._locked_decision
+        if locked is None:
+            raise RuntimeError("no AI action is locked")
+        expected_token, decision = locked
+        if not secrets.compare_digest(token, expected_token):
+            raise ValueError("invalid locked-decision token")
+        if human_choice not in self.human_legal_choices():
+            raise ValueError("human choice is not live-session legal")
+
+        self._locked_decision = None
+        return self.resolve_turn(
+            human_choice=human_choice,
+            decision=decision,
+        )
+
+    def resolve_turn(
+        self,
+        *,
+        human_choice: str,
+        decision: BeliefDecision,
+    ) -> BeliefTurnUpdate:
+        session_id = self._require_session()
+        self.worker.choose_session(
+            session_id,
+            p1_choice=human_choice,
+            p2_choice=decision.choice,
+        )
+        view = self.worker.session_view(session_id, side="p2")["view"]
+        return self.engine.observe_public_turn(
+            decision=decision,
+            view=view,
+        )
+
     def close(self) -> None:
+        self._locked_decision = None
         if self.session_id is None:
             return
         self.worker.close_session(self.session_id)
         self.session_id = None
+
