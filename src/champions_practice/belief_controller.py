@@ -1351,7 +1351,10 @@ class _BeliefBattleCoordinator:
     ) -> SealedTurnResult:
         with self._state_lock:
             if self._turn_state is not SealedTurnState.FAILED:
-                raise RuntimeError("battle is not awaiting failed-turn reconciliation")
+                raise RuntimeError(
+                    "cannot reconcile failed turn while state is "
+                    f"{self._turn_state.value}"
+                )
             if self._sealed_decision is None:
                 raise RuntimeError("failed turn has no retained sealed decision")
             expected_token, decision = self._sealed_decision
