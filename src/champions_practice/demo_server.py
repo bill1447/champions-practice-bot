@@ -78,6 +78,7 @@ class DemoBattleSession:
         self._facade_factory = facade_factory
         self._facade: SealedBattleFacade | None = None
         self._ready_token: str | None = None
+        self._last_public_view: dict | None = None
         self._history: list[dict[str, object]] = []
         self._lock = RLock()
 
@@ -101,6 +102,17 @@ class DemoBattleSession:
 
         facade = self._facade
         turn_state = facade.turn_state.value
+        public_view_error: str | None = None
+        try:
+            self._last_public_view = facade.public_state()
+        except Exception as error:
+            public_view_error = f"{type(error).__name__}: {error}"
+
+        try:
+            legal_choices = list(facade.legal_human_choices())
+        except Exception:
+            legal_choices = []
+
         return {
             "started": True,
             "preset": DEMO_PRESET_NAME,
@@ -109,8 +121,9 @@ class DemoBattleSession:
             "can_reconcile": (
                 self._ready_token is not None and turn_state == "failed"
             ),
-            "public_view": facade.public_state(),
-            "legal_choices": list(facade.legal_human_choices()),
+            "public_view": self._last_public_view,
+            "public_view_error": public_view_error,
+            "legal_choices": legal_choices,
             "history": list(self._history),
         }
 
@@ -123,13 +136,14 @@ class DemoBattleSession:
             old = self._facade
             self._facade = None
             self._ready_token = None
+            self._last_public_view = None
             self._history = []
             if old is not None:
                 old.close()
 
             facade = self._facade_factory()
             try:
-                facade.start(
+                self._last_public_view = facade.start(
                     opponent_team=DEMO_HUMAN_TEAM,
                     p1_name="Human",
                     p2_name="Practice AI",
@@ -144,7 +158,9 @@ class DemoBattleSession:
     def commit_preview(self, human_choice: str) -> dict[str, object]:
         with self._lock:
             facade = self._require_facade()
-            facade.commit_preview(human_choice=human_choice)
+            self._last_public_view = facade.commit_preview(
+                human_choice=human_choice
+            )
             self._ready_token = None
             return self._snapshot_locked()
 
@@ -165,6 +181,7 @@ class DemoBattleSession:
                 human_choice=human_choice,
             )
             self._ready_token = None
+            self._last_public_view = result.public_view
             self._history.append(_result_payload(result))
             return self._snapshot_locked()
 
@@ -183,6 +200,7 @@ class DemoBattleSession:
             facade = self._facade
             self._facade = None
             self._ready_token = None
+            self._last_public_view = None
             if facade is not None:
                 facade.close()
 
@@ -395,7 +413,8 @@ function render(next) {
   const turnState = state.turn_state || "new";
   document.getElementById("status").textContent =
     state.started ? turnState.toUpperCase() : "NOT STARTED";
-  document.getElementById("hint").textContent = hintFor(turnState);
+  const viewError = state.public_view_error ? ` · view read: ${state.public_view_error}` : "";
+  document.getElementById("hint").textContent = hintFor(turnState) + viewError;
   document.getElementById("raw").textContent =
     JSON.stringify(state.public_view, null, 2);
 
