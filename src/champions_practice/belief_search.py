@@ -20,6 +20,7 @@ from champions_practice.recommendations import (
     _diversified_top,
     _reference_choices,
     _strategy_families,
+    _strategy_signature,
 )
 from champions_practice.strategy_tactics import (
     StrategicCandidateGuidance,
@@ -313,6 +314,68 @@ def _pruning_score(candidate: ExactChoiceScore, side: SideId) -> BeliefPruningSc
     )
 
 
+def _slot_action_diverse_shortlist(
+    ranking: tuple[ExactChoiceScore, ...],
+    *,
+    limit: int,
+) -> list[str]:
+    """Keep the top action while forcing alternate action families in each active slot."""
+    if limit <= 0:
+        raise ValueError("shortlist limit must be positive")
+    if not ranking:
+        return []
+    if len(ranking) <= limit:
+        return [candidate.choice for candidate in ranking]
+
+    selected: list[str] = [ranking[0].choice]
+    seen = {_strategy_signature(ranking[0].choice)}
+    top_signature = _strategy_signature(ranking[0].choice)
+    slot_actions: list[set[tuple[str, ...]]] = [
+        {action}
+        for action in top_signature
+    ]
+
+    for slot_index in range(len(slot_actions)):
+        if len(selected) >= limit:
+            break
+        reserve = next(
+            (
+                candidate.choice
+                for candidate in ranking[1:]
+                if candidate.choice not in selected
+                and slot_index < len(_strategy_signature(candidate.choice))
+                and _strategy_signature(candidate.choice)[slot_index]
+                not in slot_actions[slot_index]
+            ),
+            None,
+        )
+        if reserve is None:
+            continue
+        selected.append(reserve)
+        signature = _strategy_signature(reserve)
+        seen.add(signature)
+        for index, action in enumerate(signature):
+            if index < len(slot_actions):
+                slot_actions[index].add(action)
+
+    for candidate in ranking:
+        if len(selected) >= limit:
+            break
+        signature = _strategy_signature(candidate.choice)
+        if candidate.choice in selected or signature in seen:
+            continue
+        selected.append(candidate.choice)
+        seen.add(signature)
+
+    for candidate in ranking:
+        if len(selected) >= limit:
+            break
+        if candidate.choice not in selected:
+            selected.append(candidate.choice)
+
+    return selected
+
+
 def shortlist_belief_candidates(
     worker: BeliefSearchWorker,
     *,
@@ -369,9 +432,9 @@ def shortlist_belief_candidates(
         len(families),
         max(minimum_families, candidate_limit - 2),
     )
-    representative_shortlist = _diversified_top(
+    representative_shortlist = _slot_action_diverse_shortlist(
         family_screening.ranking,
-        family_limit,
+        limit=family_limit,
     )
     by_representative = {family.representative: family for family in families}
 
@@ -417,7 +480,10 @@ def shortlist_belief_candidates(
         opponent_responses=references,
         rng_seeds=SCREENING_RNG_SEEDS,
     )
-    shortlist = _diversified_top(target_screening.ranking, candidate_limit)
+    shortlist = _slot_action_diverse_shortlist(
+        target_screening.ranking,
+        limit=candidate_limit,
+    )
     shortlist_tuple, target_reserved = reserve_strategic_candidate(
         target_screening.ranking,
         shortlist,
