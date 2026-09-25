@@ -117,6 +117,7 @@ def test_demo_session_does_not_expose_locked_ai_decision_or_token() -> None:
 
     assert resolved["turn_state"] == "resolved"
     assert resolved["ai_ready"] is False
+    assert resolved["history"][0]["turn"] == 1
     assert resolved["history"][0]["decision"]["choice"] == "move secret-ai"
     decision = resolved["history"][0]["decision"]
     assert decision["strategic_plan"] == "preserve-resource"
