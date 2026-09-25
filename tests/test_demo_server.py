@@ -280,3 +280,16 @@ def test_turn_choice_label_names_ally_targets_by_pokemon() -> None:
         "Indeedee-F: Helping Hand → ally Gardevoir-Mega | Gardevoir-Mega: Protect"
     )
 
+def test_demo_snapshot_surfaces_public_field_conditions() -> None:
+    facade = FakeFacade()
+    facade.view["field"] = {
+        "terrain": "grassyterrain",
+        "weather": "raindance",
+        "pseudo_weather": ["trickroom"],
+    }
+    session = DemoBattleSession(facade_factory=lambda: facade)
+
+    snapshot = session.start()
+
+    assert snapshot["field_status"] == "Field: Grassy Terrain · Rain · Trick Room"
+
