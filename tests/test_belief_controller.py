@@ -366,6 +366,7 @@ def _patch_live_strategy_pipeline(
         seen["shared_candidate_references"] = kwargs.get(
             "candidate_references"
         )
+        seen["shared_response_limit"] = kwargs.get("response_limit")
         seen["shared_rng_seeds"] = kwargs.get("rng_seeds")
         return shared_responses
 
@@ -603,6 +604,8 @@ def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence
         "move baseline",
         "move guided",
     )
+    assert seen["shared_response_limit"] == engine.response_limit
+    assert seen["shared_response_limit"] > engine.strategic_response_limit
     assert seen["search_choices"] == [
         ("move baseline",),
         ("move baseline", "move guided"),
@@ -878,6 +881,148 @@ def test_failed_post_submit_view_can_reconcile_without_second_submission(
     recovered = controller.reconcile_failed_turn(token=ready.token)
 
     assert recovered.decision.choice == "move secret-ai"
+    assert len(worker.submissions) == 1
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _BlockingReconcileWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.after_submit = False
+        self.post_submit_reads = 0
+        self.reconcile_started = Event()
+        self.release_reconcile = Event()
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        self.after_submit = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.after_submit and side == "p2":
+            self.post_submit_reads += 1
+            if self.post_submit_reads == 1:
+                raise RuntimeError("post-submit view unavailable")
+            if self.post_submit_reads == 2:
+                self.reconcile_started.set()
+                assert self.release_reconcile.wait(timeout=2)
+        return super().session_view(session_id, side=side)
+
+
+def test_concurrent_failed_turn_reconciliation_runs_once(monkeypatch) -> None:
+    worker = _BlockingReconcileWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="post-submit view unavailable"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.FAILED
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            controller.reconcile_failed_turn,
+            token=ready.token,
+        )
+        assert worker.reconcile_started.wait(timeout=1)
+        second = pool.submit(
+            controller.reconcile_failed_turn,
+            token=ready.token,
+        )
+        with pytest.raises(RuntimeError, match="submitting"):
+            second.result(timeout=1)
+        worker.release_reconcile.set()
+        result = first.result(timeout=2)
+
+    assert result.decision.choice == "move secret-ai"
+    assert worker.post_submit_reads == 2
+    assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _HumanViewFailureAfterConditioningWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.after_submit = False
+        self.fail_human_view_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        self.after_submit = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.after_submit and side == "p1" and self.fail_human_view_once:
+            self.fail_human_view_once = False
+            raise RuntimeError("human post-submit view unavailable")
+        return super().session_view(session_id, side=side)
+
+
+def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> None:
+    worker = _HumanViewFailureAfterConditioningWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+    observed = 0
+
+    def count_observation(*, decision, view):
+        nonlocal observed
+        observed += 1
+        return SimpleNamespace(
+            decision=decision,
+            public_view=view,
+            particles_before=3,
+            particles_after=3,
+            generated_branches=4,
+            matched_branches=2,
+            conditioning_seconds=0.01,
+            conditioning_over_budget=False,
+            degraded=False,
+        )
+
+    monkeypatch.setattr(
+        controller._engine,
+        "observe_public_turn",
+        count_observation,
+    )
+
+    with pytest.raises(RuntimeError, match="human post-submit view unavailable"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.FAILED
+    assert observed == 0
+
+    result = controller.reconcile_failed_turn(token=ready.token)
+
+    assert result.decision.choice == "move secret-ai"
+    assert observed == 1
     assert len(worker.submissions) == 1
     assert controller.turn_state is SealedTurnState.RESOLVED
 
