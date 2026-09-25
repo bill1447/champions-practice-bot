@@ -144,3 +144,26 @@ def test_demo_snapshot_before_start_contains_no_live_handles() -> None:
     assert snapshot["legal_choices"] == []
     assert "token" not in encoded.lower()
     assert "decision" not in encoded.lower()
+
+def test_demo_snapshot_uses_last_good_view_when_live_view_read_fails() -> None:
+    class ViewFailFacade(FakeFacade):
+        def __init__(self) -> None:
+            super().__init__()
+            self.fail_reads = False
+
+        def public_state(self):
+            if self.fail_reads:
+                raise RuntimeError("temporary view read failure")
+            return super().public_state()
+
+    facade = ViewFailFacade()
+    session = DemoBattleSession(facade_factory=lambda: facade)
+    started = session.start()
+    assert started["public_view"] is not None
+
+    facade.fail_reads = True
+    snapshot = session.snapshot()
+
+    assert snapshot["public_view"] == started["public_view"]
+    assert "temporary view read failure" in snapshot["public_view_error"]
+
