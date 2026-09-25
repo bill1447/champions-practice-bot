@@ -517,25 +517,22 @@ def _reserve_redirection_counters(
     fallback: tuple[str, ...],
     limit: int,
 ) -> tuple[tuple[str, ...], int]:
-    """Reserve redirection only where it beats the normal shortlist for a candidate."""
-    redirection_families = [
-        family
+    """Reserve concrete redirection variants that beat the normal shortlist."""
+    redirection_choices = [
+        choice
         for family in families
-        if any(_choice_uses_redirection(choice) for choice in family.choices)
+        for choice in family.choices
+        if _choice_uses_redirection(choice)
     ]
     references = candidate_references[:_REDIRECTION_REFERENCE_LIMIT]
-    if not redirection_families or not references or not fallback or limit <= 0:
+    if not redirection_choices or not references or not fallback or limit <= 0:
         return (), 0
 
-    representatives = [family.representative for family in redirection_families]
-    by_representative = {
-        family.representative: family for family in redirection_families
-    }
-    family_screening = search_exact_turn(
+    redirection_screening = search_exact_turn(
         worker,
         state=state,
         side=opponent,
-        choices=representatives,
+        choices=redirection_choices,
         opponent_responses=references,
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
@@ -548,14 +545,14 @@ def _reserve_redirection_counters(
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
     branch_count = (
-        family_screening.branch_count
+        redirection_screening.branch_count
         + fallback_screening.branch_count
     )
 
-    opportunities: list[tuple[float, str, str]] = []
+    opportunities: list[tuple[float, str]] = []
     for reference in references:
-        representative, redirection_score = _branch_score_for_response(
-            family_screening,
+        counter, redirection_score = _branch_score_for_response(
+            redirection_screening,
             reference,
         )
         _, fallback_score = _branch_score_for_response(
@@ -564,24 +561,11 @@ def _reserve_redirection_counters(
         )
         improvement = redirection_score - fallback_score
         if improvement > 0.0:
-            opportunities.append(
-                (improvement, representative, reference)
-            )
+            opportunities.append((improvement, counter))
 
     opportunities.sort(reverse=True)
     selected: list[str] = []
-    for _, representative, reference in opportunities:
-        family = by_representative[representative]
-        target_screening = search_exact_turn(
-            worker,
-            state=state,
-            side=opponent,
-            choices=list(family.choices),
-            opponent_responses=[reference],
-            rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
-        )
-        branch_count += target_screening.branch_count
-        counter = target_screening.chosen.choice
+    for _, counter in opportunities:
         if counter in selected:
             continue
         selected.append(counter)
