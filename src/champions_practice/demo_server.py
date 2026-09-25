@@ -192,6 +192,7 @@ class DemoBattleSession:
                 raise RuntimeError("no sealed action is available for reconciliation")
             result = facade.reconcile_failed_turn(token=self._ready_token)
             self._ready_token = None
+            self._last_public_view = result.public_view
             self._history.append(_result_payload(result))
             return self._snapshot_locked()
 
