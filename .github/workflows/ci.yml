@@ -129,6 +129,10 @@ jobs:
         shell: pwsh
         run: .\belief-controller-smoke.ps1
 
+      - name: Sealed forced-switch and terminal smoke test
+        shell: pwsh
+        run: .\sealed-transition-smoke.ps1
+
       - name: Production-like damaging-turn conditioning smoke test
         shell: pwsh
         run: .\damage-conditioning-smoke.ps1
