@@ -437,6 +437,39 @@ def shortlist_belief_candidates(
     )
 
 
+def _family_diverse_response_shortlist(
+    ranking: tuple[ExactChoiceScore, ...],
+    families,
+    *,
+    limit: int,
+) -> tuple[str, ...]:
+    """Prefer one strong target variant from each retained response family first."""
+    family_by_choice = {
+        choice: family_index
+        for family_index, family in enumerate(families)
+        for choice in family.choices
+    }
+    selected: list[str] = []
+    seen_families: set[int] = set()
+
+    for candidate in ranking:
+        family_index = family_by_choice.get(candidate.choice)
+        if family_index is None or family_index in seen_families:
+            continue
+        selected.append(candidate.choice)
+        seen_families.add(family_index)
+        if len(selected) >= limit:
+            return tuple(selected)
+
+    for candidate in ranking:
+        if candidate.choice in selected:
+            continue
+        selected.append(candidate.choice)
+        if len(selected) >= limit:
+            break
+    return tuple(selected)
+
+
 def shortlist_belief_responses(
     worker: BeliefSearchWorker,
     *,
@@ -474,7 +507,10 @@ def shortlist_belief_responses(
         opponent_responses=references,
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
-    family_limit = min(len(families), max(1, response_limit // 2))
+    family_limit = min(
+        len(families),
+        1 if response_limit == 1 else max(2, response_limit // 2),
+    )
     representative_shortlist = _diversified_top(
         family_screening.ranking,
         family_limit,
@@ -493,11 +529,19 @@ def shortlist_belief_responses(
         opponent_responses=references,
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
-    shortlist = _diversified_top(target_screening.ranking, response_limit)
+    retained_families = [
+        by_representative[representative]
+        for representative in representative_shortlist
+    ]
+    shortlist = _family_diverse_response_shortlist(
+        target_screening.ranking,
+        retained_families,
+        limit=response_limit,
+    )
     return BeliefResponsePruning(
         legal_response_count=len(responses),
         strategic_response_count=len(families),
-        response_shortlist=tuple(shortlist),
+        response_shortlist=shortlist,
         screening_branch_count=(family_screening.branch_count + target_screening.branch_count),
         screening_seconds=perf_counter() - screening_started,
     )

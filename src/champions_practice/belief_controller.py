@@ -32,6 +32,7 @@ from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.strategy import assess_strategic_position, generate_strategic_plans
 from champions_practice.strategy_evidence import (
     filter_supported_plans,
+    prepare_shared_strategic_responses,
     probe_strategic_plan,
     select_supported_plan,
 )
@@ -585,6 +586,7 @@ class BeliefBattleController:
             worker: ShowdownSearchWorker,
             *,
             guidance=None,
+            rng_seeds: tuple[str, ...] | None = None,
         ):
             pruning = shortlist_belief_candidates(
                 worker,
@@ -601,6 +603,7 @@ class BeliefBattleController:
                 choices=list(pruning.candidate_shortlist),
                 response_limit=self.response_limit,
                 autonomous_responses=True,
+                rng_seeds=rng_seeds,
             )
             return pruning, search
 
@@ -703,8 +706,26 @@ class BeliefBattleController:
                 generate_strategic_plans(assessment, limit=None),
                 limit=self.strategic_plan_limit,
             )
+            if not plans:
+                return (None, None, None, None, 0, 0)
+
             probes = []
-            strategic_branch_count = 0
+            shared_responses = prepare_shared_strategic_responses(
+                worker,
+                worlds=worlds,
+                side="p2",
+                candidate_references=tuple(
+                    baseline_pruning.candidate_shortlist
+                ),
+                response_limit=min(
+                    self.response_limit,
+                    self.strategic_response_limit,
+                ),
+                rng_seeds=self.strategic_rng_seeds,
+            )
+            strategic_branch_count = (
+                shared_responses.screening_branch_count
+            )
             for plan in plans:
                 probe = probe_strategic_plan(
                     worker,
@@ -722,6 +743,7 @@ class BeliefBattleController:
                         self.strategic_response_limit,
                     ),
                     rng_seeds=self.strategic_rng_seeds,
+                    shared_responses=shared_responses,
                 )
                 probes.append(probe)
                 strategic_branch_count += (
@@ -758,6 +780,7 @@ class BeliefBattleController:
             guided_pruning, guided_search = run_tactical(
                 worker,
                 guidance=guidance,
+                rng_seeds=self.strategic_rng_seeds,
             )
             return (
                 guided_pruning,

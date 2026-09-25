@@ -36,6 +36,14 @@ class PlanProbeCandidate:
 
 
 @dataclass(frozen=True)
+class SharedStrategicResponses:
+    response_shortlists: tuple[tuple[str, ...], ...]
+    rng_seeds: tuple[str, ...]
+    screening_branch_count: int
+    total_seconds: float = field(compare=False)
+
+
+@dataclass(frozen=True)
 class StrategicPlanProbe:
     plan: StrategicPlan
     chosen: PlanProbeCandidate
@@ -516,6 +524,54 @@ def _worst_branch(
     return worst[4], -worst[1]
 
 
+def prepare_shared_strategic_responses(
+    worker: BeliefSearchWorker,
+    *,
+    worlds: tuple[ExactBeliefWorldState, ...],
+    side: SideId,
+    candidate_references: tuple[str, ...],
+    response_limit: int,
+    rng_seeds: tuple[str, ...],
+) -> SharedStrategicResponses:
+    """Prune one common opponent response set per world for all competing plans."""
+    if not worlds:
+        raise ValueError("worlds must not be empty")
+    if not candidate_references:
+        raise ValueError("candidate_references must not be empty")
+    if response_limit <= 0:
+        raise ValueError("response_limit must be positive")
+    if not rng_seeds:
+        raise ValueError("strategic rng_seeds must not be empty")
+
+    started = perf_counter()
+    opponent: SideId = "p2" if side == "p1" else "p1"
+    shortlists: list[tuple[str, ...]] = []
+    screening_branch_count = 0
+
+    for world in worlds:
+        legal_responses = worker.legal_choices(
+            state=world.state,
+            side=opponent,
+        )
+        pruning = shortlist_belief_responses(
+            worker,
+            world=world,
+            ai_side=side,
+            candidate_references=list(candidate_references),
+            response_limit=response_limit,
+            legal_responses=legal_responses,
+        )
+        shortlists.append(pruning.response_shortlist)
+        screening_branch_count += pruning.screening_branch_count
+
+    return SharedStrategicResponses(
+        response_shortlists=tuple(shortlists),
+        rng_seeds=rng_seeds,
+        screening_branch_count=screening_branch_count,
+        total_seconds=perf_counter() - started,
+    )
+
+
 def probe_strategic_plan(
     worker: BeliefSearchWorker,
     *,
@@ -528,6 +584,7 @@ def probe_strategic_plan(
     response_limit: int = 3,
     rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
     robust_threshold: float = 0.8,
+    shared_responses: SharedStrategicResponses | None = None,
 ) -> StrategicPlanProbe:
     """Probe whether a plan has a robust exact one-turn tactical path.
 
@@ -542,6 +599,18 @@ def probe_strategic_plan(
         raise ValueError("plan probe limits must be positive")
     if not rng_seeds:
         raise ValueError("plan probe rng_seeds must not be empty")
+    if (
+        shared_responses is not None
+        and len(shared_responses.response_shortlists) != len(worlds)
+    ):
+        raise ValueError("shared response sets must align one-to-one with worlds")
+    sample_rng_seeds = (
+        shared_responses.rng_seeds
+        if shared_responses is not None
+        else rng_seeds
+    )
+    if not sample_rng_seeds:
+        raise ValueError("shared strategic rng_seeds must not be empty")
 
     started = perf_counter()
     guidance = guidance_from_plan(plan, view=view)
@@ -566,23 +635,35 @@ def probe_strategic_plan(
     response_screening_count = 0
 
     for index, world in enumerate(worlds, start=1):
-        legal_responses = worker.legal_choices(state=world.state, side=opponent)
-        response_pruning = shortlist_belief_responses(
-            worker,
-            world=world,
-            ai_side=side,
-            candidate_references=choices,
-            response_limit=response_limit,
-            legal_responses=legal_responses,
-        )
-        response_screening_count += response_pruning.screening_branch_count
-        responses = list(response_pruning.response_shortlist)
+        if shared_responses is None:
+            legal_responses = worker.legal_choices(
+                state=world.state,
+                side=opponent,
+            )
+            response_pruning = shortlist_belief_responses(
+                worker,
+                world=world,
+                ai_side=side,
+                candidate_references=choices,
+                response_limit=response_limit,
+                legal_responses=legal_responses,
+            )
+            response_screening_count += response_pruning.screening_branch_count
+            responses = list(response_pruning.response_shortlist)
+        else:
+            responses = list(
+                shared_responses.response_shortlists[index - 1]
+            )
+            if not responses:
+                raise ValueError(
+                    "shared strategic response shortlist must not be empty"
+                )
 
         requested: list[dict[str, str]] = []
         metadata: list[tuple[str, str, str]] = []
         for choice in choices:
             for response in responses:
-                for rng_seed in rng_seeds:
+                for rng_seed in sample_rng_seeds:
                     branch = (
                         {"p1_choice": choice, "p2_choice": response, "rng_seed": rng_seed}
                         if side == "p1"
@@ -687,7 +768,7 @@ def probe_strategic_plan(
         unsupported_conditions=unsupported,
         unresolved_failure_conditions=unresolved,
         sampled_robust=sampled_robust,
-        rng_sample_count=len(rng_seeds),
+        rng_sample_count=len(sample_rng_seeds),
         total_seconds=perf_counter() - started,
     )
 
