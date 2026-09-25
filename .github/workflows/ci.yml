@@ -80,6 +80,10 @@ jobs:
           . .\scripts\showdown-utils.ps1
           Set-ChampionsShowdownLocalConfig
 
+      - name: Runtime Showdown pin gate
+        shell: pwsh
+        run: .\showdown-runtime-gate.ps1
+
       - name: Lint
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m ruff check src tests
