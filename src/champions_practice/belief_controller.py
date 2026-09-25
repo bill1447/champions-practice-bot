@@ -664,22 +664,40 @@ class BeliefDecisionEngine:
             )
 
         def search_diagnostics(search):
-            worst_world = min(
-                search.chosen.worlds,
-                key=lambda outcome: (outcome.worst_score, outcome.label),
-            )
             seen: set[str] = set()
             searched_responses: list[str] = []
-            for shortlist in search.response_shortlists:
+            for shortlist in getattr(search, "response_shortlists", ()):
                 for response in shortlist:
                     if response in seen:
                         continue
                     seen.add(response)
                     searched_responses.append(response)
+
+            worlds = tuple(getattr(search.chosen, "worlds", ()))
+            if not worlds:
+                return {
+                    "worst_response": None,
+                    "worst_world_score": None,
+                    "weighted_score": getattr(
+                        search.chosen,
+                        "weighted_score",
+                        None,
+                    ),
+                    "searched_responses": tuple(searched_responses),
+                }
+
+            worst_world = min(
+                worlds,
+                key=lambda outcome: (outcome.worst_score, outcome.label),
+            )
             return {
                 "worst_response": worst_world.worst_response,
                 "worst_world_score": worst_world.worst_score,
-                "weighted_score": search.chosen.weighted_score,
+                "weighted_score": getattr(
+                    search.chosen,
+                    "weighted_score",
+                    None,
+                ),
                 "searched_responses": tuple(searched_responses),
             }
 
