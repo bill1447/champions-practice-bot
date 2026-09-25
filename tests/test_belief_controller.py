@@ -301,7 +301,14 @@ def _decision_engine() -> BeliefDecisionEngine:
     return engine
 
 
-def _patch_live_strategy_pipeline(monkeypatch, *, selected):
+def _patch_live_strategy_pipeline(
+    monkeypatch,
+    *,
+    selected,
+    baseline_choices=("move safe",),
+    guided_choices=("move safe",),
+    final_choice="move safe",
+):
     plan = StrategicPlan(
         name="preserve-key",
         objective="preserve the key resource",
@@ -309,7 +316,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         tactical_priorities=("prefer-protect",),
     )
     probe_candidate = SimpleNamespace(
-        choice="move safe",
+        choice=guided_choices[0],
         evaluation=SimpleNamespace(robust=True),
     )
     probe = SimpleNamespace(
@@ -337,6 +344,7 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
     def fake_probe(*args, **kwargs):
         seen["rng_seeds"] = kwargs.get("rng_seeds")
         seen["shared_responses"] = kwargs.get("shared_responses")
+        seen["prepared_pruning"] = kwargs.get("prepared_pruning")
         return probe
 
     monkeypatch.setattr(
@@ -373,10 +381,14 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         guidance_value = kwargs.get("guidance")
         seen["guidance"] = guidance_value
         seen.setdefault("pruning_guidance", []).append(guidance_value)
-        return SimpleNamespace(
-            candidate_shortlist=("move safe",),
+        choices = baseline_choices if guidance_value is None else guided_choices
+        pruning = SimpleNamespace(
+            candidate_shortlist=tuple(choices),
             screening_branch_count=2,
         )
+        if guidance_value is not None:
+            seen["guided_pruning"] = pruning
+        return pruning
 
     monkeypatch.setattr(
         "champions_practice.belief_controller.shortlist_belief_candidates",
@@ -386,10 +398,18 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
         seen.setdefault("search_rng_seeds", []).append(
             kwargs.get("rng_seeds")
         )
+        seen.setdefault("search_choices", []).append(
+            tuple(kwargs.get("choices") or ())
+        )
+        seen.setdefault("search_response_shortlists", []).append(
+            kwargs.get("response_shortlists")
+        )
+        is_final = kwargs.get("response_shortlists") is not None
+        choice = final_choice if is_final else baseline_choices[0]
         return SimpleNamespace(
-            chosen=SimpleNamespace(choice="move safe"),
-            evaluated_choices=("move safe",),
-            response_screening_branch_count=3,
+            chosen=SimpleNamespace(choice=choice),
+            evaluated_choices=tuple(kwargs.get("choices") or (choice,)),
+            response_screening_branch_count=0 if is_final else 3,
             branch_count=4,
         )
 
@@ -413,16 +433,17 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert decision.mode == "belief-search"
     assert decision.strategic_plan is None
     assert decision.strategic_probe_count == 1
-    assert decision.strategic_branch_count == 23
+    assert decision.strategic_branch_count == 20
     assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["shared_responses"] is not None
     assert seen["shared_candidate_references"] == ("move safe",)
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
-    assert seen["guidance"] is None
-    assert seen["pruning_guidance"] == [None]
+    assert seen["guidance"] == guidance
+    assert seen["pruning_guidance"] == [None, guidance]
+    assert seen["prepared_pruning"] is seen["guided_pruning"]
     assert seen["search_rng_seeds"] == [None]
-    assert decision.branch_count == 32
+    assert decision.branch_count == 29
 
 
 def test_strategy_timeout_never_replaces_completed_tactical_result(monkeypatch) -> None:
@@ -504,7 +525,7 @@ def test_controller_does_not_report_plan_when_final_action_misses_guidance(
     assert decision.choice == "move safe"
     assert decision.strategic_plan is None
     assert decision.mode == "belief-search"
-    assert decision.branch_count == 41
+    assert decision.branch_count == 33
 
 
 def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
@@ -527,7 +548,7 @@ def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
     assert decision.choice == "move safe"
     assert decision.strategic_plan is None
     assert decision.mode == "belief-search"
-    assert decision.branch_count == 41
+    assert decision.branch_count == 33
 
 
 def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypatch) -> None:
@@ -549,5 +570,7 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["guidance"] == guidance
     assert seen["pruning_guidance"] == [None, guidance]
+    assert seen["prepared_pruning"] is seen["guided_pruning"]
     assert seen["search_rng_seeds"] == [None, SCREENING_RNG_SEEDS]
-    assert decision.branch_count == 41
+    assert seen["search_response_shortlists"][1] == (("move counter",),)
+    assert decision.branch_count == 33
