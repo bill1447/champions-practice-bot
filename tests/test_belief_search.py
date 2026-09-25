@@ -257,6 +257,32 @@ def test_autonomous_response_pruning_is_bounded() -> None:
     assert result.chosen.worlds[0].legal_response_count == 1
 
 
+def test_exact_search_can_reuse_precomputed_response_shortlists() -> None:
+    worker = FakeBeliefWorker()
+    worlds = (
+        ExactBeliefWorldState(state={"id": "A"}, weight=1.0),
+        ExactBeliefWorldState(state={"id": "B"}, weight=1.0),
+    )
+
+    result = search_exact_belief_turn(
+        worker,
+        worlds=worlds,
+        side="p1",
+        choices=["attack", "safe"],
+        rng_seeds=("low", "high"),
+        response_shortlists=(
+            ("counter",),
+            ("switch",),
+        ),
+    )
+
+    assert result.response_screening_branch_count == 0
+    assert result.branch_count == 8
+    assert result.evaluated_choices == ("attack", "safe")
+    assert result.ranking[0].worlds[0].legal_response_count == 1
+    assert result.ranking[0].worlds[1].legal_response_count == 1
+
+
 def test_selective_continuation_can_reject_a_myopic_one_ply_winner() -> None:
     class ContinuationWorker:
         legal = {
