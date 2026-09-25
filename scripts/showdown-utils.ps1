@@ -20,6 +20,21 @@ function Get-ChampionsShowdownCommit {
     return $Commit
 }
 
+function Test-ChampionsShowdownCommitAvailable {
+    param(
+        [Parameter(Mandatory)]
+        [string]$Commit
+    )
+
+    try {
+        & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
+        return $LASTEXITCODE -eq 0
+    }
+    catch {
+        return $false
+    }
+}
+
 function Sync-ChampionsShowdownCheckout {
     param(
         [switch]$CloneIfMissing
@@ -55,8 +70,7 @@ function Sync-ChampionsShowdownCheckout {
         }
     }
 
-    & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    if (-not (Test-ChampionsShowdownCommitAvailable -Commit $Commit)) {
         Write-Host "Fetching Pokemon Showdown history for pinned revision..."
         $IsShallowOutput = & git -C $ChampionShowdownRoot rev-parse --is-shallow-repository
         $IsShallow = "$IsShallowOutput".Trim()
@@ -71,8 +85,7 @@ function Sync-ChampionsShowdownCheckout {
         }
     }
 
-    & git -C $ChampionShowdownRoot cat-file -e "$Commit^{commit}" 2>$null
-    if ($LASTEXITCODE -ne 0) {
+    if (-not (Test-ChampionsShowdownCommitAvailable -Commit $Commit)) {
         throw "Pinned Pokemon Showdown revision $Commit is not available from origin."
     }
 
