@@ -219,6 +219,7 @@ class DemoBattleSession:
         self._ready_token: str | None = None
         self._last_public_view: dict | None = None
         self._history: list[dict[str, object]] = []
+        self._ended_manually = False
         self._lock = RLock()
 
     def _require_facade(self) -> SealedBattleFacade:
@@ -231,7 +232,7 @@ class DemoBattleSession:
             return {
                 "started": False,
                 "preset": DEMO_PRESET_NAME,
-                "turn_state": "new",
+                "turn_state": "ended" if self._ended_manually else "new",
                 "ai_ready": False,
                 "can_reconcile": False,
                 "public_view": None,
@@ -282,6 +283,7 @@ class DemoBattleSession:
             self._ready_token = None
             self._last_public_view = None
             self._history = []
+            self._ended_manually = False
             if old is not None:
                 old.close()
 
@@ -338,6 +340,17 @@ class DemoBattleSession:
             self._ready_token = None
             self._last_public_view = result.public_view
             self._history.append(_result_payload(result))
+            return self._snapshot_locked()
+
+    def end_battle(self) -> dict[str, object]:
+        """Close the current live battle while leaving the demo server running."""
+        with self._lock:
+            facade = self._require_facade()
+            self._facade = None
+            self._ready_token = None
+            self._last_public_view = None
+            self._ended_manually = True
+            facade.close()
             return self._snapshot_locked()
 
     def close(self) -> None:
@@ -426,7 +439,10 @@ pre {
     <h1>Champions Practice Bot</h1>
     <div class="muted">Playable sealed-choice v0 · preset mirror match</div>
   </div>
-  <button id="newBattle">New battle</button>
+  <div class="controls">
+    <button id="newBattle">New battle</button>
+    <button id="endBattle">End battle</button>
+  </div>
 </header>
 
 <section class="panel">
@@ -515,6 +531,9 @@ function renderSide(targetId, side, previewFallback) {
 }
 
 function hintFor(turnState) {
+  if (!state?.started && turnState === "ended") {
+    return "Battle ended. Start a new battle when ready.";
+  }
   if (!state?.started) return "Start a battle. v0 uses the current-roster mirror fixture.";
   if (turnState === "preview") return "Choose your bring-four and lead order.";
   if (turnState === "idle" || turnState === "resolved") {
@@ -588,6 +607,7 @@ function render(next) {
   document.getElementById("commit").disabled =
     !(turnState === "locked" && state.ai_ready && select.value);
   document.getElementById("reconcile").disabled = !state.can_reconcile;
+  document.getElementById("endBattle").disabled = !state.started;
   renderHistory(state.history || []);
 }
 
@@ -615,6 +635,11 @@ async function run(action) {
 
 document.getElementById("newBattle").onclick = () => run(async () => {
   render(await request("/api/start", "POST", {}));
+});
+
+document.getElementById("endBattle").onclick = () => run(async () => {
+  if (!window.confirm("End the current battle?")) return;
+  render(await request("/api/end", "POST", {}));
 });
 
 document.getElementById("preview").onclick = () => run(async () => {
@@ -715,6 +740,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 result = self.app.commit_human_action(self._choice(payload))
             elif self.path == "/api/reconcile":
                 result = self.app.reconcile_failed_turn()
+            elif self.path == "/api/end":
+                result = self.app.end_battle()
             else:
                 self._send_json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
                 return
