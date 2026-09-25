@@ -171,6 +171,7 @@ Current hardening sequence:
 
 All Phase 9.5 hardening items are now implemented across the tactical-first,
 strategy-authority, comparable-evidence, capability-boundary, and runtime-gate branches.
+The demo gate is not considered complete until the full pull-request CI workflow succeeds.
 The persistent-controller smoke uses the production-default eight-second decision budget,
 exercises the sealed choice flow, and now includes live negative controls for invalid lock
 tokens and illegal human actions.
