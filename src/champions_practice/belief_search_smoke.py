@@ -141,6 +141,29 @@ def _assert_demo_redirection_counter(worker: ShowdownSearchWorker) -> None:
             "ERROR: demo Mega Gardevoir punish did not actually KO AI Sneasler"
         )
 
+    candidate_pruning = shortlist_belief_candidates(
+        worker,
+        worlds=(
+            ExactBeliefWorldState(
+                state=state,
+                weight=1.0,
+                label="demo-turn-one",
+            ),
+        ),
+        side="p2",
+        candidate_limit=4,
+        reference_limit=2,
+    )
+    first_slot_actions = {
+        choice.split(",", 1)[0].strip().split()[1]
+        for choice in candidate_pruning.candidate_shortlist
+    }
+    if len(first_slot_actions) < 2:
+        raise SystemExit(
+            "ERROR: demo candidate pruning collapsed every AI line to the "
+            f"same first-slot action; shortlist={candidate_pruning.candidate_shortlist}"
+        )
+
     pruning = shortlist_belief_responses(
         worker,
         world=ExactBeliefWorldState(
