@@ -138,14 +138,34 @@ def _move_name(view: dict | None, slot_index: int, move_id: str) -> str:
     return move_id
 
 
-def _target_label(location: int) -> str:
-    labels = {
-        1: "foe left",
-        2: "foe right",
-        -1: "ally left",
-        -2: "ally right",
-    }
-    return labels.get(location, f"target {location}")
+def _opponent_active_species(view: dict | None, slot_index: int) -> str | None:
+    if not isinstance(view, dict):
+        return None
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return None
+    active = opponent.get("active")
+    if not isinstance(active, list) or slot_index >= len(active):
+        return None
+    pokemon = active[slot_index]
+    if isinstance(pokemon, dict):
+        species = pokemon.get("species")
+        if isinstance(species, str) and species:
+            return species
+    if isinstance(pokemon, str) and pokemon:
+        return pokemon
+    return None
+
+
+def _target_label(location: int, view: dict | None) -> str:
+    if location > 0:
+        species = _opponent_active_species(view, location - 1)
+        return f"foe {species}" if species else f"foe slot {location}"
+    if location < 0:
+        slot = abs(location)
+        species = _active_species(view, slot - 1)
+        return f"ally {species}" if species else f"ally slot {slot}"
+    return "field"
 
 
 def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
@@ -168,7 +188,7 @@ def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
         except ValueError:
             location = 0
         if location:
-            suffixes.append(f"→ {_target_label(location)}")
+            suffixes.append(f"→ {_target_label(location, view)}")
             continue
         if token in {"mega", "megax", "megay"}:
             suffixes.append("[Mega]")
