@@ -3,10 +3,12 @@ from types import SimpleNamespace
 import pytest
 
 from champions_practice.belief_controller import (
-    BeliefBattleController,
     BeliefDecision,
     BeliefDecisionEngine,
+    SealedBattleFacade,
     SealedDecisionReady,
+    SealedTurnState,
+    _BeliefBattleCoordinator,
     _pin_known_team_genders,
     choose_public_fallback,
 )
@@ -71,8 +73,12 @@ class _CoordinatorWorker:
         return {}
 
     def session_view(self, session_id, *, side):
-        assert side == "p2"
-        return {"view": self.public_view}
+        view = {
+            **self.public_view,
+            "ended": self.public_view.get("ended", False),
+            "winner": self.public_view.get("winner"),
+        }
+        return {"view": view}
 
     def session_legal_choices(self, session_id, *, side):
         if side == "p1":
@@ -85,7 +91,7 @@ class _CoordinatorWorker:
 
 def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> None:
     worker = _CoordinatorWorker()
-    controller = BeliefBattleController(
+    controller = _BeliefBattleCoordinator(
         worker,
         battle_format="test",
         ai_team="own-team",
@@ -99,7 +105,7 @@ def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> 
         return view
 
     monkeypatch.setattr(
-        controller.engine,
+        controller._engine,
         "initialize_preview",
         initialize_preview,
     )
@@ -122,13 +128,14 @@ def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> 
 
 def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     worker = _CoordinatorWorker()
-    controller = BeliefBattleController(
+    controller = _BeliefBattleCoordinator(
         worker,
         battle_format="test",
         ai_team="own-team",
         opponent_priors={},
     )
-    controller.session_id = "live-1"
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
     secret = BeliefDecision(
         choice="move secret-ai",
         mode="belief-search",
@@ -139,16 +146,23 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
         strategic_plan="secret-plan",
     )
     monkeypatch.setattr(
-        controller,
+        controller._engine,
         "choose_ai_action",
-        lambda: secret,
+        lambda *, legal_live: secret,
     )
     monkeypatch.setattr(
-        controller.engine,
+        controller._engine,
         "observe_public_turn",
         lambda *, decision, view: SimpleNamespace(
             decision=decision,
             public_view=view,
+            particles_before=3,
+            particles_after=3,
+            generated_branches=4,
+            matched_branches=2,
+            conditioning_seconds=0.01,
+            conditioning_over_budget=False,
+            degraded=False,
         ),
     )
 
@@ -162,13 +176,13 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     assert worker.submissions == []
 
     with pytest.raises(ValueError, match="live-session legal"):
-        controller.resolve_locked_turn(
+        controller.commit_human_action(
             token=ready.token,
             human_choice="move illegal",
         )
     assert worker.submissions == []
 
-    update = controller.resolve_locked_turn(
+    update = controller.commit_human_action(
         token=ready.token,
         human_choice="move human",
     )
@@ -225,37 +239,25 @@ Level: 50
     assert "Gender:" not in pinned
 
 
-class _ZeroMatchWorker:
-    project_root = "."
-
-    def choose_session(self, session_id, *, p1_choice, p2_choice):
-        return None
-
-    def session_view(self, session_id, *, side):
-        return {"view": {"turn": 2, "opponent": {}, "player": {}, "request": {}}}
-
-
 def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> None:
-    worker = _ZeroMatchWorker()
-    controller = BeliefBattleController(
-        worker,
+    engine = BeliefDecisionEngine(
+        ".",
         battle_format="test",
         ai_team="team",
         opponent_priors={},
     )
-    controller.session_id = "session-1"
-    controller.previews = {"p1": [], "p2": []}
+    engine.previews = {"p1": [], "p2": []}
     original = (
         BeliefParticle({"turn": 1}, 1.0, world_id="world-1", history_id="rng-1"),
     )
-    controller.particles = original
-    controller._run_with_deadline = lambda operation, timeout_seconds: (
+    engine.particles = original
+    engine._run_until_deadline = lambda operation, deadline: (
         ParticleUpdate((), 12, 0, 0),
         False,
     )
 
-    update = controller.resolve_turn(
-        human_choice="move a",
+    update = engine.observe_public_turn(
+        view={"turn": 2, "opponent": {}, "player": {}, "request": {}},
         decision=BeliefDecision(
             choice="move b",
             mode="test",
@@ -266,9 +268,9 @@ def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> Non
         ),
     )
 
-    assert controller.particles == original
-    assert controller.degraded is True
-    assert len(controller.pending_observations) == 1
+    assert engine.particles == original
+    assert engine.degraded is True
+    assert len(engine.pending_observations) == 1
     assert update.particles_after == 1
     assert update.matched_branches == 0
 
