@@ -325,6 +325,7 @@ def _patch_live_strategy_pipeline(
     )
     probe = SimpleNamespace(
         plan=plan,
+        chosen=probe_candidate,
         sampled_robust=True,
         pruning=SimpleNamespace(screening_branch_count=5),
         response_screening_branch_count=0,
