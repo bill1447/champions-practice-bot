@@ -50,9 +50,20 @@ if ($null -ne $GitCommand -and (Test-Path $ShowdownGitDir)) {
         $PinState = "PIN MISMATCH"
     }
 
+    & git -C $ChampionShowdownRoot diff --quiet HEAD --
+    $WorkingTreeDirty = $LASTEXITCODE -eq 1
+    & git -C $ChampionShowdownRoot diff --cached --quiet HEAD --
+    $IndexDirty = $LASTEXITCODE -eq 1
+    $TrackedState = if ($WorkingTreeDirty -or $IndexDirty) {
+        "TRACKED MODIFICATIONS"
+    }
+    else {
+        "tracked files clean"
+    }
+
     $ShortActual = $ActualShowdown.Substring(0, 8)
     $ShortPinned = $PinnedShowdown.Substring(0, 8)
-    Write-Host "Engine:   $ShortActual (pin $ShortPinned; $PinState)"
+    Write-Host "Engine:   $ShortActual (pin $ShortPinned; $PinState; $TrackedState)"
 }
 elseif (Test-Path $ChampionShowdownVersionFile) {
     $PinnedShowdown = Get-ChampionsShowdownCommit
