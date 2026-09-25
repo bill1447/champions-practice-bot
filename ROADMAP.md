@@ -138,43 +138,66 @@ Next:
 - reveal the AI decision and diagnostics only after both choices are submitted to Showdown;
 - use complete demo games to identify the next strategy/search improvements.
 
-## Phase 9.5 — Pre-demo authority and isolation hardening — current objective
+## Phase 9.5 — Pre-demo authority and isolation hardening — final PR pending
 
 The strategy feature baseline is frozen until complete-game evidence justifies new strategic
-capabilities. Before the playable demo, harden the boundaries around that intelligence so
-advisory reasoning cannot suppress exact tactics or gain access to information it should
-not own.
+capabilities. PR #78 is the final pre-demo correctness hardening pass. Exact belief search
+remains the final command authority; strategy may add candidate coverage and explanatory
+evidence but may not suppress the protected tactical baseline.
 
-Current hardening sequence:
+Final authority rules:
 
-- tactical-first decision budgeting: secure a valid unguided exact tactical result before
-  spending residual decision time on strategy; a strategy timeout or error must retain the
-  completed tactical result rather than fall back;
-- strategy authority correctness: urgent plans are prioritized independently of generator
-  order, dead speed-window plans are probeable, safe-entry guidance targets the intended
-  switch while retaining the active anchor, and a reported plan must match a robust
-  plan-probed final command;
-- comparable strategic evidence: response pruning preserves distinct opponent action
-  families, competing plans share the same per-world opponent replies and RNG futures, and
-  any strategy-guided final exact search uses the same strategic RNG sample tuple;
-- capability-separated battle coordination: the live coordinator alone owns the persistent
-  Showdown session, complete human team input, human preview/order choice, and human legal
-  choices; the decision engine receives only sanitized p2 public views, AI-owned information,
-  AI live-legal choices, and a restricted hypothetical-state worker capability;
-- sealed-choice demo API: the coordinator can compute and retain a BeliefDecision server-side,
-  expose only an opaque ready token, validate the human action, submit both choices, and reveal
-  the decision payload only after that commitment boundary;
-- runtime engine verification and real-Showdown negative controls: every worker process
-  verifies the pinned clean Showdown checkout before use, CI has an explicit runtime gate,
-  and the sealed real-session smoke rejects bad tokens and illegal human actions without
-  advancing the live battle.
+- secure an unguided exact tactical result before optional strategy work;
+- build shared strategic opposition against the union of the protected baseline shortlist
+  and every supported plan's guided shortlist;
+- screen that opposition against every candidate reference in the union;
+- use the full tactical opponent-response limit for the final shared evidence rather than
+  the smaller strategic-probe default;
+- evaluate the baseline shortlist, selected guided shortlist, and selected probe winner
+  together in one final exact search using the same opponent replies and RNG futures;
+- attach a strategic-plan label only when the final exact winner both matches the selected
+  guidance and was robust in that plan's probe.
 
-All Phase 9.5 hardening items are now implemented across the tactical-first,
-strategy-authority, comparable-evidence, capability-boundary, and runtime-gate branches.
-The demo gate is not considered complete until the full pull-request CI workflow succeeds.
-The persistent-controller smoke uses the production-default eight-second decision budget,
-exercises the sealed choice flow, and now includes live negative controls for invalid lock
-tokens and illegal human actions.
+The live battle boundary is now a synchronized sealed state machine behind
+`SealedBattleFacade`. The human-facing surface exposes public state, legal human choices,
+an opaque ready token, commitment, reconciliation, and close operations. It does not expose
+the raw decision engine, live worker, session identifier, or sealed command. The AI decision
+and diagnostics are returned only after the human action has been accepted and both commands
+have been submitted.
+
+Failure handling retains the sealed action across recoverable live-session failures, avoids
+resubmitting an already advanced turn, serializes failed-turn reconciliation, and obtains the
+human-facing post-turn view before mutating belief state so a retry cannot condition the same
+turn twice. Real-session coverage includes invalid-token and illegal-action negative controls,
+multi-turn sealed play, tiny-budget fallback, forced-switch transitions, terminal resolution,
+and refusal to lock another action after battle end.
+
+Runtime hardening now verifies both the pinned clean Showdown source revision and the exact
+generated `dist/` tree through a build digest stamp. Absolute decision/conditioning deadlines
+use bounded worker termination and lifecycle checks for leaked Node processes and executor
+threads.
+
+Two threat-model limits are explicit rather than disguised as guarantees:
+
+- the sealed demo boundary protects a browser/client that receives only serialized façade
+  outputs; arbitrary hostile Python executing inside the server process could still use
+  language-level introspection and would require process/service isolation;
+- worker startup counts against the absolute budget once construction returns, but a
+  pathological hang inside synchronous process construction itself is not forcibly
+  interruptible by the current helper.
+
+Those limits do not justify more architecture work before gameplay unless CI or the demo
+shows a concrete failure.
+
+Current gate:
+
+- final static audit complete on the #78 branch;
+- pull-request CI is still required for unit tests, Ruff, runtime provenance, persistent
+  sealed play, forced-switch/terminal behavior, timeout cleanup, and the existing search and
+  conditioning smokes;
+- once #78 is green and merged, freeze strategy and architecture work and build the playable
+  local multi-turn demo;
+- use complete games and post-commit decision traces as the next source of intelligence work.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
