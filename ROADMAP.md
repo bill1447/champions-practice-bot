@@ -156,17 +156,21 @@ Current hardening sequence:
 - comparable strategic evidence: response pruning preserves distinct opponent action
   families, competing plans share the same per-world opponent replies and RNG futures, and
   any strategy-guided final exact search uses the same strategic RNG sample tuple;
-- capability-separated battle coordination: keep complete human team data, unrevealed human
-  choices, and live session snapshots outside the restricted decision engine;
-- sealed-choice demo API: retain the AI command and diagnostics server-side until the human
-  player has committed a legal action;
+- capability-separated battle coordination: the live coordinator alone owns the persistent
+  Showdown session, complete human team input, human preview/order choice, and human legal
+  choices; the decision engine receives only sanitized p2 public views, AI-owned information,
+  AI live-legal choices, and a restricted hypothetical-state worker capability;
+- sealed-choice demo API: the coordinator can compute and retain a BeliefDecision server-side,
+  expose only an opaque ready token, validate the human action, submit both choices, and reveal
+  the decision payload only after that commitment boundary;
 - runtime engine verification and real-Showdown negative controls before the interactive
   demo is considered ready.
 
-The first three items are now implemented across the tactical-first, strategy-authority,
-and comparable-evidence hardening branches. The persistent-controller smoke uses the
-production-default eight-second decision budget so strategy cannot hide a deadline
-regression behind an oversized test allowance.
+The first five items are now implemented across the tactical-first, strategy-authority,
+comparable-evidence, and capability-boundary hardening branches. The persistent-controller
+smoke uses the production-default eight-second decision budget and now exercises the sealed
+choice flow so neither search timeouts nor pre-commit decision leakage can hide behind the
+test harness.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
