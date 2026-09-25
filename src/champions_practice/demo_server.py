@@ -62,6 +62,145 @@ def _result_payload(result: SealedTurnResult) -> dict[str, object]:
     }
 
 
+def _normalize_id(value: object) -> str:
+    return "".join(character for character in str(value or "").lower() if character.isalnum())
+
+
+def _player_team(view: dict | None) -> list[dict]:
+    if not isinstance(view, dict):
+        return []
+    player = view.get("player")
+    if not isinstance(player, dict):
+        return []
+    team = player.get("team")
+    return [pokemon for pokemon in team if isinstance(pokemon, dict)] if isinstance(team, list) else []
+
+
+def _team_species(view: dict | None, slot: int) -> str:
+    team = _player_team(view)
+    if 1 <= slot <= len(team):
+        species = team[slot - 1].get("species")
+        if isinstance(species, str) and species:
+            return species
+    return f"slot {slot}"
+
+
+def _active_species(view: dict | None, slot_index: int) -> str:
+    if not isinstance(view, dict):
+        return f"Slot {slot_index + 1}"
+    player = view.get("player")
+    if not isinstance(player, dict):
+        return f"Slot {slot_index + 1}"
+    active = player.get("active")
+    if isinstance(active, list) and slot_index < len(active):
+        species = active[slot_index]
+        if isinstance(species, str) and species:
+            return species
+    return f"Slot {slot_index + 1}"
+
+
+def _preview_choice_label(choice: str, view: dict | None) -> str:
+    slots = [int(character) for character in choice[5:] if character.isdigit()]
+    if not slots:
+        return choice
+
+    names = [_team_species(view, slot) for slot in slots]
+    if len(names) <= 2:
+        return "Lead: " + " + ".join(names)
+    return f"Lead: {' + '.join(names[:2])} | Back: {' + '.join(names[2:])}"
+
+
+def _move_name(view: dict | None, slot_index: int, move_id: str) -> str:
+    if not isinstance(view, dict):
+        return move_id
+    request = view.get("request")
+    if not isinstance(request, dict):
+        return move_id
+    active = request.get("active")
+    if not isinstance(active, list) or slot_index >= len(active):
+        return move_id
+    slot = active[slot_index]
+    if not isinstance(slot, dict):
+        return move_id
+    moves = slot.get("moves")
+    if not isinstance(moves, list):
+        return move_id
+
+    wanted = _normalize_id(move_id)
+    for move in moves:
+        if not isinstance(move, dict):
+            continue
+        if _normalize_id(move.get("id")) != wanted:
+            continue
+        name = move.get("move")
+        if isinstance(name, str) and name:
+            return name
+    return move_id
+
+
+def _target_label(location: int) -> str:
+    labels = {
+        1: "foe left",
+        2: "foe right",
+        -1: "ally left",
+        -2: "ally right",
+    }
+    return labels.get(location, f"target {location}")
+
+
+def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
+    actor = _active_species(view, slot_index)
+    tokens = part.split()
+    if not tokens:
+        return part
+    if tokens[0] == "pass":
+        return f"{actor}: pass"
+    if tokens[0] == "switch" and len(tokens) >= 2 and tokens[1].isdigit():
+        return f"{actor}: switch → {_team_species(view, int(tokens[1]))}"
+    if tokens[0] != "move" or len(tokens) < 2:
+        return f"{actor}: {part}"
+
+    move_name = _move_name(view, slot_index, tokens[1])
+    suffixes: list[str] = []
+    for token in tokens[2:]:
+        try:
+            location = int(token)
+        except ValueError:
+            location = 0
+        if location:
+            suffixes.append(f"→ {_target_label(location)}")
+            continue
+        if token in {"mega", "megax", "megay"}:
+            suffixes.append("[Mega]")
+        elif token == "ultra":
+            suffixes.append("[Ultra Burst]")
+        else:
+            suffixes.append(f"[{token}]")
+
+    suffix = " " + " ".join(suffixes) if suffixes else ""
+    return f"{actor}: {move_name}{suffix}"
+
+
+def _choice_label(choice: str, view: dict | None) -> str:
+    if choice.startswith("team "):
+        return _preview_choice_label(choice, view)
+    parts = choice.split(", ")
+    return " | ".join(
+        _action_part_label(part, index, view)
+        for index, part in enumerate(parts)
+    )
+
+
+def _legal_action_payload(
+    legal_choices: list[str],
+    view: dict | None,
+) -> list[dict[str, str]]:
+    return [
+        {"value": choice, "label": _choice_label(choice, view)}
+        for choice in legal_choices
+    ]
+
+
 def _default_facade() -> SealedBattleFacade:
     return SealedBattleFacade(
         battle_format=CHAMPIONS_FORMAT,
@@ -97,6 +236,7 @@ class DemoBattleSession:
                 "can_reconcile": False,
                 "public_view": None,
                 "legal_choices": [],
+                "legal_actions": [],
                 "history": list(self._history),
             }
 
@@ -124,6 +264,10 @@ class DemoBattleSession:
             "public_view": self._last_public_view,
             "public_view_error": public_view_error,
             "legal_choices": legal_choices,
+            "legal_actions": _legal_action_payload(
+                legal_choices,
+                self._last_public_view,
+            ),
             "history": list(self._history),
         }
 
@@ -426,10 +570,12 @@ function render(next) {
   const select = document.getElementById("choice");
   const previous = select.value;
   select.replaceChildren();
-  (state.legal_choices || []).forEach(choice => {
+  const actions = state.legal_actions ||
+    (state.legal_choices || []).map(choice => ({value: choice, label: choice}));
+  actions.forEach(action => {
     const option = document.createElement("option");
-    option.value = choice;
-    option.textContent = choice;
+    option.value = action.value;
+    option.textContent = action.label;
     select.appendChild(option);
   });
   if ([...select.options].some(option => option.value === previous)) {
