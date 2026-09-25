@@ -70,6 +70,11 @@ class FakeFacade:
                     "move followme, move hypervoice mega",
                     "move followme, move expandingforce +1 mega",
                 ),
+                evaluated_choices=("move secret-ai", "move safe-ai"),
+                candidate_scores=(
+                    ("move secret-ai", -321.5, -120.0),
+                    ("move safe-ai", -400.0, -200.0),
+                ),
             ),
             public_view=self.view,
             particles_before=4,
@@ -121,6 +126,19 @@ def test_demo_session_does_not_expose_locked_ai_decision_or_token() -> None:
     assert decision["searched_responses"] == [
         "move followme, move hypervoice mega",
         "move followme, move expandingforce +1 mega",
+    ]
+    assert decision["evaluated_choices"] == ["move secret-ai", "move safe-ai"]
+    assert decision["candidate_scores"] == [
+        {
+            "choice": "move secret-ai",
+            "worst_world_score": -321.5,
+            "weighted_score": -120.0,
+        },
+        {
+            "choice": "move safe-ai",
+            "worst_world_score": -400.0,
+            "weighted_score": -200.0,
+        },
     ]
     assert facade.submissions == [("opaque-server-token", "move human")]
 
