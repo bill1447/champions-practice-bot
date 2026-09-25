@@ -445,27 +445,48 @@ class BeliefDecisionEngine:
         self.degraded = not bool(self.particles)
         return view
 
-    def _run_with_deadline(
+    def _run_until_deadline(
         self,
         operation: Callable[[HypotheticalSearchWorker], T],
         *,
-        timeout_seconds: float,
+        deadline: float,
+        cleanup_reserve_seconds: float = 0.25,
     ) -> tuple[T | None, bool]:
-        """Run hypothetical work off-session and abort its worker on timeout."""
+        """Run hypothetical work inside one absolute startup/work/cleanup deadline."""
+        if perf_counter() >= deadline:
+            return None, True
+
         worker = HypotheticalSearchWorker(self.project_root)
+        remaining = deadline - perf_counter()
+        if remaining <= cleanup_reserve_seconds:
+            worker.abort(timeout_seconds=max(0.0, remaining))
+            return None, True
+
         executor = ThreadPoolExecutor(max_workers=1)
         future = executor.submit(operation, worker)
+        result: T | None = None
         timed_out = False
         try:
-            return future.result(timeout=timeout_seconds), False
+            result = future.result(
+                timeout=max(
+                    0.0,
+                    deadline - perf_counter() - cleanup_reserve_seconds,
+                )
+            )
         except FutureTimeoutError:
             timed_out = True
-            worker.abort()
-            return None, True
         finally:
-            if not timed_out:
-                worker.close()
+            worker.abort(
+                timeout_seconds=max(
+                    0.0,
+                    min(cleanup_reserve_seconds, deadline - perf_counter()),
+                )
+            )
             executor.shutdown(wait=False, cancel_futures=True)
+
+        if timed_out or perf_counter() > deadline:
+            return None, True
+        return result, False
 
     def _condition_adaptive(
         self,
@@ -511,7 +532,7 @@ class BeliefDecisionEngine:
                 )
         return ParticleUpdate((), generated, 0, deduplicated)
 
-    def _recover_pending(self) -> bool:
+    def _recover_pending(self, *, deadline: float | None = None) -> bool:
         if not self.pending_observations:
             return bool(self.particles)
 
@@ -538,9 +559,12 @@ class BeliefDecisionEngine:
                 )
             return particles
 
-        recovered, timed_out = self._run_with_deadline(
+        recovery_deadline = perf_counter() + self.conditioning_budget_seconds
+        if deadline is not None:
+            recovery_deadline = min(recovery_deadline, deadline)
+        recovered, timed_out = self._run_until_deadline(
             recover,
-            timeout_seconds=self.conditioning_budget_seconds,
+            deadline=recovery_deadline,
         )
         if timed_out or not recovered:
             return False
@@ -573,10 +597,11 @@ class BeliefDecisionEngine:
         legal_live: list[str],
     ) -> BeliefDecision:
         started = perf_counter()
+        decision_deadline = started + self.decision_budget_seconds
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
         if self.degraded:
-            if not self._recover_pending():
+            if not self._recover_pending(deadline=decision_deadline):
                 return self._fallback_decision(
                     legal_live,
                     started=started,
@@ -660,8 +685,7 @@ class BeliefDecisionEngine:
                 ),
             )
 
-        baseline_budget = self.decision_budget_seconds - (perf_counter() - started)
-        if baseline_budget <= 0:
+        if perf_counter() >= decision_deadline:
             return self._fallback_decision(
                 legal_live,
                 started=started,
@@ -669,9 +693,9 @@ class BeliefDecisionEngine:
             )
 
         try:
-            baseline_result, baseline_timed_out = self._run_with_deadline(
+            baseline_result, baseline_timed_out = self._run_until_deadline(
                 run_baseline,
-                timeout_seconds=baseline_budget,
+                deadline=decision_deadline,
             )
         except (RuntimeError, ValueError) as error:
             return self._fallback_decision(
@@ -705,8 +729,7 @@ class BeliefDecisionEngine:
                 baseline_search,
             )
 
-        remaining_budget = self.decision_budget_seconds - (perf_counter() - started)
-        if remaining_budget <= 0:
+        if perf_counter() >= decision_deadline:
             return decision_from_baseline(
                 baseline_pruning,
                 baseline_search,
@@ -842,9 +865,9 @@ class BeliefDecisionEngine:
             )
 
         try:
-            augmentation, strategy_timed_out = self._run_with_deadline(
+            augmentation, strategy_timed_out = self._run_until_deadline(
                 run_strategy_augmentation,
-                timeout_seconds=remaining_budget,
+                deadline=decision_deadline,
             )
         except (RuntimeError, ValueError):
             return decision_from_baseline(
@@ -949,9 +972,12 @@ class BeliefDecisionEngine:
                     batches=self.rng_sample_batches,
                 )
 
-            update, timed_out = self._run_with_deadline(
+            update, timed_out = self._run_until_deadline(
                 run_conditioning,
-                timeout_seconds=self.conditioning_budget_seconds,
+                deadline=(
+                    conditioning_started
+                    + self.conditioning_budget_seconds
+                ),
             )
             conditioning_seconds = perf_counter() - conditioning_started
 
