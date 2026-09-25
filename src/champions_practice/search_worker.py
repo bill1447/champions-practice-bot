@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import subprocess
@@ -10,19 +11,10 @@ from typing import Any
 
 
 _VERIFIED_SHOWDOWN_ROOTS: dict[Path, str] = {}
+_BUILD_STAMP_NAME = "showdown-build.json"
 
 
-def verify_showdown_checkout(
-    project_root: str | Path | None = None,
-) -> str:
-    """Fail fast when the local Showdown source is not the pinned clean revision."""
-    if project_root is None:
-        project_root = Path(__file__).resolve().parents[2]
-    root = Path(project_root).resolve()
-    cached = _VERIFIED_SHOWDOWN_ROOTS.get(root)
-    if cached is not None:
-        return cached
-
+def _showdown_source_revision(root: Path) -> tuple[Path, str]:
     pin_file = root / "showdown-version.txt"
     showdown_root = root / "external" / "pokemon-showdown"
 
@@ -80,6 +72,91 @@ def verify_showdown_checkout(
             raise RuntimeError(
                 f"Unable to verify Pokemon Showdown checkout cleanliness: {detail}"
             )
+    return showdown_root, actual
+
+
+def _showdown_dist_digest(showdown_root: Path) -> str:
+    dist_root = showdown_root / "dist"
+    files = sorted(
+        path
+        for path in dist_root.rglob("*")
+        if path.is_file()
+    )
+    if not files:
+        raise RuntimeError(
+            "Built Pokemon Showdown dist tree is missing. "
+            "Run setup.ps1 or update-local.ps1 -UpdateShowdown first."
+        )
+
+    digest = hashlib.sha256()
+    for path in files:
+        relative = path.relative_to(dist_root).as_posix().encode("utf-8")
+        payload = path.read_bytes()
+        digest.update(len(relative).to_bytes(4, "big"))
+        digest.update(relative)
+        digest.update(len(payload).to_bytes(8, "big"))
+        digest.update(payload)
+    return digest.hexdigest()
+
+
+def write_showdown_build_stamp(
+    project_root: str | Path | None = None,
+) -> dict[str, str]:
+    """Record the exact ignored/generated Showdown dist tree built from the pin."""
+    if project_root is None:
+        project_root = Path(__file__).resolve().parents[2]
+    root = Path(project_root).resolve()
+    showdown_root, revision = _showdown_source_revision(root)
+    stamp = {
+        "source_sha": revision,
+        "dist_sha256": _showdown_dist_digest(showdown_root),
+    }
+    runtime_root = root / ".runtime"
+    runtime_root.mkdir(parents=True, exist_ok=True)
+    stamp_path = runtime_root / _BUILD_STAMP_NAME
+    stamp_path.write_text(
+        json.dumps(stamp, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    _VERIFIED_SHOWDOWN_ROOTS.pop(root, None)
+    return stamp
+
+
+def verify_showdown_checkout(
+    project_root: str | Path | None = None,
+) -> str:
+    """Fail fast unless source and built Showdown runtime match the pinned build."""
+    if project_root is None:
+        project_root = Path(__file__).resolve().parents[2]
+    root = Path(project_root).resolve()
+    cached = _VERIFIED_SHOWDOWN_ROOTS.get(root)
+    if cached is not None:
+        return cached
+
+    showdown_root, actual = _showdown_source_revision(root)
+    stamp_path = root / ".runtime" / _BUILD_STAMP_NAME
+    if not stamp_path.is_file():
+        raise RuntimeError(
+            "Pokemon Showdown build provenance is missing. "
+            "Run setup.ps1 or update-local.ps1 -UpdateShowdown."
+        )
+    try:
+        stamp = json.loads(stamp_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError) as error:
+        raise RuntimeError("Pokemon Showdown build provenance is invalid") from error
+
+    if stamp.get("source_sha") != actual:
+        raise RuntimeError(
+            "Pokemon Showdown build provenance revision mismatch: "
+            f"source is {actual}, build stamp is {stamp.get('source_sha')!r}. "
+            "Rebuild the pinned runtime."
+        )
+    built_digest = _showdown_dist_digest(showdown_root)
+    if stamp.get("dist_sha256") != built_digest:
+        raise RuntimeError(
+            "Pokemon Showdown built runtime hash mismatch. "
+            "Rebuild the pinned runtime before running the practice bot."
+        )
 
     _VERIFIED_SHOWDOWN_ROOTS[root] = actual
     return actual
