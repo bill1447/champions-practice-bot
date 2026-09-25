@@ -276,25 +276,17 @@ def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> Non
 
 
 
-class _DecisionWorker:
-    project_root = "."
-
-    def session_legal_choices(self, session_id, *, side):
-        return ["move safe"]
-
-
-def _decision_controller() -> BeliefBattleController:
-    controller = BeliefBattleController(
-        _DecisionWorker(),
+def _decision_engine() -> BeliefDecisionEngine:
+    engine = BeliefDecisionEngine(
+        ".",
         battle_format="test",
         ai_team="team",
         opponent_priors={},
         candidate_limit=4,
         response_limit=4,
     )
-    controller.session_id = "session-1"
-    controller.last_public_view = {"turn": 2}
-    controller.particles = (
+    engine.last_public_view = {"turn": 2}
+    engine.particles = (
         BeliefParticle(
             {"id": "world"},
             1.0,
@@ -302,11 +294,11 @@ def _decision_controller() -> BeliefBattleController:
             history_id="rng-1",
         ),
     )
-    controller._run_with_deadline = lambda operation, timeout_seconds: (
+    engine._run_until_deadline = lambda operation, deadline: (
         operation(SimpleNamespace()),
         False,
     )
-    return controller
+    return engine
 
 
 def _patch_live_strategy_pipeline(monkeypatch, *, selected):
@@ -409,13 +401,13 @@ def _patch_live_strategy_pipeline(monkeypatch, *, selected):
 
 
 def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkeypatch) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     _, probe, _, seen = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=False,
     )
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert decision.choice == "move safe"
     assert decision.mode == "belief-search"
@@ -434,26 +426,26 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
 
 
 def test_strategy_timeout_never_replaces_completed_tactical_result(monkeypatch) -> None:
-    controller = _decision_controller()
-    controller.decision_budget_seconds = 8.0
+    engine = _decision_engine()
+    engine.decision_budget_seconds = 8.0
     _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
     )
     calls = []
 
-    def staged_deadline(operation, *, timeout_seconds):
-        calls.append(timeout_seconds)
+    def staged_deadline(operation, *, deadline):
+        calls.append(deadline)
         if len(calls) == 1:
             return operation(SimpleNamespace()), False
         return None, True
 
-    controller._run_with_deadline = staged_deadline
+    engine._run_until_deadline = staged_deadline
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert len(calls) == 2
-    assert 0 < calls[1] <= calls[0] <= 8.0
+    assert calls[1] == calls[0]
     assert decision.choice == "move safe"
     assert decision.mode == "belief-search"
     assert decision.fallback_reason is None
@@ -463,23 +455,23 @@ def test_strategy_timeout_never_replaces_completed_tactical_result(monkeypatch) 
 
 
 def test_strategy_error_never_replaces_completed_tactical_result(monkeypatch) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
     )
     calls = 0
 
-    def staged_deadline(operation, *, timeout_seconds):
+    def staged_deadline(operation, *, deadline):
         nonlocal calls
         calls += 1
         if calls == 1:
             return operation(SimpleNamespace()), False
         raise RuntimeError("strategy exploded")
 
-    controller._run_with_deadline = staged_deadline
+    engine._run_until_deadline = staged_deadline
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert calls == 2
     assert decision.choice == "move safe"
@@ -492,7 +484,7 @@ def test_strategy_error_never_replaces_completed_tactical_result(monkeypatch) ->
 def test_controller_does_not_report_plan_when_final_action_misses_guidance(
     monkeypatch,
 ) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     plan, probe, _, _ = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
@@ -506,7 +498,7 @@ def test_controller_does_not_report_plan_when_final_action_misses_guidance(
         lambda selected_plan, view: mismatched,
     )
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert probe.ranking[0].evaluation.robust is True
     assert decision.choice == "move safe"
@@ -518,7 +510,7 @@ def test_controller_does_not_report_plan_when_final_action_misses_guidance(
 def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
     monkeypatch,
 ) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     plan, probe, guidance, _ = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
@@ -529,7 +521,7 @@ def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
     )
     probe.ranking = (unproven,)
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert guidance.preferred_move_ids == ("safe",)
     assert decision.choice == "move safe"
@@ -539,13 +531,13 @@ def test_controller_does_not_report_plan_without_robust_probe_for_final_action(
 
 
 def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypatch) -> None:
-    controller = _decision_controller()
+    engine = _decision_engine()
     plan, _, guidance, seen = _patch_live_strategy_pipeline(
         monkeypatch,
         selected=True,
     )
 
-    decision = controller.choose_ai_action()
+    decision = engine.choose_ai_action(legal_live=["move safe"])
 
     assert decision.choice == "move safe"
     assert decision.strategic_plan == plan.name
