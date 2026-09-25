@@ -9,13 +9,20 @@ from pathlib import Path
 from typing import Any
 
 
+_VERIFIED_SHOWDOWN_ROOTS: dict[Path, str] = {}
+
+
 def verify_showdown_checkout(
     project_root: str | Path | None = None,
 ) -> str:
     """Fail fast when the local Showdown source is not the pinned clean revision."""
     if project_root is None:
         project_root = Path(__file__).resolve().parents[2]
-    root = Path(project_root)
+    root = Path(project_root).resolve()
+    cached = _VERIFIED_SHOWDOWN_ROOTS.get(root)
+    if cached is not None:
+        return cached
+
     pin_file = root / "showdown-version.txt"
     showdown_root = root / "external" / "pokemon-showdown"
 
@@ -74,6 +81,7 @@ def verify_showdown_checkout(
                 f"Unable to verify Pokemon Showdown checkout cleanliness: {detail}"
             )
 
+    _VERIFIED_SHOWDOWN_ROOTS[root] = actual
     return actual
 
 
