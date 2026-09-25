@@ -602,9 +602,28 @@ function monName(mon) {
 function monDetail(mon) {
   if (!mon) return "";
   const parts = [];
-  if (mon.condition) parts.push(mon.condition);
-  if (mon.status) parts.push(mon.status);
-  if (mon.active) parts.push("active");
+  let hpPercent = null;
+  if (Number.isFinite(mon.hp_percent)) {
+    hpPercent = mon.hp_percent;
+  } else if (
+    Number.isFinite(mon.hp) &&
+    Number.isFinite(mon.maxhp) &&
+    mon.maxhp > 0
+  ) {
+    hpPercent = 100 * mon.hp / mon.maxhp;
+  }
+  if (mon.fainted) hpPercent = 0;
+  if (hpPercent !== null) {
+    const rounded = Math.round(hpPercent * 10) / 10;
+    parts.push(`${rounded}% HP`);
+  } else if (mon.condition) {
+    parts.push(mon.condition);
+  }
+  if (mon.fainted || mon.status === "fnt") {
+    parts.push("fnt");
+  } else if (mon.status) {
+    parts.push(mon.status);
+  }
   return parts.join(" · ");
 }
 
@@ -625,10 +644,11 @@ function card(mon) {
 function renderSide(targetId, side, previewFallback) {
   const target = document.getElementById(targetId);
   target.replaceChildren();
+  const activeDetails = Array.isArray(side?.active_details) ? side.active_details : [];
   const active = Array.isArray(side?.active) ? side.active : [];
   const team = Array.isArray(side?.team) ? side.team : [];
   const preview = Array.isArray(side?.preview_species) ? side.preview_species : [];
-  const mons = active.length ? active : (team.length ? team : preview);
+  const mons = activeDetails.length ? activeDetails : (active.length ? active : (team.length ? team : preview));
   if (!mons.length && previewFallback) mons.push(...previewFallback);
   if (!mons.length) {
     target.textContent = "No public data yet.";
