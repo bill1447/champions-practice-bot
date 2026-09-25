@@ -768,6 +768,7 @@ class BeliefDecisionEngine:
             pruning,
             search,
             *,
+            tactical_extra_branch_count: int = 0,
             strategic_probe_count: int = 0,
             strategic_branch_count: int = 0,
         ) -> BeliefDecision:
@@ -779,6 +780,7 @@ class BeliefDecisionEngine:
                 candidate_count=len(search.evaluated_choices),
                 branch_count=(
                     tactical_branch_count(pruning, search)
+                    + tactical_extra_branch_count
                     + strategic_branch_count
                 ),
                 elapsed_seconds=perf_counter() - started,
@@ -831,6 +833,8 @@ class BeliefDecisionEngine:
             baseline_search,
         )
         tactical_search = baseline_search
+        tactical_extra_branch_count = 0
+        protect_risk_branch_count = 0
 
         protect_chain_slots = tuple(
             sorted(
@@ -873,28 +877,26 @@ class BeliefDecisionEngine:
                 and protect_risk_search.chosen.choice in legal_live
             ):
                 tactical_search = protect_risk_search
-                baseline_branches += (
+                protect_risk_branch_count = (
                     protect_risk_search.response_screening_branch_count
                     + protect_risk_search.branch_count
+                )
+                tactical_extra_branch_count = (
+                    baseline_search.response_screening_branch_count
+                    + baseline_search.branch_count
                 )
         if self.last_public_view is None:
             return decision_from_baseline(
                 baseline_pruning,
                 tactical_search,
-                strategic_branch_count=(
-                    baseline_branches
-                    - tactical_branch_count(baseline_pruning, tactical_search)
-                ),
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         if perf_counter() >= decision_deadline:
             return decision_from_baseline(
                 baseline_pruning,
                 tactical_search,
-                strategic_branch_count=(
-                    baseline_branches
-                    - tactical_branch_count(baseline_pruning, tactical_search)
-                ),
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         def run_strategy_augmentation(worker: HypotheticalSearchWorker):
@@ -1035,20 +1037,14 @@ class BeliefDecisionEngine:
             return decision_from_baseline(
                 baseline_pruning,
                 tactical_search,
-                strategic_branch_count=(
-                    baseline_branches
-                    - tactical_branch_count(baseline_pruning, tactical_search)
-                ),
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         if strategy_timed_out or augmentation is None:
             return decision_from_baseline(
                 baseline_pruning,
                 tactical_search,
-                strategic_branch_count=(
-                    baseline_branches
-                    - tactical_branch_count(baseline_pruning, tactical_search)
-                ),
+                tactical_extra_branch_count=tactical_extra_branch_count,
             )
 
         (
@@ -1061,7 +1057,8 @@ class BeliefDecisionEngine:
         if final_search is None or selected is None:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
@@ -1097,7 +1094,11 @@ class BeliefDecisionEngine:
             mode="belief-search",
             particle_count=len(self.particles),
             candidate_count=len(final_search.evaluated_choices),
-            branch_count=baseline_branches + strategic_branch_count,
+            branch_count=(
+                baseline_branches
+                + protect_risk_branch_count
+                + strategic_branch_count
+            ),
             elapsed_seconds=perf_counter() - started,
             strategic_plan=(
                 selected_probe.plan.name
