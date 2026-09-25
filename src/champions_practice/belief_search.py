@@ -556,6 +556,7 @@ def search_exact_belief_turn(
     response_limit: int | None = None,
     autonomous_responses: bool = False,
     rng_seeds: tuple[str, ...] | None = None,
+    response_shortlists: tuple[tuple[str, ...], ...] | None = None,
 ) -> BeliefSearchResult:
     """Rank actions across exact states generated only from public belief worlds.
 
@@ -569,6 +570,8 @@ def search_exact_belief_turn(
         raise ValueError("response_limit must be positive")
     if rng_seeds is not None and not rng_seeds:
         raise ValueError("rng_seeds must not be empty")
+    if response_shortlists is not None and len(response_shortlists) != len(worlds):
+        raise ValueError("response_shortlists must align one-to-one with worlds")
 
     total_started = perf_counter()
     candidate_legal_started = perf_counter()
@@ -606,7 +609,14 @@ def search_exact_belief_turn(
         legal_cache_hits += int(cache_hit)
         legal_cache_misses += int(not cache_hit)
         response_legal_seconds += perf_counter() - response_legal_started
-        if autonomous_responses and response_limit is not None:
+        if response_shortlists is not None:
+            legal_response_set = set(responses)
+            responses = [
+                response
+                for response in response_shortlists[world_index]
+                if response in legal_response_set
+            ]
+        elif autonomous_responses and response_limit is not None:
             pruning = shortlist_belief_responses(
                 worker,
                 world=world,
