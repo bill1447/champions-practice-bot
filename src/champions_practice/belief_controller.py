@@ -777,15 +777,15 @@ class BeliefDecisionEngine:
             shared_candidate_references = ordered_union(
                 *candidate_reference_groups
             )
+            # Final tactical authority must not see a weaker opponent-response set
+            # than the protected baseline search. Strategy may add candidates, but it
+            # cannot regain authority by shrinking the baseline's adversarial coverage.
             shared_responses = prepare_shared_strategic_responses(
                 worker,
                 worlds=worlds,
                 side="p2",
                 candidate_references=shared_candidate_references,
-                response_limit=min(
-                    self.response_limit,
-                    self.strategic_response_limit,
-                ),
+                response_limit=self.response_limit,
                 rng_seeds=self.strategic_rng_seeds,
             )
             strategic_branch_count += shared_responses.screening_branch_count
@@ -1238,6 +1238,14 @@ class _BeliefBattleCoordinator:
         decision: BeliefDecision,
         public_view: dict,
     ) -> SealedTurnResult:
+        # Fetch every live-session view needed for the result before mutating belief
+        # state. If this read fails, reconciliation can retry without conditioning the
+        # same submitted turn twice.
+        human_view = self._worker.session_view(
+            self._require_session(),
+            side="p1",
+        )["view"]
+
         snapshot = self._engine_snapshot()
         try:
             update = self._engine.observe_public_turn(
@@ -1248,10 +1256,6 @@ class _BeliefBattleCoordinator:
             self._restore_engine_snapshot(snapshot)
             raise
 
-        human_view = self._worker.session_view(
-            self._require_session(),
-            side="p1",
-        )["view"]
         terminal = bool(public_view.get("ended"))
         with self._state_lock:
             self._sealed_decision = None
@@ -1354,13 +1358,22 @@ class _BeliefBattleCoordinator:
             if not secrets.compare_digest(token, expected_token):
                 raise ValueError("invalid locked-decision token")
             session_id = self._require_session()
+            public_view = self._pending_public_view
+            # Claim the reconciliation atomically before any live-session read. A
+            # repeated concurrent reconciliation must fail rather than condition twice.
+            self._turn_state = SealedTurnState.SUBMITTING
 
-        public_view = self._pending_public_view
-        if public_view is None:
-            public_view = self._worker.session_view(
-                session_id,
-                side="p2",
-            )["view"]
+        try:
+            if public_view is None:
+                public_view = self._worker.session_view(
+                    session_id,
+                    side="p2",
+                )["view"]
+        except Exception:
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.SUBMITTING:
+                    self._turn_state = SealedTurnState.FAILED
+            raise
 
         if (
             self._pre_submit_signature is not None
@@ -1378,7 +1391,6 @@ class _BeliefBattleCoordinator:
 
         with self._state_lock:
             self._pending_public_view = public_view
-            self._turn_state = SealedTurnState.SUBMITTING
 
         try:
             return self._finalize_submitted_turn(
@@ -1387,7 +1399,8 @@ class _BeliefBattleCoordinator:
             )
         except Exception:
             with self._state_lock:
-                self._turn_state = SealedTurnState.FAILED
+                if self._turn_state is SealedTurnState.SUBMITTING:
+                    self._turn_state = SealedTurnState.FAILED
             raise
 
     def close(self) -> None:
