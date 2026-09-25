@@ -659,7 +659,7 @@ function renderSide(targetId, side, previewFallback) {
 
 function hintFor(turnState) {
   if (aiLockPending) {
-    return "AI is thinking. Your move controls unlock once its action is sealed.";
+    return "Battle is advancing automatically. Your controls unlock when input is needed.";
   }
   if (!state?.started && turnState === "ended") {
     return "Battle ended. Start a new battle when ready.";
@@ -805,9 +805,30 @@ async function run(action) {
 
 async function renderAndAutoLock(next) {
   render(next);
+  if (!next.started) return;
+
   const turnState = next.turn_state || "new";
   if (
-    !next.started ||
+    next.ai_ready &&
+    turnState === "locked" &&
+    Array.isArray(next.legal_choices) &&
+    next.legal_choices.length === 1 &&
+    next.legal_choices[0] === ""
+  ) {
+    aiLockPending = true;
+    render(next);
+    try {
+      const advanced = await request("/api/commit", "POST", {choice: ""});
+      aiLockPending = false;
+      await renderAndAutoLock(advanced);
+      return;
+    } catch (error) {
+      aiLockPending = false;
+      throw error;
+    }
+  }
+
+  if (
     next.ai_ready ||
     !(turnState === "idle" || turnState === "resolved")
   ) {
@@ -819,7 +840,7 @@ async function renderAndAutoLock(next) {
   try {
     const locked = await request("/api/lock", "POST", {});
     aiLockPending = false;
-    render(locked);
+    await renderAndAutoLock(locked);
   } catch (error) {
     aiLockPending = false;
     throw error;
