@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 import random
+import secrets
 from time import perf_counter
 from typing import Callable, TypeVar
 
@@ -59,6 +60,11 @@ class BeliefDecision:
     strategic_probe_count: int = 0
     strategic_branch_count: int = 0
     strategic_rng_sample_count: int = 0
+
+
+@dataclass(frozen=True)
+class SealedDecisionReady:
+    token: str
 
 
 @dataclass(frozen=True)
@@ -965,6 +971,7 @@ class BeliefBattleController:
         self.battle_format = battle_format
         self.ai_team = ai_team
         self.session_id: str | None = None
+        self._locked_decision: tuple[str, BeliefDecision] | None = None
         self.engine = BeliefDecisionEngine(
             worker.project_root,
             battle_format=battle_format,
@@ -1063,6 +1070,37 @@ class BeliefBattleController:
             legal_live=self.ai_legal_choices(),
         )
 
+    def lock_ai_action(self) -> SealedDecisionReady:
+        """Compute and retain the AI action without exposing its decision payload."""
+        if self._locked_decision is not None:
+            raise RuntimeError("AI action is already locked for this turn")
+        decision = self.choose_ai_action()
+        token = secrets.token_urlsafe(18)
+        self._locked_decision = (token, decision)
+        return SealedDecisionReady(token=token)
+
+    def resolve_locked_turn(
+        self,
+        *,
+        token: str,
+        human_choice: str,
+    ) -> BeliefTurnUpdate:
+        """Accept the human action before revealing/submitting the locked AI decision."""
+        locked = self._locked_decision
+        if locked is None:
+            raise RuntimeError("no AI action is locked")
+        expected_token, decision = locked
+        if not secrets.compare_digest(token, expected_token):
+            raise ValueError("invalid locked-decision token")
+        if human_choice not in self.human_legal_choices():
+            raise ValueError("human choice is not live-session legal")
+
+        self._locked_decision = None
+        return self.resolve_turn(
+            human_choice=human_choice,
+            decision=decision,
+        )
+
     def resolve_turn(
         self,
         *,
@@ -1082,6 +1120,7 @@ class BeliefBattleController:
         )
 
     def close(self) -> None:
+        self._locked_decision = None
         if self.session_id is None:
             return
         self.worker.close_session(self.session_id)
