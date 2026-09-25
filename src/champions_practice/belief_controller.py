@@ -1066,7 +1066,8 @@ class BeliefDecisionEngine:
         if final_search.chosen.choice not in legal_live:
             return decision_from_baseline(
                 baseline_pruning,
-                baseline_search,
+                tactical_search,
+                tactical_extra_branch_count=tactical_extra_branch_count,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
             )
