@@ -332,3 +332,8 @@ def test_demo_html_prefers_active_details_and_formats_hp_percent() -> None:
     assert "mon.hp_percent" in DEMO_HTML
     assert "% HP" in DEMO_HTML
 
+def test_demo_html_auto_submits_empty_human_wait_choice() -> None:
+    assert 'next.legal_choices.length === 1' in DEMO_HTML
+    assert 'next.legal_choices[0] === ""' in DEMO_HTML
+    assert 'request("/api/commit", "POST", {choice: ""})' in DEMO_HTML
+
