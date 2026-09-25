@@ -128,13 +128,14 @@ Completed so far:
 Current work:
 - freeze further strategy expansion until gameplay produces concrete failures;
 - preserve exact belief search as the final command selector;
-- complete Phase 9.5 pre-demo authority and isolation hardening;
+- keep the completed Phase 9.5 hardening as the authority/isolation baseline;
 - keep the 11-case strategic corpus as a regression floor rather than evidence that strategy
   is complete or optimal.
 
 Next:
-- finish the focused pre-demo hardening sequence;
 - build the interactive battle tech demo on the restricted sealed-choice boundary;
+- expose only public battle state and an opaque AI-locked status before human commitment;
+- reveal the AI decision and diagnostics only after both choices are submitted to Showdown;
 - use complete demo games to identify the next strategy/search improvements.
 
 ## Phase 9.5 — Pre-demo authority and isolation hardening — current objective
@@ -163,14 +164,17 @@ Current hardening sequence:
 - sealed-choice demo API: the coordinator can compute and retain a BeliefDecision server-side,
   expose only an opaque ready token, validate the human action, submit both choices, and reveal
   the decision payload only after that commitment boundary;
-- runtime engine verification and real-Showdown negative controls before the interactive
-  demo is considered ready.
+- runtime engine verification and real-Showdown negative controls: every worker process
+  verifies the pinned clean Showdown checkout before use, CI has an explicit runtime gate,
+  and the sealed real-session smoke rejects bad tokens and illegal human actions without
+  advancing the live battle.
 
-The first five items are now implemented across the tactical-first, strategy-authority,
-comparable-evidence, and capability-boundary hardening branches. The persistent-controller
-smoke uses the production-default eight-second decision budget and now exercises the sealed
-choice flow so neither search timeouts nor pre-commit decision leakage can hide behind the
-test harness.
+All Phase 9.5 hardening items are now implemented across the tactical-first,
+strategy-authority, comparable-evidence, capability-boundary, and runtime-gate branches.
+The demo gate is not considered complete until the full pull-request CI workflow succeeds.
+The persistent-controller smoke uses the production-default eight-second decision budget,
+exercises the sealed choice flow, and now includes live negative controls for invalid lock
+tokens and illegal human actions.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 

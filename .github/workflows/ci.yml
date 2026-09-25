@@ -69,7 +69,7 @@ jobs:
         run: |
           Push-Location external/pokemon-showdown
           try {
-            npm install
+            npm ci
             npm run build
             Copy-Item config/config-example.js config/config.js -Force
           }
@@ -79,6 +79,10 @@ jobs:
 
           . .\scripts\showdown-utils.ps1
           Set-ChampionsShowdownLocalConfig
+
+      - name: Runtime Showdown pin gate
+        shell: pwsh
+        run: .\showdown-runtime-gate.ps1
 
       - name: Lint
         shell: pwsh

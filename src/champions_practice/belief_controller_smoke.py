@@ -3,6 +3,7 @@
 from champions_practice.belief_controller import BeliefBattleController
 from champions_practice.belief_smoke import _public_priors
 from champions_practice.config import CHAMPIONS_FORMAT
+from champions_practice.observation_beliefs import public_observation_signature
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
@@ -58,6 +59,41 @@ def main() -> None:
                 raise SystemExit("ERROR: sealed AI payload leaked before human commit")
             if HUMAN_TURN_ONE not in controller.human_legal_choices():
                 raise SystemExit("ERROR: controlled human turn-one action is not legal")
+
+            session_id = controller._require_session()
+            before_commit = public_observation_signature(
+                worker.session_view(session_id, side="p2")["view"]
+            )
+
+            try:
+                controller.resolve_locked_turn(
+                    token="wrong-token",
+                    human_choice=HUMAN_TURN_ONE,
+                )
+            except ValueError:
+                pass
+            else:
+                raise SystemExit("ERROR: invalid lock token was accepted")
+            after_bad_token = public_observation_signature(
+                worker.session_view(session_id, side="p2")["view"]
+            )
+            if after_bad_token != before_commit:
+                raise SystemExit("ERROR: bad token advanced the live battle")
+
+            try:
+                controller.resolve_locked_turn(
+                    token=ready.token,
+                    human_choice="move definitely-not-legal",
+                )
+            except ValueError:
+                pass
+            else:
+                raise SystemExit("ERROR: illegal human action was accepted")
+            after_bad_choice = public_observation_signature(
+                worker.session_view(session_id, side="p2")["view"]
+            )
+            if after_bad_choice != before_commit:
+                raise SystemExit("ERROR: illegal human action advanced the live battle")
 
             update = controller.resolve_locked_turn(
                 token=ready.token,
@@ -140,6 +176,8 @@ def main() -> None:
             print(f"Turn-three belief-search choice: {third_decision.choice}")
             print(f"Turn-three search seconds: {third_decision.elapsed_seconds:.3f}")
             print("Decision engine live-session capability: NO")
+            print("Invalid token advanced live session: NO")
+            print("Illegal human action advanced live session: NO")
             print("Pre-commit AI decision payload exposed: NO")
             print("Live session snapshot read by decision engine: IMPOSSIBLE")
             print("Live hidden RNG seed supplied to particles: NO")

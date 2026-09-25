@@ -3,9 +3,86 @@
 from __future__ import annotations
 
 import json
+import re
 import subprocess
 from pathlib import Path
 from typing import Any
+
+
+_VERIFIED_SHOWDOWN_ROOTS: dict[Path, str] = {}
+
+
+def verify_showdown_checkout(
+    project_root: str | Path | None = None,
+) -> str:
+    """Fail fast when the local Showdown source is not the pinned clean revision."""
+    if project_root is None:
+        project_root = Path(__file__).resolve().parents[2]
+    root = Path(project_root).resolve()
+    cached = _VERIFIED_SHOWDOWN_ROOTS.get(root)
+    if cached is not None:
+        return cached
+
+    pin_file = root / "showdown-version.txt"
+    showdown_root = root / "external" / "pokemon-showdown"
+
+    if not pin_file.is_file():
+        raise RuntimeError(f"Pokemon Showdown pin file is missing: {pin_file}")
+    expected = pin_file.read_text(encoding="utf-8").strip().lower()
+    if re.fullmatch(r"[0-9a-f]{40}", expected) is None:
+        raise RuntimeError(
+            "Pokemon Showdown pin must be a full 40-character git SHA"
+        )
+
+    try:
+        actual_result = subprocess.run(
+            ["git", "-C", str(showdown_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError as error:
+        raise RuntimeError(
+            "Git is required to verify the pinned Pokemon Showdown runtime"
+        ) from error
+
+    if actual_result.returncode != 0:
+        detail = actual_result.stderr.strip() or actual_result.stdout.strip()
+        raise RuntimeError(
+            "Pokemon Showdown checkout is unavailable or not a git repository: "
+            f"{detail}"
+        )
+    actual = actual_result.stdout.strip().lower()
+    if actual != expected:
+        raise RuntimeError(
+            "Pokemon Showdown revision mismatch: "
+            f"expected {expected}, found {actual}. "
+            "Run update-local.ps1 -UpdateShowdown."
+        )
+
+    for args in (
+        ["git", "-C", str(showdown_root), "diff", "--quiet", "HEAD", "--"],
+        ["git", "-C", str(showdown_root), "diff", "--cached", "--quiet", "HEAD", "--"],
+    ):
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode == 1:
+            raise RuntimeError(
+                "Pokemon Showdown checkout has tracked local modifications. "
+                "Clean or stash them before running the practice bot."
+            )
+        if result.returncode != 0:
+            detail = result.stderr.strip() or result.stdout.strip()
+            raise RuntimeError(
+                f"Unable to verify Pokemon Showdown checkout cleanliness: {detail}"
+            )
+
+    _VERIFIED_SHOWDOWN_ROOTS[root] = actual
+    return actual
 
 
 class HypotheticalSearchWorker:
@@ -105,6 +182,7 @@ class ShowdownSearchWorker:
             project_root = Path(__file__).resolve().parents[2]
 
         self.project_root = Path(project_root)
+        self.showdown_revision = verify_showdown_checkout(self.project_root)
         self.script = self.project_root / "tools" / "showdown-search-worker.js"
         self.showdown_battle = (
             self.project_root
