@@ -282,7 +282,7 @@ def _default_facade() -> SealedBattleFacade:
         ai_team=DEMO_AI_TEAM,
         ai_preview_choice=DEMO_AI_PREVIEW_CHOICE,
         opponent_priors=demo_public_priors(),
-        candidate_limit=8,
+        candidate_limit=4,
         decision_budget_seconds=10.0,
     )
 
