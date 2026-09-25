@@ -138,7 +138,7 @@ Next:
 - reveal the AI decision and diagnostics only after both choices are submitted to Showdown;
 - use complete demo games to identify the next strategy/search improvements.
 
-## Phase 9.5 — Pre-demo authority and isolation hardening — final PR pending
+## Phase 9.5 — Pre-demo authority and isolation hardening — complete
 
 The strategy feature baseline is frozen until complete-game evidence justifies new strategic
 capabilities. PR #78 is the final pre-demo correctness hardening pass. Exact belief search
@@ -189,15 +189,13 @@ Two threat-model limits are explicit rather than disguised as guarantees:
 Those limits do not justify more architecture work before gameplay unless CI or the demo
 shows a concrete failure.
 
-Current gate:
+Final gate:
 
-- final static audit complete on the #78 branch;
-- pull-request CI is still required for unit tests, Ruff, runtime provenance, persistent
-  sealed play, forced-switch/terminal behavior, timeout cleanup, and the existing search and
-  conditioning smokes;
-- once #78 is green and merged, freeze strategy and architecture work and build the playable
-  local multi-turn demo;
-- use complete games and post-commit decision traces as the next source of intelligence work.
+- PR #78 passed the full Windows CI workflow and merged to `main`;
+- strategy and architecture feature work are frozen until complete-game evidence exposes a
+  concrete failure;
+- the playable local multi-turn demo is now the active engineering target;
+- post-commit decision traces and complete games are the next source of intelligence work.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
@@ -222,14 +220,27 @@ Add only what benchmark failures justify: selective two-ply search, adaptive wor
 budgets, transposition caching, better public priors and probability updates, stronger
 response modeling, or parallel branching.
 
-## Phase 12 — Practice interface and review tools
+## Phase 12 — Practice interface and review tools — started
 
-Build the local browser client: team import, preview, battlefield, move/target/switch/Mega
-controls, thinking state, battle log, replay, postgame review, belief inspection, decision
-traces, and optional perfect-information postgame analysis.
+The first playable vertical slice is a localhost-only browser client built directly on
+`SealedBattleFacade`. It uses a fixed current-roster mirror fixture so complete games can
+begin before arbitrary-team import and polished controls exist.
+
+Initial demo scope:
+
+- human team-preview selection from live legal choices;
+- sanitized public battle-state display;
+- server-side AI sealing before human submission;
+- legal human command selection and multi-turn resolution;
+- forced-switch/terminal compatibility inherited from the sealed coordinator;
+- post-commit decision and conditioning history;
+- no current AI command or lock token serialized to the browser.
+
+Next interface work should be driven by actual play. Likely additions are arbitrary team
+import with a legitimate public-prior source, structured move/target/switch/Mega controls,
+battle-log presentation, replay/postgame review, and better team-preview intelligence.
 
 Current sequence:
 
-**Simulator → public beliefs → bounded exact search → autonomous pruning → position evidence
-→ selective continuation → persistent live particles → RNG-robust conditioning → strategy
-→ benchmarks/tuning → selective depth → GUI**
+**Simulator → public beliefs → bounded exact search → persistent beliefs → strategy
+→ sealed playable demo → complete games → targeted tuning/selective depth → review tools**

@@ -15,6 +15,7 @@ dev = [
 
 [project.scripts]
 champions-practice = "champions_practice.cli:main"
+champions-demo = "champions_practice.demo_server:main"
 
 [build-system]
 requires = ["hatchling"]
