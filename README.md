@@ -146,6 +146,7 @@ champions-practice-bot/
 ├── validate-team.ps1
 ├── battle-smoke.ps1
 ├── ai-smoke.ps1
+├── demo.ps1
 ├── stop-showdown.ps1
 └── run.ps1
 ```
