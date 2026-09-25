@@ -238,8 +238,8 @@ class HypotheticalSearchWorker:
             candidates=candidates,
         )
 
-    def abort(self) -> None:
-        self.__worker.abort()
+    def abort(self, *, timeout_seconds: float = 0.25) -> None:
+        self.__worker.abort(timeout_seconds=timeout_seconds)
 
     def close(self) -> None:
         self.__worker.close()
@@ -502,15 +502,26 @@ class ShowdownSearchWorker:
             raise RuntimeError(f"Showdown session {session_id!r} did not close")
 
 
-    def abort(self) -> None:
-        """Immediately stop this worker so an over-budget search cannot block play."""
+    def abort(self, *, timeout_seconds: float = 0.25) -> None:
+        """Stop and reap this worker inside a bounded cleanup allowance."""
         if self._process.poll() is not None:
             return
+
+        allowance = max(0.0, timeout_seconds)
+        self._process.terminate()
+        try:
+            self._process.wait(timeout=allowance)
+            return
+        except subprocess.TimeoutExpired:
+            pass
+
         self._process.kill()
         try:
-            self._process.wait(timeout=1)
+            self._process.wait(timeout=allowance)
         except subprocess.TimeoutExpired:
-            self._process.terminate()
+            # The process has been force-killed. Avoid extending a decision deadline;
+            # the OS will finish cleanup after this bounded attempt.
+            return
 
     def close(self) -> None:
         if self._process.poll() is not None:
