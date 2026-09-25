@@ -42,9 +42,9 @@ if ($UpdateShowdown) {
 
     Push-Location $Showdown
     try {
-        & npm install
+        & npm ci
         if ($LASTEXITCODE -ne 0) {
-            throw "Showdown npm install failed."
+            throw "Showdown npm ci failed."
         }
 
         & npm run build
