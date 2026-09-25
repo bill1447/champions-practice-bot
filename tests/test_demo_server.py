@@ -190,6 +190,12 @@ def test_preview_choice_label_names_leads_and_back_pokemon() -> None:
 
 def test_turn_choice_label_names_moves_targets_mega_and_switches() -> None:
     view = {
+        "opponent": {
+            "active": [
+                {"species": "Rillaboom"},
+                {"species": "Sneasler"},
+            ]
+        },
         "player": {
             "active": ["Sneasler", "Indeedee-F"],
             "team": [
@@ -227,7 +233,7 @@ def test_turn_choice_label_names_moves_targets_mega_and_switches() -> None:
     )
 
     assert attack == (
-        "Sneasler: Close Combat → foe left [Mega] | Indeedee-F: Follow Me"
+        "Sneasler: Close Combat → foe Rillaboom [Mega] | Indeedee-F: Follow Me"
     )
     assert switch == (
         "Sneasler: switch → Gardevoir | Indeedee-F: Trick Room"
@@ -249,4 +255,28 @@ def test_end_battle_closes_facade_and_preserves_committed_history() -> None:
     assert ended["ai_ready"] is False
     assert ended["legal_choices"] == []
     assert ended["history"][0]["decision"]["choice"] == "move secret-ai"
+
+def test_turn_choice_label_names_ally_targets_by_pokemon() -> None:
+    view = {
+        "opponent": {"active": [{"species": "FoeA"}, {"species": "FoeB"}]},
+        "player": {
+            "active": ["Indeedee-F", "Gardevoir-Mega"],
+            "team": [
+                {"species": "Indeedee-F"},
+                {"species": "Gardevoir-Mega"},
+            ],
+        },
+        "request": {
+            "active": [
+                {"moves": [{"id": "helpinghand", "move": "Helping Hand"}]},
+                {"moves": [{"id": "protect", "move": "Protect"}]},
+            ]
+        },
+    }
+
+    label = _choice_label("move helpinghand -2, move protect", view)
+
+    assert label == (
+        "Indeedee-F: Helping Hand → ally Gardevoir-Mega | Gardevoir-Mega: Protect"
+    )
 
