@@ -482,25 +482,55 @@ def _choice_uses_redirection(choice: str) -> bool:
     )
 
 
-def _reserve_redirection_counter(
+def _branch_score_for_response(
+    result,
+    response: str,
+) -> tuple[str, float]:
+    best_choice = ""
+    best_score = float("-inf")
+    for candidate in result.ranking:
+        branch = next(
+            (
+                branch
+                for branch in candidate.branches
+                if branch.response == response
+            ),
+            None,
+        )
+        if branch is None:
+            continue
+        if branch.score > best_score:
+            best_choice = candidate.choice
+            best_score = branch.score
+    if not best_choice:
+        raise RuntimeError("screening result is missing an expected response")
+    return best_choice, best_score
+
+
+def _reserve_redirection_counters(
     worker: BeliefSearchWorker,
     *,
     state: dict[str, Any],
     opponent: SideId,
     families,
     candidate_references: list[str],
-) -> tuple[str | None, int]:
-    """Find one exact high-impact redirection reply without widening all response search."""
+    fallback: tuple[str, ...],
+    limit: int,
+) -> tuple[tuple[str, ...], int]:
+    """Reserve redirection only where it beats the normal shortlist for a candidate."""
     redirection_families = [
         family
         for family in families
         if any(_choice_uses_redirection(choice) for choice in family.choices)
     ]
     references = candidate_references[:_REDIRECTION_REFERENCE_LIMIT]
-    if not redirection_families or not references:
-        return None, 0
+    if not redirection_families or not references or not fallback or limit <= 0:
+        return (), 0
 
     representatives = [family.representative for family in redirection_families]
+    by_representative = {
+        family.representative: family for family in redirection_families
+    }
     family_screening = search_exact_turn(
         worker,
         state=state,
@@ -509,35 +539,56 @@ def _reserve_redirection_counter(
         opponent_responses=references,
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
-    by_representative = {
-        family.representative: family for family in redirection_families
-    }
-
-    strongest_pair: tuple[float, str, str] | None = None
-    for candidate in family_screening.ranking:
-        for branch in candidate.branches:
-            pair = (branch.score, candidate.choice, branch.response)
-            if strongest_pair is None or pair > strongest_pair:
-                strongest_pair = pair
-
-    if strongest_pair is None:
-        return None, family_screening.branch_count
-
-    _, representative, candidate_reference = strongest_pair
-    family = by_representative[representative]
-    target_screening = search_exact_turn(
+    fallback_screening = search_exact_turn(
         worker,
         state=state,
         side=opponent,
-        choices=list(family.choices),
-        opponent_responses=[candidate_reference],
+        choices=list(fallback),
+        opponent_responses=references,
         rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
     )
-    return (
-        target_screening.chosen.choice,
-        family_screening.branch_count + target_screening.branch_count,
+    branch_count = (
+        family_screening.branch_count
+        + fallback_screening.branch_count
     )
 
+    opportunities: list[tuple[float, str, str]] = []
+    for reference in references:
+        representative, redirection_score = _branch_score_for_response(
+            family_screening,
+            reference,
+        )
+        _, fallback_score = _branch_score_for_response(
+            fallback_screening,
+            reference,
+        )
+        improvement = redirection_score - fallback_score
+        if improvement > 0.0:
+            opportunities.append(
+                (improvement, representative, reference)
+            )
+
+    opportunities.sort(reverse=True)
+    selected: list[str] = []
+    for _, representative, reference in opportunities:
+        family = by_representative[representative]
+        target_screening = search_exact_turn(
+            worker,
+            state=state,
+            side=opponent,
+            choices=list(family.choices),
+            opponent_responses=[reference],
+            rng_seeds=BELIEF_RESPONSE_SCREENING_RNG_SEEDS,
+        )
+        branch_count += target_screening.branch_count
+        counter = target_screening.chosen.choice
+        if counter in selected:
+            continue
+        selected.append(counter)
+        if len(selected) >= limit:
+            break
+
+    return tuple(selected), branch_count
 
 def shortlist_belief_responses(
     worker: BeliefSearchWorker,
@@ -567,16 +618,6 @@ def shortlist_belief_responses(
         raise ValueError("opponent has no legal responses in belief world")
     families = _strategy_families(responses)
     representatives = [family.representative for family in families]
-    reserved_redirection = None
-    redirection_branch_count = 0
-    if response_limit >= 2:
-        reserved_redirection, redirection_branch_count = _reserve_redirection_counter(
-            worker,
-            state=world.state,
-            opponent=opponent,
-            families=families,
-            candidate_references=candidate_references,
-        )
 
     # The final matrix still uses every requested RNG future. This is only the cheap
     # per-world funnel, so one shared reference and seed are enough to rank broad plans
@@ -621,12 +662,31 @@ def shortlist_belief_responses(
         retained_families,
         limit=response_limit,
     )
+    redirection_limit = (
+        min(2, max(1, response_limit // 2))
+        if response_limit >= 2
+        else 0
+    )
+    reserved_redirection, redirection_branch_count = _reserve_redirection_counters(
+        worker,
+        state=world.state,
+        opponent=opponent,
+        families=families,
+        candidate_references=candidate_references,
+        fallback=fallback,
+        limit=redirection_limit,
+    )
+
     shortlist = list(fallback)
-    if reserved_redirection is not None and reserved_redirection not in shortlist:
-        if len(shortlist) >= response_limit:
-            shortlist[-1] = reserved_redirection
-        else:
-            shortlist.append(reserved_redirection)
+    replacement_index = len(shortlist) - 1
+    for response in reserved_redirection:
+        if response in shortlist:
+            continue
+        if replacement_index >= 0:
+            shortlist[replacement_index] = response
+            replacement_index -= 1
+        elif len(shortlist) < response_limit:
+            shortlist.append(response)
 
     return BeliefResponsePruning(
         legal_response_count=len(responses),
