@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from threading import Thread
 
 from champions_practice.belief_controller import (
     BeliefCollapseDiagnostic,
@@ -236,7 +237,18 @@ def test_demo_unknown_outcome_is_reconcilable_and_transport_abort_is_lock_free()
 
     assert snapshot["turn_state"] == "unknown"
     assert snapshot["can_reconcile"] is True
-    assert session.abort_transport() == {"aborted": True}
+
+    results = []
+    session._lock.acquire()
+    try:
+        thread = Thread(target=lambda: results.append(session.abort_transport()))
+        thread.start()
+        thread.join(timeout=0.25)
+        assert not thread.is_alive()
+    finally:
+        session._lock.release()
+
+    assert results == [{"aborted": True}]
     assert facade.transport_aborted is True
 
 
