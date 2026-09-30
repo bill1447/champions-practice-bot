@@ -137,6 +137,10 @@ jobs:
         shell: pwsh
         run: .\sealed-transition-smoke.ps1
 
+      - name: Revival Blessing request and conditioning smoke test
+        shell: pwsh
+        run: .\revival-blessing-smoke.ps1
+
       - name: Production-like damaging-turn conditioning smoke test
         shell: pwsh
         run: .\damage-conditioning-smoke.ps1
