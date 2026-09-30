@@ -19,6 +19,26 @@ _ACTIVE_SHOWDOWN_PROCESSES: dict[int, subprocess.Popen[str]] = {}
 _BUILD_STAMP_NAME = "showdown-build.json"
 
 
+class ShowdownRequestError(RuntimeError):
+    """The worker completed a request but Showdown rejected it."""
+
+    def __init__(
+        self,
+        op: str,
+        detail: str,
+        *,
+        mutating: bool = False,
+    ) -> None:
+        self.op = op
+        self.detail = detail
+        self.mutating = mutating
+        self.choice_rejected = (
+            "[Invalid choice]" in detail
+            or "[Unavailable choice]" in detail
+        )
+        super().__init__(f"Showdown worker {op!r} failed: {detail}")
+
+
 class ShowdownWorkerTimeout(TimeoutError):
     """A bounded worker operation exceeded its startup or transport deadline."""
 
@@ -526,8 +546,11 @@ class ShowdownSearchWorker:
                 f"expected {request_id}, got {response.get('id')}"
             )
         if not response.get("ok"):
-            raise RuntimeError(
-                f"Showdown worker {op!r} failed: {response.get('error', 'unknown error')}"
+            detail = str(response.get("error", "unknown error"))
+            raise ShowdownRequestError(
+                op,
+                detail,
+                mutating=mutating,
             )
 
         result = response.get("result")
