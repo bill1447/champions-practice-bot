@@ -140,6 +140,26 @@ def test_belief_search_uses_only_choices_legal_in_every_world() -> None:
     assert result.evaluated_choices == ("safe",)
 
 
+def test_candidate_pruning_respects_public_preseal_allowlist() -> None:
+    worker = FakeBeliefWorker()
+    worlds = (
+        ExactBeliefWorldState(state={"id": "A"}, weight=1.0, label="world-a"),
+        ExactBeliefWorldState(state={"id": "B"}, weight=1.0, label="world-b"),
+    )
+
+    pruning = shortlist_belief_candidates(
+        worker,
+        worlds=worlds,
+        side="p1",
+        candidate_limit=2,
+        reference_limit=1,
+        allowed_choices=("safe",),
+    )
+
+    assert pruning.candidate_shortlist == ("safe",)
+    assert pruning.legal_choice_count == 1
+
+
 def test_belief_search_averages_rng_before_world_minimax() -> None:
     class RngWorker(FakeBeliefWorker):
         def branch_many(self, *, state, branches):
