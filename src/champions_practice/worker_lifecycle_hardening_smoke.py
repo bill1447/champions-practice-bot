@@ -14,7 +14,6 @@ from champions_practice.belief_controller import (
 )
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.search_worker import (
-    HypotheticalSearchWorker,
     ShowdownSearchWorker,
     ShowdownWorkerTimeout,
     active_showdown_worker_pids,
