@@ -62,14 +62,28 @@ def test_public_execution_delta_distinguishes_executed_from_prevented_action():
         **base,
         "public_execution_delta": {
             "turn": 1,
-            "events": [["move", "p1a", "haze", "p1a"]],
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "haze",
+                    "effects": [],
+                }
+            ],
         },
     }
     prevented = {
         **base,
         "public_execution_delta": {
             "turn": 1,
-            "events": [["cant", "p1a", "par"]],
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "prevented",
+                    "reason": "par",
+                    "effects": [],
+                }
+            ],
         },
     }
 
@@ -96,14 +110,28 @@ def test_exact_selected_command_still_requires_matching_execution_outcome():
         **base,
         "public_execution_delta": {
             "turn": 1,
-            "events": [["move", "p1a", "haze", "p1a"]],
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "haze",
+                    "effects": [],
+                }
+            ],
         },
     }
     prevented = {
         **base,
         "public_execution_delta": {
             "turn": 1,
-            "events": [["cant", "p1a", "par"]],
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "prevented",
+                    "reason": "par",
+                    "effects": [],
+                }
+            ],
         },
     }
     worker = ExactSelectedCommandWorker([executed, prevented])
