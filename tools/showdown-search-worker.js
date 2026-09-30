@@ -73,18 +73,11 @@ function canonicalProtocolIdentity(value) {
 }
 
 const PUBLIC_MECHANICS_EVENTS = new Set([
-  "move",
-  "switch",
-  "drag",
-  "replace",
-  "faint",
-  "cant",
-  "-fail",
-  "-miss",
-  "-immune",
-  "-crit",
-  "-supereffective",
-  "-resisted",
+  // Keep transition evidence that is not necessarily reconstructible from the
+  // reduced final public snapshot. Ordinary move/damage/status/boost/item
+  // transcript lines are intentionally excluded: those are already represented
+  // by action evidence and/or resulting public state and need not have identical
+  // reconstructed log history.
   "-start",
   "-end",
   "-activate",
@@ -96,28 +89,6 @@ const PUBLIC_MECHANICS_EVENTS = new Set([
   "-fieldstart",
   "-fieldend",
   "-weather",
-  "-status",
-  "-curestatus",
-  "-cureteam",
-  "-boost",
-  "-unboost",
-  "-setboost",
-  "-clearboost",
-  "-clearnegativeboost",
-  "-clearallboost",
-  "-invertboost",
-  "-swapboost",
-  "-copyboost",
-  "-item",
-  "-enditem",
-  "-ability",
-  "-endability",
-  "-mega",
-  "detailschange",
-  "-formechange",
-  "-transform",
-  "-damage",
-  "-heal",
 ]);
 
 function canonicalPublicMechanicsEvent(parts) {
