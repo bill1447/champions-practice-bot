@@ -1248,7 +1248,20 @@ function sessionChoose(request) {
     throw new Error("session_choose requires p1_choice and p2_choice strings");
   }
 
-  battle.makeChoices(request.p1_choice, request.p2_choice);
+  // Battle#makeChoices submits sides sequentially. If the second choice throws,
+  // the first side may already have a queued private choice in the live battle.
+  // Make the operation transactional so a rejected joint command cannot leave
+  // partially submitted human information behind for a later AI reseal/retry.
+  const before = battle.toJSON();
+  try {
+    battle.makeChoices(request.p1_choice, request.p2_choice);
+  } catch (error) {
+    battle.destroy();
+    const restored = Battle.fromJSON(JSON.stringify(before));
+    restored.restart(() => {});
+    sessions.set(request.session_id, restored);
+    throw error;
+  }
 
   return {
     session_id: request.session_id,
