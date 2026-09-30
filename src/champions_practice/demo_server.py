@@ -59,6 +59,51 @@ def _decision_payload(decision: BeliefDecision) -> dict[str, object]:
     }
 
 
+def _collapse_diagnostic_payload(diagnostic) -> dict[str, object] | None:
+    if diagnostic is None:
+        return None
+    return {
+        "summary": diagnostic.summary,
+        "elapsed_seconds": diagnostic.elapsed_seconds,
+        "budget_exhausted": diagnostic.budget_exhausted,
+        "generated_branches": diagnostic.generated_branches,
+        "exact_matches": diagnostic.exact_matches,
+        "worlds_tested": diagnostic.worlds_tested,
+        "legal_worlds": diagnostic.legal_worlds,
+        "illegal_worlds": diagnostic.illegal_worlds,
+        "common_mismatch_paths": [
+            {"path": path, "count": count}
+            for path, count in diagnostic.common_mismatch_paths
+        ],
+        "closest_branches": [
+            {
+                "world_id": branch.world_id,
+                "mismatch_count": branch.mismatch_count,
+                "differences": [
+                    {
+                        "path": difference.path,
+                        "actual": difference.actual,
+                        "simulated": difference.simulated,
+                    }
+                    for difference in branch.differences
+                ],
+            }
+            for branch in diagnostic.closest_branches
+        ],
+        "worlds": [
+            {
+                "world_id": world.world_id,
+                "human_choice_legal": world.human_choice_legal,
+                "generated_branches": world.generated_branches,
+                "closest_mismatch_count": world.closest_mismatch_count,
+                "closest_paths": list(world.closest_paths),
+            }
+            for world in diagnostic.worlds
+        ],
+        "error": diagnostic.error,
+    }
+
+
 def _result_payload(
     result: SealedTurnResult,
     *,
@@ -96,6 +141,9 @@ def _result_payload(
         },
         "terminal": result.terminal,
         "winner": result.winner,
+        "collapse_diagnostic": _collapse_diagnostic_payload(
+            result.collapse_diagnostic
+        ),
     }
 
 
@@ -917,6 +965,50 @@ function formatBattleLog(history) {
       const suffix = conditioning.degraded ? " · degraded" : "";
       lines.push(`  Conditioning: ${matched}/${generated}${suffix}`);
     }
+
+    const collapse = entry.collapse_diagnostic;
+    if (collapse) {
+      const budget = collapse.budget_exhausted ? " · debug budget exhausted" : "";
+      lines.push(
+        `  Collapse debug: ${collapse.summary} · ${collapse.generated_branches} branches · ${collapse.elapsed_seconds.toFixed(3)}s${budget}`
+      );
+      lines.push(
+        `  Debug worlds: ${collapse.legal_worlds}/${collapse.worlds_tested} accepted exact human command · exact matches ${collapse.exact_matches}`
+      );
+      if (collapse.common_mismatch_paths?.length) {
+        lines.push("  Common mismatches:");
+        collapse.common_mismatch_paths.forEach(item => {
+          lines.push(`    ${item.path} (${item.count})`);
+        });
+      }
+      if (collapse.closest_branches?.length) {
+        lines.push("  Closest simulated branches:");
+        collapse.closest_branches.forEach(branch => {
+          lines.push(
+            `    ${branch.world_id}: ${branch.mismatch_count} mismatches`
+          );
+          branch.differences?.forEach(diff => {
+            lines.push(
+              `      ${diff.path}: actual=${JSON.stringify(diff.actual)} simulated=${JSON.stringify(diff.simulated)}`
+            );
+          });
+        });
+      }
+      if (collapse.worlds?.length) {
+        lines.push("  Per-world debug:");
+        collapse.worlds.forEach(world => {
+          const legal = world.human_choice_legal ? "legal" : "ILLEGAL";
+          const closest = Number.isFinite(world.closest_mismatch_count) ?
+            world.closest_mismatch_count : "—";
+          lines.push(
+            `    ${world.world_id}: human choice ${legal} · generated ${world.generated_branches} · closest ${closest}`
+          );
+        });
+      }
+      if (collapse.error) {
+        lines.push(`  Debug error: ${collapse.error}`);
+      }
+    }
     return lines.join("\n");
   }).join("\n\n");
 }
@@ -975,6 +1067,61 @@ function renderHistory(history) {
         ` · score ${d.worst_world_score.toFixed(1)}` : "";
       worst.textContent = `Worst searched reply: ${d.worst_response}${score}`;
       box.appendChild(worst);
+    }
+
+    const collapse = entry.collapse_diagnostic;
+    if (collapse) {
+      const debug = document.createElement("details");
+      debug.className = "muted";
+      debug.open = true;
+      const summary = document.createElement("summary");
+      const budget = collapse.budget_exhausted ? " · budget exhausted" : "";
+      summary.textContent =
+        `Collapse debug: ${collapse.summary} · ${collapse.generated_branches} branches · ${collapse.elapsed_seconds.toFixed(3)}s${budget}`;
+      debug.appendChild(summary);
+
+      const lines = [
+        `Exact resolved human command legal in ${collapse.legal_worlds}/${collapse.worlds_tested} worlds`,
+        `Extra-RNG exact matches: ${collapse.exact_matches}`,
+      ];
+      if (collapse.common_mismatch_paths?.length) {
+        lines.push("", "Common mismatch paths:");
+        collapse.common_mismatch_paths.forEach(item => {
+          lines.push(`  ${item.path} (${item.count})`);
+        });
+      }
+      if (collapse.closest_branches?.length) {
+        lines.push("", "Closest branches:");
+        collapse.closest_branches.forEach(branch => {
+          lines.push(
+            `  ${branch.world_id}: ${branch.mismatch_count} mismatches`
+          );
+          branch.differences?.forEach(diff => {
+            lines.push(
+              `    ${diff.path}: actual=${JSON.stringify(diff.actual)} simulated=${JSON.stringify(diff.simulated)}`
+            );
+          });
+        });
+      }
+      if (collapse.worlds?.length) {
+        lines.push("", "Per world:");
+        collapse.worlds.forEach(world => {
+          const legal = world.human_choice_legal ? "legal" : "ILLEGAL";
+          const closest = Number.isFinite(world.closest_mismatch_count) ?
+            world.closest_mismatch_count : "—";
+          lines.push(
+            `  ${world.world_id}: ${legal} · generated ${world.generated_branches} · closest ${closest}`
+          );
+        });
+      }
+      if (collapse.error) {
+        lines.push("", `Error: ${collapse.error}`);
+      }
+
+      const debugText = document.createElement("pre");
+      debugText.textContent = lines.join("\n");
+      debug.appendChild(debugText);
+      box.appendChild(debug);
     }
 
     if (d.candidate_scores?.length) {

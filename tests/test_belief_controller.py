@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import pytest
 
 from champions_practice.belief_controller import (
+    BeliefCollapseDiagnostic,
     BeliefDecision,
     BeliefDecisionEngine,
     SealedBattleFacade,
@@ -380,6 +381,141 @@ def test_incremental_conditioning_returns_before_hard_deadline(
     assert update.generated == 2
     assert update.matched == 0
 
+
+
+class _CollapseDiagnosticWorker:
+    def __init__(self, *, human_choice_legal=True, exact_on_second=True) -> None:
+        self.human_choice_legal = human_choice_legal
+        self.exact_on_second = exact_on_second
+        self.calls = 0
+
+    def validate_choices(self, *, state, side, candidates):
+        assert side == "p1"
+        return list(candidates) if self.human_choice_legal else []
+
+    def legal_choices(self, *, state, side):
+        return ["move human"] if self.human_choice_legal else ["move other"]
+
+    def branch_many(self, *, state, branches):
+        self.calls += 1
+        resolved = []
+        for index, _branch in enumerate(branches):
+            hp = 49 if self.exact_on_second and index == 1 else 52
+            resolved.append(
+                {
+                    "state": {"turn": 2, "hp": hp},
+                    "view": {
+                        "turn": 2,
+                        "phase": "move",
+                        "opponent": {
+                            "active": [{"species": "Gardevoir", "hp_percent": hp}],
+                        },
+                    },
+                }
+            )
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        return {
+            "turn": 2,
+            "phase": "move",
+            "opponent": {
+                "active": [
+                    {"species": "Gardevoir", "hp_percent": state["hp"]},
+                ],
+            },
+        }
+
+
+def test_collapse_diagnostic_can_confirm_rng_undersampling_without_mutating_rng() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        collapse_debug_budget_seconds=15.0,
+        particle_seed=53,
+    )
+    control = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        collapse_debug_budget_seconds=15.0,
+        particle_seed=53,
+    )
+    worker = _CollapseDiagnosticWorker()
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(worker), False)
+    )
+    particles = (
+        BeliefParticle(
+            {"turn": 1},
+            1.0,
+            world_id="world-1",
+            history_id="rng-1",
+        ),
+    )
+
+    diagnostic = engine.diagnose_collapse(
+        particles=particles,
+        ai_choice="move ai",
+        resolved_opponent_choice="move human",
+        previous_view={"turn": 1},
+        view={
+            "turn": 2,
+            "phase": "move",
+            "opponent": {
+                "active": [{"species": "Gardevoir", "hp_percent": 49}],
+            },
+        },
+    )
+
+    assert isinstance(diagnostic, BeliefCollapseDiagnostic)
+    assert diagnostic.summary == "exact-match-found-with-extra-rng"
+    assert diagnostic.generated_branches == 2
+    assert diagnostic.exact_matches == 1
+    assert diagnostic.legal_worlds == 1
+    assert diagnostic.illegal_worlds == 0
+    assert diagnostic.closest_branches[0].mismatch_count == 0
+    assert engine._particle_seed() == control._particle_seed()
+
+
+def test_collapse_diagnostic_reports_exact_human_choice_illegal_in_particles() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    worker = _CollapseDiagnosticWorker(human_choice_legal=False)
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(worker), False)
+    )
+    particles = (
+        BeliefParticle(
+            {"turn": 1},
+            1.0,
+            world_id="world-1",
+            history_id="rng-1",
+        ),
+    )
+
+    diagnostic = engine.diagnose_collapse(
+        particles=particles,
+        ai_choice="move ai",
+        resolved_opponent_choice="move human",
+        previous_view={"turn": 1},
+        view={"turn": 2},
+    )
+
+    assert diagnostic.summary == "resolved-human-choice-illegal-in-all-particles"
+    assert diagnostic.generated_branches == 0
+    assert diagnostic.legal_worlds == 0
+    assert diagnostic.illegal_worlds == 1
+    assert diagnostic.worlds[0].human_choice_legal is False
 
 
 def _decision_engine() -> BeliefDecisionEngine:

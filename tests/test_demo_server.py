@@ -3,7 +3,11 @@ from __future__ import annotations
 import json
 
 from champions_practice.belief_controller import (
+    BeliefCollapseDiagnostic,
     BeliefDecision,
+    CollapseBranchDiagnostic,
+    CollapseDifference,
+    CollapseWorldDiagnostic,
     SealedDecisionReady,
     SealedTurnResult,
     SealedTurnState,
@@ -13,6 +17,7 @@ from champions_practice.demo_server import (
     DemoBattleSession,
     DemoRequestHandler,
     _choice_label,
+    _collapse_diagnostic_payload,
     _hp_snapshot,
 )
 
@@ -476,4 +481,69 @@ def test_demo_html_has_copyable_battle_log_with_choices_and_hp() -> None:
     assert "entry.human_choice" in DEMO_HTML
     assert "d.choice" in DEMO_HTML
     assert "navigator.clipboard?.writeText" in DEMO_HTML
+
+
+def test_collapse_diagnostic_payload_preserves_debug_evidence() -> None:
+    diagnostic = BeliefCollapseDiagnostic(
+        summary="closest-branch-differs-only-in-hp",
+        elapsed_seconds=3.25,
+        budget_exhausted=False,
+        generated_branches=24,
+        exact_matches=0,
+        worlds_tested=2,
+        legal_worlds=2,
+        illegal_worlds=0,
+        common_mismatch_paths=(("$.player.team[0].hp", 24),),
+        closest_branches=(
+            CollapseBranchDiagnostic(
+                world_id="world-1",
+                mismatch_count=1,
+                differences=(
+                    CollapseDifference(
+                        path="$.player.team[0].hp",
+                        actual=72,
+                        simulated=75,
+                    ),
+                ),
+            ),
+        ),
+        worlds=(
+            CollapseWorldDiagnostic(
+                world_id="world-1",
+                human_choice_legal=True,
+                generated_branches=12,
+                closest_mismatch_count=1,
+                closest_paths=("$.player.team[0].hp",),
+            ),
+            CollapseWorldDiagnostic(
+                world_id="world-2",
+                human_choice_legal=True,
+                generated_branches=12,
+                closest_mismatch_count=2,
+                closest_paths=(
+                    "$.player.team[0].hp",
+                    "$.opponent.active[0].hp_percent",
+                ),
+            ),
+        ),
+    )
+
+    payload = _collapse_diagnostic_payload(diagnostic)
+
+    assert payload["summary"] == "closest-branch-differs-only-in-hp"
+    assert payload["generated_branches"] == 24
+    assert payload["closest_branches"][0]["differences"][0] == {
+        "path": "$.player.team[0].hp",
+        "actual": 72,
+        "simulated": 75,
+    }
+    assert payload["worlds"][0]["human_choice_legal"] is True
+
+
+def test_demo_html_surfaces_collapse_debug_in_visible_and_copyable_logs() -> None:
+    assert "Collapse debug:" in DEMO_HTML
+    assert "Common mismatch paths:" in DEMO_HTML
+    assert "Closest simulated branches:" in DEMO_HTML
+    assert "Per-world debug:" in DEMO_HTML
+    assert "entry.collapse_diagnostic" in DEMO_HTML
 
