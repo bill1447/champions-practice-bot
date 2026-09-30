@@ -279,6 +279,108 @@ def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> Non
     assert update.matched_branches == 0
 
 
+def test_observed_action_rng_multiplier_uses_incremental_chunks(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=3,
+    )
+    engine.previews = {"p1": [], "p2": []}
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    calls: list[int] = []
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        lambda *args, **kwargs: True,
+    )
+
+    def fake_condition(*args, rng_seeds, **kwargs):
+        calls.append(len(rng_seeds))
+        if len(calls) == 2:
+            return ParticleUpdate((particle,), len(rng_seeds), 1, 0)
+        return ParticleUpdate((), len(rng_seeds), 0, 0)
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        fake_condition,
+    )
+
+    update = engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(particle,),
+        ai_choice="move protect",
+        view={"turn": 2},
+        batches=(2,),
+    )
+
+    assert calls == [2, 2]
+    assert update.particles == (particle,)
+    assert update.generated == 4
+    assert update.matched == 1
+
+
+def test_incremental_conditioning_returns_before_hard_deadline(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=4,
+    )
+    engine.previews = {"p1": [], "p2": []}
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    calls: list[int] = []
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        lambda *args, **kwargs: True,
+    )
+    ticks = iter((0.0, 0.6))
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.perf_counter",
+        lambda: next(ticks),
+    )
+
+    def fake_condition(*args, rng_seeds, **kwargs):
+        calls.append(len(rng_seeds))
+        return ParticleUpdate((), len(rng_seeds), 0, 0)
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        fake_condition,
+    )
+
+    update = engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(particle,),
+        ai_choice="move protect",
+        view={"turn": 2},
+        batches=(2,),
+        deadline=1.0,
+    )
+
+    assert calls == [2]
+    assert update.particles == ()
+    assert update.generated == 2
+    assert update.matched == 0
+
+
 
 def _decision_engine() -> BeliefDecisionEngine:
     engine = BeliefDecisionEngine(
