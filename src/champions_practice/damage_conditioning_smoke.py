@@ -143,8 +143,17 @@ def main() -> None:
             if update.conditioning_over_budget:
                 raise SystemExit("ERROR: damaging-turn conditioning exceeded 8 seconds")
             if update.degraded:
+                diagnostic = update.collapse_diagnostic
+                details = ""
+                if diagnostic is not None:
+                    details = (
+                        f"; debug={diagnostic.summary}; "
+                        f"paths={diagnostic.common_mismatch_paths!r}"
+                    )
                 raise SystemExit(
-                    "ERROR: ordinary damage RNG left the coordinator degraded"
+                    "ERROR: ordinary damage RNG left the coordinator degraded; "
+                    f"execution={after.get('public_execution_delta')!r}"
+                    f"{details}"
                 )
             if update.matched_branches <= 0 or not coordinator._engine.particles:
                 raise SystemExit(
