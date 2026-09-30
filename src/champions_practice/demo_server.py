@@ -598,7 +598,8 @@ class DemoBattleSession:
             "turn_state": turn_state,
             "ai_ready": self._ready_token is not None,
             "can_reconcile": (
-                self._ready_token is not None and turn_state == "failed"
+                self._ready_token is not None
+                and turn_state in {"failed", "unknown"}
             ),
             "public_view": self._last_public_view,
             "field_status": _field_status(self._last_public_view),
@@ -735,6 +736,14 @@ class DemoBattleSession:
             self._ended_manually = True
             facade.close()
             return self._snapshot_locked()
+
+    def abort_transport(self) -> dict[str, object]:
+        """Cancel blocked live-worker I/O without waiting for the application lock."""
+        facade = self._facade
+        if facade is None:
+            return {"aborted": False}
+        facade.abort_transport()
+        return {"aborted": True}
 
     def close(self) -> None:
         with self._lock:
@@ -1523,6 +1532,8 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 )
             elif self.path == "/api/reconcile":
                 result = self.app.reconcile_failed_turn()
+            elif self.path == "/api/abort-transport":
+                result = self.app.abort_transport()
             elif self.path == "/api/end":
                 result = self.app.end_battle()
             else:
