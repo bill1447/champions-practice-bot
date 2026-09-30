@@ -1739,8 +1739,13 @@ class _BeliefBattleCoordinator:
                 side="p1",
             )
 
-    def _ai_legal_choices(self) -> list[str]:
-        return self._worker.session_legal_choices(
+    def _ai_preseal_choices(self) -> list[str]:
+        """Return AI choices derived only from its public request.
+
+        This must not validate candidates against the exact live battle: doing so can
+        distinguish hidden opponent effects such as Shadow Tag before sealing.
+        """
+        return self._worker.session_public_choices(
             self._require_session(),
             side="p2",
         )
@@ -1759,7 +1764,7 @@ class _BeliefBattleCoordinator:
             self._turn_state = SealedTurnState.COMPUTING
 
         try:
-            legal_live = self._ai_legal_choices()
+            legal_live = self._ai_preseal_choices()
             if legal_live == [""]:
                 decision = BeliefDecision(
                     choice="",
