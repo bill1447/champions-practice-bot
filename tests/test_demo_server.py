@@ -19,6 +19,7 @@ from champions_practice.demo_server import (
     _choice_label,
     _collapse_diagnostic_payload,
     _hp_snapshot,
+    _opponent_choice_label,
     _opponent_team_species,
 )
 
@@ -471,6 +472,72 @@ def test_demo_html_queues_human_action_while_ai_is_thinking() -> None:
 def test_demo_html_surfaces_fallback_and_degraded_belief_reasons() -> None:
     assert "d.fallback_reason" in DEMO_HTML
     assert "Belief update degraded:" in DEMO_HTML
+
+
+def test_resolved_human_switch_label_uses_actual_post_turn_active() -> None:
+    before = {
+        "player": {
+            "active": ["Metagross-Mega", "Armarouge"],
+            "team": [
+                {"species": "Metagross-Mega"},
+                {"species": "Armarouge"},
+                {"species": "Gardevoir"},
+                {"species": "Indeedee-F"},
+            ],
+        }
+    }
+    after = {
+        "player": {
+            "active": ["Metagross-Mega", "Indeedee-F"],
+        }
+    }
+
+    label = _choice_label(
+        "pass, switch 3",
+        before,
+        after,
+    )
+
+    assert label == (
+        "Metagross-Mega: pass | Armarouge: switch → Indeedee-F"
+    )
+
+
+def test_resolved_ai_switch_label_uses_actual_post_turn_active() -> None:
+    before = {
+        "opponent": {
+            "preview_species": [
+                "Indeedee-F",
+                "Sneasler",
+                "Gardevoir",
+                "Armarouge",
+                "Rillaboom",
+                "Metagross",
+            ],
+            "active": [
+                {"species": "Sneasler"},
+                {"species": "Gardevoir-Mega"},
+            ],
+        }
+    }
+    after = {
+        "opponent": {
+            "active": [
+                {"species": "Sneasler"},
+                {"species": "Indeedee-F"},
+            ],
+        }
+    }
+
+    label = _opponent_choice_label(
+        "pass, switch 4",
+        before,
+        after,
+    )
+
+    assert label == (
+        "Sneasler: pass | Gardevoir-Mega: switch → Indeedee-F"
+    )
 
 
 def test_ai_switch_labels_use_brought_team_order() -> None:

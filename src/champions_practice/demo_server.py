@@ -119,13 +119,18 @@ def _result_payload(
         ),
         "human_choice": human_choice,
         "human_choice_label": (
-            _choice_label(human_choice, choice_view)
+            _choice_label(
+                human_choice,
+                choice_view,
+                result.public_view,
+            )
             if human_choice is not None
             else None
         ),
         "ai_choice_label": _opponent_choice_label(
             result.decision.choice,
             choice_view,
+            result.public_view,
         ),
         "decision": _decision_payload(result.decision),
         "hp_after": _hp_snapshot(result.public_view),
@@ -253,7 +258,12 @@ def _target_label(location: int, view: dict | None) -> str:
     return "field"
 
 
-def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
+def _action_part_label(
+    part: str,
+    slot_index: int,
+    view: dict | None,
+    resolved_view: dict | None = None,
+) -> str:
     actor = _active_species(view, slot_index)
     tokens = part.split()
     if not tokens:
@@ -261,7 +271,18 @@ def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
     if tokens[0] == "pass":
         return f"{actor}: pass"
     if tokens[0] == "switch" and len(tokens) >= 2 and tokens[1].isdigit():
-        return f"{actor}: switch → {_team_species(view, int(tokens[1]))}"
+        resolved_species = (
+            _active_species(resolved_view, slot_index)
+            if isinstance(resolved_view, dict)
+            else None
+        )
+        destination = (
+            resolved_species
+            if isinstance(resolved_species, str)
+            and not resolved_species.startswith("Slot ")
+            else _team_species(view, int(tokens[1]))
+        )
+        return f"{actor}: switch → {destination}"
     if tokens[0] != "move" or len(tokens) < 2:
         return f"{actor}: {part}"
 
@@ -286,14 +307,18 @@ def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
     return f"{actor}: {move_name}{suffix}"
 
 
-def _choice_label(choice: str, view: dict | None) -> str:
+def _choice_label(
+    choice: str,
+    view: dict | None,
+    resolved_view: dict | None = None,
+) -> str:
     if not choice:
         return "wait"
     if choice.startswith("team "):
         return _preview_choice_label(choice, view)
     parts = choice.split(", ")
     return " | ".join(
-        _action_part_label(part, index, view)
+        _action_part_label(part, index, view, resolved_view)
         for index, part in enumerate(parts)
     )
 
@@ -340,6 +365,7 @@ def _opponent_action_part_label(
     part: str,
     slot_index: int,
     view: dict | None,
+    resolved_view: dict | None = None,
 ) -> str:
     actor = _opponent_active_species(view, slot_index) or f"Slot {slot_index + 1}"
     tokens = part.split()
@@ -348,7 +374,17 @@ def _opponent_action_part_label(
     if tokens[0] == "pass":
         return f"{actor}: pass"
     if tokens[0] == "switch" and len(tokens) >= 2 and tokens[1].isdigit():
-        return f"{actor}: switch → {_opponent_team_species(view, int(tokens[1]))}"
+        resolved_species = (
+            _opponent_active_species(resolved_view, slot_index)
+            if isinstance(resolved_view, dict)
+            else None
+        )
+        destination = (
+            resolved_species
+            if isinstance(resolved_species, str) and resolved_species
+            else _opponent_team_species(view, int(tokens[1]))
+        )
+        return f"{actor}: switch → {destination}"
     if tokens[0] != "move" or len(tokens) < 2:
         return f"{actor}: {part}"
 
@@ -372,11 +408,20 @@ def _opponent_action_part_label(
     return f"{actor}: {tokens[1]}{suffix}"
 
 
-def _opponent_choice_label(choice: str, view: dict | None) -> str:
+def _opponent_choice_label(
+    choice: str,
+    view: dict | None,
+    resolved_view: dict | None = None,
+) -> str:
     if not choice:
         return "wait"
     return " | ".join(
-        _opponent_action_part_label(part, index, view)
+        _opponent_action_part_label(
+            part,
+            index,
+            view,
+            resolved_view,
+        )
         for index, part in enumerate(choice.split(", "))
     )
 
