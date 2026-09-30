@@ -173,6 +173,10 @@ jobs:
         shell: pwsh
         run: .\legality-oracle-smoke.ps1
 
+      - name: Public structural target legality smoke test
+        shell: pwsh
+        run: .\public-structural-legality-smoke.ps1
+
       - name: Persistent-session legal action smoke test
         shell: pwsh
         run: .\legal-actions-smoke.ps1
