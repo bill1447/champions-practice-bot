@@ -337,3 +337,15 @@ def test_demo_html_auto_submits_empty_human_wait_choice() -> None:
     assert 'next.legal_choices[0] === ""' in DEMO_HTML
     assert 'request("/api/commit", "POST", {choice: ""})' in DEMO_HTML
 
+def test_demo_html_queues_human_action_while_ai_is_thinking() -> None:
+    assert "let queuedHumanChoice = null;" in DEMO_HTML
+    assert 'canQueueDuringThinking ? "Queue action" : "Submit action"' in DEMO_HTML
+    assert "queuedHumanChoice = choice;" in DEMO_HTML
+    assert "locked.legal_choices.includes(queued)" in DEMO_HTML
+    assert 'request("/api/commit", "POST", {choice: queued})' in DEMO_HTML
+
+
+def test_demo_html_surfaces_fallback_and_degraded_belief_reasons() -> None:
+    assert "d.fallback_reason" in DEMO_HTML
+    assert "Belief update degraded:" in DEMO_HTML
+

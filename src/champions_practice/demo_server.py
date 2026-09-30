@@ -593,6 +593,7 @@ pre {
 <script>
 let state = null;
 let aiLockPending = false;
+let queuedHumanChoice = null;
 
 function monName(mon) {
   if (!mon) return "Unknown";
@@ -658,8 +659,11 @@ function renderSide(targetId, side, previewFallback) {
 }
 
 function hintFor(turnState) {
+  if (queuedHumanChoice !== null && aiLockPending) {
+    return "Your action is queued. Waiting for the sealed AI action before resolving.";
+  }
   if (aiLockPending) {
-    return "Battle is advancing automatically. Your controls unlock when input is needed.";
+    return "AI is thinking. You may choose and queue your action now.";
   }
   if (!state?.started && turnState === "ended") {
     return "Battle ended. Start a new battle when ready.";
@@ -695,9 +699,26 @@ function renderHistory(history) {
     const detail = document.createElement("div");
     detail.className = "muted";
     const plan = d.strategic_plan ? ` · plan ${d.strategic_plan}` : "";
+    const fallback = d.fallback_reason ? ` · reason ${d.fallback_reason}` : "";
     detail.textContent =
-      `${d.mode} · ${d.branch_count} branches · ${d.elapsed_seconds.toFixed(3)}s${plan}`;
+      `${d.mode} · ${d.branch_count} branches · ${d.elapsed_seconds.toFixed(3)}s${plan}${fallback}`;
     box.appendChild(detail);
+
+    const conditioning = entry.conditioning || {};
+    if (conditioning.degraded || conditioning.over_budget) {
+      const belief = document.createElement("div");
+      belief.className = "muted";
+      const matched = Number.isFinite(conditioning.matched_branches) ?
+        conditioning.matched_branches : "?";
+      const generated = Number.isFinite(conditioning.generated_branches) ?
+        conditioning.generated_branches : "?";
+      const seconds = Number.isFinite(conditioning.seconds) ?
+        ` · ${conditioning.seconds.toFixed(3)}s` : "";
+      const budget = conditioning.over_budget ? " · over budget" : "";
+      belief.textContent =
+        `Belief update degraded: matched ${matched}/${generated}${seconds}${budget}`;
+      box.appendChild(belief);
+    }
 
     if (d.worst_response) {
       const worst = document.createElement("div");
@@ -769,12 +790,27 @@ function render(next) {
     select.value = previous;
   }
 
-  select.disabled =
-    aiLockPending || !(turnState === "preview" || turnState === "locked");
+  const canQueueDuringThinking =
+    aiLockPending &&
+    (turnState === "idle" || turnState === "resolved") &&
+    !state.ai_ready;
+  const canChooseAction =
+    turnState === "preview" ||
+    turnState === "locked" ||
+    canQueueDuringThinking;
+
+  select.disabled = queuedHumanChoice !== null || !canChooseAction;
   document.getElementById("preview").disabled =
     aiLockPending || turnState !== "preview";
   document.getElementById("commit").disabled =
-    aiLockPending || !(turnState === "locked" && state.ai_ready && select.value);
+    queuedHumanChoice !== null ||
+    !select.value ||
+    !(
+      (turnState === "locked" && state.ai_ready) ||
+      canQueueDuringThinking
+    );
+  document.getElementById("commit").textContent =
+    canQueueDuringThinking ? "Queue action" : "Submit action";
   document.getElementById("reconcile").disabled =
     aiLockPending || !state.can_reconcile;
   document.getElementById("endBattle").disabled = !state.started;
@@ -840,6 +876,23 @@ async function renderAndAutoLock(next) {
   try {
     const locked = await request("/api/lock", "POST", {});
     aiLockPending = false;
+
+    if (queuedHumanChoice !== null) {
+      const queued = queuedHumanChoice;
+      queuedHumanChoice = null;
+      if (
+        !Array.isArray(locked.legal_choices) ||
+        !locked.legal_choices.includes(queued)
+      ) {
+        render(locked);
+        throw new Error("Queued human action is no longer legal");
+      }
+      document.getElementById("status").textContent = "RESOLVING";
+      const advanced = await request("/api/commit", "POST", {choice: queued});
+      await renderAndAutoLock(advanced);
+      return;
+    }
+
     await renderAndAutoLock(locked);
   } catch (error) {
     aiLockPending = false;
@@ -848,11 +901,13 @@ async function renderAndAutoLock(next) {
 }
 
 document.getElementById("newBattle").onclick = () => run(async () => {
+  queuedHumanChoice = null;
   render(await request("/api/start", "POST", {}));
 });
 
 document.getElementById("endBattle").onclick = () => run(async () => {
   if (!window.confirm("End the current battle?")) return;
+  queuedHumanChoice = null;
   render(await request("/api/end", "POST", {}));
 });
 
@@ -864,10 +919,15 @@ document.getElementById("preview").onclick = () => run(async () => {
 });
 
 document.getElementById("commit").onclick = () => run(async () => {
+  const choice = document.getElementById("choice").value;
+  if (aiLockPending && !state.ai_ready) {
+    queuedHumanChoice = choice;
+    render(state);
+    return;
+  }
+
   document.getElementById("status").textContent = "RESOLVING";
-  const next = await request("/api/commit", "POST", {
-    choice: document.getElementById("choice").value
-  });
+  const next = await request("/api/commit", "POST", {choice});
   await renderAndAutoLock(next);
 });
 
