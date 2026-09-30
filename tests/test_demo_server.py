@@ -493,6 +493,13 @@ def test_ai_switch_labels_use_brought_team_order() -> None:
     assert _opponent_team_species(view, 4) == "Rillaboom"
 
 
+def test_demo_html_shows_submit_progress_feedback() -> None:
+    assert 'id="actionStatus"' in DEMO_HTML
+    assert 'let submitPending = false;' in DEMO_HTML
+    assert '"Submitting…"' in DEMO_HTML
+    assert 'Submitting your command and resolving the turn…' in DEMO_HTML
+
+
 def test_demo_html_has_copyable_battle_log_with_choices_and_hp() -> None:
     assert 'id="battleLog"' in DEMO_HTML
     assert 'id="copyBattleLog"' in DEMO_HTML

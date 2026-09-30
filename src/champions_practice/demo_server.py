@@ -814,6 +814,7 @@ pre {
     <button id="commit">Submit action</button>
     <button id="reconcile">Reconcile</button>
   </div>
+  <div id="actionStatus" class="muted"></div>
 </section>
 
 <section class="panel">
@@ -841,6 +842,7 @@ pre {
 let state = null;
 let aiLockPending = false;
 let queuedHumanChoice = null;
+let submitPending = false;
 
 function monName(mon) {
   if (!mon) return "Unknown";
@@ -1211,6 +1213,7 @@ function render(next) {
   document.getElementById("preview").disabled =
     aiLockPending || turnState !== "preview";
   document.getElementById("commit").disabled =
+    submitPending ||
     queuedHumanChoice !== null ||
     !select.value ||
     !(
@@ -1218,7 +1221,19 @@ function render(next) {
       canQueueDuringThinking
     );
   document.getElementById("commit").textContent =
-    canQueueDuringThinking ? "Queue action" : "Submit action";
+    submitPending ? "Submitting…" :
+    (canQueueDuringThinking ? "Queue action" : "Submit action");
+
+  const actionStatus = document.getElementById("actionStatus");
+  if (submitPending) {
+    actionStatus.textContent = "Submitting your command and resolving the turn…";
+  } else if (canQueueDuringThinking) {
+    actionStatus.textContent = "AI is thinking; you can queue your command now.";
+  } else if (turnState === "locked" && state.ai_ready) {
+    actionStatus.textContent = "AI choice is sealed. Submit is ready.";
+  } else {
+    actionStatus.textContent = "";
+  }
   document.getElementById("reconcile").disabled =
     aiLockPending || !state.can_reconcile;
   document.getElementById("endBattle").disabled = !state.started;
@@ -1360,9 +1375,18 @@ document.getElementById("commit").onclick = () => run(async () => {
     return;
   }
 
+  submitPending = true;
+  render(state);
   document.getElementById("status").textContent = "RESOLVING";
-  const next = await request("/api/commit", "POST", {choice});
-  await renderAndAutoLock(next);
+  try {
+    const next = await request("/api/commit", "POST", {choice});
+    submitPending = false;
+    await renderAndAutoLock(next);
+  } catch (error) {
+    submitPending = false;
+    render(state);
+    throw error;
+  }
 });
 
 document.getElementById("reconcile").onclick = () => run(async () => {
