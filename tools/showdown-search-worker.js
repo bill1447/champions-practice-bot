@@ -680,10 +680,79 @@ function previewCandidates(battle, side) {
   return candidates;
 }
 
-function moveTargetLocations(battle) {
+const PUBLIC_CHOOSABLE_TARGETS = new Set([
+  "normal",
+  "any",
+  "adjacentAlly",
+  "adjacentAllyOrSelf",
+  "adjacentFoe",
+]);
+
+function publicValidTargetLoc(
+  targetLoc,
+  sourceSlot,
+  targetType,
+  activePerHalf,
+  gameType,
+) {
+  if (targetLoc === 0) return true;
+  if (Math.abs(targetLoc) > activePerHalf) return false;
+
+  // Showdown commands describe targets relative to the choosing side:
+  // positive locations are foes; negative locations are the user's own slots.
+  // This is pure slot geometry copied from Battle#validTargetLoc and does not
+  // consult the opponent's exact live Pokemon, abilities, items, or choices.
+  const sourceLoc = -(sourceSlot + 1);
+  const isSelf = sourceLoc === targetLoc;
+  const isFoe = gameType === "freeforall" ? !isSelf : targetLoc > 0;
+  const acrossFromTargetLoc = -(activePerHalf + 1 - targetLoc);
+  const isAdjacent = targetLoc > 0
+    ? Math.abs(acrossFromTargetLoc - sourceLoc) <= 1
+    : Math.abs(targetLoc - sourceLoc) === 1;
+
+  if (gameType === "freeforall" && targetType === "adjacentAlly") {
+    return isAdjacent;
+  }
+
+  switch (targetType) {
+    case "randomNormal":
+    case "scripted":
+    case "normal":
+      return isAdjacent;
+    case "adjacentAlly":
+      return isAdjacent && !isFoe;
+    case "adjacentAllyOrSelf":
+      return (isAdjacent && !isFoe) || isSelf;
+    case "adjacentFoe":
+      return isAdjacent && isFoe;
+    case "any":
+      return !isSelf;
+    default:
+      return false;
+  }
+}
+
+function publicMoveTargetLocations(request, sourceSlot, targetType, gameType) {
+  const activePerHalf = request.active.length;
+  if (!PUBLIC_CHOOSABLE_TARGETS.has(targetType) || activePerHalf < 2) {
+    return [0];
+  }
+
   const locations = [];
-  for (let slot = 1; slot <= battle.activePerHalf; slot++) {
-    locations.push(slot, -slot);
+  for (let slot = 1; slot <= activePerHalf; slot++) {
+    for (const targetLoc of [slot, -slot]) {
+      if (
+        publicValidTargetLoc(
+          targetLoc,
+          sourceSlot,
+          targetType,
+          activePerHalf,
+          gameType,
+        )
+      ) {
+        locations.push(targetLoc);
+      }
+    }
   }
   return locations;
 }
@@ -702,7 +771,7 @@ function availableRevivalTargets(request) {
     .map(({ slot }) => `switch ${slot}`);
 }
 
-function moveSlotCandidates(battle, request, slot) {
+function moveSlotCandidates(request, slot, gameType) {
   const active = request.active[slot];
   const pokemon = request.side.pokemon[slot];
   if (!active || isFainted(pokemon) || pokemon.commanding) return ["pass"];
@@ -710,8 +779,12 @@ function moveSlotCandidates(battle, request, slot) {
   const choices = [];
   for (const move of active.moves) {
     if (move.disabled) continue;
-    const targets = battle.actions.targetTypeChoices(move.target) ?
-      moveTargetLocations(battle) : [0];
+    const targets = publicMoveTargetLocations(
+      request,
+      slot,
+      move.target,
+      gameType,
+    );
     const events = [""];
     if (active.canMegaEvo) events.push("mega");
     if (active.canMegaEvoX) events.push("megax");
@@ -767,7 +840,9 @@ function proposedChoices(battle, side) {
   if (request.forceSwitch) return cartesian(switchCandidates(request));
   if (request.active) {
     return cartesian(
-      request.active.map((_, slot) => moveSlotCandidates(battle, request, slot)),
+      request.active.map((_, slot) => (
+        moveSlotCandidates(request, slot, battle.gameType)
+      )),
     );
   }
   return [];
@@ -808,22 +883,60 @@ function validateChoices(state, sideId, candidates) {
   return [...legal].sort();
 }
 
-function isPubliclyStructurallySelectable(choice) {
+function isPubliclyStructurallySelectable(choice, request, gameType) {
   const commands = choice.split(",").map((command) => command.trim());
   const switchSlots = [];
   let transformationCount = 0;
 
-  for (const command of commands) {
+  for (const [slot, command] of commands.entries()) {
     const tokens = command.split(/\s+/);
     if (tokens[0] === "switch" && /^\d+$/.test(tokens[1] || "")) {
       switchSlots.push(tokens[1]);
     }
-    transformationCount += tokens.filter((token) =>
+
+    const transformations = tokens.filter((token) =>
       token === "mega" ||
       token === "megax" ||
       token === "megay" ||
       token === "ultra"
-    ).length;
+    );
+    transformationCount += transformations.length;
+
+    if (tokens[0] !== "move" || !request?.active?.[slot]) continue;
+
+    const active = request.active[slot];
+    const move = active.moves.find((entry) => entry.id === tokens[1]);
+    if (!move || move.disabled) return false;
+
+    const targetToken = tokens.slice(2).find((token) =>
+      /^[+-]\d+$/.test(token)
+    );
+    const targetLoc = targetToken ? Number(targetToken) : 0;
+    const targetIsChoosable = PUBLIC_CHOOSABLE_TARGETS.has(move.target);
+
+    if (targetIsChoosable && request.active.length >= 2) {
+      if (!targetLoc) return false;
+      if (
+        !publicValidTargetLoc(
+          targetLoc,
+          slot,
+          move.target,
+          request.active.length,
+          gameType,
+        )
+      ) {
+        return false;
+      }
+    } else if (targetLoc) {
+      return false;
+    }
+
+    for (const transformation of transformations) {
+      if (transformation === "mega" && !active.canMegaEvo) return false;
+      if (transformation === "megax" && !active.canMegaEvoX) return false;
+      if (transformation === "megay" && !active.canMegaEvoY) return false;
+      if (transformation === "ultra" && !active.canUltraBurst) return false;
+    }
   }
 
   // One bench Pokemon cannot fill two active slots, and one side cannot spend
@@ -841,8 +954,8 @@ function publicChoiceCandidates(battle, sideId) {
   if (battle.ended) return [];
   const side = sideId === "p1" ? battle.p1 : battle.p2;
   const request = side.activeRequest;
-  const choices = proposedChoices(battle, side).filter(
-    isPubliclyStructurallySelectable,
+  const choices = proposedChoices(battle, side).filter((choice) =>
+    isPubliclyStructurallySelectable(choice, request, battle.gameType)
   );
 
   // Never probe a maybe-trapped slot against the exact hidden live state before
