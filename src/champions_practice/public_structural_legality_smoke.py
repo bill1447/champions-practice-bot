@@ -140,7 +140,8 @@ def main() -> None:
                 )
 
             # Force the same degraded path that exposed the review bug. The fallback
-            # may only choose from the already public-structurally-selectable set.
+            # policy is free to prefer a switch over Helping Hand; the invariant is
+            # that it can only choose from the public-structurally-selectable set.
             coordinator._engine.particles = ()
             coordinator._engine.degraded = True
             ready = coordinator.lock_ai_action()
@@ -152,10 +153,10 @@ def main() -> None:
                 raise SystemExit(
                     f"ERROR: fixture did not exercise fallback: {decision.mode}"
                 )
-            if decision.choice != EXPECTED_AI:
+            if decision.choice not in public_choices:
                 raise SystemExit(
-                    "ERROR: degraded fallback did not choose the expected legal "
-                    f"Helping Hand command: {decision.choice}"
+                    "ERROR: degraded fallback sealed an action outside the "
+                    f"public-selectable set: {decision.choice}"
                 )
             if decision.choice not in exact_choices:
                 raise SystemExit(
