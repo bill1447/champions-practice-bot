@@ -479,6 +479,20 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid validated choices")
         return choices
 
+    def session_public_choices(self, session_id: str, *, side: str) -> list[str]:
+        """Enumerate choices using only the side's public request information."""
+        result = self.request(
+            "session_public_choices",
+            session_id=session_id,
+            side=side,
+        )
+        choices = result.get("choices")
+        if not isinstance(choices, list) or not all(
+            isinstance(choice, str) for choice in choices
+        ):
+            raise RuntimeError("Showdown worker returned invalid public session choices")
+        return choices
+
     def session_legal_choices(self, session_id: str, *, side: str) -> list[str]:
         """Enumerate simulator-validated choices for one live session side."""
         result = self.request(
