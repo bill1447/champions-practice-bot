@@ -1057,6 +1057,7 @@ class BeliefDecisionEngine:
                 side="p2",
                 candidate_limit=self.candidate_limit,
                 reference_limit=1,
+                allowed_choices=tuple(legal_live),
             )
             search = search_exact_belief_turn(
                 worker,
@@ -1304,6 +1305,7 @@ class BeliefDecisionEngine:
                     ),
                     reference_limit=1,
                     guidance=guidance,
+                    allowed_choices=tuple(legal_live),
                 )
                 plan_contexts.append((plan, guidance, pruning))
                 candidate_reference_groups.append(
