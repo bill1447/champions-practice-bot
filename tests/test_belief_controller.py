@@ -1723,7 +1723,7 @@ def test_demo_facade_exposes_no_direct_decision_or_live_session_handles(
 ) -> None:
     monkeypatch.setattr(
         "champions_practice.belief_controller.ShowdownSearchWorker",
-        lambda project_root=None: _CoordinatorWorker(),
+        lambda project_root=None, **_kwargs: _CoordinatorWorker(),
     )
     facade = SealedBattleFacade(
         battle_format="test",
