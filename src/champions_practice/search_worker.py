@@ -4,9 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import queue
 import re
 import subprocess
+from collections import deque
 from pathlib import Path
+from threading import Event, Lock, Thread
+from time import perf_counter
 from typing import Any
 
 
@@ -15,7 +19,36 @@ _ACTIVE_SHOWDOWN_PROCESSES: dict[int, subprocess.Popen[str]] = {}
 _BUILD_STAMP_NAME = "showdown-build.json"
 
 
-def _showdown_source_revision(root: Path) -> tuple[Path, str]:
+class ShowdownWorkerTimeout(TimeoutError):
+    """A bounded worker operation exceeded its startup or transport deadline."""
+
+    def __init__(
+        self,
+        op: str,
+        *,
+        mutating: bool = False,
+        phase: str = "transport",
+    ) -> None:
+        self.op = op
+        self.mutating = mutating
+        self.phase = phase
+        super().__init__(f"Showdown worker {phase} timed out during {op!r}")
+
+
+def _remaining_timeout(deadline: float | None) -> float | None:
+    if deadline is None:
+        return None
+    remaining = deadline - perf_counter()
+    if remaining <= 0:
+        raise ShowdownWorkerTimeout("startup", phase="startup")
+    return remaining
+
+
+def _showdown_source_revision(
+    root: Path,
+    *,
+    deadline: float | None = None,
+) -> tuple[Path, str]:
     pin_file = root / "showdown-version.txt"
     showdown_root = root / "external" / "pokemon-showdown"
 
@@ -33,7 +66,10 @@ def _showdown_source_revision(root: Path) -> tuple[Path, str]:
             capture_output=True,
             text=True,
             check=False,
+            timeout=_remaining_timeout(deadline),
         )
+    except subprocess.TimeoutExpired as error:
+        raise ShowdownWorkerTimeout("git-rev-parse", phase="startup") from error
     except OSError as error:
         raise RuntimeError(
             "Git is required to verify the pinned Pokemon Showdown runtime"
@@ -57,12 +93,16 @@ def _showdown_source_revision(root: Path) -> tuple[Path, str]:
         ["git", "-C", str(showdown_root), "diff", "--quiet", "HEAD", "--"],
         ["git", "-C", str(showdown_root), "diff", "--cached", "--quiet", "HEAD", "--"],
     ):
-        result = subprocess.run(
-            args,
-            capture_output=True,
-            text=True,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                args,
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=_remaining_timeout(deadline),
+            )
+        except subprocess.TimeoutExpired as error:
+            raise ShowdownWorkerTimeout("git-diff", phase="startup") from error
         if result.returncode == 1:
             raise RuntimeError(
                 "Pokemon Showdown checkout has tracked local modifications. "
@@ -76,7 +116,11 @@ def _showdown_source_revision(root: Path) -> tuple[Path, str]:
     return showdown_root, actual
 
 
-def _showdown_dist_digest(showdown_root: Path) -> str:
+def _showdown_dist_digest(
+    showdown_root: Path,
+    *,
+    deadline: float | None = None,
+) -> str:
     dist_root = showdown_root / "dist"
     files = sorted(
         path
@@ -91,6 +135,7 @@ def _showdown_dist_digest(showdown_root: Path) -> str:
 
     digest = hashlib.sha256()
     for path in files:
+        _remaining_timeout(deadline)
         relative = path.relative_to(dist_root).as_posix().encode("utf-8")
         payload = path.read_bytes()
         digest.update(len(relative).to_bytes(4, "big"))
@@ -125,6 +170,8 @@ def write_showdown_build_stamp(
 
 def verify_showdown_checkout(
     project_root: str | Path | None = None,
+    *,
+    deadline: float | None = None,
 ) -> str:
     """Fail fast unless source and built Showdown runtime match the pinned build."""
     if project_root is None:
@@ -134,7 +181,7 @@ def verify_showdown_checkout(
     if cached is not None:
         return cached
 
-    showdown_root, actual = _showdown_source_revision(root)
+    showdown_root, actual = _showdown_source_revision(root, deadline=deadline)
     stamp_path = root / ".runtime" / _BUILD_STAMP_NAME
     if not stamp_path.is_file():
         raise RuntimeError(
@@ -152,7 +199,7 @@ def verify_showdown_checkout(
             f"source is {actual}, build stamp is {stamp.get('source_sha')!r}. "
             "Rebuild the pinned runtime."
         )
-    built_digest = _showdown_dist_digest(showdown_root)
+    built_digest = _showdown_dist_digest(showdown_root, deadline=deadline)
     if stamp.get("dist_sha256") != built_digest:
         raise RuntimeError(
             "Pokemon Showdown built runtime hash mismatch. "
@@ -183,8 +230,18 @@ class HypotheticalSearchWorker:
     live battle session through this capability.
     """
 
-    def __init__(self, project_root: str | Path | None = None):
-        self.__worker = ShowdownSearchWorker(project_root)
+    def __init__(
+        self,
+        project_root: str | Path | None = None,
+        *,
+        startup_deadline: float | None = None,
+        request_timeout_seconds: float = 30.0,
+    ):
+        self.__worker = ShowdownSearchWorker(
+            project_root,
+            startup_deadline=startup_deadline,
+            request_timeout_seconds=request_timeout_seconds,
+        )
 
     def create_state(
         self,
@@ -265,14 +322,31 @@ class HypotheticalSearchWorker:
 
 
 class ShowdownSearchWorker:
-    """Send JSONL requests to a persistent Node.js Showdown search worker."""
+    """Send bounded JSONL requests to a persistent Node.js Showdown worker."""
 
-    def __init__(self, project_root: str | Path | None = None):
+    def __init__(
+        self,
+        project_root: str | Path | None = None,
+        *,
+        startup_deadline: float | None = None,
+        startup_timeout_seconds: float = 10.0,
+        request_timeout_seconds: float = 30.0,
+    ):
         if project_root is None:
             project_root = Path(__file__).resolve().parents[2]
+        if startup_timeout_seconds <= 0:
+            raise ValueError("startup_timeout_seconds must be positive")
+        if request_timeout_seconds <= 0:
+            raise ValueError("request_timeout_seconds must be positive")
+
+        if startup_deadline is None:
+            startup_deadline = perf_counter() + startup_timeout_seconds
 
         self.project_root = Path(project_root)
-        self.showdown_revision = verify_showdown_checkout(self.project_root)
+        self.showdown_revision = verify_showdown_checkout(
+            self.project_root,
+            deadline=startup_deadline,
+        )
         self.script = self.project_root / "tools" / "showdown-search-worker.js"
         self.showdown_battle = (
             self.project_root
@@ -290,47 +364,153 @@ class ShowdownSearchWorker:
                 "Built Pokemon Showdown simulator is missing. "
                 "Run setup.ps1 or update-local.ps1 -UpdateShowdown first."
             )
+        _remaining_timeout(startup_deadline)
 
         self._next_id = 1
-        self._process = subprocess.Popen(
-            ["node", str(self.script)],
-            cwd=self.project_root,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
-            bufsize=1,
-        )
-        _ACTIVE_SHOWDOWN_PROCESSES[self._process.pid] = self._process
+        self._request_timeout_seconds = request_timeout_seconds
+        self._pending: dict[int, queue.Queue[dict[str, Any] | None]] = {}
+        self._pending_lock = Lock()
+        self._write_lock = Lock()
+        self._transport_closed = Event()
+        self._stderr_lines: deque[str] = deque(maxlen=100)
+        self._stderr_lock = Lock()
 
-    def request(self, op: str, **payload: Any) -> dict[str, Any]:
+        process: subprocess.Popen[str] | None = None
+        try:
+            process = subprocess.Popen(
+                ["node", str(self.script)],
+                cwd=self.project_root,
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                encoding="utf-8",
+                bufsize=1,
+            )
+            self._process = process
+            _ACTIVE_SHOWDOWN_PROCESSES[process.pid] = process
+            _remaining_timeout(startup_deadline)
+
+            self._stdout_thread = Thread(
+                target=self._drain_stdout,
+                name=f"showdown-stdout-{process.pid}",
+                daemon=True,
+            )
+            self._stderr_thread = Thread(
+                target=self._drain_stderr,
+                name=f"showdown-stderr-{process.pid}",
+                daemon=True,
+            )
+            self._stdout_thread.start()
+            self._stderr_thread.start()
+        except Exception:
+            if process is not None and process.poll() is None:
+                process.terminate()
+                try:
+                    process.wait(timeout=0.25)
+                except subprocess.TimeoutExpired:
+                    process.kill()
+            raise
+
+    def _stderr_text(self) -> str:
+        with self._stderr_lock:
+            return "\n".join(self._stderr_lines)
+
+    def _drain_stderr(self) -> None:
+        stream = self._process.stderr
+        if stream is None:
+            return
+        for line in stream:
+            with self._stderr_lock:
+                self._stderr_lines.append(line.rstrip())
+
+    def _drain_stdout(self) -> None:
+        stream = self._process.stdout
+        if stream is None:
+            self._transport_closed.set()
+            return
+        try:
+            for line in stream:
+                try:
+                    response = json.loads(line)
+                except json.JSONDecodeError:
+                    continue
+                request_id = response.get("id")
+                if not isinstance(request_id, int):
+                    continue
+                with self._pending_lock:
+                    waiter = self._pending.get(request_id)
+                if waiter is not None:
+                    waiter.put(response)
+        finally:
+            self._transport_closed.set()
+            with self._pending_lock:
+                waiters = tuple(self._pending.values())
+            for waiter in waiters:
+                try:
+                    waiter.put_nowait(None)
+                except queue.Full:
+                    pass
+
+    def request(
+        self,
+        op: str,
+        *,
+        timeout_seconds: float | None = None,
+        mutating: bool = False,
+        **payload: Any,
+    ) -> dict[str, Any]:
         if self._process.poll() is not None:
-            stderr = self._process.stderr.read() if self._process.stderr else ""
             raise RuntimeError(
-                f"Showdown search worker exited unexpectedly: {stderr.strip()}"
+                "Showdown search worker exited unexpectedly: "
+                f"{self._stderr_text().strip()}"
             )
 
-        request_id = self._next_id
-        self._next_id += 1
+        timeout = (
+            self._request_timeout_seconds
+            if timeout_seconds is None
+            else timeout_seconds
+        )
+        if timeout <= 0:
+            raise ShowdownWorkerTimeout(op, mutating=mutating)
 
-        message = {"id": request_id, "op": op, **payload}
+        waiter: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=1)
+        with self._write_lock:
+            request_id = self._next_id
+            self._next_id += 1
+            message = {"id": request_id, "op": op, **payload}
+            if self._process.stdin is None:
+                raise RuntimeError("Showdown search worker stdin is unavailable")
+            with self._pending_lock:
+                self._pending[request_id] = waiter
+            try:
+                self._process.stdin.write(
+                    json.dumps(message, separators=(",", ":")) + "\n"
+                )
+                self._process.stdin.flush()
+            except Exception:
+                with self._pending_lock:
+                    self._pending.pop(request_id, None)
+                raise
 
-        if self._process.stdin is None or self._process.stdout is None:
-            raise RuntimeError("Showdown search worker pipes are unavailable")
+        try:
+            response = waiter.get(timeout=timeout)
+        except queue.Empty as error:
+            with self._pending_lock:
+                self._pending.pop(request_id, None)
+            raise ShowdownWorkerTimeout(
+                op,
+                mutating=mutating,
+            ) from error
 
-        self._process.stdin.write(json.dumps(message, separators=(",", ":")) + "\n")
-        self._process.stdin.flush()
+        with self._pending_lock:
+            self._pending.pop(request_id, None)
 
-        line = self._process.stdout.readline()
-        if not line:
-            stderr = self._process.stderr.read() if self._process.stderr else ""
+        if response is None:
             raise RuntimeError(
                 "Showdown search worker closed without a response. "
-                f"stderr={stderr.strip()!r}"
+                f"stderr={self._stderr_text().strip()!r}"
             )
-
-        response = json.loads(line)
         if response.get("id") != request_id:
             raise RuntimeError(
                 f"Showdown worker response id mismatch: "
@@ -401,7 +581,7 @@ class ShowdownSearchWorker:
         }
         if seed is not None:
             payload["seed"] = seed
-        return self.request("session_start", **payload)
+        return self.request("session_start", mutating=True, **payload)
 
     def session_view(
         self,
@@ -522,16 +702,21 @@ class ShowdownSearchWorker:
             session_id=session_id,
             p1_choice=p1_choice,
             p2_choice=p2_choice,
+            mutating=True,
         )
 
     def close_session(self, session_id: str) -> None:
-        result = self.request("session_close", session_id=session_id)
+        result = self.request(
+            "session_close",
+            session_id=session_id,
+            mutating=True,
+        )
         if not result.get("closed"):
             raise RuntimeError(f"Showdown session {session_id!r} did not close")
 
 
     def abort(self, *, timeout_seconds: float = 0.25) -> None:
-        """Stop and reap this worker inside a bounded cleanup allowance."""
+        """Stop and reap this worker without waiting for a blocked request."""
         if self._process.poll() is not None:
             return
 
@@ -539,34 +724,40 @@ class ShowdownSearchWorker:
         self._process.terminate()
         try:
             self._process.wait(timeout=allowance)
-            return
         except subprocess.TimeoutExpired:
-            pass
-
-        self._process.kill()
-        try:
-            self._process.wait(timeout=allowance)
-        except subprocess.TimeoutExpired:
-            # The process has been force-killed. Avoid extending a decision deadline;
-            # the OS will finish cleanup after this bounded attempt.
-            return
+            self._process.kill()
+            try:
+                self._process.wait(timeout=allowance)
+            except subprocess.TimeoutExpired:
+                return
+        finally:
+            self._transport_closed.set()
 
     def close(self) -> None:
-        if self._process.poll() is not None:
-            return
-
-        if self._process.stdin is not None:
-            self._process.stdin.close()
-
-        try:
-            self._process.wait(timeout=3)
-        except subprocess.TimeoutExpired:
-            self._process.terminate()
+        if self._process.poll() is None and self._process.stdin is not None:
             try:
-                self._process.wait(timeout=2)
+                self._process.stdin.close()
+            except OSError:
+                pass
+
+        if self._process.poll() is None:
+            try:
+                self._process.wait(timeout=3)
             except subprocess.TimeoutExpired:
-                self._process.kill()
-                self._process.wait(timeout=2)
+                self._process.terminate()
+                try:
+                    self._process.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    self._process.kill()
+                    self._process.wait(timeout=2)
+
+        self._transport_closed.set()
+        for thread in (
+            getattr(self, "_stdout_thread", None),
+            getattr(self, "_stderr_thread", None),
+        ):
+            if thread is not None and thread.is_alive():
+                thread.join(timeout=0.25)
 
     def __enter__(self) -> "ShowdownSearchWorker":
         return self
