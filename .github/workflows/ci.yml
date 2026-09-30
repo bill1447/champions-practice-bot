@@ -149,6 +149,10 @@ jobs:
         shell: pwsh
         run: .\timeout-lifecycle-smoke.ps1
 
+      - name: Worker startup, transport, and ownership hardening smoke test
+        shell: pwsh
+        run: .\worker-lifecycle-hardening-smoke.ps1
+
       - name: Belief-aware exact search smoke test
         shell: pwsh
         run: .\belief-search-smoke.ps1
