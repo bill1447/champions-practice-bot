@@ -7,7 +7,10 @@ from champions_practice.belief_controller import (
     _BeliefBattleCoordinator,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import (
+    ShowdownRequestError,
+    ShowdownSearchWorker,
+)
 
 SEED = "sodium,10800001108000021080000310800004"
 PREVIEW = "team 1234"
@@ -113,6 +116,44 @@ def main() -> None:
                 raise SystemExit(
                     "ERROR: public generator emitted structurally invalid Helping "
                     f"Hand targets: {impossible[:8]!r}"
+                )
+
+            before_rejection = worker.session_view(
+                coordinator._session_id,
+                side="p2",
+            )["view"]
+            try:
+                worker.choose_session(
+                    coordinator._session_id,
+                    p1_choice=HUMAN_TURN,
+                    p2_choice=(
+                        "move helpinghand +2, "
+                        "move helpinghand +2"
+                    ),
+                )
+            except ShowdownRequestError as error:
+                if not error.choice_rejected:
+                    raise SystemExit(
+                        "ERROR: invalid Helping Hand fixture was not classified "
+                        "as a choice rejection"
+                    ) from error
+            else:
+                raise SystemExit(
+                    "ERROR: exact Showdown unexpectedly accepted invalid "
+                    "Helping Hand targets"
+                )
+
+            after_rejection = worker.session_view(
+                coordinator._session_id,
+                side="p2",
+            )["view"]
+            if after_rejection != before_rejection:
+                raise SystemExit(
+                    "ERROR: rejected joint submission mutated the live session"
+                )
+            if HUMAN_TURN not in coordinator.human_legal_choices():
+                raise SystemExit(
+                    "ERROR: rejected AI choice left the human choice partially queued"
                 )
 
             # Force the same degraded path that exposed the review bug. The fallback
