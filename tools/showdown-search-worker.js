@@ -469,7 +469,7 @@ function moveSlotCandidates(battle, request, slot) {
     for (const target of targets) {
       for (const event of events) {
         const parts = [`move ${move.id}`];
-        if (target) parts.push(String(target));
+        if (target) parts.push(target > 0 ? `+${target}` : String(target));
         if (event) parts.push(event);
         choices.push(parts.join(" "));
       }
