@@ -681,10 +681,18 @@ class DemoBattleSession:
                 if isinstance(self._last_public_view, dict)
                 else None
             )
-            result = facade.commit_human_action(
-                token=self._ready_token,
-                human_choice=human_choice,
-            )
+            try:
+                result = facade.commit_human_action(
+                    token=self._ready_token,
+                    human_choice=human_choice,
+                )
+            except Exception:
+                if facade.turn_state is SealedTurnState.RESTART_REQUIRED:
+                    self._ready_token = None
+                    self._ready_turn = None
+                    self._pending_human_choice = None
+                    self._pending_choice_view = None
+                raise
             decision_turn = self._ready_turn
             self._ready_token = None
             self._ready_turn = None
