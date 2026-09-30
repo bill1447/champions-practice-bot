@@ -280,7 +280,11 @@ def main() -> None:
                 )
 
     print("Authoritative public mechanics event conditioning")
-    print(f"64 sampled futures: broken={len(by_outcome['broken'])}, survived={len(by_outcome['survived'])}")
+    print(
+        "64 sampled futures: "
+        f"broken={len(by_outcome['broken'])}, "
+        f"survived={len(by_outcome['survived'])}"
+    )
     print("Reduced state signatures collide across outcomes: YES")
     print("Event-authoritative signatures collide across outcomes: NO")
     print(f"Conditioning matches for observed break: {update.matched}")
