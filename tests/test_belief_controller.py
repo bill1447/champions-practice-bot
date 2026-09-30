@@ -383,6 +383,46 @@ def test_incremental_conditioning_returns_before_hard_deadline(
 
 
 
+def test_pending_recovery_reuses_exact_resolved_human_command() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        (
+            "move protect",
+            "switch 3, pass",
+            {"turn": 1},
+            {"turn": 2},
+        )
+    ]
+    seen = []
+
+    def fake_condition(worker, **kwargs):
+        seen.append(kwargs["resolved_opponent_choice"])
+        return ParticleUpdate((particle,), 1, 1, 0)
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._recover_pending() is True
+    assert seen == ["switch 3, pass"]
+    assert engine.pending_observations == []
+    assert engine.degraded is False
+
+
 class _CollapseDiagnosticWorker:
     def __init__(self, *, human_choice_legal=True, exact_on_second=True) -> None:
         self.human_choice_legal = human_choice_legal
