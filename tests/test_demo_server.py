@@ -19,6 +19,7 @@ from champions_practice.demo_server import (
     _choice_label,
     _collapse_diagnostic_payload,
     _hp_snapshot,
+    _opponent_team_species,
 )
 
 
@@ -470,6 +471,26 @@ def test_demo_html_queues_human_action_while_ai_is_thinking() -> None:
 def test_demo_html_surfaces_fallback_and_degraded_belief_reasons() -> None:
     assert "d.fallback_reason" in DEMO_HTML
     assert "Belief update degraded:" in DEMO_HTML
+
+
+def test_ai_switch_labels_use_brought_team_order() -> None:
+    view = {
+        "opponent": {
+            "preview_species": [
+                "Indeedee-F",
+                "Sneasler",
+                "Gardevoir",
+                "Armarouge",
+                "Rillaboom",
+                "Metagross",
+            ]
+        }
+    }
+
+    assert _opponent_team_species(view, 1) == "Sneasler"
+    assert _opponent_team_species(view, 2) == "Indeedee-F"
+    assert _opponent_team_species(view, 3) == "Gardevoir"
+    assert _opponent_team_species(view, 4) == "Rillaboom"
 
 
 def test_demo_html_has_copyable_battle_log_with_choices_and_hp() -> None:

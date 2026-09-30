@@ -205,6 +205,169 @@ def _run_human_forced_switch_ai_wait(worker: ShowdownSearchWorker) -> None:
         coordinator.close()
 
 
+def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
+    coordinator = _BeliefBattleCoordinator(
+        worker,
+        battle_format=CHAMPIONS_FORMAT,
+        ai_team=SELF_KO_TEAM,
+        opponent_priors={},
+    )
+    try:
+        coordinator._engine.initialize_preview = lambda **kwargs: kwargs["view"]
+        coordinator._engine.observe_public_turn = (
+            lambda *, decision, view: SimpleNamespace(
+                decision=decision,
+                public_view=view,
+                particles_before=1,
+                particles_after=1,
+                generated_branches=1,
+                matched_branches=1,
+                conditioning_seconds=0.0,
+                conditioning_over_budget=False,
+                degraded=False,
+            )
+        )
+
+        coordinator.start(
+            opponent_team=HUMAN_TEAM,
+            p1_name="Partial Replacement Human",
+            p2_name="Partial Replacement AI",
+        )
+        coordinator.submit_preview(
+            human_choice=PREVIEW,
+            ai_choice=PREVIEW,
+        )
+
+        first_legal = coordinator._ai_legal_choices()
+        first_choice = next(
+            (
+                choice
+                for choice in first_legal
+                if choice == "move explosion, move protect"
+            ),
+            None,
+        )
+        if first_choice is None:
+            raise SystemExit(
+                "ERROR: partial-replacement setup lacks Explosion + Protect: "
+                f"{first_legal}"
+            )
+        coordinator._engine.choose_ai_action = (
+            lambda *, legal_live: _decision(first_choice)
+        )
+        first = coordinator.lock_ai_action()
+        first_result = coordinator.commit_human_action(
+            token=first.token,
+            human_choice=PROTECT,
+        )
+        if first_result.terminal:
+            raise SystemExit(
+                "ERROR: first partial-replacement setup turn ended battle"
+            )
+
+        single_force = coordinator._ai_legal_choices()
+        first_replacement = next(
+            (
+                choice
+                for choice in single_force
+                if choice.count("switch ") == 1 and "pass" in choice
+            ),
+            None,
+        )
+        if first_replacement is None:
+            raise SystemExit(
+                "ERROR: single AI replacement was not represented as switch/pass: "
+                f"{single_force}"
+            )
+        human_wait = coordinator.human_legal_choices()
+        if human_wait != [""]:
+            raise SystemExit(
+                f"ERROR: human did not wait for AI replacement: {human_wait}"
+            )
+        coordinator._engine.choose_ai_action = (
+            lambda *, legal_live: _decision(first_replacement)
+        )
+        replacement = coordinator.lock_ai_action()
+        coordinator.commit_human_action(
+            token=replacement.token,
+            human_choice="",
+        )
+
+        second_legal = coordinator._ai_legal_choices()
+        double_explosion = next(
+            (
+                choice
+                for choice in second_legal
+                if choice.count("move explosion") == 2
+            ),
+            None,
+        )
+        if double_explosion is None:
+            raise SystemExit(
+                "ERROR: partial-replacement setup lacks double Explosion: "
+                f"{second_legal}"
+            )
+        coordinator._engine.choose_ai_action = (
+            lambda *, legal_live: _decision(double_explosion)
+        )
+        second = coordinator.lock_ai_action()
+        second_result = coordinator.commit_human_action(
+            token=second.token,
+            human_choice=PROTECT,
+        )
+        if second_result.terminal:
+            raise SystemExit(
+                "ERROR: double KO with one reserve incorrectly ended battle"
+            )
+
+        partial_force = coordinator._ai_legal_choices()
+        partial_choices = [
+            choice
+            for choice in partial_force
+            if choice.count("switch ") == 1
+            and choice.count("pass") == 1
+        ]
+        if not partial_choices:
+            raise SystemExit(
+                "ERROR: double KO with one reserve exposed no switch/pass choice: "
+                f"{partial_force}"
+            )
+        if any(choice.count("switch ") > 1 for choice in partial_force):
+            raise SystemExit(
+                "ERROR: partial replacement exposed duplicate two-switch choice: "
+                f"{partial_force}"
+            )
+
+        human_force = coordinator.human_legal_choices()
+        if not human_force:
+            raise SystemExit(
+                "ERROR: partial AI replacement exposed no legal human response"
+            )
+        human_choice = "" if "" in human_force else human_force[0]
+
+        selected = partial_choices[0]
+        coordinator._engine.choose_ai_action = (
+            lambda *, legal_live: _decision(selected)
+        )
+        forced = coordinator.lock_ai_action()
+        forced_result = coordinator.commit_human_action(
+            token=forced.token,
+            human_choice=human_choice,
+        )
+        if forced_result.terminal:
+            raise SystemExit(
+                "ERROR: legal partial replacement incorrectly ended battle"
+            )
+        if coordinator.turn_state is not SealedTurnState.RESOLVED:
+            raise SystemExit(
+                "ERROR: partial double replacement did not resolve cleanly"
+            )
+
+        print(f"Partial double-replacement choice: {selected}")
+    finally:
+        coordinator.close()
+
+
 def main() -> None:
     with ShowdownSearchWorker() as worker:
         coordinator = _BeliefBattleCoordinator(
@@ -293,6 +456,9 @@ def main() -> None:
 
     with ShowdownSearchWorker() as worker:
         _run_human_forced_switch_ai_wait(worker)
+
+    with ShowdownSearchWorker() as worker:
+        _run_partial_double_replacement(worker)
 
 
 if __name__ == "__main__":
