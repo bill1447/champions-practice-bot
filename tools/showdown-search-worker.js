@@ -888,10 +888,48 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
   const switchSlots = [];
   let transformationCount = 0;
 
+  if (request?.active && commands.length !== request.active.length) return false;
+  if (request?.forceSwitch && commands.length !== request.forceSwitch.length) {
+    return false;
+  }
+
+  const healthySwitches = new Set(availableSwitches(request));
+  const revivalTargets = new Set(availableRevivalTargets(request));
+
   for (const [slot, command] of commands.entries()) {
     const tokens = command.split(/\s+/);
     if (tokens[0] === "switch" && /^\d+$/.test(tokens[1] || "")) {
       switchSlots.push(tokens[1]);
+    }
+
+    if (request?.active) {
+      const active = request.active[slot];
+      const pokemon = request.side.pokemon[slot];
+      const mustPass = !active || isFainted(pokemon) || pokemon.commanding;
+      if (mustPass) {
+        if (tokens[0] !== "pass") return false;
+        continue;
+      }
+      if (tokens[0] === "pass") return false;
+      if (tokens[0] === "switch") {
+        if (active.trapped) return false;
+        if (!healthySwitches.has(command)) return false;
+        continue;
+      }
+      if (tokens[0] !== "move") return false;
+    }
+
+    if (request?.forceSwitch) {
+      if (!request.forceSwitch[slot]) {
+        if (tokens[0] !== "pass") return false;
+        continue;
+      }
+      if (request.side.pokemon[slot]?.reviving) {
+        if (!revivalTargets.has(command)) return false;
+        continue;
+      }
+      if (tokens[0] !== "switch" && tokens[0] !== "pass") return false;
+      if (tokens[0] === "switch" && !healthySwitches.has(command)) return false;
     }
 
     const transformations = tokens.filter((token) =>
