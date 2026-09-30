@@ -8,7 +8,7 @@ from enum import Enum
 import json
 import random
 import secrets
-from threading import RLock
+from threading import Event, RLock
 from time import perf_counter
 from typing import Callable, TypeVar
 
@@ -33,7 +33,11 @@ from champions_practice.observation_beliefs import (
     public_opponent_moves_fully_observed,
     resample_particles_by_world,
 )
-from champions_practice.search_worker import HypotheticalSearchWorker, ShowdownSearchWorker
+from champions_practice.search_worker import (
+    HypotheticalSearchWorker,
+    ShowdownSearchWorker,
+    ShowdownWorkerTimeout,
+)
 from champions_practice.strategy import assess_strategic_position, generate_strategic_plans
 from champions_practice.strategy_evidence import (
     ProtectedTacticalEvidence,
@@ -162,6 +166,7 @@ class SealedTurnState(str, Enum):
     SUBMITTING = "submitting"
     RESOLVED = "resolved"
     FAILED = "failed"
+    UNKNOWN = "unknown"
     TERMINAL = "terminal"
     CLOSED = "closed"
 
@@ -394,6 +399,52 @@ def _hp_only_differences(
     )
 
 
+def _validate_decision_configuration(
+    *,
+    world_limit: int,
+    particles_per_world: int,
+    max_particles: int,
+    candidate_limit: int,
+    response_limit: int,
+    strategic_plan_limit: int,
+    strategic_candidate_limit: int,
+    strategic_response_limit: int,
+    strategic_rng_seeds: tuple[str, ...],
+    decision_budget_seconds: float,
+    conditioning_budget_seconds: float,
+    collapse_debug_budget_seconds: float,
+    rng_sample_batches: tuple[int, ...],
+    recovery_rng_sample_batches: tuple[int, ...],
+    observed_action_rng_multiplier: int,
+) -> None:
+    if world_limit <= 0:
+        raise ValueError("world_limit must be positive")
+    if particles_per_world <= 0:
+        raise ValueError("particles_per_world must be positive")
+    if max_particles <= 0:
+        raise ValueError("max_particles must be positive")
+    if candidate_limit <= 0 or response_limit <= 0:
+        raise ValueError("search limits must be positive")
+    if strategic_plan_limit <= 0:
+        raise ValueError("strategic_plan_limit must be positive")
+    if strategic_candidate_limit <= 0 or strategic_response_limit <= 0:
+        raise ValueError("strategic probe limits must be positive")
+    if not strategic_rng_seeds:
+        raise ValueError("strategic_rng_seeds must not be empty")
+    if decision_budget_seconds <= 0 or conditioning_budget_seconds <= 0:
+        raise ValueError("budgets must be positive")
+    if collapse_debug_budget_seconds <= 0:
+        raise ValueError("collapse_debug_budget_seconds must be positive")
+    if not rng_sample_batches or any(count <= 0 for count in rng_sample_batches):
+        raise ValueError("rng_sample_batches must contain positive counts")
+    if not recovery_rng_sample_batches or any(
+        count <= 0 for count in recovery_rng_sample_batches
+    ):
+        raise ValueError("recovery_rng_sample_batches must contain positive counts")
+    if observed_action_rng_multiplier <= 0:
+        raise ValueError("observed_action_rng_multiplier must be positive")
+
+
 class BeliefDecisionEngine:
     """Choose p2 actions from sanitized public views and hypothetical exact states.
 
@@ -427,32 +478,23 @@ class BeliefDecisionEngine:
         particle_seed: int = 53,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
-        if world_limit <= 0:
-            raise ValueError("world_limit must be positive")
-        if particles_per_world <= 0:
-            raise ValueError("particles_per_world must be positive")
-        if max_particles <= 0:
-            raise ValueError("max_particles must be positive")
-        if candidate_limit <= 0 or response_limit <= 0:
-            raise ValueError("search limits must be positive")
-        if strategic_plan_limit <= 0:
-            raise ValueError("strategic_plan_limit must be positive")
-        if strategic_candidate_limit <= 0 or strategic_response_limit <= 0:
-            raise ValueError("strategic probe limits must be positive")
-        if not strategic_rng_seeds:
-            raise ValueError("strategic_rng_seeds must not be empty")
-        if decision_budget_seconds <= 0 or conditioning_budget_seconds <= 0:
-            raise ValueError("budgets must be positive")
-        if collapse_debug_budget_seconds <= 0:
-            raise ValueError("collapse_debug_budget_seconds must be positive")
-        if not rng_sample_batches or any(count <= 0 for count in rng_sample_batches):
-            raise ValueError("rng_sample_batches must contain positive counts")
-        if not recovery_rng_sample_batches or any(
-            count <= 0 for count in recovery_rng_sample_batches
-        ):
-            raise ValueError("recovery_rng_sample_batches must contain positive counts")
-        if observed_action_rng_multiplier <= 0:
-            raise ValueError("observed_action_rng_multiplier must be positive")
+        _validate_decision_configuration(
+            world_limit=world_limit,
+            particles_per_world=particles_per_world,
+            max_particles=max_particles,
+            candidate_limit=candidate_limit,
+            response_limit=response_limit,
+            strategic_plan_limit=strategic_plan_limit,
+            strategic_candidate_limit=strategic_candidate_limit,
+            strategic_response_limit=strategic_response_limit,
+            strategic_rng_seeds=strategic_rng_seeds,
+            decision_budget_seconds=decision_budget_seconds,
+            conditioning_budget_seconds=conditioning_budget_seconds,
+            collapse_debug_budget_seconds=collapse_debug_budget_seconds,
+            rng_sample_batches=rng_sample_batches,
+            recovery_rng_sample_batches=recovery_rng_sample_batches,
+            observed_action_rng_multiplier=observed_action_rng_multiplier,
+        )
 
         self.project_root = project_root
         self.battle_format = battle_format
@@ -572,20 +614,46 @@ class BeliefDecisionEngine:
         deadline: float,
         cleanup_reserve_seconds: float = 0.25,
     ) -> tuple[T | None, bool]:
-        """Run hypothetical work inside one absolute startup/work/cleanup deadline."""
+        """Run startup, hypothetical work, and cleanup under one absolute deadline."""
         if perf_counter() >= deadline:
             return None, True
 
-        worker = HypotheticalSearchWorker(self.project_root)
-        remaining = deadline - perf_counter()
-        if remaining <= cleanup_reserve_seconds:
-            worker.abort(timeout_seconds=max(0.0, remaining))
-            return None, True
+        cancelled = Event()
+        holder: list[HypotheticalSearchWorker] = []
+        holder_lock = RLock()
+
+        def run_lifecycle() -> T | None:
+            worker: HypotheticalSearchWorker | None = None
+            try:
+                worker = HypotheticalSearchWorker(
+                    self.project_root,
+                    startup_deadline=deadline,
+                    request_timeout_seconds=max(
+                        0.05,
+                        deadline - perf_counter(),
+                    ),
+                )
+                with holder_lock:
+                    holder.append(worker)
+                if cancelled.is_set() or perf_counter() >= deadline:
+                    return None
+                return operation(worker)
+            finally:
+                if worker is not None:
+                    worker.abort(
+                        timeout_seconds=max(
+                            0.0,
+                            min(
+                                cleanup_reserve_seconds,
+                                deadline - perf_counter(),
+                            ),
+                        )
+                    )
 
         executor = ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(operation, worker)
-        result: T | None = None
+        future = executor.submit(run_lifecycle)
         timed_out = False
+        result: T | None = None
         try:
             result = future.result(
                 timeout=max(
@@ -593,15 +661,23 @@ class BeliefDecisionEngine:
                     deadline - perf_counter() - cleanup_reserve_seconds,
                 )
             )
-        except FutureTimeoutError:
+        except (FutureTimeoutError, ShowdownWorkerTimeout):
             timed_out = True
         finally:
-            worker.abort(
-                timeout_seconds=max(
-                    0.0,
-                    min(cleanup_reserve_seconds, deadline - perf_counter()),
-                )
-            )
+            if timed_out or perf_counter() >= deadline:
+                cancelled.set()
+                with holder_lock:
+                    worker = holder[0] if holder else None
+                if worker is not None:
+                    worker.abort(
+                        timeout_seconds=max(
+                            0.0,
+                            min(
+                                cleanup_reserve_seconds,
+                                deadline - perf_counter(),
+                            ),
+                        )
+                    )
             executor.shutdown(wait=False, cancel_futures=True)
 
         if timed_out or perf_counter() > deadline:
@@ -1771,6 +1847,8 @@ class _BeliefBattleCoordinator:
     def human_legal_choices(self) -> list[str]:
         with self._state_lock:
             if self._turn_state in {
+                SealedTurnState.FAILED,
+                SealedTurnState.UNKNOWN,
                 SealedTurnState.TERMINAL,
                 SealedTurnState.CLOSED,
             }:
@@ -1952,6 +2030,15 @@ class _BeliefBattleCoordinator:
                 p1_choice=human_choice,
                 p2_choice=decision.choice,
             )
+        except ShowdownWorkerTimeout as error:
+            if error.mutating:
+                with self._state_lock:
+                    self._turn_state = SealedTurnState.UNKNOWN
+                raise RuntimeError(
+                    "live turn submission timed out with unknown outcome; "
+                    "reconcile before retrying"
+                ) from error
+            submission_error = error
         except Exception as error:
             submission_error = error
 
@@ -1992,11 +2079,15 @@ class _BeliefBattleCoordinator:
         token: str,
     ) -> SealedTurnResult:
         with self._state_lock:
-            if self._turn_state is not SealedTurnState.FAILED:
+            if self._turn_state not in {
+                SealedTurnState.FAILED,
+                SealedTurnState.UNKNOWN,
+            }:
                 raise RuntimeError(
-                    "cannot reconcile failed turn while state is "
+                    "cannot reconcile unresolved turn while state is "
                     f"{self._turn_state.value}"
                 )
+            reconciliation_state = self._turn_state
             if self._sealed_decision is None:
                 raise RuntimeError("failed turn has no retained sealed decision")
             expected_token, decision = self._sealed_decision
@@ -2017,7 +2108,7 @@ class _BeliefBattleCoordinator:
         except Exception:
             with self._state_lock:
                 if self._turn_state is SealedTurnState.SUBMITTING:
-                    self._turn_state = SealedTurnState.FAILED
+                    self._turn_state = reconciliation_state
             raise
 
         if (
@@ -2060,9 +2151,15 @@ class _BeliefBattleCoordinator:
             self._pre_submit_signature = None
             self._session_id = None
 
-        if session_id is not None:
-            self._worker.close_session(session_id)
-        self._worker.close()
+        try:
+            if session_id is not None:
+                self._worker.close_session(session_id)
+        finally:
+            self._worker.close()
+
+    def abort_transport(self) -> None:
+        """Emergency cancellation that does not acquire the coordinator state lock."""
+        self._worker.abort(timeout_seconds=0.25)
 
 
 class SealedBattleFacade:
@@ -2094,11 +2191,37 @@ class SealedBattleFacade:
         recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
         observed_action_rng_multiplier: int = 16,
         particle_seed: int = 53,
+        live_transport_timeout_seconds: float = 5.0,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
-        worker = ShowdownSearchWorker(project_root)
-        self.__coordinator = _BeliefBattleCoordinator(
-            worker,
+        _validate_decision_configuration(
+            world_limit=world_limit,
+            particles_per_world=particles_per_world,
+            max_particles=max_particles,
+            candidate_limit=candidate_limit,
+            response_limit=response_limit,
+            strategic_plan_limit=strategic_plan_limit,
+            strategic_candidate_limit=strategic_candidate_limit,
+            strategic_response_limit=strategic_response_limit,
+            strategic_rng_seeds=strategic_rng_seeds,
+            decision_budget_seconds=decision_budget_seconds,
+            conditioning_budget_seconds=conditioning_budget_seconds,
+            collapse_debug_budget_seconds=collapse_debug_budget_seconds,
+            rng_sample_batches=rng_sample_batches,
+            recovery_rng_sample_batches=recovery_rng_sample_batches,
+            observed_action_rng_multiplier=observed_action_rng_multiplier,
+        )
+        if live_transport_timeout_seconds <= 0:
+            raise ValueError("live_transport_timeout_seconds must be positive")
+
+        worker: ShowdownSearchWorker | None = None
+        try:
+            worker = ShowdownSearchWorker(
+                project_root,
+                request_timeout_seconds=live_transport_timeout_seconds,
+            )
+            self.__coordinator = _BeliefBattleCoordinator(
+                worker,
             battle_format=battle_format,
             ai_team=ai_team,
             opponent_priors=opponent_priors,
@@ -2117,9 +2240,13 @@ class SealedBattleFacade:
             rng_sample_batches=rng_sample_batches,
             recovery_rng_sample_batches=recovery_rng_sample_batches,
             observed_action_rng_multiplier=observed_action_rng_multiplier,
-            particle_seed=particle_seed,
-            fallback_selector=fallback_selector,
-        )
+                particle_seed=particle_seed,
+                fallback_selector=fallback_selector,
+            )
+        except Exception:
+            if worker is not None:
+                worker.close()
+            raise
         self.__ai_preview_choice = ai_preview_choice
 
     @property
@@ -2178,6 +2305,10 @@ class SealedBattleFacade:
 
     def close(self) -> None:
         self.__coordinator.close()
+
+    def abort_transport(self) -> None:
+        """Emergency cancellation for a blocked live worker transport."""
+        self.__coordinator.abort_transport()
 
     def __enter__(self) -> "SealedBattleFacade":
         return self
