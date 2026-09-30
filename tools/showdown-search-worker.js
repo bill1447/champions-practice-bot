@@ -538,6 +538,40 @@ function validateChoices(state, sideId, candidates) {
   return [...legal].sort();
 }
 
+function publicChoiceCandidates(battle, sideId) {
+  if (sideId !== "p1" && sideId !== "p2") {
+    throw new Error("side must be p1 or p2");
+  }
+  if (battle.ended) return [];
+  const side = sideId === "p1" ? battle.p1 : battle.p2;
+  const request = side.activeRequest;
+  const choices = proposedChoices(battle, side);
+
+  // Never probe a maybe-trapped slot against the exact hidden live state before
+  // sealing. Showdown deliberately exposes maybeTrapped when switching might be
+  // unavailable because of hidden opponent information. Until we have an explicit
+  // unavailable-choice retry protocol, keep only choices that are certainly
+  // selectable from the public request.
+  if (!request?.active) return [...new Set(choices)].sort();
+
+  const uncertainSlots = new Set(
+    request.active
+      .map((active, index) => ({ active, index }))
+      .filter(({ active }) => active?.maybeTrapped || active?.maybeLocked)
+      .map(({ index }) => index),
+  );
+  if (!uncertainSlots.size) return [...new Set(choices)].sort();
+
+  const certain = choices.filter((choice) => {
+    const commands = choice.split(",").map((command) => command.trim());
+    for (const slot of uncertainSlots) {
+      if (commands[slot]?.startsWith("switch ")) return false;
+    }
+    return true;
+  });
+  return [...new Set(certain)].sort();
+}
+
 function enumerateLegalChoices(battle, sideId) {
   if (sideId !== "p1" && sideId !== "p2") {
     throw new Error("side must be p1 or p2");
@@ -779,6 +813,15 @@ function sessionSnapshot(request) {
   };
 }
 
+function sessionPublicChoices(request) {
+  const battle = getSession(request.session_id);
+  return {
+    session_id: request.session_id,
+    side: request.side,
+    choices: publicChoiceCandidates(battle, request.side),
+  };
+}
+
 function sessionLegalChoices(request) {
   const battle = getSession(request.session_id);
   return {
@@ -839,6 +882,8 @@ function handle(request) {
       return sessionView(request);
     case "session_snapshot":
       return sessionSnapshot(request);
+    case "session_public_choices":
+      return sessionPublicChoices(request);
     case "session_legal_choices":
       return sessionLegalChoices(request);
     case "session_choose":
