@@ -2,7 +2,9 @@ import pytest
 
 from champions_practice.observation_beliefs import (
     BeliefParticle,
+    classify_public_observation_mismatch,
     condition_particles,
+    is_stochastic_observation_path,
     public_observation_signature,
     resample_particles,
     resample_particles_by_world,
@@ -890,6 +892,98 @@ def test_public_action_filter_fails_open_when_parser_cannot_match_legal_set() ->
         particle.state["response"] for particle in update.particles
     } == set(worker.choices)
 
+
+
+def test_exact_resolved_command_overrides_incomplete_public_action_reconstruction() -> None:
+    worker = PublicActionFilterWorker()
+    actual = {
+        "turn": 2,
+        # Only one move is visible here, but the exact submitted command is known
+        # after resolution and must be authoritative for conditioning.
+        "opponent_last_actions": [
+            {"slot": 1, "move": "psychic", "target": 1},
+        ],
+    }
+    resolved = "move psychic +1, move protect"
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        resolved_opponent_choice=resolved,
+        rng_seeds=("rng-a", "rng-b"),
+    )
+
+    assert update.generated == 2
+    assert {
+        particle.state["response"] for particle in update.particles
+    } == {resolved}
+
+
+def test_exact_resolved_command_drops_world_when_command_is_illegal() -> None:
+    worker = PublicActionFilterWorker()
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view={"turn": 2},
+        resolved_opponent_choice="switch 99, pass",
+        rng_seeds=("rng",),
+    )
+
+    assert update.generated == 0
+    assert update.matched == 0
+    assert update.particles == ()
+
+
+def test_observation_mismatch_boundary_separates_stochastic_from_structural() -> None:
+    actual = {
+        "turn": 2,
+        "field": {"terrain": "psychicterrain"},
+        "opponent": {
+            "active": [
+                {
+                    "species": "Armarouge",
+                    "hp_percent": 11,
+                    "status": "psn",
+                    "fainted": False,
+                    "boosts": {"def": -1},
+                }
+            ]
+        },
+    }
+    stochastic = {
+        "turn": 2,
+        "field": {"terrain": "psychicterrain"},
+        "opponent": {
+            "active": [
+                {
+                    "species": "Armarouge",
+                    "hp_percent": 14,
+                    "status": "slp",
+                    "fainted": False,
+                    "boosts": {"def": 0},
+                }
+            ]
+        },
+    }
+    structural = {
+        **stochastic,
+        "field": {"terrain": None},
+    }
+
+    kind, paths = classify_public_observation_mismatch(actual, stochastic)
+    assert kind == "stochastic-only"
+    assert paths
+    assert all(is_stochastic_observation_path(path) for path in paths)
+
+    kind, paths = classify_public_observation_mismatch(actual, structural)
+    assert kind == "structural"
+    assert "$.field.terrain" in paths
 
 
 class DirectValidationWorker(PublicActionFilterWorker):
