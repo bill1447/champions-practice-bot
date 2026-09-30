@@ -584,6 +584,13 @@ function availableSwitches(request) {
     .map(({ slot }) => `switch ${slot}`);
 }
 
+function availableRevivalTargets(request) {
+  return request.side.pokemon
+    .map((pokemon, index) => ({ pokemon, slot: index + 1 }))
+    .filter(({ pokemon }) => isFainted(pokemon))
+    .map(({ slot }) => `switch ${slot}`);
+}
+
 function moveSlotCandidates(battle, request, slot) {
   const active = request.active[slot];
   const pokemon = request.side.pokemon[slot];
@@ -616,10 +623,28 @@ function moveSlotCandidates(battle, request, slot) {
 
 function switchCandidates(request) {
   const switches = availableSwitches(request);
-  const required = request.forceSwitch.filter(Boolean).length;
-  const allowVacancy = switches.length < required;
-  return request.forceSwitch.map((mustSwitch) => {
+  const revivalTargets = availableRevivalTargets(request);
+  const ordinaryRequired = request.forceSwitch.reduce(
+    (count, mustSwitch, slot) => (
+      count + (
+        mustSwitch && !request.side.pokemon[slot]?.reviving ? 1 : 0
+      )
+    ),
+    0,
+  );
+  const allowVacancy = switches.length < ordinaryRequired;
+
+  return request.forceSwitch.map((mustSwitch, slot) => {
     if (!mustSwitch) return ["pass"];
+
+    // Revival Blessing reuses Showdown's force-switch protocol, but the selected
+    // "switch" target is a fainted party member to revive, not a healthy reserve
+    // entering the active slot. The public request exposes this with reviving:true
+    // on the acting active Pokemon, so no hidden-state lookup is needed.
+    if (request.side.pokemon[slot]?.reviving) {
+      return revivalTargets;
+    }
+
     return allowVacancy ? [...switches, "pass"] : switches;
   });
 }
