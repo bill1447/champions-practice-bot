@@ -8,7 +8,12 @@ from champions_practice.belief_controller import (
     SealedTurnResult,
     SealedTurnState,
 )
-from champions_practice.demo_server import DEMO_HTML, DemoBattleSession, _choice_label
+from champions_practice.demo_server import (
+    DEMO_HTML,
+    DemoBattleSession,
+    DemoRequestHandler,
+    _choice_label,
+)
 
 
 class FakeFacade:
@@ -336,6 +341,19 @@ def test_demo_html_auto_submits_empty_human_wait_choice() -> None:
     assert 'next.legal_choices.length === 1' in DEMO_HTML
     assert 'next.legal_choices[0] === ""' in DEMO_HTML
     assert 'request("/api/commit", "POST", {choice: ""})' in DEMO_HTML
+
+def test_demo_commit_parser_accepts_empty_wait_choice_only_when_allowed() -> None:
+    assert DemoRequestHandler._choice(
+        {"choice": ""},
+        allow_empty=True,
+    ) == ""
+
+    try:
+        DemoRequestHandler._choice({"choice": ""})
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("preview/non-wait choice parser accepted an empty command")
 
 def test_demo_html_queues_human_action_while_ai_is_thinking() -> None:
     assert "let queuedHumanChoice = null;" in DEMO_HTML
