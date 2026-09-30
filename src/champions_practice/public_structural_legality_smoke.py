@@ -6,37 +6,20 @@ from champions_practice.belief_controller import (
     SealedTurnState,
     _BeliefBattleCoordinator,
 )
+from champions_practice.belief_smoke import _public_priors
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.search_worker import (
     ShowdownRequestError,
     ShowdownSearchWorker,
 )
+from champions_practice.teams import SMOKE_TEAM
 
 SEED = "sodium,10800001108000021080000310800004"
 PREVIEW = "team 1234"
-HUMAN_TURN = "move protect, move protect"
+HUMAN_TURN = "move followme, move protect"
 EXPECTED_AI = "move helpinghand -2, move helpinghand -1"
 
-HUMAN_TEAM = """Snorlax
-Ability: Thick Fat
-Level: 50
-- Protect
-
-Sneasler
-Ability: Unburden
-Level: 50
-- Protect
-
-Gardevoir
-Ability: Trace
-Level: 50
-- Protect
-
-Rillaboom
-Ability: Grassy Surge
-Level: 50
-- Protect
-"""
+HUMAN_TEAM = SMOKE_TEAM
 
 AI_TEAM = """Indeedee-F
 Ability: Psychic Surge
@@ -74,7 +57,7 @@ def main() -> None:
             worker,
             battle_format=CHAMPIONS_FORMAT,
             ai_team=AI_TEAM,
-            opponent_priors={},
+            opponent_priors=_public_priors(),
         )
         try:
             coordinator.start(
