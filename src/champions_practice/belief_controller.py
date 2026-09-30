@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from dataclasses import dataclass
 from enum import Enum
+import json
 import random
 import secrets
 from threading import RLock
@@ -108,6 +109,45 @@ class BeliefDecision:
 
 
 @dataclass(frozen=True)
+class CollapseDifference:
+    path: str
+    actual: object
+    simulated: object
+
+
+@dataclass(frozen=True)
+class CollapseBranchDiagnostic:
+    world_id: str
+    mismatch_count: int
+    differences: tuple[CollapseDifference, ...]
+
+
+@dataclass(frozen=True)
+class CollapseWorldDiagnostic:
+    world_id: str
+    human_choice_legal: bool
+    generated_branches: int
+    closest_mismatch_count: int | None
+    closest_paths: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class BeliefCollapseDiagnostic:
+    summary: str
+    elapsed_seconds: float
+    budget_exhausted: bool
+    generated_branches: int
+    exact_matches: int
+    worlds_tested: int
+    legal_worlds: int
+    illegal_worlds: int
+    common_mismatch_paths: tuple[tuple[str, int], ...] = ()
+    closest_branches: tuple[CollapseBranchDiagnostic, ...] = ()
+    worlds: tuple[CollapseWorldDiagnostic, ...] = ()
+    error: str | None = None
+
+
+@dataclass(frozen=True)
 class SealedDecisionReady:
     token: str
 
@@ -138,6 +178,7 @@ class SealedTurnResult:
     degraded: bool
     terminal: bool
     winner: str | None
+    collapse_diagnostic: BeliefCollapseDiagnostic | None = None
 
 
 @dataclass(frozen=True)
@@ -321,6 +362,37 @@ def _public_diff_paths(left: object, right: object, path: str = "$") -> tuple[st
     return () if left == right else (path,)
 
 
+def _normalized_public_observation(view: dict) -> object:
+    return json.loads(public_observation_signature(view))
+
+
+def _collapse_differences(
+    actual: object,
+    simulated: object,
+) -> tuple[CollapseDifference, ...]:
+    return tuple(
+        CollapseDifference(
+            path=path,
+            actual=_value_at_path(actual, path),
+            simulated=_value_at_path(simulated, path),
+        )
+        for path in _public_diff_paths(actual, simulated)
+    )
+
+
+def _hp_only_differences(
+    differences: tuple[CollapseDifference, ...],
+) -> bool:
+    if not differences:
+        return False
+    return all(
+        difference.path.endswith(".hp")
+        or difference.path.endswith(".hp_percent")
+        or difference.path.endswith(".condition")
+        for difference in differences
+    )
+
+
 class BeliefDecisionEngine:
     """Choose p2 actions from sanitized public views and hypothetical exact states.
 
@@ -347,6 +419,7 @@ class BeliefDecisionEngine:
         strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
         decision_budget_seconds: float = 8.0,
         conditioning_budget_seconds: float = 8.0,
+        collapse_debug_budget_seconds: float = 15.0,
         rng_sample_batches: tuple[int, ...] = (2, 4),
         recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
         observed_action_rng_multiplier: int = 16,
@@ -369,6 +442,8 @@ class BeliefDecisionEngine:
             raise ValueError("strategic_rng_seeds must not be empty")
         if decision_budget_seconds <= 0 or conditioning_budget_seconds <= 0:
             raise ValueError("budgets must be positive")
+        if collapse_debug_budget_seconds <= 0:
+            raise ValueError("collapse_debug_budget_seconds must be positive")
         if not rng_sample_batches or any(count <= 0 for count in rng_sample_batches):
             raise ValueError("rng_sample_batches must contain positive counts")
         if not recovery_rng_sample_batches or any(
@@ -393,6 +468,7 @@ class BeliefDecisionEngine:
         self.strategic_rng_seeds = strategic_rng_seeds
         self.decision_budget_seconds = decision_budget_seconds
         self.conditioning_budget_seconds = conditioning_budget_seconds
+        self.collapse_debug_budget_seconds = collapse_debug_budget_seconds
         self.rng_sample_batches = rng_sample_batches
         self.recovery_rng_sample_batches = recovery_rng_sample_batches
         self.observed_action_rng_multiplier = observed_action_rng_multiplier
@@ -632,6 +708,253 @@ class BeliefDecisionEngine:
         self.pending_observations.clear()
         self.degraded = False
         return True
+
+    def diagnose_collapse(
+        self,
+        *,
+        particles: tuple[BeliefParticle, ...],
+        ai_choice: str,
+        resolved_opponent_choice: str,
+        previous_view: dict | None,
+        view: dict,
+    ) -> BeliefCollapseDiagnostic:
+        """Explain a zero-match posterior without changing the live belief state."""
+        started = perf_counter()
+        deadline = started + self.collapse_debug_budget_seconds
+        actual = _normalized_public_observation(view)
+        local_rng = random.Random(0xC011A95E + int(view.get("turn", 0)))
+        path_counts: dict[str, int] = {}
+        per_world: dict[str, dict[str, object]] = {}
+        closest: list[CollapseBranchDiagnostic] = []
+        exact_matches = 0
+        generated = 0
+
+        def next_seed() -> str:
+            values = [local_rng.getrandbits(32) for _ in range(4)]
+            return "sodium," + "".join(f"{value:08x}" for value in values)
+
+        def build_diagnostic(
+            *,
+            summary: str,
+            budget_exhausted: bool,
+            error: str | None = None,
+        ) -> BeliefCollapseDiagnostic:
+            worlds = tuple(
+                CollapseWorldDiagnostic(
+                    world_id=world_id,
+                    human_choice_legal=bool(stats["legal"]),
+                    generated_branches=int(stats["generated"]),
+                    closest_mismatch_count=(
+                        int(stats["closest_count"])
+                        if stats["closest_count"] is not None
+                        else None
+                    ),
+                    closest_paths=tuple(stats["closest_paths"]),
+                )
+                for world_id, stats in sorted(per_world.items())
+            )
+            legal_worlds = sum(1 for world in worlds if world.human_choice_legal)
+            return BeliefCollapseDiagnostic(
+                summary=summary,
+                elapsed_seconds=perf_counter() - started,
+                budget_exhausted=budget_exhausted,
+                generated_branches=generated,
+                exact_matches=exact_matches,
+                worlds_tested=len(worlds) if worlds else len(particles),
+                legal_worlds=legal_worlds,
+                illegal_worlds=(len(worlds) - legal_worlds) if worlds else 0,
+                common_mismatch_paths=tuple(
+                    sorted(
+                        path_counts.items(),
+                        key=lambda item: (-item[1], item[0]),
+                    )[:12]
+                ),
+                closest_branches=tuple(closest),
+                worlds=worlds,
+                error=error,
+            )
+
+        def run(worker: HypotheticalSearchWorker) -> BeliefCollapseDiagnostic:
+            nonlocal exact_matches, generated
+            legal_particles: list[tuple[str, BeliefParticle]] = []
+            validator = getattr(worker, "validate_choices", None)
+
+            for index, particle in enumerate(particles, 1):
+                world_id = particle.world_id or particle.history_id or f"particle-{index}"
+                if callable(validator):
+                    validated = validator(
+                        state=particle.state,
+                        side="p1",
+                        candidates=[resolved_opponent_choice],
+                    )
+                    legal = resolved_opponent_choice in validated
+                else:
+                    legal = resolved_opponent_choice in worker.legal_choices(
+                        state=particle.state,
+                        side="p1",
+                    )
+                per_world[world_id] = {
+                    "legal": legal,
+                    "generated": 0,
+                    "closest_count": None,
+                    "closest_paths": (),
+                }
+                if legal:
+                    legal_particles.append((world_id, particle))
+
+            if not legal_particles:
+                return build_diagnostic(
+                    summary="resolved-human-choice-illegal-in-all-particles",
+                    budget_exhausted=False,
+                )
+
+            rounds = 0
+            stop = False
+            while not stop and rounds < 64:
+                for world_id, particle in legal_particles:
+                    if perf_counter() >= deadline - 1.0:
+                        stop = True
+                        break
+
+                    seeds = (next_seed(), next_seed())
+                    branches = [
+                        {
+                            "p1_choice": resolved_opponent_choice,
+                            "p2_choice": ai_choice,
+                            "include_state": True,
+                            "view_side": "p2",
+                            "rng_seed": seed,
+                            **(
+                                {"previews": self.previews}
+                                if self.previews is not None
+                                else {}
+                            ),
+                        }
+                        for seed in seeds
+                    ]
+                    resolved = worker.branch_many(
+                        state=particle.state,
+                        branches=branches,
+                    )
+                    per_world[world_id]["generated"] = (
+                        int(per_world[world_id]["generated"]) + len(resolved)
+                    )
+                    generated += len(resolved)
+
+                    for result in resolved:
+                        state = result.get("state")
+                        if not isinstance(state, dict):
+                            continue
+                        simulated_view = result.get("view")
+                        if not isinstance(simulated_view, dict):
+                            simulated_view = worker.state_view(
+                                state=state,
+                                side="p2",
+                                previews=self.previews,
+                            )
+                        simulated = _normalized_public_observation(simulated_view)
+                        differences = _collapse_differences(actual, simulated)
+
+                        if not differences:
+                            exact_matches += 1
+                            closest.insert(
+                                0,
+                                CollapseBranchDiagnostic(
+                                    world_id=world_id,
+                                    mismatch_count=0,
+                                    differences=(),
+                                ),
+                            )
+                            del closest[5:]
+                            stop = True
+                            break
+
+                        for difference in differences:
+                            path_counts[difference.path] = (
+                                path_counts.get(difference.path, 0) + 1
+                            )
+
+                        mismatch_count = len(differences)
+                        current = per_world[world_id]["closest_count"]
+                        if current is None or mismatch_count < int(current):
+                            per_world[world_id]["closest_count"] = mismatch_count
+                            per_world[world_id]["closest_paths"] = tuple(
+                                difference.path for difference in differences
+                            )
+
+                        closest.append(
+                            CollapseBranchDiagnostic(
+                                world_id=world_id,
+                                mismatch_count=mismatch_count,
+                                differences=differences[:8],
+                            )
+                        )
+                        closest.sort(
+                            key=lambda branch: (
+                                branch.mismatch_count,
+                                branch.world_id,
+                                tuple(
+                                    difference.path
+                                    for difference in branch.differences
+                                ),
+                            )
+                        )
+                        del closest[5:]
+
+                    if stop:
+                        break
+                rounds += 1
+
+            if exact_matches:
+                summary = "exact-match-found-with-extra-rng"
+            elif closest and _hp_only_differences(closest[0].differences):
+                summary = "closest-branch-differs-only-in-hp"
+            else:
+                summary = "no-exact-match; inspect-public-state-differences"
+            return build_diagnostic(
+                summary=summary,
+                budget_exhausted=(
+                    exact_matches == 0
+                    and perf_counter() >= deadline - 1.0
+                ),
+            )
+
+        try:
+            diagnostic, timed_out = self._run_until_deadline(
+                run,
+                deadline=deadline,
+                cleanup_reserve_seconds=0.5,
+            )
+        except Exception as error:
+            return build_diagnostic(
+                summary="collapse-debug-error",
+                budget_exhausted=False,
+                error=f"{type(error).__name__}: {error}",
+            )
+
+        if diagnostic is not None:
+            if timed_out and not diagnostic.budget_exhausted:
+                return BeliefCollapseDiagnostic(
+                    summary=diagnostic.summary,
+                    elapsed_seconds=diagnostic.elapsed_seconds,
+                    budget_exhausted=True,
+                    generated_branches=diagnostic.generated_branches,
+                    exact_matches=diagnostic.exact_matches,
+                    worlds_tested=diagnostic.worlds_tested,
+                    legal_worlds=diagnostic.legal_worlds,
+                    illegal_worlds=diagnostic.illegal_worlds,
+                    common_mismatch_paths=diagnostic.common_mismatch_paths,
+                    closest_branches=diagnostic.closest_branches,
+                    worlds=diagnostic.worlds,
+                    error=diagnostic.error,
+                )
+            return diagnostic
+
+        return build_diagnostic(
+            summary="collapse-debug-budget-exhausted",
+            budget_exhausted=True,
+            error="diagnostic worker did not return before the debug deadline",
+        )
 
     def _fallback_decision(
         self,
@@ -1229,6 +1552,7 @@ class _BeliefBattleCoordinator:
         strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
         decision_budget_seconds: float = 8.0,
         conditioning_budget_seconds: float = 8.0,
+        collapse_debug_budget_seconds: float = 15.0,
         rng_sample_batches: tuple[int, ...] = (2, 4),
         recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
         observed_action_rng_multiplier: int = 16,
@@ -1255,6 +1579,7 @@ class _BeliefBattleCoordinator:
             strategic_rng_seeds=strategic_rng_seeds,
             decision_budget_seconds=decision_budget_seconds,
             conditioning_budget_seconds=conditioning_budget_seconds,
+            collapse_debug_budget_seconds=collapse_debug_budget_seconds,
             rng_sample_batches=rng_sample_batches,
             recovery_rng_sample_batches=recovery_rng_sample_batches,
             observed_action_rng_multiplier=observed_action_rng_multiplier,
@@ -1458,6 +1783,22 @@ class _BeliefBattleCoordinator:
             self._restore_engine_snapshot(snapshot)
             raise
 
+        collapse_diagnostic = None
+        if (
+            not snapshot.degraded
+            and not snapshot.pending_observations
+            and update.degraded
+            and update.matched_branches == 0
+            and self._pending_human_choice is not None
+        ):
+            collapse_diagnostic = self._engine.diagnose_collapse(
+                particles=snapshot.particles,
+                ai_choice=decision.choice,
+                resolved_opponent_choice=self._pending_human_choice,
+                previous_view=snapshot.last_public_view,
+                view=public_view,
+            )
+
         terminal = bool(public_view.get("ended"))
         with self._state_lock:
             self._sealed_decision = None
@@ -1482,6 +1823,7 @@ class _BeliefBattleCoordinator:
             degraded=update.degraded,
             terminal=terminal,
             winner=public_view.get("winner"),
+            collapse_diagnostic=collapse_diagnostic,
         )
 
     def commit_human_action(
@@ -1649,6 +1991,7 @@ class SealedBattleFacade:
         strategic_rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
         decision_budget_seconds: float = 8.0,
         conditioning_budget_seconds: float = 8.0,
+        collapse_debug_budget_seconds: float = 15.0,
         rng_sample_batches: tuple[int, ...] = (2, 4),
         recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
         observed_action_rng_multiplier: int = 16,
@@ -1672,6 +2015,7 @@ class SealedBattleFacade:
             strategic_rng_seeds=strategic_rng_seeds,
             decision_budget_seconds=decision_budget_seconds,
             conditioning_budget_seconds=conditioning_budget_seconds,
+            collapse_debug_budget_seconds=collapse_debug_budget_seconds,
             rng_sample_batches=rng_sample_batches,
             recovery_rng_sample_batches=recovery_rng_sample_batches,
             observed_action_rng_multiplier=observed_action_rng_multiplier,
