@@ -338,11 +338,13 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
                 f"{partial_force}"
             )
 
-        human_wait = coordinator.human_legal_choices()
-        if human_wait != [""]:
+        human_force = coordinator.human_legal_choices()
+        if not human_force:
             raise SystemExit(
-                f"ERROR: human did not wait for partial AI replacement: {human_wait}"
+                "ERROR: partial AI replacement exposed no legal human response"
             )
+        human_choice = "" if "" in human_force else human_force[0]
+
         selected = partial_choices[0]
         coordinator._engine.choose_ai_action = (
             lambda *, legal_live: _decision(selected)
@@ -350,7 +352,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
         forced = coordinator.lock_ai_action()
         forced_result = coordinator.commit_human_action(
             token=forced.token,
-            human_choice="",
+            human_choice=human_choice,
         )
         if forced_result.terminal:
             raise SystemExit(
