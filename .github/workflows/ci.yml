@@ -125,6 +125,10 @@ jobs:
         shell: pwsh
         run: .\public-ledger-smoke.ps1
 
+      - name: Authoritative public event conditioning smoke test
+        shell: pwsh
+        run: .\public-event-conditioning-smoke.ps1
+
       - name: Persistent belief battle controller smoke test
         shell: pwsh
         run: .\belief-controller-smoke.ps1
