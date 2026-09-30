@@ -538,6 +538,32 @@ function validateChoices(state, sideId, candidates) {
   return [...legal].sort();
 }
 
+function isPubliclyStructurallySelectable(choice) {
+  const commands = choice.split(",").map((command) => command.trim());
+  const switchSlots = [];
+  let transformationCount = 0;
+
+  for (const command of commands) {
+    const tokens = command.split(/\s+/);
+    if (tokens[0] === "switch" && /^\d+$/.test(tokens[1] || "")) {
+      switchSlots.push(tokens[1]);
+    }
+    transformationCount += tokens.filter((token) =>
+      token === "mega" ||
+      token === "megax" ||
+      token === "megay" ||
+      token === "ultra"
+    ).length;
+  }
+
+  // One bench Pokemon cannot fill two active slots, and one side cannot spend
+  // the same once-per-battle transformation twice in a joint command. These
+  // constraints depend only on the side's public request, not hidden opponent state.
+  if (new Set(switchSlots).size !== switchSlots.length) return false;
+  if (transformationCount > 1) return false;
+  return true;
+}
+
 function publicChoiceCandidates(battle, sideId) {
   if (sideId !== "p1" && sideId !== "p2") {
     throw new Error("side must be p1 or p2");
@@ -545,7 +571,9 @@ function publicChoiceCandidates(battle, sideId) {
   if (battle.ended) return [];
   const side = sideId === "p1" ? battle.p1 : battle.p2;
   const request = side.activeRequest;
-  const choices = proposedChoices(battle, side);
+  const choices = proposedChoices(battle, side).filter(
+    isPubliclyStructurallySelectable,
+  );
 
   // Never probe a maybe-trapped slot against the exact hidden live state before
   // sealing. Showdown deliberately exposes maybeTrapped when switching might be
