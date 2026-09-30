@@ -15,6 +15,7 @@ from champions_practice.belief_controller import (
     BeliefDecision,
     SealedBattleFacade,
     SealedTurnResult,
+    SealedTurnState,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.demo_fixture import (
