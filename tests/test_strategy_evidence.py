@@ -1,4 +1,7 @@
-from champions_practice.belief_search import ExactBeliefWorldState
+from champions_practice.belief_search import (
+    BeliefResponsePruning,
+    ExactBeliefWorldState,
+)
 from champions_practice.strategy import (
     DesiredBoard,
     FieldControlAssessment,
@@ -12,6 +15,7 @@ from champions_practice.strategy import (
 from dataclasses import replace
 
 from champions_practice.strategy_evidence import (
+    ProtectedTacticalEvidence,
     filter_supported_plans,
     format_strategic_plan_probe,
     plan_is_one_turn_supported,
@@ -223,6 +227,58 @@ class SharedEvidenceWorker:
                 }
             )
         return results
+
+
+def test_shared_strategy_evidence_extends_protected_tactical_context(
+    monkeypatch,
+) -> None:
+    worker = SharedEvidenceWorker()
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "protected"},
+            weight=1.0,
+            label="world-a",
+        ),
+    )
+    protected_reply = worker.responses[0]
+    strategic_reply = worker.responses[1]
+
+    def fake_response_pruning(*args, **kwargs):
+        return BeliefResponsePruning(
+            legal_response_count=len(worker.responses),
+            strategic_response_count=1,
+            response_shortlist=(strategic_reply,),
+            screening_branch_count=3,
+            screening_seconds=0.0,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.strategy_evidence.shortlist_belief_responses",
+        fake_response_pruning,
+    )
+    protected = ProtectedTacticalEvidence(
+        response_shortlists=((protected_reply,),),
+        rng_seeds=("protected-failure",),
+    )
+
+    shared = prepare_shared_strategic_responses(
+        worker,
+        worlds=worlds,
+        side="p1",
+        candidate_references=worker.choices,
+        response_limit=1,
+        rng_seeds=("strategic-sample",),
+        protected=protected,
+    )
+
+    assert shared.response_shortlists == (
+        (protected_reply, strategic_reply),
+    )
+    assert shared.rng_seeds == (
+        "protected-failure",
+        "strategic-sample",
+    )
+    assert shared.screening_branch_count == 3
 
 
 def test_competing_plans_share_response_families_and_rng_futures() -> None:
