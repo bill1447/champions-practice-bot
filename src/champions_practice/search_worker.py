@@ -415,6 +415,10 @@ class ShowdownSearchWorker:
                     process.wait(timeout=0.25)
                 except subprocess.TimeoutExpired:
                     process.kill()
+                    try:
+                        process.wait(timeout=0.25)
+                    except subprocess.TimeoutExpired:
+                        pass
             raise
 
     def _stderr_text(self) -> str:
