@@ -18,7 +18,10 @@ from champions_practice.belief_controller import (
 from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
-from champions_practice.search_worker import HypotheticalSearchWorker
+from champions_practice.search_worker import (
+    HypotheticalSearchWorker,
+    ShowdownWorkerTimeout,
+)
 from champions_practice.strategy_tactics import StrategicCandidateGuidance
 
 
@@ -1264,6 +1267,88 @@ def test_concurrent_repeated_commit_submits_once(monkeypatch) -> None:
     assert controller.turn_state is SealedTurnState.RESOLVED
 
 
+class _TimeoutAfterAdvanceWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.public_view = {
+            **self.public_view,
+            "turn": 2,
+        }
+        raise ShowdownWorkerTimeout(
+            "session_choose",
+            mutating=True,
+        )
+
+
+def test_mutating_timeout_enters_unknown_state_and_reconciles_without_retry(
+    monkeypatch,
+) -> None:
+    worker = _TimeoutAfterAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="unknown outcome"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.UNKNOWN
+    assert len(worker.submissions) == 1
+
+    recovered = controller.reconcile_failed_turn(token=ready.token)
+
+    assert recovered.decision.choice == "move secret-ai"
+    assert controller.turn_state is SealedTurnState.RESOLVED
+    assert len(worker.submissions) == 1
+
+
+class _TimeoutBeforeAdvanceWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        raise ShowdownWorkerTimeout(
+            "session_choose",
+            mutating=True,
+        )
+
+
+def test_unknown_timeout_reconciliation_requires_proof_before_retry(
+    monkeypatch,
+) -> None:
+    worker = _TimeoutBeforeAdvanceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="unknown outcome"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.UNKNOWN
+    with pytest.raises(RuntimeError, match="did not advance"):
+        controller.reconcile_failed_turn(token=ready.token)
+
+    assert controller.turn_state is SealedTurnState.LOCKED
+    assert len(worker.submissions) == 1
+
+
 class _FailBeforeAdvanceWorker(_CoordinatorWorker):
     def __init__(self) -> None:
         super().__init__()
@@ -1307,6 +1392,62 @@ def test_submission_failure_before_advance_retains_lock_for_retry(monkeypatch) -
 
     assert result.decision.choice == "move secret-ai"
     assert controller.turn_state is SealedTurnState.RESOLVED
+
+
+class _CloseFailureWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.worker_closed = False
+
+    def close_session(self, session_id):
+        raise RuntimeError("session close failed")
+
+    def close(self):
+        self.worker_closed = True
+
+
+def test_coordinator_always_closes_worker_when_session_close_fails() -> None:
+    worker = _CloseFailureWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+
+    with pytest.raises(RuntimeError, match="session close failed"):
+        controller.close()
+
+    assert worker.worker_closed is True
+    assert controller.turn_state is SealedTurnState.CLOSED
+
+
+def test_invalid_facade_configuration_is_rejected_before_worker_spawn(
+    monkeypatch,
+) -> None:
+    constructed = []
+
+    def forbidden_worker(*args, **kwargs):
+        constructed.append((args, kwargs))
+        raise AssertionError("worker should not be constructed")
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.ShowdownSearchWorker",
+        forbidden_worker,
+    )
+
+    with pytest.raises(ValueError, match="max_particles"):
+        SealedBattleFacade(
+            battle_format="test",
+            ai_team="team",
+            ai_preview_choice="team 1234",
+            opponent_priors={},
+            max_particles=0,
+        )
+
+    assert constructed == []
 
 
 class _FailAfterAdvanceWorker(_CoordinatorWorker):
