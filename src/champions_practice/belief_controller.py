@@ -1759,7 +1759,7 @@ class _BeliefBattleCoordinator:
         self._sealed_decision: tuple[str, BeliefDecision] | None = None
         self._pending_human_choice: str | None = None
         self._pending_public_view: dict | None = None
-        self._pre_submit_signature: dict | None = None
+        self._pre_submit_signature: str | None = None
 
     @property
     def turn_state(self) -> SealedTurnState:
@@ -2222,24 +2222,24 @@ class SealedBattleFacade:
             )
             self.__coordinator = _BeliefBattleCoordinator(
                 worker,
-            battle_format=battle_format,
-            ai_team=ai_team,
-            opponent_priors=opponent_priors,
-            world_limit=world_limit,
-            particles_per_world=particles_per_world,
-            max_particles=max_particles,
-            candidate_limit=candidate_limit,
-            response_limit=response_limit,
-            strategic_plan_limit=strategic_plan_limit,
-            strategic_candidate_limit=strategic_candidate_limit,
-            strategic_response_limit=strategic_response_limit,
-            strategic_rng_seeds=strategic_rng_seeds,
-            decision_budget_seconds=decision_budget_seconds,
-            conditioning_budget_seconds=conditioning_budget_seconds,
-            collapse_debug_budget_seconds=collapse_debug_budget_seconds,
-            rng_sample_batches=rng_sample_batches,
-            recovery_rng_sample_batches=recovery_rng_sample_batches,
-            observed_action_rng_multiplier=observed_action_rng_multiplier,
+                battle_format=battle_format,
+                ai_team=ai_team,
+                opponent_priors=opponent_priors,
+                world_limit=world_limit,
+                particles_per_world=particles_per_world,
+                max_particles=max_particles,
+                candidate_limit=candidate_limit,
+                response_limit=response_limit,
+                strategic_plan_limit=strategic_plan_limit,
+                strategic_candidate_limit=strategic_candidate_limit,
+                strategic_response_limit=strategic_response_limit,
+                strategic_rng_seeds=strategic_rng_seeds,
+                decision_budget_seconds=decision_budget_seconds,
+                conditioning_budget_seconds=conditioning_budget_seconds,
+                collapse_debug_budget_seconds=collapse_debug_budget_seconds,
+                rng_sample_batches=rng_sample_batches,
+                recovery_rng_sample_batches=recovery_rng_sample_batches,
+                observed_action_rng_multiplier=observed_action_rng_multiplier,
                 particle_seed=particle_seed,
                 fallback_selector=fallback_selector,
             )
