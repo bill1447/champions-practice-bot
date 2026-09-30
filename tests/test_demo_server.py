@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from threading import Thread
 
 from champions_practice.belief_controller import (
     BeliefCollapseDiagnostic,
@@ -29,6 +30,7 @@ class FakeFacade:
         self.turn_state = SealedTurnState.NEW
         self.closed = False
         self.submissions: list[tuple[str, str]] = []
+        self.transport_aborted = False
         self.view = {
             "turn": 0,
             "ended": False,
@@ -141,6 +143,9 @@ class FakeFacade:
     def reconcile_failed_turn(self, *, token: str):
         raise AssertionError("reconciliation was not expected")
 
+    def abort_transport(self):
+        self.transport_aborted = True
+
     def close(self):
         self.closed = True
         self.turn_state = SealedTurnState.CLOSED
@@ -218,6 +223,33 @@ def test_demo_session_does_not_expose_locked_ai_decision_or_token() -> None:
         },
     ]
     assert facade.submissions == [("opaque-server-token", "move human")]
+
+
+def test_demo_unknown_outcome_is_reconcilable_and_transport_abort_is_lock_free() -> None:
+    facade = FakeFacade()
+    session = DemoBattleSession(facade_factory=lambda: facade)
+    session.start()
+    session.commit_preview("team 1234")
+    session.lock_ai_action()
+
+    facade.turn_state = SealedTurnState.UNKNOWN
+    snapshot = session.snapshot()
+
+    assert snapshot["turn_state"] == "unknown"
+    assert snapshot["can_reconcile"] is True
+
+    results = []
+    session._lock.acquire()
+    try:
+        thread = Thread(target=lambda: results.append(session.abort_transport()))
+        thread.start()
+        thread.join(timeout=0.25)
+        assert not thread.is_alive()
+    finally:
+        session._lock.release()
+
+    assert results == [{"aborted": True}]
+    assert facade.transport_aborted is True
 
 
 def test_starting_new_demo_battle_closes_old_session_and_clears_trace() -> None:
