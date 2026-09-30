@@ -331,6 +331,7 @@ class ShowdownSearchWorker:
         startup_deadline: float | None = None,
         startup_timeout_seconds: float = 10.0,
         request_timeout_seconds: float = 30.0,
+        worker_script: str | Path | None = None,
     ):
         if project_root is None:
             project_root = Path(__file__).resolve().parents[2]
@@ -347,7 +348,11 @@ class ShowdownSearchWorker:
             self.project_root,
             deadline=startup_deadline,
         )
-        self.script = self.project_root / "tools" / "showdown-search-worker.js"
+        self.script = (
+            Path(worker_script)
+            if worker_script is not None
+            else self.project_root / "tools" / "showdown-search-worker.js"
+        )
         self.showdown_battle = (
             self.project_root
             / "external"
