@@ -540,6 +540,7 @@ class BeliefDecisionEngine:
         view: dict,
         previous_view: dict[str, object] | None = None,
         batches: tuple[int, ...],
+        deadline: float | None = None,
     ) -> ParticleUpdate:
         generated = 0
         deduplicated = 0
@@ -551,28 +552,42 @@ class BeliefDecisionEngine:
             )
             else 1
         )
+
+        # Publicly observed moves reduce response uncertainty but can make exact
+        # damage/RNG matching sparse. The multiplier is therefore additional
+        # sampling coverage, not permission to create one enormous indivisible
+        # branch batch. Small chunks let us stop as soon as any continuation
+        # matches and let the caller recover control before its hard deadline.
         for sample_count in batches:
-            effective_count = sample_count * multiplier
-            seeds = tuple(self._particle_seed() for _ in range(effective_count))
-            update = condition_particles(
-                worker,
-                particles=particles,
-                ai_side="p2",
-                ai_choice=ai_choice,
-                actual_public_view=view,
-                previous_public_view=previous_view,
-                rng_seeds=seeds,
-                previews=self.previews,
-            )
-            generated += update.generated
-            deduplicated += update.deduplicated
-            if update.particles:
-                return ParticleUpdate(
-                    particles=update.particles,
-                    generated=generated,
-                    matched=update.matched,
-                    deduplicated=deduplicated,
+            for _ in range(multiplier):
+                if (
+                    deadline is not None
+                    and perf_counter() >= deadline - 0.5
+                ):
+                    return ParticleUpdate((), generated, 0, deduplicated)
+
+                seeds = tuple(
+                    self._particle_seed() for _ in range(sample_count)
                 )
+                update = condition_particles(
+                    worker,
+                    particles=particles,
+                    ai_side="p2",
+                    ai_choice=ai_choice,
+                    actual_public_view=view,
+                    previous_public_view=previous_view,
+                    rng_seeds=seeds,
+                    previews=self.previews,
+                )
+                generated += update.generated
+                deduplicated += update.deduplicated
+                if update.particles:
+                    return ParticleUpdate(
+                        particles=update.particles,
+                        generated=generated,
+                        matched=update.matched,
+                        deduplicated=deduplicated,
+                    )
         return ParticleUpdate((), generated, 0, deduplicated)
 
     def _recover_pending(self, *, deadline: float | None = None) -> bool:
@@ -581,6 +596,9 @@ class BeliefDecisionEngine:
 
         starting_particles = self.particles
         pending = tuple(self.pending_observations)
+        recovery_deadline = perf_counter() + self.conditioning_budget_seconds
+        if deadline is not None:
+            recovery_deadline = min(recovery_deadline, deadline)
 
         def recover(worker: HypotheticalSearchWorker):
             particles = starting_particles
@@ -592,6 +610,7 @@ class BeliefDecisionEngine:
                     view=view,
                     previous_view=previous_view,
                     batches=self.recovery_rng_sample_batches,
+                    deadline=recovery_deadline,
                 )
                 if not update.particles:
                     return None
@@ -602,9 +621,6 @@ class BeliefDecisionEngine:
                 )
             return particles
 
-        recovery_deadline = perf_counter() + self.conditioning_budget_seconds
-        if deadline is not None:
-            recovery_deadline = min(recovery_deadline, deadline)
         recovered, timed_out = self._run_until_deadline(
             recover,
             deadline=recovery_deadline,
@@ -1124,6 +1140,9 @@ class BeliefDecisionEngine:
         self.last_public_view = view
 
         conditioning_started = perf_counter()
+        conditioning_deadline = (
+            conditioning_started + self.conditioning_budget_seconds
+        )
 
         if self.pending_observations:
             self.pending_observations.append(
@@ -1144,14 +1163,12 @@ class BeliefDecisionEngine:
                     view=view,
                     previous_view=previous_view,
                     batches=self.rng_sample_batches,
+                    deadline=conditioning_deadline,
                 )
 
             update, timed_out = self._run_until_deadline(
                 run_conditioning,
-                deadline=(
-                    conditioning_started
-                    + self.conditioning_budget_seconds
-                ),
+                deadline=conditioning_deadline,
             )
             conditioning_seconds = perf_counter() - conditioning_started
 
