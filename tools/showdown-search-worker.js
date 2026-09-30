@@ -72,13 +72,7 @@ function canonicalProtocolIdentity(value) {
   return toId(text);
 }
 
-const PUBLIC_EXECUTION_EVENTS = new Set([
-  // Public action-outcome evidence is distinct from the selected command. A
-  // command may be selected yet prevented (paralysis/flinch/etc.), or may execute
-  // and then fail/miss/be blocked. Preserve those public outcomes explicitly so
-  // exact resolved commands cannot substitute for proof that an action happened.
-  "move",
-  "cant",
+const PUBLIC_ACTION_OUTCOMES = new Set([
   "-fail",
   "-miss",
   "-immune",
@@ -86,30 +80,94 @@ const PUBLIC_EXECUTION_EVENTS = new Set([
   "-block",
 ]);
 
-function canonicalPublicExecutionEvent(parts) {
-  const event = parts[1];
-  if (!PUBLIC_EXECUTION_EVENTS.has(event)) return null;
+function protocolSlotIdentity(value) {
+  const slot = String(value || "").split(":", 1)[0];
+  if (!/^p[12][a-z]$/.test(slot)) return null;
+  return {
+    side: slot.slice(0, 2),
+    slot: slot.charCodeAt(2) - "a".charCodeAt(0) + 1,
+  };
+}
 
-  if (event === "move") {
-    const canonical = [
-      event,
-      canonicalProtocolIdentity(parts[2]),
-      toId(parts[3]),
-      canonicalProtocolIdentity(parts[4]),
-    ];
-    for (const value of parts.slice(5)) {
-      const normalized = canonicalProtocolIdentity(value);
-      if (normalized) canonical.push(normalized);
+function publicExecutionEventDelta(battle, sideId) {
+  const opponentPrefix = sideId === "p1" ? "p2" : "p1";
+  const channel = sideId === "p1" ? 1 : 2;
+  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
+  let logTurn = 0;
+  let currentAction = null;
+  const byTurn = new Map();
+
+  function turnActions() {
+    if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
+    return byTurn.get(logTurn);
+  }
+
+  for (const line of visibleLog) {
+    const parts = line.split("|");
+    const event = parts[1];
+
+    if (event === "turn") {
+      const parsed = Number(parts[2]);
+      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
+      currentAction = null;
+      continue;
     }
-    return canonical;
+    if (logTurn <= 0) continue;
+
+    if (event === "move") {
+      currentAction = null;
+      const actor = protocolSlotIdentity(parts[2]);
+      if (!actor || actor.side !== opponentPrefix) continue;
+      if (parts.slice(5).some((part) => String(part).startsWith("[from]"))) {
+        continue;
+      }
+
+      const move = toId(parts[3]);
+      if (!move) continue;
+      currentAction = {
+        slot: actor.slot,
+        outcome: "executed",
+        move,
+        effects: [],
+      };
+      turnActions().push(currentAction);
+      continue;
+    }
+
+    if (event === "cant") {
+      currentAction = null;
+      const actor = protocolSlotIdentity(parts[2]);
+      if (!actor || actor.side !== opponentPrefix) continue;
+      currentAction = {
+        slot: actor.slot,
+        outcome: "prevented",
+        reason: canonicalProtocolIdentity(parts[3]),
+        effects: [],
+      };
+      turnActions().push(currentAction);
+      continue;
+    }
+
+    if (PUBLIC_ACTION_OUTCOMES.has(event) && currentAction !== null) {
+      if (!currentAction.effects.includes(event)) {
+        currentAction.effects.push(event);
+      }
+    }
   }
 
-  const canonical = [event];
-  for (const value of parts.slice(2)) {
-    const normalized = canonicalProtocolIdentity(value);
-    if (normalized) canonical.push(normalized);
-  }
-  return canonical;
+  const turns = [...byTurn.keys()].sort((left, right) => right - left);
+  if (!turns.length) return { turn: null, actions: [] };
+  const turn = turns[0];
+  const actions = byTurn.get(turn)
+    .map((action) => ({
+      ...action,
+      effects: action.effects.slice().sort(),
+    }))
+    // Execution evidence answers what happened to each selected opponent slot.
+    // Do not make total move order part of this signature; speed-order evidence is
+    // a separate concern and would over-constrain otherwise valid reconstructions.
+    .sort((left, right) => left.slot - right.slot);
+  return { turn, actions };
 }
 
 function latestPublicTurnDelta(battle, sideId, canonicalizer) {
@@ -138,14 +196,6 @@ function latestPublicTurnDelta(battle, sideId, canonicalizer) {
   if (!turns.length) return { turn: null, events: [] };
   const turn = turns[0];
   return { turn, events: byTurn.get(turn) };
-}
-
-function publicExecutionEventDelta(battle, sideId) {
-  return latestPublicTurnDelta(
-    battle,
-    sideId,
-    canonicalPublicExecutionEvent,
-  );
 }
 
 const PUBLIC_MECHANICS_EVENTS = new Set([
@@ -491,9 +541,10 @@ function playerView(battle, sideId = "p1", previews = null) {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
     opponent_last_actions: publicLastOpponentActions(battle, sideId),
-    // Selected commands are not proof of execution. This channel-sanitized ledger
-    // records whether public actions actually executed or were visibly prevented,
-    // failed, missed, blocked, or found no target.
+    // Selected commands are not proof of execution. This channel-sanitized,
+    // opponent-scoped ledger records per-slot execution/prevention and public
+    // failure effects without treating animation targets or total speed order as
+    // authoritative command semantics.
     public_execution_delta: publicExecutionEventDelta(battle, sideId),
     // This is derived only from the requesting side's Showdown-visible channel.
     // It makes publicly observed mechanics transitions (for example Substitute
