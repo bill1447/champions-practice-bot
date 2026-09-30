@@ -482,7 +482,12 @@ function moveSlotCandidates(battle, request, slot) {
 
 function switchCandidates(request) {
   const switches = availableSwitches(request);
-  return request.forceSwitch.map((mustSwitch) => mustSwitch ? switches : ["pass"]);
+  const required = request.forceSwitch.filter(Boolean).length;
+  const allowVacancy = switches.length < required;
+  return request.forceSwitch.map((mustSwitch) => {
+    if (!mustSwitch) return ["pass"];
+    return allowVacancy ? [...switches, "pass"] : switches;
+  });
 }
 
 function proposedChoices(battle, side) {
