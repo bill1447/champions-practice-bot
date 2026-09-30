@@ -39,10 +39,11 @@ def public_observation_signature(view: dict[str, Any]) -> str:
     """
     normalized = copy.deepcopy(view)
     # The selected opponent command history is evidence used to prune replay
-    # candidates, not part of the resulting-state projection. In contrast,
-    # public_event_delta is intentionally retained: it is a channel-sanitized
-    # mechanics observation and prevents mechanically different transitions such
-    # as Substitute surviving versus breaking from collapsing to one signature.
+    # candidates, not part of the resulting-state projection. In contrast, both
+    # public_execution_delta and public_event_delta are authoritative public
+    # transition evidence. The former distinguishes selected commands from what
+    # actually executed/failed/was prevented; the latter preserves visible
+    # mechanics transitions such as Substitute surviving versus breaking.
     normalized.pop("opponent_last_actions", None)
     player = normalized.get("player")
     opponent = normalized.get("opponent")
@@ -480,7 +481,10 @@ def condition_particles(
         if resolved_opponent_choice is not None:
             # The live human command is private until the sealed AI choice resolves.
             # After resolution it is public history, so use it directly rather than
-            # reconstructing moves/switches/targets from protocol observations.
+            # reconstructing selected moves/switches/targets from protocol observations.
+            # This proves only selection/legality. The resulting branch must still match
+            # public_execution_delta, so a selected move that was visibly prevented or
+            # failed cannot masquerade as a successfully executed action.
             if callable(validator):
                 responses = tuple(
                     validator(
