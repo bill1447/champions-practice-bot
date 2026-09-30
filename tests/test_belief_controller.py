@@ -628,6 +628,8 @@ def _patch_live_strategy_pipeline(
     baseline_choices=("move safe",),
     guided_choices=("move safe",),
     final_choice="move safe",
+    baseline_response="move counter",
+    strategic_response="move counter",
 ):
     plan = StrategicPlan(
         name="preserve-key",
@@ -672,18 +674,34 @@ def _patch_live_strategy_pipeline(
         "champions_practice.belief_controller.probe_strategic_plan",
         fake_probe,
     )
-    shared_responses = SimpleNamespace(
-        response_shortlists=(("move counter",),),
-        rng_seeds=SCREENING_RNG_SEEDS,
-        screening_branch_count=7,
-    )
-
     def fake_shared_responses(*args, **kwargs):
         seen["shared_candidate_references"] = kwargs.get(
             "candidate_references"
         )
         seen["shared_response_limit"] = kwargs.get("response_limit")
         seen["shared_rng_seeds"] = kwargs.get("rng_seeds")
+        protected = kwargs.get("protected")
+        seen["protected_tactical"] = protected
+        protected_shortlists = (
+            protected.response_shortlists
+            if protected is not None
+            else ((),)
+        )
+        response_shortlists = tuple(
+            tuple(dict.fromkeys((*responses, strategic_response)))
+            for responses in protected_shortlists
+        )
+        protected_rng = protected.rng_seeds if protected is not None else ()
+        rng_seeds = tuple(
+            dict.fromkeys((*protected_rng, *kwargs.get("rng_seeds", ())))
+        )
+        shared_responses = SimpleNamespace(
+            response_shortlists=response_shortlists,
+            rng_seeds=rng_seeds,
+            screening_branch_count=7,
+        )
+        seen["shared_return_rng_seeds"] = rng_seeds
+        seen["shared_return_responses"] = response_shortlists
         return shared_responses
 
     monkeypatch.setattr(
@@ -728,11 +746,21 @@ def _patch_live_strategy_pipeline(
         )
         is_final = kwargs.get("response_shortlists") is not None
         choice = final_choice if is_final else baseline_choices[0]
+        evaluated = tuple(kwargs.get("choices") or (choice,))
         return SimpleNamespace(
             chosen=SimpleNamespace(choice=choice),
-            evaluated_choices=tuple(kwargs.get("choices") or (choice,)),
+            ranking=tuple(
+                SimpleNamespace(choice=candidate)
+                for candidate in evaluated
+            ),
+            evaluated_choices=evaluated,
             response_screening_branch_count=0 if is_final else 3,
             branch_count=4,
+            response_shortlists=(
+                kwargs.get("response_shortlists")
+                if is_final
+                else ((baseline_response,),)
+            ),
         )
 
     monkeypatch.setattr(
@@ -986,6 +1014,83 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert seen["search_response_shortlists"][1] == (("move counter",),)
     assert decision.branch_count == 33
 
+
+
+def test_strategy_preserves_known_tactical_response_in_final_union(
+    monkeypatch,
+) -> None:
+    engine = _decision_engine()
+    _, _, _, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+        baseline_choices=("move baseline",),
+        guided_choices=("move guided",),
+        final_choice="move baseline",
+        baseline_response="move known-counter",
+        strategic_response="move new-counter",
+    )
+
+    decision = engine.choose_ai_action(
+        legal_live=["move baseline", "move guided"],
+    )
+
+    assert seen["protected_tactical"].response_shortlists == (
+        ("move known-counter",),
+    )
+    assert seen["shared_return_responses"] == (
+        ("move known-counter", "move new-counter"),
+    )
+    assert seen["search_response_shortlists"][-1] == (
+        ("move known-counter", "move new-counter"),
+    )
+    assert decision.choice == "move baseline"
+
+
+def test_strategy_preserves_repeated_protect_rng_evidence(monkeypatch) -> None:
+    engine = _decision_engine()
+    engine.particles = (
+        BeliefParticle(
+            {
+                "id": "protect-chain",
+                "sides": [
+                    {"active": [], "pokemon": []},
+                    {
+                        "active": ["p2a"],
+                        "pokemon": [
+                            {
+                                "position": 0,
+                                "volatiles": {"stall": {}},
+                            }
+                        ],
+                    },
+                ],
+            },
+            1.0,
+            world_id="world-1",
+            history_id="rng-1",
+        ),
+    )
+    protect = "move protect"
+    safe = "move safe"
+    _, _, _, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+        baseline_choices=(protect, safe),
+        guided_choices=(safe,),
+        final_choice=safe,
+    )
+
+    decision = engine.choose_ai_action(legal_live=[protect, safe])
+
+    assert seen["protected_tactical"].rng_seeds == FINAL_RNG_SEEDS
+    assert seen["shared_return_rng_seeds"] == FINAL_RNG_SEEDS
+    assert seen["search_rng_seeds"] == [
+        None,
+        FINAL_RNG_SEEDS,
+        FINAL_RNG_SEEDS,
+    ]
+    assert decision.choice == safe
+    assert decision.strategic_rng_sample_count == len(FINAL_RNG_SEEDS)
 
 
 def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence(

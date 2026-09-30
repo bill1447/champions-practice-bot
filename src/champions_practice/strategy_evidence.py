@@ -36,6 +36,14 @@ class PlanProbeCandidate:
 
 
 @dataclass(frozen=True)
+class ProtectedTacticalEvidence:
+    """Completed tactical evidence that later strategy analysis may only extend."""
+
+    response_shortlists: tuple[tuple[str, ...], ...]
+    rng_seeds: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
 class SharedStrategicResponses:
     response_shortlists: tuple[tuple[str, ...], ...]
     rng_seeds: tuple[str, ...]
@@ -532,8 +540,9 @@ def prepare_shared_strategic_responses(
     candidate_references: tuple[str, ...],
     response_limit: int,
     rng_seeds: tuple[str, ...],
+    protected: ProtectedTacticalEvidence | None = None,
 ) -> SharedStrategicResponses:
-    """Prune one common opponent response set per world for all competing plans."""
+    """Build shared strategy evidence without weakening completed tactical evidence."""
     if not worlds:
         raise ValueError("worlds must not be empty")
     if not candidate_references:
@@ -542,17 +551,52 @@ def prepare_shared_strategic_responses(
         raise ValueError("response_limit must be positive")
     if not rng_seeds:
         raise ValueError("strategic rng_seeds must not be empty")
+    if (
+        protected is not None
+        and len(protected.response_shortlists) != len(worlds)
+    ):
+        raise ValueError(
+            "protected tactical response sets must align one-to-one with worlds"
+        )
+
+    def ordered_union(*groups: tuple[str, ...]) -> tuple[str, ...]:
+        seen: set[str] = set()
+        values: list[str] = []
+        for group in groups:
+            for value in group:
+                if value in seen:
+                    continue
+                seen.add(value)
+                values.append(value)
+        return tuple(values)
 
     started = perf_counter()
     opponent: SideId = "p2" if side == "p1" else "p1"
     shortlists: list[tuple[str, ...]] = []
     screening_branch_count = 0
 
-    for world in worlds:
+    for world_index, world in enumerate(worlds):
         legal_responses = worker.legal_choices(
             state=world.state,
             side=opponent,
         )
+        protected_responses = (
+            protected.response_shortlists[world_index]
+            if protected is not None
+            else ()
+        )
+        legal_set = set(legal_responses)
+        missing_protected = tuple(
+            response
+            for response in protected_responses
+            if response not in legal_set
+        )
+        if missing_protected:
+            raise ValueError(
+                "protected tactical response is no longer legal in belief world "
+                f"{world_index}: {missing_protected!r}"
+            )
+
         pruning = shortlist_belief_responses(
             worker,
             world=world,
@@ -562,12 +606,20 @@ def prepare_shared_strategic_responses(
             legal_responses=legal_responses,
             reference_limit=len(candidate_references),
         )
-        shortlists.append(pruning.response_shortlist)
+        # response_limit bounds newly proposed strategic replies. Protected replies
+        # are mandatory evidence and are never displaced by the strategic cap.
+        shortlists.append(
+            ordered_union(
+                tuple(protected_responses),
+                tuple(pruning.response_shortlist),
+            )
+        )
         screening_branch_count += pruning.screening_branch_count
 
+    protected_rng = protected.rng_seeds if protected is not None else ()
     return SharedStrategicResponses(
         response_shortlists=tuple(shortlists),
-        rng_seeds=rng_seeds,
+        rng_seeds=ordered_union(tuple(protected_rng), tuple(rng_seeds)),
         screening_branch_count=screening_branch_count,
         total_seconds=perf_counter() - started,
     )

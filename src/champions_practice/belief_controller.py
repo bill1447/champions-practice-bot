@@ -36,6 +36,7 @@ from champions_practice.observation_beliefs import (
 from champions_practice.search_worker import HypotheticalSearchWorker, ShowdownSearchWorker
 from champions_practice.strategy import assess_strategic_position, generate_strategic_plans
 from champions_practice.strategy_evidence import (
+    ProtectedTacticalEvidence,
     filter_supported_plans,
     prepare_shared_strategic_responses,
     probe_strategic_plan,
@@ -1145,6 +1146,7 @@ class BeliefDecisionEngine:
             tactical_extra_branch_count: int = 0,
             strategic_probe_count: int = 0,
             strategic_branch_count: int = 0,
+            strategic_rng_sample_count: int | None = None,
         ) -> BeliefDecision:
             diagnostics = search_diagnostics(search)
             return BeliefDecision(
@@ -1161,9 +1163,13 @@ class BeliefDecisionEngine:
                 strategic_probe_count=strategic_probe_count,
                 strategic_branch_count=strategic_branch_count,
                 strategic_rng_sample_count=(
-                    len(self.strategic_rng_seeds)
-                    if strategic_probe_count
-                    else 0
+                    strategic_rng_sample_count
+                    if strategic_rng_sample_count is not None
+                    else (
+                        len(self.strategic_rng_seeds)
+                        if strategic_probe_count
+                        else 0
+                    )
                 ),
                 **diagnostics,
             )
@@ -1207,6 +1213,9 @@ class BeliefDecisionEngine:
             baseline_search,
         )
         tactical_search = baseline_search
+        protected_tactical = ProtectedTacticalEvidence(
+            response_shortlists=baseline_search.response_shortlists,
+        )
         tactical_extra_branch_count = 0
         protect_risk_branch_count = 0
 
@@ -1251,6 +1260,10 @@ class BeliefDecisionEngine:
                 and protect_risk_search.chosen.choice in legal_live
             ):
                 tactical_search = protect_risk_search
+                protected_tactical = ProtectedTacticalEvidence(
+                    response_shortlists=protect_risk_search.response_shortlists,
+                    rng_seeds=FINAL_RNG_SEEDS,
+                )
                 protect_risk_branch_count = (
                     protect_risk_search.response_screening_branch_count
                     + protect_risk_search.branch_count
@@ -1326,7 +1339,29 @@ class BeliefDecisionEngine:
                 candidate_references=shared_candidate_references,
                 response_limit=self.response_limit,
                 rng_seeds=self.strategic_rng_seeds,
+                protected=protected_tactical,
             )
+            if len(shared_responses.response_shortlists) != len(
+                protected_tactical.response_shortlists
+            ):
+                raise RuntimeError(
+                    "strategy response evidence no longer aligns with tactical worlds"
+                )
+            for protected_responses, shared_world_responses in zip(
+                protected_tactical.response_shortlists,
+                shared_responses.response_shortlists,
+                strict=True,
+            ):
+                if not set(protected_responses).issubset(shared_world_responses):
+                    raise RuntimeError(
+                        "strategy response evidence dropped a protected tactical reply"
+                    )
+            if not set(protected_tactical.rng_seeds).issubset(
+                shared_responses.rng_seeds
+            ):
+                raise RuntimeError(
+                    "strategy RNG evidence dropped a protected tactical sample"
+                )
             strategic_branch_count += shared_responses.screening_branch_count
 
             probes = []
@@ -1363,6 +1398,7 @@ class BeliefDecisionEngine:
                     None,
                     len(probes),
                     strategic_branch_count,
+                    len(shared_responses.rng_seeds),
                 )
 
             selected_context = next(
@@ -1401,6 +1437,7 @@ class BeliefDecisionEngine:
                 (selected_probe, selected_guidance),
                 len(probes),
                 strategic_branch_count,
+                len(shared_responses.rng_seeds),
             )
 
         try:
@@ -1427,6 +1464,7 @@ class BeliefDecisionEngine:
             selected,
             probe_count,
             strategic_branch_count,
+            strategic_rng_sample_count,
         ) = augmentation
 
         if final_search is None or selected is None:
@@ -1436,6 +1474,7 @@ class BeliefDecisionEngine:
                 tactical_extra_branch_count=tactical_extra_branch_count,
                 strategic_probe_count=probe_count,
                 strategic_branch_count=strategic_branch_count,
+                strategic_rng_sample_count=strategic_rng_sample_count,
             )
 
         if final_search.chosen.choice not in legal_live:
@@ -1483,7 +1522,7 @@ class BeliefDecisionEngine:
             ),
             strategic_probe_count=probe_count,
             strategic_branch_count=strategic_branch_count,
-            strategic_rng_sample_count=len(self.strategic_rng_seeds),
+            strategic_rng_sample_count=strategic_rng_sample_count,
             **diagnostics,
         )
 
