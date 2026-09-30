@@ -481,7 +481,7 @@ class BeliefDecisionEngine:
         self.preview_mismatch_paths: tuple[str, ...] = ()
         self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
         self.pending_observations: list[
-            tuple[str, dict[str, object] | None, dict]
+            tuple[str, str | None, dict[str, object] | None, dict]
         ] = []
         self.degraded = False
 
@@ -615,16 +615,25 @@ class BeliefDecisionEngine:
         ai_choice: str,
         view: dict,
         previous_view: dict[str, object] | None = None,
+        resolved_opponent_choice: str | None = None,
         batches: tuple[int, ...],
         deadline: float | None = None,
     ) -> ParticleUpdate:
         generated = 0
         deduplicated = 0
+        stochastic_only_mismatches = 0
+        structural_mismatches = 0
         multiplier = (
             self.observed_action_rng_multiplier
-            if public_opponent_moves_fully_observed(
-                view,
-                previous_public_view=previous_view,
+            if (
+                (
+                    resolved_opponent_choice is not None
+                    and "move " in resolved_opponent_choice
+                )
+                or public_opponent_moves_fully_observed(
+                    view,
+                    previous_public_view=previous_view,
+                )
             )
             else 1
         )
@@ -640,7 +649,14 @@ class BeliefDecisionEngine:
                     deadline is not None
                     and perf_counter() >= deadline - 0.5
                 ):
-                    return ParticleUpdate((), generated, 0, deduplicated)
+                    return ParticleUpdate(
+                        (),
+                        generated,
+                        0,
+                        deduplicated,
+                        stochastic_only_mismatches,
+                        structural_mismatches,
+                    )
 
                 seeds = tuple(
                     self._particle_seed() for _ in range(sample_count)
@@ -652,19 +668,31 @@ class BeliefDecisionEngine:
                     ai_choice=ai_choice,
                     actual_public_view=view,
                     previous_public_view=previous_view,
+                    resolved_opponent_choice=resolved_opponent_choice,
                     rng_seeds=seeds,
                     previews=self.previews,
                 )
                 generated += update.generated
                 deduplicated += update.deduplicated
+                stochastic_only_mismatches += update.stochastic_only_mismatches
+                structural_mismatches += update.structural_mismatches
                 if update.particles:
                     return ParticleUpdate(
                         particles=update.particles,
                         generated=generated,
                         matched=update.matched,
                         deduplicated=deduplicated,
+                        stochastic_only_mismatches=stochastic_only_mismatches,
+                        structural_mismatches=structural_mismatches,
                     )
-        return ParticleUpdate((), generated, 0, deduplicated)
+        return ParticleUpdate(
+            (),
+            generated,
+            0,
+            deduplicated,
+            stochastic_only_mismatches,
+            structural_mismatches,
+        )
 
     def _recover_pending(self, *, deadline: float | None = None) -> bool:
         if not self.pending_observations:
@@ -678,13 +706,19 @@ class BeliefDecisionEngine:
 
         def recover(worker: HypotheticalSearchWorker):
             particles = starting_particles
-            for ai_choice, previous_view, view in pending:
+            for (
+                ai_choice,
+                resolved_opponent_choice,
+                previous_view,
+                view,
+            ) in pending:
                 update = self._condition_adaptive(
                     worker,
                     particles=particles,
                     ai_choice=ai_choice,
                     view=view,
                     previous_view=previous_view,
+                    resolved_opponent_choice=resolved_opponent_choice,
                     batches=self.recovery_rng_sample_batches,
                     deadline=recovery_deadline,
                 )
@@ -1456,6 +1490,7 @@ class BeliefDecisionEngine:
         *,
         decision: BeliefDecision,
         view: dict,
+        resolved_opponent_choice: str | None = None,
     ) -> BeliefTurnUpdate:
         """Condition the posterior on a sanitized p2 public observation."""
         particles_before = len(self.particles)
@@ -1469,7 +1504,12 @@ class BeliefDecisionEngine:
 
         if self.pending_observations:
             self.pending_observations.append(
-                (decision.choice, previous_view, view)
+                (
+                    decision.choice,
+                    resolved_opponent_choice,
+                    previous_view,
+                    view,
+                )
             )
             update = None
             timed_out = False
@@ -1485,6 +1525,7 @@ class BeliefDecisionEngine:
                     ai_choice=decision.choice,
                     view=view,
                     previous_view=previous_view,
+                    resolved_opponent_choice=resolved_opponent_choice,
                     batches=self.rng_sample_batches,
                     deadline=conditioning_deadline,
                 )
@@ -1497,7 +1538,12 @@ class BeliefDecisionEngine:
 
             if timed_out or update is None:
                 self.pending_observations.append(
-                    (decision.choice, previous_view, view)
+                    (
+                        decision.choice,
+                        resolved_opponent_choice,
+                        previous_view,
+                        view,
+                    )
                 )
                 self.degraded = True
                 generated = 0
@@ -1513,7 +1559,12 @@ class BeliefDecisionEngine:
                 matched = update.matched
             else:
                 self.pending_observations.append(
-                    (decision.choice, previous_view, view)
+                    (
+                        decision.choice,
+                        resolved_opponent_choice,
+                        previous_view,
+                        view,
+                    )
                 )
                 self.degraded = True
                 generated = update.generated
@@ -1778,6 +1829,7 @@ class _BeliefBattleCoordinator:
             update = self._engine.observe_public_turn(
                 decision=decision,
                 view=public_view,
+                resolved_opponent_choice=self._pending_human_choice,
             )
         except Exception:
             self._restore_engine_snapshot(snapshot)

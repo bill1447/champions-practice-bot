@@ -26,6 +26,8 @@ class ParticleUpdate:
     generated: int
     matched: int
     deduplicated: int
+    stochastic_only_mismatches: int = 0
+    structural_mismatches: int = 0
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
@@ -64,6 +66,91 @@ def public_observation_signature(view: dict[str, Any]) -> str:
             request_side.pop("name", None)
 
     return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+
+
+def _public_diff_paths(
+    left: object,
+    right: object,
+    path: str = "$",
+    *,
+    limit: int = 64,
+) -> tuple[str, ...]:
+    """Return public-view leaf paths that differ, bounded for diagnostics."""
+    if type(left) is not type(right):
+        return (path,)
+    if isinstance(left, dict):
+        paths: list[str] = []
+        for key in sorted(set(left) | set(right)):
+            child = f"{path}.{key}"
+            if key not in left or key not in right:
+                paths.append(child)
+            else:
+                paths.extend(
+                    _public_diff_paths(
+                        left[key],
+                        right[key],
+                        child,
+                        limit=max(0, limit - len(paths)),
+                    )
+                )
+            if len(paths) >= limit:
+                break
+        return tuple(paths[:limit])
+    if isinstance(left, list):
+        if len(left) != len(right):
+            return (f"{path}.length",)
+        paths: list[str] = []
+        for index, (left_item, right_item) in enumerate(
+            zip(left, right, strict=True)
+        ):
+            paths.extend(
+                _public_diff_paths(
+                    left_item,
+                    right_item,
+                    f"{path}[{index}]",
+                    limit=max(0, limit - len(paths)),
+                )
+            )
+            if len(paths) >= limit:
+                break
+        return tuple(paths[:limit])
+    return () if left == right else (path,)
+
+
+def public_observation_mismatch_paths(
+    actual_view: dict[str, Any],
+    simulated_view: dict[str, Any],
+) -> tuple[str, ...]:
+    """Compare normalized public observations without treating action history as state."""
+    actual = json.loads(public_observation_signature(actual_view))
+    simulated = json.loads(public_observation_signature(simulated_view))
+    return _public_diff_paths(actual, simulated)
+
+
+def is_stochastic_observation_path(path: str) -> bool:
+    """Return whether a mismatch is plausibly an outcome/RNG-dependent leaf.
+
+    This is classification only. PR #101 does not yet allow these mismatches to
+    survive conditioning; PR #102 can attach mechanics-authoritative reachability
+    checks to this boundary.
+    """
+    leaf = path.rsplit(".", 1)[-1]
+    if leaf in {"hp", "hp_percent", "condition", "status", "fainted"}:
+        return True
+    return ".boosts." in path
+
+
+def classify_public_observation_mismatch(
+    actual_view: dict[str, Any],
+    simulated_view: dict[str, Any],
+) -> tuple[str, tuple[str, ...]]:
+    """Classify a non-exact branch as stochastic-only or structural."""
+    paths = public_observation_mismatch_paths(actual_view, simulated_view)
+    if not paths:
+        return "exact", ()
+    if all(is_stochastic_observation_path(path) for path in paths):
+        return "stochastic-only", paths
+    return "structural", paths
 
 
 def _state_key(state: dict[str, Any]) -> str:
@@ -361,6 +448,7 @@ def condition_particles(
     ai_choice: str,
     actual_public_view: dict[str, Any],
     previous_public_view: dict[str, Any] | None = None,
+    resolved_opponent_choice: str | None = None,
     opponent_choices: dict[str, tuple[str, ...]] | None = None,
     rng_seeds: tuple[str | None, ...] = (None,),
     previews: dict[str, list[str]] | None = None,
@@ -375,6 +463,8 @@ def condition_particles(
     survivors: list[BeliefParticle] = []
     generated = 0
     matched = 0
+    stochastic_only_mismatches = 0
+    structural_mismatches = 0
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
@@ -384,7 +474,32 @@ def condition_particles(
     for particle in particles:
         responses: tuple[str, ...]
         validator = getattr(worker, "validate_choices", None)
-        if (
+
+        if resolved_opponent_choice is not None:
+            # The live human command is private until the sealed AI choice resolves.
+            # After resolution it is public history, so use it directly rather than
+            # reconstructing moves/switches/targets from protocol observations.
+            if callable(validator):
+                responses = tuple(
+                    validator(
+                        state=particle.state,
+                        side=opponent_side,
+                        candidates=[resolved_opponent_choice],
+                    )
+                )
+            else:
+                legal_responses = tuple(
+                    worker.legal_choices(
+                        state=particle.state,
+                        side=opponent_side,
+                    )
+                )
+                responses = (
+                    (resolved_opponent_choice,)
+                    if resolved_opponent_choice in set(legal_responses)
+                    else ()
+                )
+        elif (
             opponent_choices is None
             and observed_candidates
             and callable(validator)
@@ -418,11 +533,12 @@ def condition_particles(
                         response for response in requested if response in legal_set
                     )
 
-        responses = _filter_responses_by_public_actions(
-            tuple(responses),
-            actual_public_view,
-            previous_public_view=previous_public_view,
-        )
+        if resolved_opponent_choice is None:
+            responses = _filter_responses_by_public_actions(
+                tuple(responses),
+                actual_public_view,
+                previous_public_view=previous_public_view,
+            )
         if not responses:
             continue
 
@@ -460,6 +576,14 @@ def condition_particles(
                     previews=previews,
                 )
             if public_observation_signature(view) != wanted:
+                kind, _paths = classify_public_observation_mismatch(
+                    actual_public_view,
+                    view,
+                )
+                if kind == "stochastic-only":
+                    stochastic_only_mismatches += 1
+                else:
+                    structural_mismatches += 1
                 continue
             matched += 1
             rng_label = "native" if rng_seed is None else rng_seed
@@ -493,4 +617,6 @@ def condition_particles(
         generated=generated,
         matched=matched,
         deduplicated=len(survivors) - len(posterior),
+        stochastic_only_mismatches=stochastic_only_mismatches,
+        structural_mismatches=structural_mismatches,
     )

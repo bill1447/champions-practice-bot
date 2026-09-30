@@ -158,7 +158,7 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     monkeypatch.setattr(
         controller._engine,
         "observe_public_turn",
-        lambda *, decision, view: SimpleNamespace(
+        lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
             decision=decision,
             public_view=view,
             particles_before=3,
@@ -381,6 +381,46 @@ def test_incremental_conditioning_returns_before_hard_deadline(
     assert update.generated == 2
     assert update.matched == 0
 
+
+
+def test_pending_recovery_reuses_exact_resolved_human_command() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        (
+            "move protect",
+            "switch 3, pass",
+            {"turn": 1},
+            {"turn": 2},
+        )
+    ]
+    seen = []
+
+    def fake_condition(worker, **kwargs):
+        seen.append(kwargs["resolved_opponent_choice"])
+        return ParticleUpdate((particle,), 1, 1, 0)
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._recover_pending() is True
+    assert seen == ["switch 3, pass"]
+    assert engine.pending_observations == []
+    assert engine.degraded is False
 
 
 class _CollapseDiagnosticWorker:
@@ -967,7 +1007,7 @@ def _stub_sealed_engine(
     monkeypatch.setattr(
         controller._engine,
         "observe_public_turn",
-        lambda *, decision, view: SimpleNamespace(
+        lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
             decision=decision,
             public_view=view,
             particles_before=3,
@@ -1315,10 +1355,12 @@ def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> N
     _stub_sealed_engine(controller, monkeypatch)
     ready = controller.lock_ai_action()
     observed = 0
+    observed_human_choices = []
 
-    def count_observation(*, decision, view):
+    def count_observation(*, decision, view, resolved_opponent_choice=None):
         nonlocal observed
         observed += 1
+        observed_human_choices.append(resolved_opponent_choice)
         return SimpleNamespace(
             decision=decision,
             public_view=view,
@@ -1350,6 +1392,7 @@ def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> N
 
     assert result.decision.choice == "move secret-ai"
     assert observed == 1
+    assert observed_human_choices == ["move human"]
     assert len(worker.submissions) == 1
     assert controller.turn_state is SealedTurnState.RESOLVED
 
