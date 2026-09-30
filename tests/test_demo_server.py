@@ -13,6 +13,7 @@ from champions_practice.demo_server import (
     DemoBattleSession,
     DemoRequestHandler,
     _choice_label,
+    _hp_snapshot,
 )
 
 
@@ -25,8 +26,45 @@ class FakeFacade:
             "turn": 0,
             "ended": False,
             "winner": None,
-            "opponent": {"preview_species": ["FoeA", "FoeB"]},
-            "player": {"team": [{"species": "OwnA"}, {"species": "OwnB"}]},
+            "opponent": {
+                "preview_species": ["FoeA", "FoeB"],
+                "active": [{"species": "FoeA"}],
+                "revealed": [
+                    {
+                        "species": "FoeA",
+                        "seen": True,
+                        "hp_percent": 75,
+                        "fainted": False,
+                        "status": None,
+                    },
+                    {
+                        "species": "FoeB",
+                        "seen": False,
+                        "hp_percent": None,
+                        "fainted": False,
+                        "status": None,
+                    },
+                ],
+            },
+            "player": {
+                "active": ["OwnA"],
+                "team": [
+                    {
+                        "species": "OwnA",
+                        "hp": 50,
+                        "maxhp": 100,
+                        "fainted": False,
+                        "status": None,
+                    },
+                    {
+                        "species": "OwnB",
+                        "hp": 0,
+                        "maxhp": 100,
+                        "fainted": True,
+                        "status": "fnt",
+                    },
+                ],
+            },
         }
 
     def start(self, **kwargs):
@@ -123,8 +161,34 @@ def test_demo_session_does_not_expose_locked_ai_decision_or_token() -> None:
     assert resolved["turn_state"] == "resolved"
     assert resolved["ai_ready"] is False
     assert resolved["history"][0]["turn"] == 1
-    assert resolved["history"][0]["decision"]["choice"] == "move secret-ai"
-    decision = resolved["history"][0]["decision"]
+    entry = resolved["history"][0]
+    assert entry["decision"]["choice"] == "move secret-ai"
+    assert entry["human_choice"] == "move human"
+    assert entry["human_choice_label"] == "OwnA: human"
+    assert entry["ai_choice_label"] == "FoeA: secret-ai"
+    assert entry["hp_after"]["human"] == [
+        {
+            "species": "OwnA",
+            "hp_percent": 50.0,
+            "status": None,
+            "fainted": False,
+        },
+        {
+            "species": "OwnB",
+            "hp_percent": 0.0,
+            "status": "fnt",
+            "fainted": True,
+        },
+    ]
+    assert entry["hp_after"]["ai"] == [
+        {
+            "species": "FoeA",
+            "hp_percent": 75.0,
+            "status": None,
+            "fainted": False,
+        },
+    ]
+    decision = entry["decision"]
     assert decision["strategic_plan"] == "preserve-resource"
     assert decision["worst_response"] == "move followme, move hypervoice mega"
     assert decision["worst_world_score"] == -321.5
@@ -332,6 +396,41 @@ def test_demo_snapshot_surfaces_public_field_conditions() -> None:
 
     assert snapshot["field_status"] == "Field: Grassy Terrain · Rain · Trick Room"
 
+def test_hp_snapshot_uses_only_public_opponent_hp() -> None:
+    snapshot = _hp_snapshot(
+        {
+            "player": {
+                "team": [
+                    {"species": "OwnA", "hp": 25, "maxhp": 100, "status": None},
+                ],
+            },
+            "opponent": {
+                "revealed": [
+                    {
+                        "species": "Seen",
+                        "seen": True,
+                        "hp_percent": 33.3,
+                        "fainted": False,
+                        "status": "par",
+                    },
+                    {
+                        "species": "Unseen",
+                        "seen": False,
+                        "hp_percent": None,
+                        "fainted": False,
+                        "status": None,
+                    },
+                ],
+            },
+        }
+    )
+
+    assert snapshot["human"][0]["hp_percent"] == 25.0
+    assert [pokemon["species"] for pokemon in snapshot["ai"]] == ["Seen"]
+    assert snapshot["ai"][0]["hp_percent"] == 33.3
+    assert snapshot["ai"][0]["status"] == "par"
+
+
 def test_demo_html_prefers_active_details_and_formats_hp_percent() -> None:
     assert "side?.active_details" in DEMO_HTML
     assert "mon.hp_percent" in DEMO_HTML
@@ -366,4 +465,15 @@ def test_demo_html_queues_human_action_while_ai_is_thinking() -> None:
 def test_demo_html_surfaces_fallback_and_degraded_belief_reasons() -> None:
     assert "d.fallback_reason" in DEMO_HTML
     assert "Belief update degraded:" in DEMO_HTML
+
+
+def test_demo_html_has_copyable_battle_log_with_choices_and_hp() -> None:
+    assert 'id="battleLog"' in DEMO_HTML
+    assert 'id="copyBattleLog"' in DEMO_HTML
+    assert "formatBattleLog(history)" in DEMO_HTML
+    assert "Human HP:" in DEMO_HTML
+    assert "AI HP:" in DEMO_HTML
+    assert "entry.human_choice" in DEMO_HTML
+    assert "d.choice" in DEMO_HTML
+    assert "navigator.clipboard?.writeText" in DEMO_HTML
 

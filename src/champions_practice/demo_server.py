@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import json
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -62,6 +63,8 @@ def _result_payload(
     result: SealedTurnResult,
     *,
     decision_turn: int | None = None,
+    human_choice: str | None = None,
+    choice_view: dict | None = None,
 ) -> dict[str, object]:
     return {
         "turn": (
@@ -69,7 +72,19 @@ def _result_payload(
             if decision_turn is not None
             else result.public_view.get("turn")
         ),
+        "human_choice": human_choice,
+        "human_choice_label": (
+            _choice_label(human_choice, choice_view)
+            if human_choice is not None
+            else None
+        ),
+        "ai_choice_label": _opponent_choice_label(
+            result.decision.choice,
+            choice_view,
+        ),
         "decision": _decision_payload(result.decision),
+        "hp_after": _hp_snapshot(result.public_view),
+        "field_after": _field_status(result.public_view),
         "conditioning": {
             "particles_before": result.particles_before,
             "particles_after": result.particles_after,
@@ -224,6 +239,8 @@ def _action_part_label(part: str, slot_index: int, view: dict | None) -> str:
 
 
 def _choice_label(choice: str, view: dict | None) -> str:
+    if not choice:
+        return "wait"
     if choice.startswith("team "):
         return _preview_choice_label(choice, view)
     parts = choice.split(", ")
@@ -231,6 +248,132 @@ def _choice_label(choice: str, view: dict | None) -> str:
         _action_part_label(part, index, view)
         for index, part in enumerate(parts)
     )
+
+
+def _opponent_team_species(view: dict | None, slot: int) -> str:
+    if not isinstance(view, dict):
+        return f"slot {slot}"
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return f"slot {slot}"
+    preview = opponent.get("preview_species")
+    if isinstance(preview, list) and 1 <= slot <= len(preview):
+        species = preview[slot - 1]
+        if isinstance(species, str) and species:
+            return species
+    return f"slot {slot}"
+
+
+def _opponent_target_label(location: int, view: dict | None) -> str:
+    if location > 0:
+        species = _active_species(view, location - 1)
+        return f"foe {species}" if species else f"foe slot {location}"
+    if location < 0:
+        slot = abs(location)
+        species = _opponent_active_species(view, slot - 1)
+        return f"ally {species}" if species else f"ally slot {slot}"
+    return "field"
+
+
+def _opponent_action_part_label(
+    part: str,
+    slot_index: int,
+    view: dict | None,
+) -> str:
+    actor = _opponent_active_species(view, slot_index) or f"Slot {slot_index + 1}"
+    tokens = part.split()
+    if not tokens:
+        return "wait"
+    if tokens[0] == "pass":
+        return f"{actor}: pass"
+    if tokens[0] == "switch" and len(tokens) >= 2 and tokens[1].isdigit():
+        return f"{actor}: switch → {_opponent_team_species(view, int(tokens[1]))}"
+    if tokens[0] != "move" or len(tokens) < 2:
+        return f"{actor}: {part}"
+
+    suffixes: list[str] = []
+    for token in tokens[2:]:
+        try:
+            location = int(token)
+        except ValueError:
+            location = 0
+        if location:
+            suffixes.append(f"→ {_opponent_target_label(location, view)}")
+            continue
+        if token in {"mega", "megax", "megay"}:
+            suffixes.append("[Mega]")
+        elif token == "ultra":
+            suffixes.append("[Ultra Burst]")
+        else:
+            suffixes.append(f"[{token}]")
+
+    suffix = " " + " ".join(suffixes) if suffixes else ""
+    return f"{actor}: {tokens[1]}{suffix}"
+
+
+def _opponent_choice_label(choice: str, view: dict | None) -> str:
+    if not choice:
+        return "wait"
+    return " | ".join(
+        _opponent_action_part_label(part, index, view)
+        for index, part in enumerate(choice.split(", "))
+    )
+
+
+def _public_hp_entry(pokemon: dict) -> dict[str, object]:
+    species = pokemon.get("species") or pokemon.get("base_species") or "Unknown"
+    fainted = bool(pokemon.get("fainted")) or pokemon.get("status") == "fnt"
+    hp_percent = pokemon.get("hp_percent")
+    if not isinstance(hp_percent, (int, float)):
+        hp = pokemon.get("hp")
+        maxhp = pokemon.get("maxhp")
+        if (
+            isinstance(hp, (int, float))
+            and isinstance(maxhp, (int, float))
+            and maxhp > 0
+        ):
+            hp_percent = 100.0 * hp / maxhp
+        else:
+            hp_percent = None
+    if fainted:
+        hp_percent = 0.0
+    return {
+        "species": str(species),
+        "hp_percent": (
+            round(float(hp_percent), 1)
+            if isinstance(hp_percent, (int, float))
+            else None
+        ),
+        "status": pokemon.get("status"),
+        "fainted": fainted,
+    }
+
+
+def _hp_snapshot(view: dict | None) -> dict[str, list[dict[str, object]]]:
+    if not isinstance(view, dict):
+        return {"human": [], "ai": []}
+
+    player = view.get("player")
+    human_team = player.get("team") if isinstance(player, dict) else None
+    human = [
+        _public_hp_entry(pokemon)
+        for pokemon in human_team or []
+        if isinstance(pokemon, dict)
+    ]
+
+    opponent = view.get("opponent")
+    revealed = opponent.get("revealed") if isinstance(opponent, dict) else None
+    ai = [
+        _public_hp_entry(pokemon)
+        for pokemon in revealed or []
+        if isinstance(pokemon, dict)
+        and (
+            pokemon.get("seen")
+            or pokemon.get("fainted")
+            or isinstance(pokemon.get("hp_percent"), (int, float))
+        )
+    ]
+    return {"human": human, "ai": ai}
 
 
 def _legal_action_payload(
@@ -304,6 +447,8 @@ class DemoBattleSession:
         self._ready_token: str | None = None
         self._ready_turn: int | None = None
         self._last_public_view: dict | None = None
+        self._pending_human_choice: str | None = None
+        self._pending_choice_view: dict | None = None
         self._history: list[dict[str, object]] = []
         self._ended_manually = False
         self._lock = RLock()
@@ -371,6 +516,8 @@ class DemoBattleSession:
             self._ready_token = None
             self._ready_turn = None
             self._last_public_view = None
+            self._pending_human_choice = None
+            self._pending_choice_view = None
             self._history = []
             self._ended_manually = False
             if old is not None:
@@ -398,6 +545,8 @@ class DemoBattleSession:
             )
             self._ready_token = None
             self._ready_turn = None
+            self._pending_human_choice = None
+            self._pending_choice_view = None
             return self._snapshot_locked()
 
     def lock_ai_action(self) -> dict[str, object]:
@@ -418,6 +567,13 @@ class DemoBattleSession:
             facade = self._require_facade()
             if self._ready_token is None:
                 raise RuntimeError("AI action is not locked")
+
+            self._pending_human_choice = human_choice
+            self._pending_choice_view = (
+                copy.deepcopy(self._last_public_view)
+                if isinstance(self._last_public_view, dict)
+                else None
+            )
             result = facade.commit_human_action(
                 token=self._ready_token,
                 human_choice=human_choice,
@@ -427,8 +583,15 @@ class DemoBattleSession:
             self._ready_turn = None
             self._last_public_view = result.public_view
             self._history.append(
-                _result_payload(result, decision_turn=decision_turn)
+                _result_payload(
+                    result,
+                    decision_turn=decision_turn,
+                    human_choice=self._pending_human_choice,
+                    choice_view=self._pending_choice_view,
+                )
             )
+            self._pending_human_choice = None
+            self._pending_choice_view = None
             return self._snapshot_locked()
 
     def reconcile_failed_turn(self) -> dict[str, object]:
@@ -442,8 +605,15 @@ class DemoBattleSession:
             self._ready_turn = None
             self._last_public_view = result.public_view
             self._history.append(
-                _result_payload(result, decision_turn=decision_turn)
+                _result_payload(
+                    result,
+                    decision_turn=decision_turn,
+                    human_choice=self._pending_human_choice,
+                    choice_view=self._pending_choice_view,
+                )
             )
+            self._pending_human_choice = None
+            self._pending_choice_view = None
             return self._snapshot_locked()
 
     def end_battle(self) -> dict[str, object]:
@@ -454,6 +624,8 @@ class DemoBattleSession:
             self._ready_token = None
             self._ready_turn = None
             self._last_public_view = None
+            self._pending_human_choice = None
+            self._pending_choice_view = None
             self._ended_manually = True
             facade.close()
             return self._snapshot_locked()
@@ -465,6 +637,8 @@ class DemoBattleSession:
             self._ready_token = None
             self._ready_turn = None
             self._last_public_view = None
+            self._pending_human_choice = None
+            self._pending_choice_view = None
             if facade is not None:
                 facade.close()
 
@@ -519,6 +693,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .error { color: #ff9b9b; white-space: pre-wrap; }
 .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .controls select { min-width: min(760px, 100%); flex: 1; }
+.panel-heading { display: flex; gap: 12px; align-items: center; justify-content: space-between; }
+.panel-heading .controls { margin-top: 0; }
 .reveal {
   border-left: 4px solid #8eb8ff;
   padding-left: 12px;
@@ -577,6 +753,16 @@ pre {
     <button id="commit">Submit action</button>
     <button id="reconcile">Reconcile</button>
   </div>
+</section>
+
+<section class="panel">
+  <div class="panel-heading">
+    <h2>Battle log</h2>
+    <div class="controls">
+      <button id="copyBattleLog">Copy log</button>
+    </div>
+  </div>
+  <pre id="battleLog">No resolved turns yet.</pre>
 </section>
 
 <section class="panel">
@@ -678,6 +864,68 @@ function hintFor(turnState) {
   if (turnState === "failed") return "Live turn needs reconciliation; do not resubmit it.";
   if (turnState === "terminal") return "Battle complete.";
   return "";
+}
+
+function hpText(mon) {
+  if (!mon) return "Unknown";
+  if (mon.fainted || mon.status === "fnt") return `${mon.species}: fnt`;
+  const hp = Number.isFinite(mon.hp_percent) ? `${mon.hp_percent}%` : "?";
+  const status = mon.status ? ` ${mon.status}` : "";
+  return `${mon.species}: ${hp}${status}`;
+}
+
+function formatHpSide(entries) {
+  if (!Array.isArray(entries) || !entries.length) return "—";
+  return entries.map(hpText).join(" | ");
+}
+
+function formatBattleLog(history) {
+  if (!Array.isArray(history) || !history.length) {
+    return "No resolved turns yet.";
+  }
+
+  return history.map(entry => {
+    const d = entry.decision || {};
+    const humanRaw = entry.human_choice === "" ? "wait" :
+      (entry.human_choice ?? "unknown");
+    const aiRaw = d.choice === "" ? "wait" : (d.choice ?? "unknown");
+    const humanLabel = entry.human_choice_label || humanRaw;
+    const aiLabel = entry.ai_choice_label || aiRaw;
+    const hp = entry.hp_after || {};
+    const conditioning = entry.conditioning || {};
+    const lines = [
+      `Turn ${entry.turn ?? "?"}`,
+      `  Human: ${humanLabel} [${humanRaw}]`,
+      `  AI: ${aiLabel} [${aiRaw}]`,
+      `  Human HP: ${formatHpSide(hp.human)}`,
+      `  AI HP: ${formatHpSide(hp.ai)}`,
+      `  ${entry.field_after || "Field: —"}`,
+    ];
+    if (d.mode) {
+      const reason = d.fallback_reason ? ` · ${d.fallback_reason}` : "";
+      lines.push(`  AI mode: ${d.mode}${reason}`);
+    }
+    if (
+      conditioning.degraded ||
+      conditioning.over_budget ||
+      Number.isFinite(conditioning.generated_branches)
+    ) {
+      const matched = Number.isFinite(conditioning.matched_branches) ?
+        conditioning.matched_branches : "?";
+      const generated = Number.isFinite(conditioning.generated_branches) ?
+        conditioning.generated_branches : "?";
+      const suffix = conditioning.degraded ? " · degraded" : "";
+      lines.push(`  Conditioning: ${matched}/${generated}${suffix}`);
+    }
+    return lines.join("\n");
+  }).join("\n\n");
+}
+
+function renderBattleLog(history) {
+  const text = formatBattleLog(history);
+  document.getElementById("battleLog").textContent = text;
+  document.getElementById("copyBattleLog").disabled =
+    !Array.isArray(history) || !history.length;
 }
 
 function renderHistory(history) {
@@ -814,6 +1062,7 @@ function render(next) {
   document.getElementById("reconcile").disabled =
     aiLockPending || !state.can_reconcile;
   document.getElementById("endBattle").disabled = !state.started;
+  renderBattleLog(state.history || []);
   renderHistory(state.history || []);
 }
 
@@ -899,6 +1148,31 @@ async function renderAndAutoLock(next) {
     throw error;
   }
 }
+
+async function copyBattleLogText() {
+  const text = document.getElementById("battleLog").textContent || "";
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.style.position = "fixed";
+  textarea.style.opacity = "0";
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand("copy");
+  textarea.remove();
+  if (!copied) throw new Error("Could not copy battle log");
+}
+
+document.getElementById("copyBattleLog").onclick = () => run(async () => {
+  await copyBattleLogText();
+  const button = document.getElementById("copyBattleLog");
+  button.textContent = "Copied";
+  window.setTimeout(() => { button.textContent = "Copy log"; }, 1200);
+});
 
 document.getElementById("newBattle").onclick = () => run(async () => {
   queuedHumanChoice = null;
