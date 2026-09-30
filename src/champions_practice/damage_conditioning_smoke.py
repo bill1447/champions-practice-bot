@@ -51,7 +51,7 @@ def main() -> None:
 
             if HUMAN_TURN_ONE not in coordinator.human_legal_choices():
                 raise SystemExit("ERROR: controlled damaging human action is not legal")
-            ai_legal = coordinator._ai_legal_choices()
+            ai_legal = coordinator._ai_preseal_choices()
             if AI_TURN_ONE not in ai_legal:
                 raise SystemExit("ERROR: controlled AI action is not legal")
 
@@ -153,7 +153,7 @@ def main() -> None:
             if update.conditioning_seconds >= 8.0:
                 raise SystemExit("ERROR: damaging-turn conditioning missed production budget")
 
-            next_legal = coordinator._ai_legal_choices()
+            next_legal = coordinator._ai_preseal_choices()
             next_decision = coordinator._engine.choose_ai_action(
                 legal_live=next_legal,
             )

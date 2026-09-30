@@ -1057,6 +1057,7 @@ class BeliefDecisionEngine:
                 side="p2",
                 candidate_limit=self.candidate_limit,
                 reference_limit=1,
+                allowed_choices=tuple(legal_live),
             )
             search = search_exact_belief_turn(
                 worker,
@@ -1304,6 +1305,7 @@ class BeliefDecisionEngine:
                     ),
                     reference_limit=1,
                     guidance=guidance,
+                    allowed_choices=tuple(legal_live),
                 )
                 plan_contexts.append((plan, guidance, pruning))
                 candidate_reference_groups.append(
@@ -1739,8 +1741,13 @@ class _BeliefBattleCoordinator:
                 side="p1",
             )
 
-    def _ai_legal_choices(self) -> list[str]:
-        return self._worker.session_legal_choices(
+    def _ai_preseal_choices(self) -> list[str]:
+        """Return AI choices derived only from its public request.
+
+        This must not validate candidates against the exact live battle: doing so can
+        distinguish hidden opponent effects such as Shadow Tag before sealing.
+        """
+        return self._worker.session_public_choices(
             self._require_session(),
             side="p2",
         )
@@ -1759,7 +1766,7 @@ class _BeliefBattleCoordinator:
             self._turn_state = SealedTurnState.COMPUTING
 
         try:
-            legal_live = self._ai_legal_choices()
+            legal_live = self._ai_preseal_choices()
             if legal_live == [""]:
                 decision = BeliefDecision(
                     choice="",

@@ -140,6 +140,57 @@ def test_belief_search_uses_only_choices_legal_in_every_world() -> None:
     assert result.evaluated_choices == ("safe",)
 
 
+def test_candidate_pruning_respects_public_preseal_allowlist() -> None:
+    class AllowlistWorker:
+        choices = ("move attack +1", "move safe +1")
+
+        def legal_choices(self, *, state, side):
+            if side == "p1":
+                return list(self.choices)
+            return ["move counter +1"]
+
+        def branch_many(self, *, state, branches):
+            scores = {
+                "move attack +1": 90,
+                "move safe +1": 80,
+            }
+            return [
+                {
+                    "index": index,
+                    "summary": _summary(
+                        scores[branch["p1_choice"]],
+                        100,
+                    ),
+                }
+                for index, branch in enumerate(branches)
+            ]
+
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "A"},
+            weight=1.0,
+            label="world-a",
+        ),
+        ExactBeliefWorldState(
+            state={"id": "B"},
+            weight=1.0,
+            label="world-b",
+        ),
+    )
+
+    pruning = shortlist_belief_candidates(
+        AllowlistWorker(),
+        worlds=worlds,
+        side="p1",
+        candidate_limit=2,
+        reference_limit=1,
+        allowed_choices=("move safe +1",),
+    )
+
+    assert pruning.candidate_shortlist == ("move safe +1",)
+    assert pruning.legal_choice_count == 1
+
+
 def test_belief_search_averages_rng_before_world_minimax() -> None:
     class RngWorker(FakeBeliefWorker):
         def branch_many(self, *, state, branches):
