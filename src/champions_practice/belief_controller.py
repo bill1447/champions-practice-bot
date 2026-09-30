@@ -1699,6 +1699,7 @@ class BeliefDecisionEngine:
             degraded=self.degraded,
         )
 
+
 class _BeliefBattleCoordinator:
     """Private live-session owner behind the sealed demo facade."""
 
