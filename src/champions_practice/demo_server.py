@@ -984,9 +984,15 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
         return payload
 
     @staticmethod
-    def _choice(payload: dict[str, object]) -> str:
+    def _choice(
+        payload: dict[str, object],
+        *,
+        allow_empty: bool = False,
+    ) -> str:
         choice = payload.get("choice")
-        if not isinstance(choice, str) or not choice.strip():
+        if not isinstance(choice, str):
+            raise ValueError("choice must be a string")
+        if not allow_empty and not choice.strip():
             raise ValueError("choice must be a non-empty string")
         return choice
 
@@ -1009,7 +1015,9 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
             elif self.path == "/api/lock":
                 result = self.app.lock_ai_action()
             elif self.path == "/api/commit":
-                result = self.app.commit_human_action(self._choice(payload))
+                result = self.app.commit_human_action(
+                    self._choice(payload, allow_empty=True)
+                )
             elif self.path == "/api/reconcile":
                 result = self.app.reconcile_failed_turn()
             elif self.path == "/api/end":
