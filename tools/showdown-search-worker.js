@@ -72,6 +72,82 @@ function canonicalProtocolIdentity(value) {
   return toId(text);
 }
 
+const PUBLIC_EXECUTION_EVENTS = new Set([
+  // Public action-outcome evidence is distinct from the selected command. A
+  // command may be selected yet prevented (paralysis/flinch/etc.), or may execute
+  // and then fail/miss/be blocked. Preserve those public outcomes explicitly so
+  // exact resolved commands cannot substitute for proof that an action happened.
+  "move",
+  "cant",
+  "-fail",
+  "-miss",
+  "-immune",
+  "-notarget",
+  "-block",
+]);
+
+function canonicalPublicExecutionEvent(parts) {
+  const event = parts[1];
+  if (!PUBLIC_EXECUTION_EVENTS.has(event)) return null;
+
+  if (event === "move") {
+    const canonical = [
+      event,
+      canonicalProtocolIdentity(parts[2]),
+      toId(parts[3]),
+      canonicalProtocolIdentity(parts[4]),
+    ];
+    for (const value of parts.slice(5)) {
+      const normalized = canonicalProtocolIdentity(value);
+      if (normalized) canonical.push(normalized);
+    }
+    return canonical;
+  }
+
+  const canonical = [event];
+  for (const value of parts.slice(2)) {
+    const normalized = canonicalProtocolIdentity(value);
+    if (normalized) canonical.push(normalized);
+  }
+  return canonical;
+}
+
+function latestPublicTurnDelta(battle, sideId, canonicalizer) {
+  const channel = sideId === "p1" ? 1 : 2;
+  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
+  let logTurn = 0;
+  const byTurn = new Map();
+
+  for (const line of visibleLog) {
+    const parts = line.split("|");
+    const event = parts[1];
+    if (event === "turn") {
+      const parsed = Number(parts[2]);
+      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
+      continue;
+    }
+    if (logTurn <= 0) continue;
+
+    const canonical = canonicalizer(parts);
+    if (!canonical) continue;
+    if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
+    byTurn.get(logTurn).push(canonical);
+  }
+
+  const turns = [...byTurn.keys()].sort((left, right) => right - left);
+  if (!turns.length) return { turn: null, events: [] };
+  const turn = turns[0];
+  return { turn, events: byTurn.get(turn) };
+}
+
+function publicExecutionEventDelta(battle, sideId) {
+  return latestPublicTurnDelta(
+    battle,
+    sideId,
+    canonicalPublicExecutionEvent,
+  );
+}
+
 const PUBLIC_MECHANICS_EVENTS = new Set([
   // Keep transition evidence that is not necessarily reconstructible from the
   // reduced final public snapshot. Ordinary move/damage/status/boost/item
@@ -149,34 +225,14 @@ function canonicalPublicMechanicsEvent(parts) {
 }
 
 function publicMechanicsEventDelta(battle, sideId) {
-  const channel = sideId === "p1" ? 1 : 2;
-  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
-  let logTurn = 0;
-  const byTurn = new Map();
-
-  for (const line of visibleLog) {
-    const parts = line.split("|");
-    const event = parts[1];
-    if (event === "turn") {
-      const parsed = Number(parts[2]);
-      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
-      continue;
-    }
-    if (logTurn <= 0) continue;
-
-    const canonical = canonicalPublicMechanicsEvent(parts);
-    if (!canonical) continue;
-    if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
-    byTurn.get(logTurn).push(canonical);
-  }
-
-  // Showdown emits the next |turn| marker after resolving a normal turn. Choose
-  // the most recent turn that actually contains mechanics events rather than the
-  // numerically latest marker, which may describe the as-yet-unplayed next turn.
-  const turns = [...byTurn.keys()].sort((left, right) => right - left);
-  if (!turns.length) return { turn: null, events: [] };
-  const turn = turns[0];
-  return { turn, events: byTurn.get(turn) };
+  // Showdown emits the next |turn| marker after resolving a normal turn. The
+  // helper therefore returns the most recent turn that actually contains one of
+  // the projected public mechanics events, not merely the latest marker.
+  return latestPublicTurnDelta(
+    battle,
+    sideId,
+    canonicalPublicMechanicsEvent,
+  );
 }
 
 function publicLastOpponentActions(battle, sideId) {
@@ -435,6 +491,10 @@ function playerView(battle, sideId = "p1", previews = null) {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
     opponent_last_actions: publicLastOpponentActions(battle, sideId),
+    // Selected commands are not proof of execution. This channel-sanitized ledger
+    // records whether public actions actually executed or were visibly prevented,
+    // failed, missed, blocked, or found no target.
+    public_execution_delta: publicExecutionEventDelta(battle, sideId),
     // This is derived only from the requesting side's Showdown-visible channel.
     // It makes publicly observed mechanics transitions (for example Substitute
     // breaking) authoritative even when the final reduced state projection matches.
