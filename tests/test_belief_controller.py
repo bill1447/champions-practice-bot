@@ -20,6 +20,7 @@ from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SE
 from champions_practice.strategy import DesiredBoard, StrategicPlan
 from champions_practice.search_worker import (
     HypotheticalSearchWorker,
+    ShowdownRequestError,
     ShowdownWorkerTimeout,
 )
 from champions_practice.strategy_tactics import StrategicCandidateGuidance
@@ -137,6 +138,39 @@ def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> 
     }
     assert "HIDDEN HUMAN TEAM" not in repr(seen)
     assert "team 4321" not in repr(seen)
+
+
+def test_ai_sealing_rejects_decision_outside_public_selectable_set(
+    monkeypatch,
+) -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+
+    monkeypatch.setattr(
+        controller._engine,
+        "choose_ai_action",
+        lambda *, legal_live: BeliefDecision(
+            choice="move structurally-invalid",
+            mode="fallback",
+            particle_count=0,
+            candidate_count=0,
+            branch_count=0,
+            elapsed_seconds=0.0,
+        ),
+    )
+
+    with pytest.raises(RuntimeError, match="publicly selectable"):
+        controller.lock_ai_action()
+
+    assert controller.turn_state is SealedTurnState.IDLE
+    assert controller._sealed_decision is None
 
 
 def test_ai_sealing_uses_public_choices_not_exact_live_legality(monkeypatch) -> None:
@@ -1346,6 +1380,47 @@ def test_unknown_timeout_reconciliation_requires_proof_before_retry(
         controller.reconcile_failed_turn(token=ready.token)
 
     assert controller.turn_state is SealedTurnState.LOCKED
+    assert len(worker.submissions) == 1
+
+
+class _RejectedSealedChoiceWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        raise ShowdownRequestError(
+            "session_choose",
+            "[Invalid choice] Can't move: Invalid target for Helping Hand",
+            mutating=True,
+        )
+
+
+def test_rejected_sealed_choice_fails_closed_instead_of_relocking(
+    monkeypatch,
+) -> None:
+    worker = _RejectedSealedChoiceWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    _stub_sealed_engine(controller, monkeypatch)
+    ready = controller.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="must be restarted"):
+        controller.commit_human_action(
+            token=ready.token,
+            human_choice="move human",
+        )
+
+    assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert controller._sealed_decision is None
+    assert controller.human_legal_choices() == []
+    with pytest.raises(RuntimeError, match="restart_required"):
+        controller.lock_ai_action()
+    with pytest.raises(RuntimeError, match="cannot reconcile"):
+        controller.reconcile_failed_turn(token=ready.token)
     assert len(worker.submissions) == 1
 
 
