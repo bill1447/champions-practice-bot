@@ -52,6 +52,105 @@ def test_public_signature_is_order_independent():
     assert public_observation_signature(left) == public_observation_signature(right)
 
 
+def test_public_execution_delta_distinguishes_executed_from_prevented_action():
+    base = {
+        "turn": 2,
+        "player": {"active": ["Indeedee-F"]},
+        "opponent": {"active": ["Murkrow"]},
+    }
+    executed = {
+        **base,
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "haze",
+                    "effects": [],
+                }
+            ],
+        },
+    }
+    prevented = {
+        **base,
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "prevented",
+                    "reason": "par",
+                    "effects": [],
+                }
+            ],
+        },
+    }
+
+    assert public_observation_signature(executed) != public_observation_signature(
+        prevented
+    )
+    kind, paths = classify_public_observation_mismatch(executed, prevented)
+    assert kind == "structural"
+    assert any(path.startswith("$.public_execution_delta") for path in paths)
+
+
+class ExactSelectedCommandWorker(FakeWorker):
+    def validate_choices(self, *, state, side, candidates):
+        return list(candidates)
+
+
+def test_exact_selected_command_still_requires_matching_execution_outcome():
+    base = {
+        "turn": 2,
+        "player": {"active": ["Indeedee-F"]},
+        "opponent": {"active": ["Murkrow"]},
+    }
+    executed = {
+        **base,
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "haze",
+                    "effects": [],
+                }
+            ],
+        },
+    }
+    prevented = {
+        **base,
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "slot": 1,
+                    "outcome": "prevented",
+                    "reason": "par",
+                    "effects": [],
+                }
+            ],
+        },
+    }
+    worker = ExactSelectedCommandWorker([executed, prevented])
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"id": 1}, 1.0, world_id="w1"),),
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view=executed,
+        resolved_opponent_choice="move haze",
+        rng_seeds=("executed-rng", "prevented-rng"),
+    )
+
+    assert update.generated == 2
+    assert update.matched == 1
+    assert len(update.particles) == 1
+
+
 def test_public_event_delta_distinguishes_substitute_outcomes():
     base = {
         "turn": 2,
