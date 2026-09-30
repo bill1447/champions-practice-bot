@@ -384,6 +384,7 @@ def shortlist_belief_candidates(
     candidate_limit: int = 8,
     reference_limit: int = 2,
     guidance: StrategicCandidateGuidance | None = None,
+    allowed_choices: tuple[str, ...] | None = None,
 ) -> BeliefPruningResult:
     """Autonomously shortlist public-belief-safe AI actions.
 
@@ -403,8 +404,14 @@ def shortlist_belief_candidates(
     screening_started = perf_counter()
     cache: dict[tuple[SideId, str], list[str]] = {}
     common, _, _ = _common_legal_choices(worker, worlds, side=side, cache=cache)
+    if allowed_choices is not None:
+        allowed = set(allowed_choices)
+        common = [choice for choice in common if choice in allowed]
     if not common:
-        raise ValueError("no candidate choices are legal in every belief world")
+        raise ValueError(
+            "no candidate choices are both public-preseal selectable "
+            "and legal in every belief world"
+        )
 
     families = _strategy_families(common)
     representatives = [family.representative for family in families]
