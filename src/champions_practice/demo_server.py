@@ -305,10 +305,23 @@ def _opponent_team_species(view: dict | None, slot: int) -> str:
     if not isinstance(opponent, dict):
         return f"slot {slot}"
     preview = opponent.get("preview_species")
-    if isinstance(preview, list) and 1 <= slot <= len(preview):
-        species = preview[slot - 1]
-        if isinstance(species, str) and species:
-            return species
+    if not isinstance(preview, list):
+        return f"slot {slot}"
+
+    # Showdown switch indices refer to the post-preview brought-team order, not
+    # the original six-slot preview order. The v0 demo uses one fixed AI preview,
+    # so map switch positions through that selected order before labeling them.
+    selected_slots = [
+        int(character)
+        for character in DEMO_AI_PREVIEW_CHOICE.removeprefix("team ")
+        if character.isdigit()
+    ]
+    if 1 <= slot <= len(selected_slots):
+        preview_slot = selected_slots[slot - 1]
+        if 1 <= preview_slot <= len(preview):
+            species = preview[preview_slot - 1]
+            if isinstance(species, str) and species:
+                return species
     return f"slot {slot}"
 
 
