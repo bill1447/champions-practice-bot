@@ -893,8 +893,13 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
     return false;
   }
 
-  const healthySwitches = new Set(availableSwitches(request));
-  const revivalTargets = new Set(availableRevivalTargets(request));
+  const hasParty = Array.isArray(request?.side?.pokemon);
+  const healthySwitches = new Set(
+    hasParty ? availableSwitches(request) : [],
+  );
+  const revivalTargets = new Set(
+    hasParty ? availableRevivalTargets(request) : [],
+  );
 
   for (const [slot, command] of commands.entries()) {
     const tokens = command.split(/\s+/);
