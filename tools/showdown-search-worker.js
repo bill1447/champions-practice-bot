@@ -180,27 +180,32 @@ function canonicalPublicMechanicsEvent(parts) {
 function publicMechanicsEventDelta(battle, sideId) {
   const channel = sideId === "p1" ? 1 : 2;
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
-  let turn = null;
-  let events = [];
+  let logTurn = 0;
+  const byTurn = new Map();
 
   for (const line of visibleLog) {
     const parts = line.split("|");
     const event = parts[1];
     if (event === "turn") {
       const parsed = Number(parts[2]);
-      if (Number.isInteger(parsed) && parsed > 0) {
-        turn = parsed;
-        events = [];
-      }
+      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
       continue;
     }
-    if (turn === null) continue;
+    if (logTurn <= 0) continue;
 
     const canonical = canonicalPublicMechanicsEvent(parts);
-    if (canonical) events.push(canonical);
+    if (!canonical) continue;
+    if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
+    byTurn.get(logTurn).push(canonical);
   }
 
-  return { turn, events };
+  // Showdown emits the next |turn| marker after resolving a normal turn. Choose
+  // the most recent turn that actually contains mechanics events rather than the
+  // numerically latest marker, which may describe the as-yet-unplayed next turn.
+  const turns = [...byTurn.keys()].sort((left, right) => right - left);
+  if (!turns.length) return { turn: null, events: [] };
+  const turn = turns[0];
+  return { turn, events: byTurn.get(turn) };
 }
 
 function publicLastOpponentActions(battle, sideId) {
