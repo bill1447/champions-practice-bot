@@ -170,7 +170,7 @@ def _run_human_forced_switch_ai_wait(worker: ShowdownSearchWorker) -> None:
                 f"ERROR: human side did not enter forced-switch phase: {human_force}"
             )
 
-        ai_wait = coordinator._ai_legal_choices()
+        ai_wait = coordinator._ai_preseal_choices()
         if ai_wait != [""]:
             raise SystemExit(
                 f"ERROR: waiting AI did not expose one empty choice: {ai_wait}"
@@ -238,7 +238,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
             ai_choice=PREVIEW,
         )
 
-        first_legal = coordinator._ai_legal_choices()
+        first_legal = coordinator._ai_preseal_choices()
         first_choice = next(
             (
                 choice
@@ -265,7 +265,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
                 "ERROR: first partial-replacement setup turn ended battle"
             )
 
-        single_force = coordinator._ai_legal_choices()
+        single_force = coordinator._ai_preseal_choices()
         first_replacement = next(
             (
                 choice
@@ -293,7 +293,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
             human_choice="",
         )
 
-        second_legal = coordinator._ai_legal_choices()
+        second_legal = coordinator._ai_preseal_choices()
         double_explosion = next(
             (
                 choice
@@ -320,7 +320,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
                 "ERROR: double KO with one reserve incorrectly ended battle"
             )
 
-        partial_force = coordinator._ai_legal_choices()
+        partial_force = coordinator._ai_preseal_choices()
         partial_choices = [
             choice
             for choice in partial_force
@@ -416,7 +416,7 @@ def main() -> None:
             if coordinator.turn_state is not SealedTurnState.RESOLVED:
                 raise SystemExit("ERROR: first self-KO turn did not resolve cleanly")
 
-            ai_force = coordinator._ai_legal_choices()
+            ai_force = coordinator._ai_preseal_choices()
             if not any(choice.count("switch ") == 2 for choice in ai_force):
                 raise SystemExit("ERROR: real session did not enter AI forced-switch phase")
             human_wait = coordinator.human_legal_choices()
