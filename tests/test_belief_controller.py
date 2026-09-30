@@ -85,10 +85,15 @@ class _CoordinatorWorker:
         }
         return {"view": view}
 
-    def session_legal_choices(self, session_id, *, side):
+    def session_public_choices(self, session_id, *, side):
         if side == "p1":
             return ["move human"]
         return ["move secret-ai"]
+
+    def session_legal_choices(self, session_id, *, side):
+        if side == "p1":
+            return ["move human"]
+        return ["move hidden-oracle"]
 
     def close_session(self, session_id):
         self.closed.append(session_id)
@@ -129,6 +134,39 @@ def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> 
     }
     assert "HIDDEN HUMAN TEAM" not in repr(seen)
     assert "team 4321" not in repr(seen)
+
+
+def test_ai_sealing_uses_public_choices_not_exact_live_legality(monkeypatch) -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    seen = []
+
+    def choose(*, legal_live):
+        seen.append(tuple(legal_live))
+        return BeliefDecision(
+            choice=legal_live[0],
+            mode="belief-search",
+            particle_count=1,
+            candidate_count=1,
+            branch_count=1,
+            elapsed_seconds=0.0,
+        )
+
+    monkeypatch.setattr(controller._engine, "choose_ai_action", choose)
+
+    ready = controller.lock_ai_action()
+
+    assert ready.token
+    assert seen == [("move secret-ai",)]
+    assert controller._sealed_decision is not None
+    assert controller._sealed_decision[1].choice == "move secret-ai"
 
 
 def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
