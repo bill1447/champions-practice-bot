@@ -130,17 +130,11 @@ def _assert_revival_request(view: dict, *, label: str) -> None:
         raise SystemExit(f"ERROR: {label} did not retain fainted Snorlax in slot 3")
 
 
-def _assert_revived(view: dict, *, reviver_side: str, label: str) -> None:
-    if reviver_side == "p2":
-        team = view["player"]["team"]
-        snorlax = next(mon for mon in team if mon["species"] == "Snorlax")
-        hp_percent = snorlax["hp_percent"]
-        fainted = snorlax["fainted"]
-    else:
-        revealed = view["opponent"]["revealed"]
-        snorlax = next(mon for mon in revealed if mon["species"] == "Snorlax")
-        hp_percent = snorlax["hp_percent"]
-        fainted = snorlax["fainted"]
+def _assert_revived(view: dict, *, label: str) -> None:
+    team = view["player"]["team"]
+    snorlax = next(mon for mon in team if mon["species"] == "Snorlax")
+    hp_percent = snorlax["hp_percent"]
+    fainted = snorlax["fainted"]
 
     if fainted or hp_percent is None or hp_percent <= 0:
         raise SystemExit(
@@ -267,7 +261,11 @@ def _run_case(
             p2_choice=p2_choice,
         )
         actual_view = worker.session_view(session_id, side="p2")["view"]
-        _assert_revived(actual_view, reviver_side=reviver_side, label=label)
+        reviver_after = worker.session_view(
+            session_id,
+            side=reviver_side,
+        )["view"]
+        _assert_revived(reviver_after, label=label)
 
         if reviver_side == "p1":
             ai_choice = ""
