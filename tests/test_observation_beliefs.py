@@ -52,6 +52,74 @@ def test_public_signature_is_order_independent():
     assert public_observation_signature(left) == public_observation_signature(right)
 
 
+def test_public_event_delta_distinguishes_substitute_outcomes():
+    base = {
+        "turn": 2,
+        "player": {"active": ["Armarouge"]},
+        "opponent": {"active": ["Snorlax"]},
+    }
+    broken = {
+        **base,
+        "public_event_delta": {
+            "turn": 1,
+            "events": [["-end", "p1a", "substitute"]],
+        },
+    }
+    survived = {
+        **base,
+        "public_event_delta": {
+            "turn": 1,
+            "events": [
+                ["-activate", "p1a", "move:substitute", "[damage]"],
+            ],
+        },
+    }
+
+    assert public_observation_signature(broken) != public_observation_signature(
+        survived
+    )
+    kind, paths = classify_public_observation_mismatch(broken, survived)
+    assert kind == "structural"
+    assert any(path.startswith("$.public_event_delta") for path in paths)
+
+
+def test_conditioning_rejects_same_snapshot_with_wrong_public_event_delta():
+    base = {
+        "turn": 2,
+        "player": {"active": ["Armarouge"]},
+        "opponent": {"active": ["Snorlax"]},
+    }
+    broken = {
+        **base,
+        "public_event_delta": {
+            "turn": 1,
+            "events": [["-end", "p1a", "substitute"]],
+        },
+    }
+    survived = {
+        **base,
+        "public_event_delta": {
+            "turn": 1,
+            "events": [
+                ["-activate", "p1a", "move:substitute", "[damage]"],
+            ],
+        },
+    }
+    worker = FakeWorker([broken, survived])
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"id": 1}, 1.0, world_id="w1"),),
+        ai_side="p2",
+        ai_choice="move psychic +1",
+        actual_public_view=broken,
+    )
+
+    assert update.generated == 2
+    assert update.matched == 1
+    assert len(update.particles) == 1
+
+
 def test_public_signature_ignores_names_and_preserves_winner_role():
     left = {
         "winner": "Practice AI",
