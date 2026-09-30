@@ -1799,6 +1799,7 @@ class _BeliefBattleCoordinator:
         with self._state_lock:
             if self._turn_state is not SealedTurnState.NEW:
                 raise RuntimeError("battle has already been started")
+        try:
             started = self._worker.start_session(
                 battle_format=self._battle_format,
                 p1_team=opponent_team,
@@ -1807,6 +1808,18 @@ class _BeliefBattleCoordinator:
                 p2_name=p2_name,
                 seed=session_seed,
             )
+        except ShowdownWorkerTimeout as error:
+            if error.mutating:
+                self._worker.abort(timeout_seconds=0.25)
+                with self._state_lock:
+                    self._turn_state = SealedTurnState.CLOSED
+                raise RuntimeError(
+                    "live session start timed out with unknown outcome; "
+                    "create a new battle"
+                ) from error
+            raise
+
+        with self._state_lock:
             self._session_id = str(started["session_id"])
             self._turn_state = SealedTurnState.PREVIEW
 
@@ -1820,16 +1833,29 @@ class _BeliefBattleCoordinator:
             if self._turn_state is not SealedTurnState.PREVIEW:
                 raise RuntimeError("battle is not awaiting preview choices")
             session_id = self._require_session()
+
+        try:
             self._worker.choose_session(
                 session_id,
                 p1_choice=human_choice,
                 p2_choice=ai_choice,
             )
-            view = self._worker.session_view(session_id, side="p2")["view"]
-            self._engine.initialize_preview(
-                view=view,
-                ai_choice=ai_choice,
-            )
+        except ShowdownWorkerTimeout as error:
+            if error.mutating:
+                with self._state_lock:
+                    self._turn_state = SealedTurnState.UNKNOWN
+                raise RuntimeError(
+                    "preview submission timed out with unknown outcome; "
+                    "restart the battle before submitting again"
+                ) from error
+            raise
+
+        view = self._worker.session_view(session_id, side="p2")["view"]
+        self._engine.initialize_preview(
+            view=view,
+            ai_choice=ai_choice,
+        )
+        with self._state_lock:
             self._turn_state = (
                 SealedTurnState.TERMINAL
                 if bool(view.get("ended"))
