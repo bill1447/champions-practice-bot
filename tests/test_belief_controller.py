@@ -158,7 +158,7 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     monkeypatch.setattr(
         controller._engine,
         "observe_public_turn",
-        lambda *, decision, view: SimpleNamespace(
+        lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
             decision=decision,
             public_view=view,
             particles_before=3,
@@ -967,7 +967,7 @@ def _stub_sealed_engine(
     monkeypatch.setattr(
         controller._engine,
         "observe_public_turn",
-        lambda *, decision, view: SimpleNamespace(
+        lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
             decision=decision,
             public_view=view,
             particles_before=3,
@@ -1315,10 +1315,12 @@ def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> N
     _stub_sealed_engine(controller, monkeypatch)
     ready = controller.lock_ai_action()
     observed = 0
+    observed_human_choices = []
 
-    def count_observation(*, decision, view):
+    def count_observation(*, decision, view, resolved_opponent_choice=None):
         nonlocal observed
         observed += 1
+        observed_human_choices.append(resolved_opponent_choice)
         return SimpleNamespace(
             decision=decision,
             public_view=view,
@@ -1350,6 +1352,7 @@ def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> N
 
     assert result.decision.choice == "move secret-ai"
     assert observed == 1
+    assert observed_human_choices == ["move human"]
     assert len(worker.submissions) == 1
     assert controller.turn_state is SealedTurnState.RESOLVED
 
