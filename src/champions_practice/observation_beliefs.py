@@ -38,9 +38,11 @@ def public_observation_signature(view: dict[str, Any]) -> str:
     player/opponent role and remove cosmetic names before comparing observations.
     """
     normalized = copy.deepcopy(view)
-    # Public action history is evidence used to prune replay candidates, not part of
-    # the mechanically relevant resulting battle state. Exact reconstructed states
-    # need not retain the same historical log representation as the live session.
+    # The selected opponent command history is evidence used to prune replay
+    # candidates, not part of the resulting-state projection. In contrast,
+    # public_event_delta is intentionally retained: it is a channel-sanitized
+    # mechanics observation and prevents mechanically different transitions such
+    # as Substitute surviving versus breaking from collapsing to one signature.
     normalized.pop("opponent_last_actions", None)
     player = normalized.get("player")
     opponent = normalized.get("opponent")
