@@ -49,6 +49,160 @@ function toId(value) {
   return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
 }
 
+function canonicalProtocolIdentity(value) {
+  const text = String(value || "").trim();
+  const slot = text.match(/^(p[12][a-z])(?::|$)/);
+  if (slot) return slot[1];
+  const side = text.match(/^(p[12])(?::|$)/);
+  if (side) return side[1];
+
+  const tagged = text.match(/^\[([^\]]+)\]\s*(.*)$/);
+  if (tagged) {
+    const tag = toId(tagged[1]);
+    const payload = tagged[2] ? canonicalProtocolIdentity(tagged[2]) : "";
+    return payload ? `[${tag}]:${payload}` : `[${tag}]`;
+  }
+
+  const effect = text.match(/^(move|ability|item):\s*(.*)$/i);
+  if (effect) {
+    return `${toId(effect[1])}:${toId(effect[2])}`;
+  }
+
+  if (/^[+-]?\d+$/.test(text)) return String(Number(text));
+  return toId(text);
+}
+
+const PUBLIC_MECHANICS_EVENTS = new Set([
+  "move",
+  "switch",
+  "drag",
+  "replace",
+  "faint",
+  "cant",
+  "-fail",
+  "-miss",
+  "-immune",
+  "-crit",
+  "-supereffective",
+  "-resisted",
+  "-start",
+  "-end",
+  "-activate",
+  "-singleturn",
+  "-singlemove",
+  "-sidestart",
+  "-sideend",
+  "-swapsideconditions",
+  "-fieldstart",
+  "-fieldend",
+  "-weather",
+  "-status",
+  "-curestatus",
+  "-cureteam",
+  "-boost",
+  "-unboost",
+  "-setboost",
+  "-clearboost",
+  "-clearnegativeboost",
+  "-clearallboost",
+  "-invertboost",
+  "-swapboost",
+  "-copyboost",
+  "-item",
+  "-enditem",
+  "-ability",
+  "-endability",
+  "-mega",
+  "detailschange",
+  "-formechange",
+  "-transform",
+  "-damage",
+  "-heal",
+]);
+
+function canonicalPublicMechanicsEvent(parts) {
+  const event = parts[1];
+  if (!PUBLIC_MECHANICS_EVENTS.has(event)) return null;
+
+  if (["switch", "drag", "replace"].includes(event)) {
+    return [
+      event,
+      canonicalProtocolIdentity(parts[2]),
+      toId(String(parts[3] || "").split(",", 1)[0]),
+    ];
+  }
+  if (event === "faint") {
+    return [event, canonicalProtocolIdentity(parts[2])];
+  }
+  if (["detailschange", "-formechange"].includes(event)) {
+    return [
+      event,
+      canonicalProtocolIdentity(parts[2]),
+      toId(String(parts[3] || "").split(",", 1)[0]),
+    ];
+  }
+  if (event === "move") {
+    const canonical = [
+      event,
+      canonicalProtocolIdentity(parts[2]),
+      toId(parts[3]),
+      canonicalProtocolIdentity(parts[4]),
+    ];
+    for (const value of parts.slice(5)) {
+      const normalized = canonicalProtocolIdentity(value);
+      if (normalized) canonical.push(normalized);
+    }
+    return canonical;
+  }
+  if (event === "-damage" || event === "-heal") {
+    const canonical = [
+      event,
+      canonicalProtocolIdentity(parts[2]),
+    ];
+    // HP values are already represented by the public state projection. Preserve
+    // only visible causes/tags so event history can constrain mechanics without
+    // accidentally depending on exact-vs-percentage health formatting.
+    for (const value of parts.slice(4)) {
+      const normalized = canonicalProtocolIdentity(value);
+      if (normalized) canonical.push(normalized);
+    }
+    return canonical;
+  }
+
+  const canonical = [event];
+  for (const value of parts.slice(2)) {
+    const normalized = canonicalProtocolIdentity(value);
+    if (normalized) canonical.push(normalized);
+  }
+  return canonical;
+}
+
+function publicMechanicsEventDelta(battle, sideId) {
+  const channel = sideId === "p1" ? 1 : 2;
+  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
+  let turn = null;
+  let events = [];
+
+  for (const line of visibleLog) {
+    const parts = line.split("|");
+    const event = parts[1];
+    if (event === "turn") {
+      const parsed = Number(parts[2]);
+      if (Number.isInteger(parsed) && parsed > 0) {
+        turn = parsed;
+        events = [];
+      }
+      continue;
+    }
+    if (turn === null) continue;
+
+    const canonical = canonicalPublicMechanicsEvent(parts);
+    if (canonical) events.push(canonical);
+  }
+
+  return { turn, events };
+}
+
 function publicLastOpponentActions(battle, sideId) {
   const opponentPrefix = sideId === "p1" ? "p2" : "p1";
   const channel = sideId === "p1" ? 1 : 2;
@@ -305,6 +459,10 @@ function playerView(battle, sideId = "p1", previews = null) {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
     opponent_last_actions: publicLastOpponentActions(battle, sideId),
+    // This is derived only from the requesting side's Showdown-visible channel.
+    // It makes publicly observed mechanics transitions (for example Substitute
+    // breaking) authoritative even when the final reduced state projection matches.
+    public_event_delta: publicMechanicsEventDelta(battle, sideId),
     ended: battle.ended,
     winner: battle.winner || null,
     field: {
