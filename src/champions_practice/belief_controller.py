@@ -626,7 +626,10 @@ class BeliefDecisionEngine:
         multiplier = (
             self.observed_action_rng_multiplier
             if (
-                resolved_opponent_choice is not None
+                (
+                    resolved_opponent_choice is not None
+                    and "move " in resolved_opponent_choice
+                )
                 or public_opponent_moves_fully_observed(
                     view,
                     previous_public_view=previous_view,
