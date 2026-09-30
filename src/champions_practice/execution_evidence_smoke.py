@@ -104,29 +104,28 @@ def _rng_seed(index: int) -> str:
     return "sodium," + "".join(f"{value:08x}" for value in values)
 
 
-def _execution_events(view: dict) -> list[list[str]]:
+def _execution_actions(view: dict) -> list[dict]:
     delta = view.get("public_execution_delta")
     if not isinstance(delta, dict):
         return []
-    events = delta.get("events")
-    return events if isinstance(events, list) else []
+    actions = delta.get("actions")
+    if not isinstance(actions, list):
+        return []
+    return [action for action in actions if isinstance(action, dict)]
 
 
 def _haze_outcome(view: dict) -> str | None:
-    for event in _execution_events(view):
+    for action in _execution_actions(view):
         if (
-            len(event) >= 3
-            and event[0] == "move"
-            and event[1] == "p1a"
-            and event[2] == "haze"
+            action.get("slot") == 1
+            and action.get("outcome") == "executed"
+            and action.get("move") == "haze"
         ):
             return "executed"
-    for event in _execution_events(view):
         if (
-            len(event) >= 3
-            and event[0] == "cant"
-            and event[1] == "p1a"
-            and event[2] == "par"
+            action.get("slot") == 1
+            and action.get("outcome") == "prevented"
+            and action.get("reason") == "par"
         ):
             return "prevented"
     return None
