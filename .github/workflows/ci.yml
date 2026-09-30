@@ -153,6 +153,10 @@ jobs:
         shell: pwsh
         run: .\exact-search-smoke.ps1
 
+      - name: Hidden-state legality oracle smoke test
+        shell: pwsh
+        run: .\legality-oracle-smoke.ps1
+
       - name: Persistent-session legal action smoke test
         shell: pwsh
         run: .\legal-actions-smoke.ps1
