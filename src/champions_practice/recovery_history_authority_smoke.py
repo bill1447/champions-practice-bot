@@ -203,7 +203,8 @@ def main() -> None:
                     public_view=view_2,
                 ),
             ),
-            checkpoint_particles=(checkpoint_particle,),
+            authority_history_complete=True,
+        checkpoint_particles=(checkpoint_particle,),
             checkpoint_public_view=view_2,
             observations=(
                 RecoveryObservation(
