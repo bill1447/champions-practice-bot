@@ -95,6 +95,108 @@ def test_public_execution_delta_distinguishes_executed_from_prevented_action():
     assert any(path.startswith("$.public_execution_delta") for path in paths)
 
 
+def test_public_execution_delta_preserves_mechanically_visible_order():
+    base = {
+        "turn": 2,
+        "player": {"active": ["Lucario", "Dusclops"]},
+        "opponent": {"active": ["Snorlax", "Slowbro"]},
+    }
+    tackle_then_growl = {
+        **base,
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "opponent",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "tackle",
+                    "source": "selected",
+                    "provenance": [],
+                    "target": {"side": "player", "slot": 2},
+                    "effects": ["-immune"],
+                },
+                {
+                    "side": "opponent",
+                    "slot": 2,
+                    "outcome": "executed",
+                    "move": "growl",
+                    "source": "selected",
+                    "provenance": [],
+                    "target": {"side": "player", "slot": 2},
+                    "effects": [],
+                },
+            ],
+        },
+    }
+    growl_then_tackle = {
+        **base,
+        "public_execution_delta": {
+            **tackle_then_growl["public_execution_delta"],
+            "actions": list(
+                reversed(tackle_then_growl["public_execution_delta"]["actions"])
+            ),
+        },
+    }
+
+    assert public_observation_signature(
+        tackle_then_growl
+    ) != public_observation_signature(growl_then_tackle)
+
+
+def test_public_execution_delta_distinguishes_called_move_provenance():
+    base = {
+        "turn": 3,
+        "player": {"active": ["Sandslash"]},
+        "opponent": {"active": ["Vaporeon"]},
+    }
+    defense_curl = {
+        **base,
+        "public_execution_delta": {
+            "turn": 2,
+            "actions": [
+                {
+                    "side": "player",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "sleeptalk",
+                    "source": "selected",
+                    "provenance": [],
+                    "target": {"side": "player", "slot": 1},
+                    "effects": [],
+                },
+                {
+                    "side": "player",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "defensecurl",
+                    "source": "called",
+                    "provenance": ["[from]:move:sleeptalk"],
+                    "target": {"side": "player", "slot": 1},
+                    "effects": [],
+                },
+            ],
+        },
+    }
+    swords_dance = {
+        **base,
+        "public_execution_delta": {
+            **defense_curl["public_execution_delta"],
+            "actions": [
+                defense_curl["public_execution_delta"]["actions"][0],
+                {
+                    **defense_curl["public_execution_delta"]["actions"][1],
+                    "move": "swordsdance",
+                },
+            ],
+        },
+    }
+
+    assert public_observation_signature(defense_curl) != public_observation_signature(
+        swords_dance
+    )
+
+
 class ExactSelectedCommandWorker(FakeWorker):
     def validate_choices(self, *, state, side, candidates):
         return list(candidates)
