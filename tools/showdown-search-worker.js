@@ -1274,6 +1274,73 @@ function materializeRecoveryStatProposals(request) {
   };
 }
 
+function validateRecoveryStatCandidate(request) {
+  if (!request.state) {
+    throw new Error("validate_recovery_stat_candidate requires state");
+  }
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error("validate_recovery_stat_candidate requires p1 or p2 side");
+  }
+
+  const points = recoveryStatPoints(request.stat_points);
+  if (!points) {
+    return { valid: false, reason: "invalid-stat-points" };
+  }
+
+  const battle = Battle.fromJSON(JSON.stringify(request.state));
+  battle.restart(() => {});
+  try {
+    const side = request.side === "p1" ? battle.p1 : battle.p2;
+    const pokemonIndex = request.pokemon_index;
+    if (
+      !Number.isInteger(pokemonIndex) ||
+      pokemonIndex < 0 ||
+      pokemonIndex >= side.pokemon.length
+    ) {
+      return { valid: false, reason: "invalid-pokemon-index" };
+    }
+
+    const pokemon = side.pokemon[pokemonIndex];
+    if (pokemon.transformed) {
+      return { valid: false, reason: "transformed-pokemon" };
+    }
+
+    const serializedPoints = recoveryStatPoints(pokemon.set.evs);
+    if (
+      !serializedPoints ||
+      RECOVERY_STATS.some((stat) => serializedPoints[stat] !== points[stat])
+    ) {
+      return { valid: false, reason: "stat-point-mismatch" };
+    }
+
+    const recalculated = battle.spreadModify(pokemon.species.baseStats, pokemon.set);
+    if (recalculated.hp !== pokemon.baseMaxhp) {
+      return { valid: false, reason: "maxhp-mismatch" };
+    }
+
+    for (const stat of RECOVERY_STATS) {
+      if (pokemon.baseStoredStats[stat] !== recalculated[stat]) {
+        return { valid: false, reason: `base-stored-${stat}-mismatch` };
+      }
+    }
+    for (const stat of RECOVERY_NON_HP_STATS) {
+      if (pokemon.storedStats[stat] !== recalculated[stat]) {
+        return { valid: false, reason: `stored-${stat}-mismatch` };
+      }
+    }
+
+    const serializedSpeed = pokemon.speed;
+    pokemon.updateSpeed();
+    if (pokemon.speed !== serializedSpeed) {
+      return { valid: false, reason: "speed-mismatch" };
+    }
+
+    return { valid: true };
+  } finally {
+    battle.destroy();
+  }
+}
+
 function stateView(request) {
   if (!request.state) {
     throw new Error("state_view requires a serialized battle state");
@@ -1614,6 +1681,8 @@ function handle(request) {
       return validateRequestedChoices(request);
     case "materialize_recovery_stat_proposals":
       return materializeRecoveryStatProposals(request);
+    case "validate_recovery_stat_candidate":
+      return validateRecoveryStatCandidate(request);
     case "state_view":
       return stateView(request);
     case "session_start":
