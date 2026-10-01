@@ -462,7 +462,7 @@ def test_incremental_conditioning_returns_before_hard_deadline(
 
 
 
-def test_pending_recovery_reuses_exact_resolved_human_command() -> None:
+def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
     engine = BeliefDecisionEngine(
         ".",
         battle_format="test",
@@ -496,7 +496,7 @@ def test_pending_recovery_reuses_exact_resolved_human_command() -> None:
         (operation(SimpleNamespace()), False)
     )
 
-    assert engine._recover_pending() is True
+    assert engine._retry_pending_with_more_rng() is True
     assert seen == ["switch 3, pass"]
     assert engine.pending_observations == []
     assert engine.degraded is False
