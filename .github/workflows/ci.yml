@@ -145,6 +145,10 @@ jobs:
         shell: pwsh
         run: .\recovery-opening-authority-smoke.ps1
 
+      - name: Recovery RNG sampling authority smoke test
+        shell: pwsh
+        run: .\recovery-sampling-inconclusive-smoke.ps1
+
       - name: Static recovery prefix authority smoke test
         shell: pwsh
         run: .\recovery-history-authority-smoke.ps1
