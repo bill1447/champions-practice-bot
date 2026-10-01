@@ -508,7 +508,7 @@ class ShowdownSearchWorker:
     def _finalize_transport(self) -> None:
         process = self._process
         try:
-            if process.poll() is None:
+            while process.poll() is None:
                 try:
                     process.wait(timeout=0.25)
                 except subprocess.TimeoutExpired:
@@ -516,10 +516,9 @@ class ShowdownSearchWorker:
                         process.kill()
                     except OSError:
                         pass
-                    # This wait runs only in the daemon finalizer. close()/abort()
-                    # remain bounded while cleanup retains ownership until the OS
-                    # actually reaps the child and its pipes can be closed safely.
-                    process.wait()
+                # This loop runs only in the daemon finalizer. close()/abort()
+                # remain bounded while cleanup retains ownership until the OS
+                # actually reaps the child and its pipes can be closed safely.
 
             # Wait until the request that owned the write lock has released it.
             # After transport_closed is set, no later request may start another
