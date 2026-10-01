@@ -1328,9 +1328,15 @@ function applyRecoveryOpeningStatProposal(options, sideId, proposal) {
   }
 
   const set = team[pokemonIndex];
-  const currentPoints = recoveryStatPoints(set.evs || {});
-  if (!currentPoints) return "invalid-current-stat-points";
-  if (points.hp !== currentPoints.hp) return "hp-broadening-disabled";
+  const currentHpPoints = Number(set.evs?.hp || 0);
+  if (
+    !Number.isInteger(currentHpPoints) ||
+    currentHpPoints < 0 ||
+    currentHpPoints > CHAMPIONS_STAT_POINT_CAP
+  ) {
+    return "invalid-current-hp-points";
+  }
+  if (points.hp !== currentHpPoints) return "hp-broadening-disabled";
 
   set.evs = { ...points };
   return null;
