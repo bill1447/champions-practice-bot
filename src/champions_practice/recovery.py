@@ -81,7 +81,7 @@ class RecoveryMaterializationFailure:
 
 @dataclass(frozen=True)
 class RecoveryMaterializationReport:
-    candidates: tuple["RecoveryCandidate", ...]
+    candidates: tuple["_MaterializedStatCandidate", ...]
     failures: tuple[RecoveryMaterializationFailure, ...]
 
 
@@ -273,8 +273,11 @@ def _bounded_non_hp_stat_variants(
 
 
 @dataclass(frozen=True)
-class RecoveryCandidate:
-    """One proposed hidden-world variant at the last-good checkpoint."""
+class _MaterializedStatCandidate:
+    """Internal result of trusted Showdown stat materialization.
+
+    Public recovery authority APIs never accept this serialized state from callers.
+    """
 
     candidate_id: str
     parent_particle_index: int
@@ -387,7 +390,7 @@ def _materialize_stat_proposals(
             )
         grouped.setdefault(proposal.parent_particle_index, []).append(proposal)
 
-    candidates: list[RecoveryCandidate] = []
+    candidates: list[_MaterializedStatCandidate] = []
     failures: list[RecoveryMaterializationFailure] = []
     for parent_index in sorted(grouped):
         parent = request.checkpoint_particles[parent_index]
@@ -418,7 +421,7 @@ def _materialize_stat_proposals(
             state = result.get("state")
             if isinstance(state, dict):
                 candidates.append(
-                    RecoveryCandidate(
+                    _MaterializedStatCandidate(
                         candidate_id=proposal.proposal_id,
                         parent_particle_index=proposal.parent_particle_index,
                         particle=BeliefParticle(
@@ -461,7 +464,7 @@ class RecoveryCandidateStatus(str, Enum):
 
 @dataclass(frozen=True)
 class RecoveryCandidateValidation:
-    candidate: RecoveryCandidate
+    candidate: _MaterializedStatCandidate
     status: RecoveryCandidateStatus
     checkpoint_compatible: bool
     observations_replayed: int
@@ -579,7 +582,7 @@ def _state_without_allowed_stat_delta(
 def _stat_candidate_delta_authorized(
     *,
     parent: BeliefParticle,
-    candidate: RecoveryCandidate,
+    candidate: _MaterializedStatCandidate,
     proposal: OpponentStatProposal,
     ai_side: SideId,
 ) -> bool:
@@ -638,7 +641,7 @@ def _validate_materialized_stat_candidates(
     worker: RecoveryReplayWorker,
     *,
     request: RecoveryRequest,
-    candidates: tuple[RecoveryCandidate, ...],
+    candidates: tuple[_MaterializedStatCandidate, ...],
     proposals_by_id: dict[str, OpponentStatProposal],
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> RecoveryValidationReport:
