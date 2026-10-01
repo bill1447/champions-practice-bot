@@ -1376,6 +1376,73 @@ def test_same_moves_on_new_turn_are_fresh_public_evidence() -> None:
 
 
 
+def test_quantitative_public_transition_payload_is_signature_authority() -> None:
+    two_hits = {
+        "turn": 2,
+        "public_event_delta": {
+            "turn": 1,
+            "events": [
+                [
+                    "-hitcount",
+                    "p2a",
+                    "2",
+                    "[action]",
+                    "opponent",
+                    "1",
+                    "bulletseed",
+                    "selected",
+                ]
+            ],
+            "unsupported": [],
+        },
+    }
+    five_hits = {
+        "turn": 2,
+        "public_event_delta": {
+            "turn": 1,
+            "events": [
+                [
+                    "-hitcount",
+                    "p2a",
+                    "5",
+                    "[action]",
+                    "opponent",
+                    "1",
+                    "bulletseed",
+                    "selected",
+                ]
+            ],
+            "unsupported": [],
+        },
+    }
+
+    assert public_observation_signature(two_hits) != public_observation_signature(
+        five_hits
+    )
+
+
+def test_unsupported_public_transition_evidence_fails_closed_before_replay() -> None:
+    update = condition_particles(
+        object(),
+        particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view={
+            "turn": 2,
+            "public_event_delta": {
+                "turn": 1,
+                "events": [],
+                "unsupported": ["futuremechanic"],
+            },
+        },
+    )
+
+    assert update.particles == ()
+    assert update.generated == 0
+    assert update.matched == 0
+    assert update.structural_mismatches == 1
+
+
 def test_public_signature_ignores_auxiliary_action_history() -> None:
     left = {
         "turn": 2,

@@ -42,8 +42,9 @@ def public_observation_signature(view: dict[str, Any]) -> str:
     # candidates, not part of the resulting-state projection. In contrast, both
     # public_execution_delta and public_event_delta are authoritative public
     # transition evidence. The former distinguishes selected commands from what
-    # actually executed/failed/was prevented; the latter preserves visible
-    # mechanics transitions such as Substitute surviving versus breaking.
+    # actually executed/failed/was prevented; the latter preserves ordered,
+    # quantitative mechanics transitions even when later effects erase them from
+    # the reduced final board.
     normalized.pop("opponent_last_actions", None)
     player = normalized.get("player")
     opponent = normalized.get("opponent")
@@ -443,6 +444,18 @@ def resample_particles_by_world(
     return _normalize(sampled)
 
 
+def _unsupported_public_transition_evidence(
+    view: dict[str, Any],
+) -> tuple[str, ...]:
+    delta = view.get("public_event_delta")
+    if not isinstance(delta, dict):
+        return ()
+    values = delta.get("unsupported")
+    if not isinstance(values, list):
+        return ()
+    return tuple(value for value in values if isinstance(value, str) and value)
+
+
 def condition_particles(
     worker: ShowdownSearchWorker,
     *,
@@ -460,6 +473,20 @@ def condition_particles(
         raise ValueError("ai_side must be p1 or p2")
     if not particles:
         return ParticleUpdate((), 0, 0, 0)
+
+    # A public mechanics event that the worker cannot canonicalize is evidence
+    # that our exact-match predicate is incomplete. Never silently accept a
+    # particle by comparing only the reduced board in that case; force the
+    # persistent engine down its degraded/recovery path instead.
+    unsupported = _unsupported_public_transition_evidence(actual_public_view)
+    if unsupported:
+        return ParticleUpdate(
+            (),
+            generated=0,
+            matched=0,
+            deduplicated=0,
+            structural_mismatches=1,
+        )
 
     opponent_side = "p2" if ai_side == "p1" else "p1"
     wanted = public_observation_signature(actual_public_view)

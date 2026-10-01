@@ -89,6 +89,33 @@ function protocolSlotIdentity(value) {
   };
 }
 
+function publicRole(sideId, actorSide) {
+  return actorSide === sideId ? "player" : "opponent";
+}
+
+function publicMoveProvenance(parts) {
+  const provenance = [];
+  for (const value of parts.slice(5)) {
+    if (!String(value).trim().toLowerCase().startsWith("[from]")) continue;
+    const normalized = canonicalProtocolIdentity(value);
+    if (normalized) provenance.push(normalized);
+  }
+  return provenance;
+}
+
+function publicMoveActionContext(parts, sideId) {
+  const actor = protocolSlotIdentity(parts[2]);
+  const move = toId(parts[3]);
+  if (!actor || !move) return null;
+  const provenance = publicMoveProvenance(parts);
+  return {
+    side: publicRole(sideId, actor.side),
+    slot: actor.slot,
+    move,
+    source: provenance.length ? "called" : "selected",
+  };
+}
+
 function publicExecutionEventDelta(battle, sideId) {
   const channel = sideId === "p1" ? 1 : 2;
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
@@ -99,20 +126,6 @@ function publicExecutionEventDelta(battle, sideId) {
   function turnActions() {
     if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
     return byTurn.get(logTurn);
-  }
-
-  function publicRole(actorSide) {
-    return actorSide === sideId ? "player" : "opponent";
-  }
-
-  function publicProvenance(parts) {
-    const provenance = [];
-    for (const value of parts.slice(5)) {
-      if (!String(value).trim().toLowerCase().startsWith("[from]")) continue;
-      const normalized = canonicalProtocolIdentity(value);
-      if (normalized) provenance.push(normalized);
-    }
-    return provenance;
   }
 
   for (const line of visibleLog) {
@@ -134,9 +147,9 @@ function publicExecutionEventDelta(battle, sideId) {
 
       const move = toId(parts[3]);
       if (!move) continue;
-      const provenance = publicProvenance(parts);
+      const provenance = publicMoveProvenance(parts);
       currentAction = {
-        side: publicRole(actor.side),
+        side: publicRole(sideId, actor.side),
         slot: actor.slot,
         outcome: "executed",
         move,
@@ -154,7 +167,7 @@ function publicExecutionEventDelta(battle, sideId) {
       if (!actor) continue;
       const attemptedMove = toId(parts[4]);
       currentAction = {
-        side: publicRole(actor.side),
+        side: publicRole(sideId, actor.side),
         slot: actor.slot,
         outcome: "prevented",
         reason: canonicalProtocolIdentity(parts[3]),
@@ -186,96 +199,125 @@ function publicExecutionEventDelta(battle, sideId) {
   return { turn, actions };
 }
 
-function latestPublicTurnDelta(battle, sideId, canonicalizer) {
-  const channel = sideId === "p1" ? 1 : 2;
-  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
-  let logTurn = 0;
-  const byTurn = new Map();
-
-  for (const line of visibleLog) {
-    const parts = line.split("|");
-    const event = parts[1];
-    if (event === "turn") {
-      const parsed = Number(parts[2]);
-      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
-      continue;
-    }
-    if (logTurn <= 0) continue;
-
-    const canonical = canonicalizer(parts);
-    if (!canonical) continue;
-    if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
-    byTurn.get(logTurn).push(canonical);
-  }
-
-  const turns = [...byTurn.keys()].sort((left, right) => right - left);
-  if (!turns.length) return { turn: null, events: [] };
-  const turn = turns[0];
-  return { turn, events: byTurn.get(turn) };
-}
-
 const PUBLIC_MECHANICS_EVENTS = new Set([
-  // Keep transition evidence that is not necessarily reconstructible from the
-  // reduced final public snapshot. Ordinary move/damage/status/boost/item
-  // transcript lines are intentionally excluded: those are already represented
-  // by action evidence and/or resulting public state and need not have identical
-  // reconstructed log history.
-  "-start",
-  "-end",
-  "-activate",
-  "-singleturn",
-  "-singlemove",
+  // These are protocol facts whose occurrence or payload can constrain exact
+  // mechanics even when later effects restore the same reduced final board.
+  // Every value below is taken only from the requesting side's sanitized
+  // Showdown channel; the canonicalizer never consults hidden live state.
+  "-formechange",
+  "-fail",
+  "-block",
+  "-notarget",
+  "-miss",
+  "-damage",
+  "-heal",
+  "-sethp",
+  "-status",
+  "-curestatus",
+  "-cureteam",
+  "-boost",
+  "-unboost",
+  "-setboost",
+  "-swapboost",
+  "-invertboost",
+  "-clearboost",
+  "-clearallboost",
+  "-clearpositiveboost",
+  "-clearnegativeboost",
+  "-copyboost",
+  "-weather",
+  "-fieldstart",
+  "-fieldend",
+  "-fieldactivate",
   "-sidestart",
   "-sideend",
   "-swapsideconditions",
-  "-fieldstart",
-  "-fieldend",
-  "-weather",
+  "-start",
+  "-end",
+  "-crit",
+  "-supereffective",
+  "-resisted",
+  "-immune",
+  "-item",
+  "-enditem",
+  "-ability",
+  "-endability",
+  "-transform",
+  "-mega",
+  "-primal",
+  "-burst",
+  "-zpower",
+  "-zbroken",
+  "-terastallize",
+  "-dynamax",
+  "-activate",
+  "-waiting",
+  "-prepare",
+  "-mustrecharge",
+  "-nothing",
+  "-hitcount",
+  "-singlemove",
+  "-singleturn",
+  "-ohko",
 ]);
 
-function canonicalPublicMechanicsEvent(parts) {
+const PUBLIC_PRESENTATION_EVENTS = new Set([
+  "-hint",
+  "-message",
+  "-center",
+  "-combine",
+  "-anim",
+]);
+
+function canonicalPublicCondition(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function canonicalPublicMechanicsEvent(parts, actionContext) {
   const event = parts[1];
   if (!PUBLIC_MECHANICS_EVENTS.has(event)) return null;
 
-  if (["switch", "drag", "replace"].includes(event)) {
-    return [
-      event,
-      canonicalProtocolIdentity(parts[2]),
-      toId(String(parts[3] || "").split(",", 1)[0]),
-    ];
-  }
-  if (event === "faint") {
-    return [event, canonicalProtocolIdentity(parts[2])];
-  }
-  if (["detailschange", "-formechange"].includes(event)) {
-    return [
-      event,
-      canonicalProtocolIdentity(parts[2]),
-      toId(String(parts[3] || "").split(",", 1)[0]),
-    ];
-  }
-  if (event === "move") {
+  if (event === "-hitcount") {
+    const count = Number(parts[3]);
+    if (!Number.isInteger(count) || count < 1) return null;
     const canonical = [
       event,
       canonicalProtocolIdentity(parts[2]),
-      toId(parts[3]),
-      canonicalProtocolIdentity(parts[4]),
+      String(count),
     ];
-    for (const value of parts.slice(5)) {
+    if (actionContext) {
+      canonical.push(
+        "[action]",
+        actionContext.side,
+        String(actionContext.slot),
+        actionContext.move,
+        actionContext.source,
+      );
+    }
+    return canonical;
+  }
+
+  if (event === "-damage" || event === "-heal" || event === "-sethp") {
+    const canonical = [
+      event,
+      canonicalProtocolIdentity(parts[2]),
+      canonicalPublicCondition(parts[3]),
+    ];
+    for (const value of parts.slice(4)) {
       const normalized = canonicalProtocolIdentity(value);
       if (normalized) canonical.push(normalized);
     }
     return canonical;
   }
-  if (event === "-damage" || event === "-heal") {
+
+  if (event === "-formechange") {
     const canonical = [
       event,
       canonicalProtocolIdentity(parts[2]),
+      toId(String(parts[3] || "").split(",", 1)[0]),
     ];
-    // HP values are already represented by the public state projection. Preserve
-    // only visible causes/tags so event history can constrain mechanics without
-    // accidentally depending on exact-vs-percentage health formatting.
-    for (const value of parts.slice(4)) {
+    if (parts[4]) canonical.push(canonicalPublicCondition(parts[4]));
+    for (const value of parts.slice(5)) {
       const normalized = canonicalProtocolIdentity(value);
       if (normalized) canonical.push(normalized);
     }
@@ -291,14 +333,72 @@ function canonicalPublicMechanicsEvent(parts) {
 }
 
 function publicMechanicsEventDelta(battle, sideId) {
-  // Showdown emits the next |turn| marker after resolving a normal turn. The
-  // helper therefore returns the most recent turn that actually contains one of
-  // the projected public mechanics events, not merely the latest marker.
-  return latestPublicTurnDelta(
-    battle,
-    sideId,
-    canonicalPublicMechanicsEvent,
-  );
+  const channel = sideId === "p1" ? 1 : 2;
+  const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
+  let logTurn = 0;
+  let actionContext = null;
+  let current = { turn: null, events: [], unsupported: [] };
+  let latest = null;
+
+  function hasEvidence(record) {
+    return record.events.length || record.unsupported.length;
+  }
+
+  function preserveCurrent() {
+    if (current.turn !== null && hasEvidence(current)) latest = current;
+  }
+
+  for (const line of visibleLog) {
+    const parts = line.split("|");
+    const event = parts[1];
+
+    if (event === "turn") {
+      preserveCurrent();
+      const parsed = Number(parts[2]);
+      logTurn = Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+      current = { turn: logTurn || null, events: [], unsupported: [] };
+      actionContext = null;
+      continue;
+    }
+    if (logTurn <= 0) continue;
+
+    if (event === "move") {
+      actionContext = publicMoveActionContext(parts, sideId);
+      continue;
+    }
+    if (event === "cant") {
+      actionContext = null;
+      continue;
+    }
+    if (!event.startsWith("-")) continue;
+    if (PUBLIC_PRESENTATION_EVENTS.has(event)) continue;
+
+    if (!PUBLIC_MECHANICS_EVENTS.has(event)) {
+      const unsupported = canonicalProtocolIdentity(event);
+      if (unsupported && !current.unsupported.includes(unsupported)) {
+        current.unsupported.push(unsupported);
+      }
+      continue;
+    }
+
+    const canonical = canonicalPublicMechanicsEvent(parts, actionContext);
+    if (!canonical) {
+      const invalid = `${canonicalProtocolIdentity(event)}:invalid`;
+      if (!current.unsupported.includes(invalid)) {
+        current.unsupported.push(invalid);
+      }
+      continue;
+    }
+    current.events.push(canonical);
+  }
+
+  preserveCurrent();
+  if (!latest) return { turn: null, events: [], unsupported: [] };
+  return {
+    turn: latest.turn,
+    events: latest.events,
+    unsupported: latest.unsupported.slice().sort(),
+  };
 }
 
 function publicLastOpponentActions(battle, sideId) {
@@ -566,9 +666,9 @@ function playerView(battle, sideId = "p1", previews = null) {
     // animation targets are intentionally excluded; selected target intent is already
     // represented by sealed/resolved commands and opponent_last_actions.
     public_execution_delta: publicExecutionEventDelta(battle, sideId),
-    // This is derived only from the requesting side's Showdown-visible channel.
-    // It makes publicly observed mechanics transitions (for example Substitute
-    // breaking) authoritative even when the final reduced state projection matches.
+    // This bounded per-turn ledger is derived only from the requesting side's
+    // Showdown-visible channel. It preserves quantitative and historical mechanics
+    // evidence even when later effects restore the same reduced final state.
     public_event_delta: publicMechanicsEventDelta(battle, sideId),
     ended: battle.ended,
     winner: battle.winner || null,
