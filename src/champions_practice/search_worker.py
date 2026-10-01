@@ -1051,6 +1051,12 @@ class ShowdownSearchWorker:
         branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Resolve many independent action pairs from one exact snapshot."""
+        for branch in branches:
+            if branch.get("p1_choice") == "" or branch.get("p2_choice") == "":
+                raise ValueError(
+                    "raw empty branch choices are ambiguous; "
+                    "use FORCED_WAIT_CHOICE"
+                )
         result = self.request("branch_many", state=state, branches=branches)
         resolved = result.get("branches")
         if not isinstance(resolved, list):
@@ -1103,6 +1109,11 @@ class ShowdownSearchWorker:
         """Validate a bounded candidate set without enumerating the full action space."""
         if not candidates:
             return []
+        if any(candidate == "" for candidate in candidates):
+            raise ValueError(
+                "raw empty candidate choices are ambiguous; "
+                "use FORCED_WAIT_CHOICE"
+            )
         result = self.request(
             "validate_choices",
             state=state,
