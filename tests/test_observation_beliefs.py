@@ -9,6 +9,7 @@ from champions_practice.observation_beliefs import (
     resample_particles,
     resample_particles_by_world,
 )
+from champions_practice.search_worker import FORCED_WAIT_CHOICE
 
 
 class FakeWorker:
@@ -1556,3 +1557,33 @@ def test_tracked_conditioning_rejects_missing_branch_member_lineage() -> None:
             resolved_opponent_choice="move human",
             rng_seeds=("seed",),
         )
+
+
+
+def test_condition_particles_rejects_raw_empty_ai_choice() -> None:
+    with pytest.raises(ValueError, match="raw empty AI choice"):
+        condition_particles(
+            object(),
+            particles=(BeliefParticle({"turn": 1}, 1.0),),
+            ai_side="p2",
+            ai_choice="",
+            actual_public_view={"turn": 2},
+            resolved_opponent_choice="move human",
+        )
+
+
+def test_condition_particles_rejects_raw_empty_resolved_opponent_choice() -> None:
+    with pytest.raises(ValueError, match="raw empty resolved opponent choice"):
+        condition_particles(
+            object(),
+            particles=(BeliefParticle({"turn": 1}, 1.0),),
+            ai_side="p2",
+            ai_choice="move ai",
+            actual_public_view={"turn": 2},
+            resolved_opponent_choice="",
+        )
+
+
+def test_forced_wait_token_is_non_empty() -> None:
+    assert FORCED_WAIT_CHOICE
+    assert FORCED_WAIT_CHOICE.strip()
