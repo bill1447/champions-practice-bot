@@ -1287,49 +1287,65 @@ function validateRecoveryStatCandidate(request) {
     return { valid: false, reason: "invalid-stat-points" };
   }
 
+  const pokemonIndex = request.pokemon_index;
+  const sideIndex = request.side === "p1" ? 0 : 1;
+  const rawSides = request.state.sides;
+  if (
+    !Number.isInteger(pokemonIndex) ||
+    pokemonIndex < 0 ||
+    !Array.isArray(rawSides) ||
+    !rawSides[sideIndex] ||
+    !Array.isArray(rawSides[sideIndex].pokemon) ||
+    pokemonIndex >= rawSides[sideIndex].pokemon.length
+  ) {
+    return { valid: false, reason: "invalid-pokemon-index" };
+  }
+
+  const rawPokemon = rawSides[sideIndex].pokemon[pokemonIndex];
+  if (!rawPokemon || typeof rawPokemon !== "object") {
+    return { valid: false, reason: "invalid-pokemon-state" };
+  }
+  const rawSet = rawPokemon.set;
+  const rawPoints = recoveryStatPoints(rawSet && rawSet.evs);
+  if (
+    !rawPoints ||
+    RECOVERY_STATS.some((stat) => rawPoints[stat] !== points[stat])
+  ) {
+    return { valid: false, reason: "stat-point-mismatch" };
+  }
+
   const battle = Battle.fromJSON(JSON.stringify(request.state));
   battle.restart(() => {});
   try {
     const side = request.side === "p1" ? battle.p1 : battle.p2;
-    const pokemonIndex = request.pokemon_index;
-    if (
-      !Number.isInteger(pokemonIndex) ||
-      pokemonIndex < 0 ||
-      pokemonIndex >= side.pokemon.length
-    ) {
-      return { valid: false, reason: "invalid-pokemon-index" };
-    }
-
     const pokemon = side.pokemon[pokemonIndex];
     if (pokemon.transformed) {
       return { valid: false, reason: "transformed-pokemon" };
     }
 
-    const serializedPoints = recoveryStatPoints(pokemon.set.evs);
-    if (
-      !serializedPoints ||
-      RECOVERY_STATS.some((stat) => serializedPoints[stat] !== points[stat])
-    ) {
-      return { valid: false, reason: "stat-point-mismatch" };
-    }
-
     const recalculated = battle.spreadModify(pokemon.species.baseStats, pokemon.set);
-    if (recalculated.hp !== pokemon.baseMaxhp) {
+    if (recalculated.hp !== rawPokemon.baseMaxhp) {
       return { valid: false, reason: "maxhp-mismatch" };
     }
 
     for (const stat of RECOVERY_STATS) {
-      if (pokemon.baseStoredStats[stat] !== recalculated[stat]) {
+      if (
+        !rawPokemon.baseStoredStats ||
+        rawPokemon.baseStoredStats[stat] !== recalculated[stat]
+      ) {
         return { valid: false, reason: `base-stored-${stat}-mismatch` };
       }
     }
     for (const stat of RECOVERY_NON_HP_STATS) {
-      if (pokemon.storedStats[stat] !== recalculated[stat]) {
+      if (
+        !rawPokemon.storedStats ||
+        rawPokemon.storedStats[stat] !== recalculated[stat]
+      ) {
         return { valid: false, reason: `stored-${stat}-mismatch` };
       }
     }
 
-    const serializedSpeed = pokemon.speed;
+    const serializedSpeed = rawPokemon.speed;
     pokemon.updateSpeed();
     if (pokemon.speed !== serializedSpeed) {
       return { valid: false, reason: "speed-mismatch" };
