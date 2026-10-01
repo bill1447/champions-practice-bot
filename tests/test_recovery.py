@@ -491,7 +491,7 @@ def test_bounded_stat_generator_is_deterministic_and_honors_limit() -> None:
     assert len({proposal.proposal_id for proposal in left}) == 3
 
 
-def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
+def test_typed_stat_authority_marks_unsampled_suffix_inconclusive() -> None:
     request = _request()
     worker = _TypedRecoveryWorker()
     proposals = (
@@ -518,8 +518,9 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
 
     assert (
         by_id["late-mismatch"].status
-        is RecoveryCandidateStatus.REPLAY_MISMATCH
+        is RecoveryCandidateStatus.SAMPLING_EXHAUSTED
     )
+    assert by_id["late-mismatch"].checkpoint_compatible is True
     assert by_id["late-mismatch"].observations_replayed == 1
     assert by_id["late-mismatch"].final_particles == ()
 
@@ -533,7 +534,7 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
     ]
 
 
-def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
+def test_static_stat_recovery_does_not_turn_sampled_prefix_miss_into_proof() -> None:
     root_state = _parent_state()
     checkpoint_state = copy.deepcopy(root_state)
     checkpoint_state["test_step"] = 1
@@ -598,11 +599,58 @@ def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
     )
 
     result = report.candidate_results[0]
-    assert result.status is RecoveryCandidateStatus.HISTORY_MISMATCH
-    assert result.checkpoint_compatible is False
+    assert result.status is RecoveryCandidateStatus.SAMPLING_EXHAUSTED
+    assert result.checkpoint_compatible is None
     assert result.authority_observations_replayed == 0
     assert result.observations_replayed == 0
     assert result.final_particles == ()
+
+
+class _SeedSensitiveRecoveryWorker(_TypedRecoveryWorker):
+    def branch_many(self, *, state, branches):
+        results = super().branch_many(state=state, branches=branches)
+        for result, branch in zip(results, branches, strict=True):
+            if branch.get("rng_seed") != "miss":
+                continue
+            view = copy.deepcopy(result["view"])
+            active = view["opponent"]["active"][0]
+            active["hp_percent"] = float(active.get("hp_percent", 0)) + 7
+            result["view"] = view
+        return results
+
+
+def test_same_candidate_can_be_inconclusive_then_validate_with_witness_seed() -> None:
+    request = _request()
+    proposal = _proposal("seed-sensitive", atk=32, spa=0)
+
+    missed = validate_stat_recovery_proposals(
+        _SeedSensitiveRecoveryWorker(),
+        request=request,
+        proposals=(proposal,),
+        authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("miss",), ("seed-2",)),
+    )
+    missed_result = missed.candidate_results[0]
+    assert missed_result.status is RecoveryCandidateStatus.SAMPLING_EXHAUSTED
+    assert missed_result.checkpoint_compatible is True
+    assert missed_result.observations_replayed == 0
+    assert missed_result.final_particles == ()
+    assert missed.inconclusive_candidates == (missed_result,)
+    assert missed.validated_candidates == ()
+
+    witnessed = validate_stat_recovery_proposals(
+        _SeedSensitiveRecoveryWorker(),
+        request=request,
+        proposals=(proposal,),
+        authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+    )
+    witnessed_result = witnessed.candidate_results[0]
+    assert witnessed_result.status is RecoveryCandidateStatus.VALIDATED
+    assert witnessed_result.checkpoint_compatible is True
+    assert witnessed_result.observations_replayed == 2
+    assert witnessed.inconclusive_candidates == ()
+    assert witnessed.validated_candidates == (witnessed_result,)
 
 
 @pytest.mark.parametrize(
