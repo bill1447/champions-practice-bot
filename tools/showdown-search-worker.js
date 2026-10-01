@@ -1707,12 +1707,40 @@ function resolveBranch(
     battle.resetRNG(rngSeed);
   }
 
+  // Showdown mutates side.pokemon ordering during ordinary switches. Capture the
+  // exact parent objects so every returned child state can report a permutation
+  // from child party position back to its parent party position. Python composes
+  // these permutations across turns into stable turn-one roster identity.
+  const parentPokemon = {
+    p1: [...battle.p1.pokemon],
+    p2: [...battle.p2.pokemon],
+  };
+
   battle.makeChoices(p1Choice, p2Choice);
+
+  const memberLineage = {
+    p1: battle.p1.pokemon.map((pokemon) => parentPokemon.p1.indexOf(pokemon)),
+    p2: battle.p2.pokemon.map((pokemon) => parentPokemon.p2.indexOf(pokemon)),
+  };
+  if (
+    memberLineage.p1.length !== parentPokemon.p1.length ||
+    memberLineage.p2.length !== parentPokemon.p2.length ||
+    memberLineage.p1.some((index) => index < 0) ||
+    memberLineage.p2.some((index) => index < 0) ||
+    new Set(memberLineage.p1).size !== memberLineage.p1.length ||
+    new Set(memberLineage.p2).size !== memberLineage.p2.length
+  ) {
+    battle.destroy();
+    throw new Error("Could not derive stable branch member lineage");
+  }
 
   const response = {
     summary: summarize(battle),
   };
-  if (includeState) response.state = battle.toJSON();
+  if (includeState) {
+    response.state = battle.toJSON();
+    response.member_lineage = memberLineage;
+  }
   if (viewSide !== null) {
     const effectivePreviews = previews || {
       p1: battle.p1.pokemon.map((mon) => mon.set.species),

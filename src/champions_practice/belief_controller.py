@@ -31,6 +31,7 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
     condition_particles,
+    identity_member_lineage,
     public_observation_signature,
     public_opponent_moves_fully_observed,
     resample_particles_by_world,
@@ -632,6 +633,8 @@ class BeliefDecisionEngine:
                             weight=particle_weight,
                             world_id=world_id,
                             history_id=history_id,
+                            p1_member_lineage=identity_member_lineage(state, "p1"),
+                            p2_member_lineage=identity_member_lineage(state, "p2"),
                         )
                     )
                     opening_by_lineage[(world_id, history_id)] = (
@@ -662,6 +665,8 @@ class BeliefDecisionEngine:
                 weight=particle.weight,
                 world_id=particle.world_id,
                 history_id=particle.history_id,
+                p1_member_lineage=particle.p1_member_lineage,
+                p2_member_lineage=particle.p2_member_lineage,
             )
             for particle in self.particles
         )

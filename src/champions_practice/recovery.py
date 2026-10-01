@@ -21,6 +21,8 @@ from typing import Any, Literal, Protocol
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     condition_particles,
+    identity_member_lineage,
+    particle_member_lineage,
     public_observation_signature,
 )
 
@@ -111,6 +113,8 @@ def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
                 "weight": particle.weight,
                 "world_id": particle.world_id,
                 "history_id": particle.history_id,
+                "p1_member_lineage": particle.p1_member_lineage,
+                "p2_member_lineage": particle.p2_member_lineage,
             }
             for particle in request.authority_root_particles
         ],
@@ -148,6 +152,8 @@ def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
                 "weight": particle.weight,
                 "world_id": particle.world_id,
                 "history_id": particle.history_id,
+                "p1_member_lineage": particle.p1_member_lineage,
+                "p2_member_lineage": particle.p2_member_lineage,
             }
             for particle in request.checkpoint_particles
         ],
@@ -174,6 +180,7 @@ class OpponentStatProposal:
     proposal_id: str
     parent_particle_index: int
     pokemon_index: int
+    root_pokemon_index: int
     species: str
     stat_points: tuple[tuple[str, int], ...]
     changed_hidden_dimensions: tuple[str, ...]
@@ -235,7 +242,10 @@ class BoundedOpponentStatProposalGenerator:
             return ()
 
         opponent_side_index = 1 if request.ai_side == "p1" else 0
-        ranked: list[tuple[int, int, int, tuple[int, ...], OpponentStatProposal]] = []
+        opponent_side = "p2" if request.ai_side == "p1" else "p1"
+        ranked: list[
+            tuple[int, int, int, int, tuple[int, ...], OpponentStatProposal]
+        ] = []
 
         for parent_index, particle in enumerate(request.checkpoint_particles):
             sides = particle.state.get("sides")
@@ -245,9 +255,15 @@ class BoundedOpponentStatProposalGenerator:
             if not isinstance(pokemon, list):
                 raise ValueError("checkpoint particle is missing opponent Pokemon")
 
+            member_lineage = particle_member_lineage(
+                particle,
+                opponent_side,
+                require_tracked=True,
+            )
             for pokemon_index, mon in enumerate(pokemon):
                 if not isinstance(mon, dict):
                     continue
+                root_pokemon_index = member_lineage[pokemon_index]
                 set_data = mon.get("set")
                 if not isinstance(set_data, dict):
                     continue
@@ -274,24 +290,35 @@ class BoundedOpponentStatProposalGenerator:
                     signature = tuple(variant[stat] for stat in _RECOVERY_STATS)
                     proposal = OpponentStatProposal(
                         proposal_id=(
-                            f"p{parent_index}-m{pokemon_index}-"
+                            f"p{parent_index}-r{root_pokemon_index}-"
+                            f"c{pokemon_index}-"
                             + "-".join(
                                 f"{stat}{variant[stat]}" for stat in _RECOVERY_STATS
                             )
                         ),
                         parent_particle_index=parent_index,
                         pokemon_index=pokemon_index,
+                        root_pokemon_index=root_pokemon_index,
                         species=species,
                         stat_points=tuple(
                             (stat, variant[stat]) for stat in _RECOVERY_STATS
                         ),
                         changed_hidden_dimensions=tuple(
-                            f"opponent.{_id(species)}.stat_points.{stat}"
+                            "opponent."
+                            f"member{root_pokemon_index}."
+                            f"{_id(species)}.stat_points.{stat}"
                             for stat in changed
                         ),
                     )
                     ranked.append(
-                        (distance, parent_index, pokemon_index, signature, proposal)
+                        (
+                            distance,
+                            parent_index,
+                            root_pokemon_index,
+                            pokemon_index,
+                            signature,
+                            proposal,
+                        )
                     )
 
         ranked.sort(key=lambda item: item[:-1])
@@ -390,6 +417,7 @@ class _MaterializedStatCandidate:
     proposal_id: str
     parent_particle_index: int
     authority_root_particle_index: int
+    root_pokemon_index: int
     input_pokemon_index: int
     particle: BeliefParticle
     source: str
@@ -589,6 +617,21 @@ def _matching_authority_roots(
         raise ValueError(
             f"stat proposal {proposal.proposal_id!r} parent has no world lineage"
         )
+    opponent_side = "p2" if request.ai_side == "p1" else "p1"
+    parent_lineage = particle_member_lineage(
+        parent,
+        opponent_side,
+        require_tracked=True,
+    )
+    if not 0 <= proposal.pokemon_index < len(parent_lineage):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has invalid checkpoint member"
+        )
+    if parent_lineage[proposal.pokemon_index] != proposal.root_pokemon_index:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has inconsistent member lineage"
+        )
+
     parent_set = _target_set(
         parent,
         ai_side=request.ai_side,
@@ -607,7 +650,7 @@ def _matching_authority_roots(
             root_set = _target_set(
                 root,
                 ai_side=request.ai_side,
-                pokemon_index=proposal.pokemon_index,
+                pokemon_index=proposal.root_pokemon_index,
             )
             root_species = _id(
                 str(root_set.get("species") or root_set.get("name") or "")
@@ -638,6 +681,21 @@ def _validate_typed_stat_proposal(
             f"stat proposal {proposal.proposal_id!r} has invalid parent"
         )
     parent = request.checkpoint_particles[proposal.parent_particle_index]
+    opponent_side = "p2" if request.ai_side == "p1" else "p1"
+    lineage = particle_member_lineage(
+        parent,
+        opponent_side,
+        require_tracked=True,
+    )
+    if not 0 <= proposal.pokemon_index < len(lineage):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has invalid checkpoint member"
+        )
+    if lineage[proposal.pokemon_index] != proposal.root_pokemon_index:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has inconsistent member lineage"
+        )
+
     set_data = _target_set(
         parent,
         ai_side=request.ai_side,
@@ -690,7 +748,10 @@ def _validate_typed_stat_proposal(
             f"stat proposal {proposal.proposal_id!r} changes no recoverable stat"
         )
     expected_dimensions = tuple(
-        f"opponent.{_id(species)}.stat_points.{stat}" for stat in changed
+        "opponent."
+        f"member{proposal.root_pokemon_index}."
+        f"{_id(species)}.stat_points.{stat}"
+        for stat in changed
     )
     if proposal.changed_hidden_dimensions != expected_dimensions:
         raise ValueError(
@@ -717,7 +778,7 @@ def _materialize_stat_proposals(
             input_index = _preopening_target_index(
                 request,
                 root_index=root_index,
-                root_pokemon_index=proposal.pokemon_index,
+                root_pokemon_index=proposal.root_pokemon_index,
             )
             materialization_id = f"{proposal.proposal_id}@root-{root_index}"
             grouped.setdefault(root_index, []).append(
@@ -771,6 +832,7 @@ def _materialize_stat_proposals(
                         proposal_id=proposal.proposal_id,
                         parent_particle_index=proposal.parent_particle_index,
                         authority_root_particle_index=root_index,
+                        root_pokemon_index=proposal.root_pokemon_index,
                         input_pokemon_index=input_index,
                         particle=BeliefParticle(
                             state=state,
@@ -779,6 +841,8 @@ def _materialize_stat_proposals(
                             history_id=(
                                 f"{root.history_id}|recovery:{proposal.proposal_id}"
                             ).strip("|"),
+                            p1_member_lineage=identity_member_lineage(state, "p1"),
+                            p2_member_lineage=identity_member_lineage(state, "p2"),
                         ),
                         source="bounded-opponent-stat-points",
                         changed_hidden_dimensions=(
@@ -953,6 +1017,23 @@ def _validate_request(
             expected = len(sides[side_index]["pokemon"])
             if len(mapping) != expected or len(set(mapping)) != len(mapping):
                 raise ValueError("opening input member lineage is incomplete")
+        for side in ("p1", "p2"):
+            lineage = particle_member_lineage(
+                root,
+                side,
+                require_tracked=True,
+            )
+            if lineage != identity_member_lineage(root.state, side):
+                raise ValueError(
+                    "static recovery authority root member lineage is not identity"
+                )
+    for particle in request.checkpoint_particles:
+        for side in ("p1", "p2"):
+            particle_member_lineage(
+                particle,
+                side,
+                require_tracked=True,
+            )
     root_turn = request.authority_root_public_view.get("turn")
     if root_turn != 1:
         raise ValueError("static recovery authority root must be post-preview turn 1")
@@ -1261,10 +1342,33 @@ def _validate_materialized_stat_candidates(
         checkpoint_particles = tuple(
             particle
             for particle in prefix.particles
-            if _exact_ai_side(
-                particle.state,
-                request.ai_side,
-            ) == _exact_ai_side(checkpoint_parent.state, request.ai_side)
+            if (
+                _exact_ai_side(
+                    particle.state,
+                    request.ai_side,
+                )
+                == _exact_ai_side(checkpoint_parent.state, request.ai_side)
+                and particle_member_lineage(
+                    particle,
+                    "p1",
+                    require_tracked=True,
+                )
+                == particle_member_lineage(
+                    checkpoint_parent,
+                    "p1",
+                    require_tracked=True,
+                )
+                and particle_member_lineage(
+                    particle,
+                    "p2",
+                    require_tracked=True,
+                )
+                == particle_member_lineage(
+                    checkpoint_parent,
+                    "p2",
+                    require_tracked=True,
+                )
+            )
         )
         if not checkpoint_particles:
             results.append(

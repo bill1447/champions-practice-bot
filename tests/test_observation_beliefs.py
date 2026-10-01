@@ -1458,3 +1458,101 @@ def test_public_signature_ignores_auxiliary_action_history() -> None:
     }
 
     assert public_observation_signature(left) == public_observation_signature(right)
+
+
+def _tracked_lineage_state() -> dict:
+    return {
+        "turn": 1,
+        "sides": [
+            {"pokemon": [{"id": "A"}, {"id": "B"}, {"id": "C"}]},
+            {"pokemon": [{"id": "X"}]},
+        ],
+    }
+
+
+class _LineageBranchWorker:
+    def __init__(self, *, include_lineage: bool) -> None:
+        self.include_lineage = include_lineage
+
+    def validate_choices(self, *, state, side, candidates):
+        return list(candidates)
+
+    def legal_choices(self, *, state, side):
+        return ["move human"]
+
+    def branch_many(self, *, state, branches):
+        child = {
+            "turn": 2,
+            "sides": [
+                {
+                    "pokemon": [
+                        state["sides"][0]["pokemon"][2],
+                        state["sides"][0]["pokemon"][1],
+                        state["sides"][0]["pokemon"][0],
+                    ]
+                },
+                {"pokemon": list(state["sides"][1]["pokemon"])},
+            ],
+        }
+        results = []
+        for _branch in branches:
+            result = {"state": child, "view": {"turn": 2}}
+            if self.include_lineage:
+                result["member_lineage"] = {
+                    "p1": [2, 1, 0],
+                    "p2": [0],
+                }
+            results.append(result)
+        return results
+
+
+def test_conditioning_composes_stable_member_lineage() -> None:
+    state = _tracked_lineage_state()
+    particle = BeliefParticle(
+        state,
+        1.0,
+        world_id="world",
+        history_id="root",
+        p1_member_lineage=(0, 1, 2),
+        p2_member_lineage=(0,),
+    )
+
+    update = condition_particles(
+        _LineageBranchWorker(include_lineage=True),
+        particles=(particle,),
+        ai_side="p2",
+        ai_choice="move ai",
+        actual_public_view={"turn": 2},
+        previous_public_view={"turn": 1},
+        resolved_opponent_choice="move human",
+        rng_seeds=("seed",),
+    )
+
+    assert len(update.particles) == 1
+    survivor = update.particles[0]
+    assert survivor.p1_member_lineage == (2, 1, 0)
+    assert survivor.p2_member_lineage == (0,)
+
+
+def test_tracked_conditioning_rejects_missing_branch_member_lineage() -> None:
+    state = _tracked_lineage_state()
+    particle = BeliefParticle(
+        state,
+        1.0,
+        world_id="world",
+        history_id="root",
+        p1_member_lineage=(0, 1, 2),
+        p2_member_lineage=(0,),
+    )
+
+    with pytest.raises(RuntimeError, match="omitted required stable member lineage"):
+        condition_particles(
+            _LineageBranchWorker(include_lineage=False),
+            particles=(particle,),
+            ai_side="p2",
+            ai_choice="move ai",
+            actual_public_view={"turn": 2},
+            previous_public_view={"turn": 1},
+            resolved_opponent_choice="move human",
+            rng_seeds=("seed",),
+        )

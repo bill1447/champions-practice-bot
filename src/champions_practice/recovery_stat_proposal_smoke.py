@@ -5,6 +5,7 @@ from __future__ import annotations
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.observation_beliefs import (
     BeliefParticle,
+    identity_member_lineage,
     public_observation_signature,
 )
 from champions_practice.recovery import (
@@ -243,6 +244,8 @@ def main() -> None:
                     1.0,
                     world_id="low-attack-parent",
                     history_id="checkpoint",
+                    p1_member_lineage=identity_member_lineage(low_state, "p1"),
+                    p2_member_lineage=identity_member_lineage(low_state, "p2"),
                 ),
             ),
             opening_authorities=(
@@ -270,6 +273,8 @@ def main() -> None:
                     1.0,
                     world_id="low-attack-parent",
                     history_id="checkpoint",
+                    p1_member_lineage=identity_member_lineage(low_state, "p1"),
+                    p2_member_lineage=identity_member_lineage(low_state, "p2"),
                 ),
             ),
             checkpoint_public_view=checkpoint,
