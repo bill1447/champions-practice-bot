@@ -9,14 +9,27 @@ import re
 import subprocess
 from collections import deque
 from pathlib import Path
-from threading import Event, Lock, Thread
+from threading import Event, Lock, Thread, current_thread
 from time import perf_counter
 from typing import Any
 
 
 _VERIFIED_SHOWDOWN_ROOTS: dict[Path, str] = {}
 _ACTIVE_SHOWDOWN_PROCESSES: dict[int, subprocess.Popen[str]] = {}
+_ACTIVE_SHOWDOWN_PROCESSES_LOCK = Lock()
 _BUILD_STAMP_NAME = "showdown-build.json"
+
+
+def _register_showdown_process(process: subprocess.Popen[str]) -> None:
+    with _ACTIVE_SHOWDOWN_PROCESSES_LOCK:
+        _ACTIVE_SHOWDOWN_PROCESSES[process.pid] = process
+
+
+def _unregister_showdown_process(process: subprocess.Popen[str]) -> None:
+    with _ACTIVE_SHOWDOWN_PROCESSES_LOCK:
+        current = _ACTIVE_SHOWDOWN_PROCESSES.get(process.pid)
+        if current is process:
+            _ACTIVE_SHOWDOWN_PROCESSES.pop(process.pid, None)
 
 
 class ShowdownRequestError(RuntimeError):
@@ -233,15 +246,16 @@ def verify_showdown_checkout(
 
 
 def active_showdown_worker_pids() -> tuple[int, ...]:
-    """Return currently live Node worker PIDs, pruning completed processes."""
-    finished = [
-        pid
-        for pid, process in _ACTIVE_SHOWDOWN_PROCESSES.items()
-        if process.poll() is not None
-    ]
-    for pid in finished:
-        _ACTIVE_SHOWDOWN_PROCESSES.pop(pid, None)
-    return tuple(sorted(_ACTIVE_SHOWDOWN_PROCESSES))
+    """Return currently live Node worker PIDs, pruning stale registry entries."""
+    with _ACTIVE_SHOWDOWN_PROCESSES_LOCK:
+        finished = [
+            pid
+            for pid, process in _ACTIVE_SHOWDOWN_PROCESSES.items()
+            if process.poll() is not None
+        ]
+        for pid in finished:
+            _ACTIVE_SHOWDOWN_PROCESSES.pop(pid, None)
+        return tuple(sorted(_ACTIVE_SHOWDOWN_PROCESSES))
 
 
 class HypotheticalSearchWorker:
@@ -401,6 +415,11 @@ class ShowdownSearchWorker:
         self._transport_closed = Event()
         self._stderr_lines: deque[str] = deque(maxlen=100)
         self._stderr_lock = Lock()
+        self._writer_threads: set[Thread] = set()
+        self._writer_threads_lock = Lock()
+        self._cleanup_started = Event()
+        self._cleanup_done = Event()
+        self._cleanup_thread: Thread | None = None
 
         process: subprocess.Popen[str] | None = None
         try:
@@ -415,7 +434,7 @@ class ShowdownSearchWorker:
                 bufsize=1,
             )
             self._process = process
-            _ACTIVE_SHOWDOWN_PROCESSES[process.pid] = process
+            _register_showdown_process(process)
             _remaining_timeout(startup_deadline)
 
             self._stdout_thread = Thread(
