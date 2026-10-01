@@ -1276,43 +1276,19 @@ function materializeRecoveryStatProposals(request) {
   };
 }
 
-function resolveRecoveryOpeningState(state, p1Preview, p2Preview) {
-  const battle = Battle.fromJSON(JSON.stringify(state));
-  battle.restart(() => {});
-  try {
-    battle.makeChoices(p1Preview, p2Preview);
-    return battle.toJSON();
-  } finally {
-    battle.destroy();
-  }
-}
-
-function materializeRecoveryOpeningStatProposal(
-  state,
-  sideId,
-  proposal,
-  p1Preview,
-  p2Preview,
-) {
-  const materialized = materializeRecoveryStatProposal(state, sideId, proposal);
-  if (!materialized.state) return materialized;
-  return {
-    proposal_id: proposal.proposal_id,
-    state: resolveRecoveryOpeningState(
-      materialized.state,
-      p1Preview,
-      p2Preview,
-    ),
-  };
-}
-
-function materializeRecoveryOpeningStatProposals(request) {
-  if (!request.state) {
-    throw new Error("materialize_recovery_opening_stat_proposals requires state");
-  }
-  if (request.side !== "p1" && request.side !== "p2") {
+function validateRecoveryOpeningInputs(request) {
+  if (
+    typeof request.format !== "string" ||
+    !request.format ||
+    typeof request.p1_team !== "string" ||
+    !request.p1_team ||
+    typeof request.p2_team !== "string" ||
+    !request.p2_team ||
+    typeof request.seed !== "string" ||
+    !request.seed
+  ) {
     throw new Error(
-      "materialize_recovery_opening_stat_proposals requires p1 or p2 side",
+      "recovery opening authority requires exact format, teams, and RNG seed",
     );
   }
   if (
@@ -1321,8 +1297,94 @@ function materializeRecoveryOpeningStatProposals(request) {
     typeof request.p2_preview !== "string" ||
     !request.p2_preview
   ) {
+    throw new Error("recovery opening authority requires exact preview choices");
+  }
+}
+
+function recoveryOpeningOptions(request) {
+  validateRecoveryOpeningInputs(request);
+  return battleOptions({
+    format: request.format,
+    p1_team: request.p1_team,
+    p2_team: request.p2_team,
+    p1_name: request.p1_name || "Search P1",
+    p2_name: request.p2_name || "Search P2",
+    seed: request.seed,
+  });
+}
+
+function applyRecoveryOpeningStatProposal(options, sideId, proposal) {
+  const points = recoveryStatPoints(proposal.stat_points);
+  if (!points) return "invalid-stat-points";
+  const team = options[sideId]?.team;
+  const pokemonIndex = proposal.pokemon_index;
+  if (
+    !Array.isArray(team) ||
+    !Number.isInteger(pokemonIndex) ||
+    pokemonIndex < 0 ||
+    pokemonIndex >= team.length
+  ) {
+    return "invalid-pokemon-index";
+  }
+
+  const set = team[pokemonIndex];
+  const currentPoints = recoveryStatPoints(set.evs || {});
+  if (!currentPoints) return "invalid-current-stat-points";
+  if (points.hp !== currentPoints.hp) return "hp-broadening-disabled";
+
+  set.evs = { ...points };
+  return null;
+}
+
+function resolveFreshRecoveryOpening(request, proposal = null) {
+  const options = recoveryOpeningOptions(request);
+  if (proposal !== null) {
+    if (request.side !== "p1" && request.side !== "p2") {
+      throw new Error("recovery opening stat proposal requires p1 or p2 side");
+    }
+    const rejected = applyRecoveryOpeningStatProposal(
+      options,
+      request.side,
+      proposal,
+    );
+    if (rejected) return { rejected };
+  }
+
+  const battle = new Battle(options);
+  try {
+    const originalPokemon = {
+      p1: [...battle.p1.pokemon],
+      p2: [...battle.p2.pokemon],
+    };
+    battle.makeChoices(request.p1_preview, request.p2_preview);
+    const lineage = {
+      p1: battle.p1.pokemon.map((pokemon) => originalPokemon.p1.indexOf(pokemon)),
+      p2: battle.p2.pokemon.map((pokemon) => originalPokemon.p2.indexOf(pokemon)),
+    };
+    if (
+      lineage.p1.some((index) => index < 0) ||
+      lineage.p2.some((index) => index < 0)
+    ) {
+      throw new Error("Could not derive recovery opening member lineage");
+    }
+    return {
+      state: battle.toJSON(),
+      preview_lineage: lineage,
+    };
+  } finally {
+    battle.destroy();
+  }
+}
+
+function normalizedRecoveryState(state) {
+  return State.normalize(cloneJson(state));
+}
+
+function materializeRecoveryOpeningStatProposals(request) {
+  validateRecoveryOpeningInputs(request);
+  if (request.side !== "p1" && request.side !== "p2") {
     throw new Error(
-      "materialize_recovery_opening_stat_proposals requires exact preview choices",
+      "materialize_recovery_opening_stat_proposals requires p1 or p2 side",
     );
   }
   if (!Array.isArray(request.proposals) || request.proposals.length === 0) {
@@ -1337,7 +1399,7 @@ function materializeRecoveryOpeningStatProposals(request) {
   }
 
   const ids = new Set();
-  for (const proposal of request.proposals) {
+  const proposals = request.proposals.map((proposal) => {
     if (!proposal || typeof proposal !== "object") {
       throw new Error("recovery opening stat proposal must be an object");
     }
@@ -1348,142 +1410,42 @@ function materializeRecoveryOpeningStatProposals(request) {
       throw new Error("recovery opening stat proposal ids must be unique");
     }
     ids.add(proposal.proposal_id);
-  }
 
-  return {
-    proposals: request.proposals.map((proposal) =>
-      materializeRecoveryOpeningStatProposal(
-        request.state,
-        request.side,
-        proposal,
-        request.p1_preview,
-        request.p2_preview,
-      )
-    ),
-  };
-}
-
-function normalizedRecoveryState(state) {
-  return State.normalize(cloneJson(state));
-}
-
-function recoveryStateDiffPaths(left, right, path = "$", limit = 64) {
-  if (limit <= 0) return [];
-  if (typeof left !== typeof right || left === null || right === null) {
-    return isDeepStrictEqual(left, right) ? [] : [path];
-  }
-  if (Array.isArray(left) || Array.isArray(right)) {
-    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
-      return [path];
+    const resolved = resolveFreshRecoveryOpening(request, proposal);
+    if (resolved.rejected) {
+      return {
+        proposal_id: proposal.proposal_id,
+        rejected: resolved.rejected,
+      };
     }
-    const paths = [];
-    for (let index = 0; index < left.length && paths.length < limit; index++) {
-      paths.push(
-        ...recoveryStateDiffPaths(
-          left[index],
-          right[index],
-          `${path}[${index}]`,
-          limit - paths.length,
-        ),
-      );
-    }
-    return paths;
-  }
-  if (typeof left === "object") {
-    const leftKeys = Object.keys(left).sort();
-    const rightKeys = Object.keys(right).sort();
-    if (!isDeepStrictEqual(leftKeys, rightKeys)) return [path];
-    const paths = [];
-    for (const key of leftKeys) {
-      if (paths.length >= limit) break;
-      paths.push(
-        ...recoveryStateDiffPaths(
-          left[key],
-          right[key],
-          `${path}.${key}`,
-          limit - paths.length,
-        ),
-      );
-    }
-    return paths;
-  }
-  return isDeepStrictEqual(left, right) ? [] : [path];
-}
-
-function recoveryLogDiffSummary(left, right, limit = 8) {
-  if (!Array.isArray(left) || !Array.isArray(right)) {
-    return [
-      `canonical_log_type=${Array.isArray(left) ? "array" : typeof left}`,
-      `root_log_type=${Array.isArray(right) ? "array" : typeof right}`,
-    ];
-  }
-  const summary = [
-    `canonical_log_length=${left.length}`,
-    `root_log_length=${right.length}`,
-  ];
-  const shared = Math.min(left.length, right.length);
-  let firstMismatch = -1;
-  for (let index = 0; index < shared; index++) {
-    if (!isDeepStrictEqual(left[index], right[index])) {
-      firstMismatch = index;
-      break;
-    }
-  }
-  if (firstMismatch < 0 && left.length !== right.length) {
-    firstMismatch = shared;
-  }
-  if (firstMismatch >= 0) {
-    summary.push(`first_log_mismatch=${firstMismatch}`);
-    const start = Math.max(0, firstMismatch - 2);
-    const end = Math.min(Math.max(left.length, right.length), start + limit);
-    for (let index = start; index < end; index++) {
-      summary.push(
-        `log[${index}] canonical=${JSON.stringify(left[index] ?? null)} root=${JSON.stringify(right[index] ?? null)}`,
-      );
-    }
-  }
-  return summary;
+    return {
+      proposal_id: proposal.proposal_id,
+      state: resolved.state,
+    };
+  });
+  return { proposals };
 }
 
 function validateRecoveryOpeningAuthority(request) {
-  if (!request.preopening_state || !request.root_state) {
-    throw new Error(
-      "validate_recovery_opening_authority requires preopening and root states",
-    );
+  if (!request.root_state) {
+    throw new Error("validate_recovery_opening_authority requires root state");
   }
-  if (
-    typeof request.p1_preview !== "string" ||
-    !request.p1_preview ||
-    typeof request.p2_preview !== "string" ||
-    !request.p2_preview
-  ) {
-    throw new Error(
-      "validate_recovery_opening_authority requires exact preview choices",
-    );
+  const canonical = resolveFreshRecoveryOpening(request);
+  if (!canonical.state) {
+    throw new Error("could not rebuild recovery opening authority");
   }
-  const canonical = normalizedRecoveryState(
-    resolveRecoveryOpeningState(
-      request.preopening_state,
-      request.p1_preview,
-      request.p2_preview,
-    ),
-  );
-  const root = normalizedRecoveryState(request.root_state);
-  const valid = isDeepStrictEqual(canonical, root);
   return {
-    valid,
-    diff_paths: valid ? [] : recoveryStateDiffPaths(canonical, root),
-    log_diff: valid ? [] : recoveryLogDiffSummary(canonical.log, root.log),
+    valid: isDeepStrictEqual(
+      normalizedRecoveryState(canonical.state),
+      normalizedRecoveryState(request.root_state),
+    ),
   };
 }
 
 function validateRecoveryOpeningStatCandidate(request) {
-  if (
-    !request.preopening_state ||
-    !request.candidate_state
-  ) {
+  if (!request.candidate_state) {
     throw new Error(
-      "validate_recovery_opening_stat_candidate requires preopening and candidate states",
+      "validate_recovery_opening_stat_candidate requires candidate state",
     );
   }
   if (request.side !== "p1" && request.side !== "p2") {
@@ -1491,27 +1453,11 @@ function validateRecoveryOpeningStatCandidate(request) {
       "validate_recovery_opening_stat_candidate requires p1 or p2 side",
     );
   }
-  if (
-    typeof request.p1_preview !== "string" ||
-    !request.p1_preview ||
-    typeof request.p2_preview !== "string" ||
-    !request.p2_preview
-  ) {
-    throw new Error(
-      "validate_recovery_opening_stat_candidate requires exact preview choices",
-    );
-  }
-  const result = materializeRecoveryOpeningStatProposal(
-    request.preopening_state,
-    request.side,
-    {
-      proposal_id: "validation",
-      pokemon_index: request.pokemon_index,
-      stat_points: request.stat_points,
-    },
-    request.p1_preview,
-    request.p2_preview,
-  );
+  const result = resolveFreshRecoveryOpening(request, {
+    proposal_id: "validation",
+    pokemon_index: request.pokemon_index,
+    stat_points: request.stat_points,
+  });
   if (!result.state) {
     return {
       valid: false,
@@ -1685,7 +1631,6 @@ function battleOptions(request) {
 
 function createBattle(request) {
   const battle = new Battle(battleOptions(request));
-  let preopeningState = null;
   let previewLineage = null;
 
   if (request.p1_preview || request.p2_preview) {
@@ -1694,15 +1639,14 @@ function createBattle(request) {
       throw new Error("Both preview choices are required when either is provided");
     }
 
-    preopeningState = battle.toJSON();
-    const preopeningPokemon = {
+    const originalPokemon = {
       p1: [...battle.p1.pokemon],
       p2: [...battle.p2.pokemon],
     };
     battle.makeChoices(request.p1_preview, request.p2_preview);
     previewLineage = {
-      p1: battle.p1.pokemon.map((pokemon) => preopeningPokemon.p1.indexOf(pokemon)),
-      p2: battle.p2.pokemon.map((pokemon) => preopeningPokemon.p2.indexOf(pokemon)),
+      p1: battle.p1.pokemon.map((pokemon) => originalPokemon.p1.indexOf(pokemon)),
+      p2: battle.p2.pokemon.map((pokemon) => originalPokemon.p2.indexOf(pokemon)),
     };
     if (
       previewLineage.p1.some((index) => index < 0) ||
@@ -1717,10 +1661,7 @@ function createBattle(request) {
     state: battle.toJSON(),
     summary: summarize(battle),
   };
-  if (preopeningState !== null) {
-    response.preopening_state = preopeningState;
-    response.preview_lineage = previewLineage;
-  }
+  if (previewLineage !== null) response.preview_lineage = previewLineage;
   battle.destroy();
   return response;
 }
