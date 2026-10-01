@@ -1084,7 +1084,7 @@ def validate_stat_recovery_proposals(
     authority_rng_seeds_by_observation: tuple[
         tuple[str | None, ...],
         ...,
-    ] = (),
+    ],
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> RecoveryValidationReport:
     """Validate lifelong stat proposals from root through all retained history.
