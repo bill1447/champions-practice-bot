@@ -141,6 +141,10 @@ jobs:
         shell: pwsh
         run: .\recovery-mutation-authority-smoke.ps1
 
+      - name: Pre-opening static recovery authority smoke test
+        shell: pwsh
+        run: .\recovery-opening-authority-smoke.ps1
+
       - name: Static recovery prefix authority smoke test
         shell: pwsh
         run: .\recovery-history-authority-smoke.ps1
