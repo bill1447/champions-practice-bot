@@ -766,6 +766,24 @@ def _validate_request(
         raise ValueError("authority RNG seed sets must not be empty")
     if any(not seeds for seeds in rng_seeds_by_observation):
         raise ValueError("recovery RNG seed sets must not be empty")
+    all_observations = (
+        *request.authority_observations,
+        *request.observations,
+    )
+    if any(
+        not isinstance(observation.ai_choice, str)
+        or not observation.ai_choice.strip()
+        for observation in all_observations
+    ):
+        raise ValueError("recovery history requires exact AI commands")
+    if any(
+        not isinstance(observation.resolved_opponent_choice, str)
+        or not observation.resolved_opponent_choice.strip()
+        for observation in all_observations
+    ):
+        raise ValueError(
+            "recovery history requires exact resolved opponent commands"
+        )
 
     prefix_end = _validate_observation_chain(
         start_view=request.authority_root_public_view,
