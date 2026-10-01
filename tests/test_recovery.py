@@ -234,6 +234,14 @@ class _TypedRecoveryWorker:
     def state_view(self, *, state, side, previews=None):
         assert side == "p2"
         points = state["sides"][0]["pokemon"][0]["set"]["evs"]
+        if state.get("test_step") == 1:
+            return {
+                "turn": 2,
+                "opponent": {
+                    "active": [{"species": "Snorlax", "hp_percent": 95}],
+                    "revealed": [{"species": "Snorlax", "seen": True}],
+                },
+            }
         if points["def"] == 32:
             return {
                 "turn": 1,
