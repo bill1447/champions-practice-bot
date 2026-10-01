@@ -141,6 +141,10 @@ jobs:
         shell: pwsh
         run: .\recovery-mutation-authority-smoke.ps1
 
+      - name: Static recovery prefix authority smoke test
+        shell: pwsh
+        run: .\recovery-history-authority-smoke.ps1
+
       - name: Bounded opponent stat-point recovery smoke test
         shell: pwsh
         run: .\recovery-stat-proposal-smoke.ps1
