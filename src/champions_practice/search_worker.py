@@ -559,6 +559,7 @@ class ShowdownSearchWorker:
         stream = self._process.stdout
         if stream is None:
             self._signal_transport_closed()
+            self._schedule_transport_cleanup()
             return
         try:
             for line in stream:
