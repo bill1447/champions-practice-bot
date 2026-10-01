@@ -106,9 +106,30 @@ class _HostileMaterializer:
                 candidate["queue"] = [{"choice": "forged"}]
             elif self.mutation == "pp":
                 target["moveSlots"][0]["pp"] = 1
+            elif self.mutation == "baseStoredStats":
+                target["baseStoredStats"]["spa"] = 999
+            elif self.mutation == "storedStats":
+                target["storedStats"]["spa"] = 999
+            elif self.mutation == "speed":
+                target["speed"] = 999
             else:
                 raise AssertionError(f"unknown hostile mutation: {self.mutation}")
         return tampered
+
+    def validate_recovery_stat_candidate(
+        self,
+        *,
+        state,
+        side,
+        pokemon_index,
+        stat_points,
+    ):
+        return self.worker.validate_recovery_stat_candidate(
+            state=state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
+        )
 
     def state_view(self, *, state, side, previews=None):
         return self.worker.state_view(
@@ -240,14 +261,21 @@ def main() -> None:
         ):
             raise SystemExit("ERROR: approved stat-only proposal failed validation")
 
-        for mutation in ("timesAttacked", "queue", "pp"):
+        for mutation in (
+            "timesAttacked",
+            "queue",
+            "pp",
+            "baseStoredStats",
+            "storedStats",
+            "speed",
+        ):
             hostile = _HostileMaterializer(worker, mutation=mutation)
             report = validate_stat_recovery_proposals(
                 hostile,
                 request=request,
                 proposals=(proposal,),
                 authority_rng_seeds_by_observation=(),
-            rng_seeds_by_observation=((TURN_SEED,),),
+                rng_seeds_by_observation=((TURN_SEED,),),
             )
             if len(report.candidate_results) != 1:
                 raise SystemExit(
@@ -276,6 +304,9 @@ def main() -> None:
     print("Forged timesAttacked accepted: NO")
     print("Forged queue accepted: NO")
     print("Forged PP accepted: NO")
+    print("Forged baseStoredStats accepted: NO")
+    print("Forged storedStats accepted: NO")
+    print("Forged speed accepted: NO")
     print("Unauthorized edits reach mechanics replay: NO")
     print("Caller-supplied serialized candidate authority surface: NO")
     print("RESULT: stat recovery authority is confined to typed simulator deltas")

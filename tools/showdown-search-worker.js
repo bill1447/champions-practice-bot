@@ -1274,6 +1274,89 @@ function materializeRecoveryStatProposals(request) {
   };
 }
 
+function validateRecoveryStatCandidate(request) {
+  if (!request.state) {
+    throw new Error("validate_recovery_stat_candidate requires state");
+  }
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error("validate_recovery_stat_candidate requires p1 or p2 side");
+  }
+
+  const points = recoveryStatPoints(request.stat_points);
+  if (!points) {
+    return { valid: false, reason: "invalid-stat-points" };
+  }
+
+  const pokemonIndex = request.pokemon_index;
+  const sideIndex = request.side === "p1" ? 0 : 1;
+  const rawSides = request.state.sides;
+  if (
+    !Number.isInteger(pokemonIndex) ||
+    pokemonIndex < 0 ||
+    !Array.isArray(rawSides) ||
+    !rawSides[sideIndex] ||
+    !Array.isArray(rawSides[sideIndex].pokemon) ||
+    pokemonIndex >= rawSides[sideIndex].pokemon.length
+  ) {
+    return { valid: false, reason: "invalid-pokemon-index" };
+  }
+
+  const rawPokemon = rawSides[sideIndex].pokemon[pokemonIndex];
+  if (!rawPokemon || typeof rawPokemon !== "object") {
+    return { valid: false, reason: "invalid-pokemon-state" };
+  }
+  const rawSet = rawPokemon.set;
+  const rawPoints = recoveryStatPoints(rawSet && rawSet.evs);
+  if (
+    !rawPoints ||
+    RECOVERY_STATS.some((stat) => rawPoints[stat] !== points[stat])
+  ) {
+    return { valid: false, reason: "stat-point-mismatch" };
+  }
+
+  const battle = Battle.fromJSON(JSON.stringify(request.state));
+  battle.restart(() => {});
+  try {
+    const side = request.side === "p1" ? battle.p1 : battle.p2;
+    const pokemon = side.pokemon[pokemonIndex];
+    if (pokemon.transformed) {
+      return { valid: false, reason: "transformed-pokemon" };
+    }
+
+    const recalculated = battle.spreadModify(pokemon.species.baseStats, pokemon.set);
+    if (recalculated.hp !== rawPokemon.baseMaxhp) {
+      return { valid: false, reason: "maxhp-mismatch" };
+    }
+
+    for (const stat of RECOVERY_STATS) {
+      if (
+        !rawPokemon.baseStoredStats ||
+        rawPokemon.baseStoredStats[stat] !== recalculated[stat]
+      ) {
+        return { valid: false, reason: `base-stored-${stat}-mismatch` };
+      }
+    }
+    for (const stat of RECOVERY_NON_HP_STATS) {
+      if (
+        !rawPokemon.storedStats ||
+        rawPokemon.storedStats[stat] !== recalculated[stat]
+      ) {
+        return { valid: false, reason: `stored-${stat}-mismatch` };
+      }
+    }
+
+    const serializedSpeed = rawPokemon.speed;
+    pokemon.updateSpeed();
+    if (pokemon.speed !== serializedSpeed) {
+      return { valid: false, reason: "speed-mismatch" };
+    }
+
+    return { valid: true };
+  } finally {
+    battle.destroy();
+  }
+}
+
 function stateView(request) {
   if (!request.state) {
     throw new Error("state_view requires a serialized battle state");
@@ -1614,6 +1697,8 @@ function handle(request) {
       return validateRequestedChoices(request);
     case "materialize_recovery_stat_proposals":
       return materializeRecoveryStatProposals(request);
+    case "validate_recovery_stat_candidate":
+      return validateRecoveryStatCandidate(request);
     case "state_view":
       return stateView(request);
     case "session_start":

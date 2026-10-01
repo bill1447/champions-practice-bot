@@ -227,9 +227,44 @@ class _TypedRecoveryWorker:
                 candidate["queue"] = [{"choice": "forged"}]
             elif self.hostile_delta == "pp":
                 target["moveSlots"][0]["pp"] = 1
+            elif self.hostile_delta == "baseStoredStats":
+                target["baseStoredStats"]["spa"] = 999
+            elif self.hostile_delta == "storedStats":
+                target["storedStats"]["spa"] = 999
+            elif self.hostile_delta == "speed":
+                target["speed"] = 999
 
             resolved.append({"proposal_id": proposal_id, "state": candidate})
         return resolved
+
+    def validate_recovery_stat_candidate(
+        self,
+        *,
+        state,
+        side,
+        pokemon_index,
+        stat_points,
+    ):
+        assert side == "p1"
+        target = state["sides"][0]["pokemon"][pokemon_index]
+        expected_base = {
+            "hp": 200,
+            "atk": 100 + stat_points["atk"],
+            "def": 100 + stat_points["def"],
+            "spa": 100 + stat_points["spa"],
+            "spd": 100 + stat_points["spd"],
+            "spe": 100 + stat_points["spe"],
+        }
+        expected_stored = {
+            stat: expected_base[stat]
+            for stat in ("atk", "def", "spa", "spd", "spe")
+        }
+        return (
+            target["set"]["evs"] == stat_points
+            and target["baseStoredStats"] == expected_base
+            and target["storedStats"] == expected_stored
+            and target["speed"] == expected_stored["spe"]
+        )
 
     def state_view(self, *, state, side, previews=None):
         assert side == "p2"
@@ -451,7 +486,17 @@ def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
     assert result.final_particles == ()
 
 
-@pytest.mark.parametrize("hostile_delta", ["timesAttacked", "queue", "pp"])
+@pytest.mark.parametrize(
+    "hostile_delta",
+    [
+        "timesAttacked",
+        "queue",
+        "pp",
+        "baseStoredStats",
+        "storedStats",
+        "speed",
+    ],
+)
 def test_typed_stat_authority_rejects_non_stat_checkpoint_edits(
     hostile_delta: str,
 ) -> None:
