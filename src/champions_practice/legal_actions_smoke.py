@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import (
+    FORCED_WAIT_CHOICE,
+    ShowdownSearchWorker,
+)
 from champions_practice.teams import SMOKE_TEAM
 
 SEED = "sodium,00000001000000020000000300000004"
@@ -69,7 +72,10 @@ def main() -> None:
             p1_choice="move psychic 2, move steelroller mega 1",
             p2_choice="move expandingforce mega 1, move psychic 1",
         )
-        if worker.session_legal_choices(session_id, side="p1") != [""]:
+        if worker.session_legal_choices(
+            session_id,
+            side="p1",
+        ) != [FORCED_WAIT_CHOICE]:
             raise SystemExit("ERROR: waiting side received actionable choices")
         if worker.session_legal_choices(session_id, side="p2") != [
             "switch 3, pass",
