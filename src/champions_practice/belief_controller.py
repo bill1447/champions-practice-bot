@@ -1899,6 +1899,14 @@ class _BeliefBattleCoordinator:
             f"state is {state.value}"
         ) from cleanup_error
 
+    def _invalidate_preview_session(self) -> None:
+        """Abandon a preview-mutated live session that cannot be reconciled."""
+        with self._state_lock:
+            if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
+                self._turn_state = SealedTurnState.RESTART_REQUIRED
+                self._session_id = None
+        self._worker.abort(timeout_seconds=0.25)
+
     def submit_preview(
         self,
         *,
@@ -1924,9 +1932,7 @@ class _BeliefBattleCoordinator:
             )
         except ShowdownWorkerTimeout as error:
             if error.mutating:
-                with self._state_lock:
-                    if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
-                        self._turn_state = SealedTurnState.RESTART_REQUIRED
+                self._invalidate_preview_session()
                 raise RuntimeError(
                     "preview submission timed out with unknown outcome; "
                     "restart the battle before submitting again"
@@ -1936,18 +1942,15 @@ class _BeliefBattleCoordinator:
                     self._turn_state = SealedTurnState.PREVIEW
             raise
         except ShowdownRequestError as error:
-            with self._state_lock:
-                if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
-                    self._turn_state = (
-                        SealedTurnState.PREVIEW
-                        if error.safe_retry
-                        else SealedTurnState.RESTART_REQUIRED
-                    )
+            if error.safe_retry:
+                with self._state_lock:
+                    if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
+                        self._turn_state = SealedTurnState.PREVIEW
+            else:
+                self._invalidate_preview_session()
             raise
         except Exception:
-            with self._state_lock:
-                if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
-                    self._turn_state = SealedTurnState.RESTART_REQUIRED
+            self._invalidate_preview_session()
             raise
 
         try:
@@ -1960,9 +1963,7 @@ class _BeliefBattleCoordinator:
             # The live preview mutation already succeeded. Without a verified
             # public observation and initialized belief state, resubmission
             # could double-apply preview. Fail closed and require a new battle.
-            with self._state_lock:
-                if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
-                    self._turn_state = SealedTurnState.RESTART_REQUIRED
+            self._invalidate_preview_session()
             raise RuntimeError(
                 "preview was submitted but post-submit initialization failed; "
                 "restart the battle"
