@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.observation_beliefs import BeliefParticle
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    identity_member_lineage,
+)
 from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     RecoveryCandidateStatus,
@@ -187,6 +190,8 @@ def main() -> None:
             1.0,
             world_id="download-root",
             history_id="post-preview",
+            p1_member_lineage=identity_member_lineage(root_state, "p1"),
+            p2_member_lineage=identity_member_lineage(root_state, "p2"),
         )
         request = RecoveryRequest(
             authority_root_particles=(root_particle,),
