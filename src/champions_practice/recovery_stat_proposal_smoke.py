@@ -10,6 +10,7 @@ from champions_practice.observation_beliefs import (
 from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     RecoveryObservation,
+    RecoveryOpeningAuthority,
     RecoveryRequest,
     validate_stat_recovery_proposals,
 )
@@ -103,8 +104,11 @@ HUMAN_CHOICE = "move bodyslam +1, move sleeptalk"
 AI_CHOICE = "move sleeptalk, move sleeptalk"
 
 
-def _state(worker: HypotheticalSearchWorker, opponent_team: str) -> dict:
-    return worker.create_state(
+def _state_with_opening(
+    worker: HypotheticalSearchWorker,
+    opponent_team: str,
+) -> dict:
+    return worker.create_state_with_opening_authority(
         battle_format=CHAMPIONS_FORMAT,
         p1_team=opponent_team,
         p2_team=AI_TEAM,
@@ -132,8 +136,10 @@ def _snorlax_points(state: dict) -> dict[str, int]:
 def main() -> None:
     previews = _previews()
     with HypotheticalSearchWorker() as worker:
-        high_state = _state(worker, HIGH_ATTACK_TEAM)
-        low_state = _state(worker, LOW_ATTACK_TEAM)
+        high_opening = _state_with_opening(worker, HIGH_ATTACK_TEAM)
+        low_opening = _state_with_opening(worker, LOW_ATTACK_TEAM)
+        high_state = high_opening["state"]
+        low_state = low_opening["state"]
         direct_rejections = worker.materialize_recovery_stat_proposals(
             state=low_state,
             side="p1",
@@ -237,6 +243,20 @@ def main() -> None:
                     1.0,
                     world_id="low-attack-parent",
                     history_id="checkpoint",
+                ),
+            ),
+            opening_authorities=(
+                RecoveryOpeningAuthority(
+                    particle=BeliefParticle(
+                        low_opening["preopening_state"],
+                        1.0,
+                        world_id="low-attack-parent",
+                        history_id="checkpoint",
+                    ),
+                    p1_preview_choice=PREVIEW,
+                    p2_preview_choice=PREVIEW,
+                    p1_root_to_preopening=low_opening["preview_lineage"]["p1"],
+                    p2_root_to_preopening=low_opening["preview_lineage"]["p2"],
                 ),
             ),
             authority_root_public_view=checkpoint,
