@@ -137,6 +137,10 @@ jobs:
         shell: pwsh
         run: .\recovery-boundary-smoke.ps1
 
+      - name: Typed recovery mutation authority smoke test
+        shell: pwsh
+        run: .\recovery-mutation-authority-smoke.ps1
+
       - name: Bounded opponent stat-point recovery smoke test
         shell: pwsh
         run: .\recovery-stat-proposal-smoke.ps1
