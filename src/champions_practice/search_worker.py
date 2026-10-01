@@ -419,6 +419,8 @@ class HypotheticalSearchWorker:
         root_state: dict[str, Any],
         p1_preview: str,
         p2_preview: str,
+        p1_root_to_input: tuple[int, ...],
+        p2_root_to_input: tuple[int, ...],
     ) -> bool:
         return self.__worker.validate_recovery_opening_authority(
             battle_format=battle_format,
@@ -430,6 +432,8 @@ class HypotheticalSearchWorker:
             root_state=root_state,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
+            p1_root_to_input=p1_root_to_input,
+            p2_root_to_input=p2_root_to_input,
         )
 
     def validate_recovery_opening_stat_candidate(
@@ -1180,6 +1184,8 @@ class ShowdownSearchWorker:
         root_state: dict[str, Any],
         p1_preview: str,
         p2_preview: str,
+        p1_root_to_input: tuple[int, ...],
+        p2_root_to_input: tuple[int, ...],
     ) -> bool:
         """Rebuild a fresh battle and prove its opening root exactly."""
         result = self.request(
@@ -1193,6 +1199,8 @@ class ShowdownSearchWorker:
             root_state=root_state,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
+            p1_root_to_input=list(p1_root_to_input),
+            p2_root_to_input=list(p2_root_to_input),
         )
         valid = result.get("valid")
         if not isinstance(valid, bool):
