@@ -20,6 +20,7 @@ from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdat
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
 from champions_practice.search_worker import (
+    FORCED_WAIT_CHOICE,
     HypotheticalSearchWorker,
     ShowdownRequestError,
     ShowdownWorkerTimeout,
@@ -119,6 +120,65 @@ class _CoordinatorWorker:
 
     def abort(self, *, timeout_seconds=0.25):
         self.aborted = True
+
+
+class _WaitingCoordinatorWorker(_CoordinatorWorker):
+    def session_public_choices(self, session_id, *, side):
+        if side == "p2":
+            return [FORCED_WAIT_CHOICE]
+        return super().session_public_choices(session_id, side=side)
+
+
+def test_coordinator_seals_explicit_forced_wait_without_search(monkeypatch) -> None:
+    worker = _WaitingCoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+
+    def fail_search(*, legal_live):
+        raise AssertionError(f"forced wait entered decision search: {legal_live}")
+
+    monkeypatch.setattr(controller._engine, "choose_ai_action", fail_search)
+
+    ready = controller.lock_ai_action()
+
+    assert isinstance(ready, SealedDecisionReady)
+    assert controller.turn_state is SealedTurnState.LOCKED
+    assert controller._sealed_decision is not None
+    decision = controller._sealed_decision[1]
+    assert decision.choice == FORCED_WAIT_CHOICE
+    assert decision.mode == "forced-wait"
+    assert decision.candidate_count == 1
+    assert decision.branch_count == 0
+
+
+class _AmbiguousWaitingCoordinatorWorker(_CoordinatorWorker):
+    def session_public_choices(self, session_id, *, side):
+        if side == "p2":
+            return [FORCED_WAIT_CHOICE, "move impossible"]
+        return super().session_public_choices(session_id, side=side)
+
+
+def test_forced_wait_token_cannot_mix_with_action_choices() -> None:
+    worker = _AmbiguousWaitingCoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+
+    with pytest.raises(RuntimeError, match="only publicly selectable choice"):
+        controller.lock_ai_action()
+
+    assert controller.turn_state is SealedTurnState.IDLE
 
 
 def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> None:
