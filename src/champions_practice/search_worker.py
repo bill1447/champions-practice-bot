@@ -1185,13 +1185,17 @@ class ShowdownSearchWorker:
             p2_preview=p2_preview,
         )
         paths = result.get("diff_paths")
-        if not isinstance(paths, list) or not all(
-            isinstance(path, str) for path in paths
+        log_diff = result.get("log_diff", [])
+        if (
+            not isinstance(paths, list)
+            or not all(isinstance(path, str) for path in paths)
+            or not isinstance(log_diff, list)
+            or not all(isinstance(value, str) for value in log_diff)
         ):
             raise RuntimeError(
-                "Showdown worker returned invalid opening-authority diff paths"
+                "Showdown worker returned invalid opening-authority diagnostics"
             )
-        return tuple(paths)
+        return tuple(paths) + tuple(f"log:{value}" for value in log_diff)
 
     def validate_recovery_opening_stat_candidate(
         self,
