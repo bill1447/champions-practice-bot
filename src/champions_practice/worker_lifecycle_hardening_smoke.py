@@ -32,9 +32,18 @@ def _retained_worker_count() -> int:
 def _self_handle_count() -> int | None:
     if os.name == "nt":
         import ctypes
+        from ctypes import wintypes
 
         kernel32 = ctypes.windll.kernel32
-        count = ctypes.c_ulong()
+        kernel32.GetCurrentProcess.argtypes = []
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel32.GetProcessHandleCount.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        kernel32.GetProcessHandleCount.restype = wintypes.BOOL
+
+        count = wintypes.DWORD()
         if not kernel32.GetProcessHandleCount(
             kernel32.GetCurrentProcess(),
             ctypes.byref(count),
