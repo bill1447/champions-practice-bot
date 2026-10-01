@@ -117,16 +117,18 @@ def _opening_authority(
     particle: BeliefParticle,
 ) -> RecoveryOpeningAuthority:
     return RecoveryOpeningAuthority(
-        particle=BeliefParticle(
-            copy.deepcopy(particle.state),
-            particle.weight,
-            world_id=particle.world_id,
-            history_id=particle.history_id,
-        ),
+        world_id=particle.world_id,
+        history_id=particle.history_id,
+        battle_format="test-format",
+        p1_team="synthetic-p1-team",
+        p2_team="synthetic-p2-team",
+        p1_name="Search P1",
+        p2_name="Search P2",
+        seed="1,2,3,4",
         p1_preview_choice="team 12",
         p2_preview_choice="team 1",
-        p1_root_to_preopening=(0, 1),
-        p2_root_to_preopening=(0,),
+        p1_root_to_input=(0, 1),
+        p2_root_to_input=(0,),
     )
 
 
@@ -288,16 +290,27 @@ class _TypedRecoveryWorker:
     def materialize_recovery_opening_stat_proposals(
         self,
         *,
-        state,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
         side,
         p1_preview,
         p2_preview,
         proposals,
     ):
+        assert battle_format == "test-format"
+        assert p1_team == "synthetic-p1-team"
+        assert p2_team == "synthetic-p2-team"
+        assert p1_name == "Search P1"
+        assert p2_name == "Search P2"
+        assert seed == "1,2,3,4"
         assert p1_preview == "team 12"
         assert p2_preview == "team 1"
         return self.materialize_recovery_stat_proposals(
-            state=state,
+            state=_parent_state(),
             side=side,
             proposals=proposals,
         )
@@ -305,19 +318,35 @@ class _TypedRecoveryWorker:
     def validate_recovery_opening_authority(
         self,
         *,
-        preopening_state,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
         root_state,
         p1_preview,
         p2_preview,
     ):
+        assert battle_format == "test-format"
+        assert p1_team == "synthetic-p1-team"
+        assert p2_team == "synthetic-p2-team"
+        assert p1_name == "Search P1"
+        assert p2_name == "Search P2"
+        assert seed == "1,2,3,4"
         assert p1_preview == "team 12"
         assert p2_preview == "team 1"
-        return preopening_state == root_state
+        return root_state == _parent_state()
 
     def validate_recovery_opening_stat_candidate(
         self,
         *,
-        preopening_state,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
         candidate_state,
         side,
         pokemon_index,
@@ -325,10 +354,16 @@ class _TypedRecoveryWorker:
         p1_preview,
         p2_preview,
     ):
+        assert battle_format == "test-format"
+        assert p1_team == "synthetic-p1-team"
+        assert p2_team == "synthetic-p2-team"
+        assert p1_name == "Search P1"
+        assert p2_name == "Search P2"
+        assert seed == "1,2,3,4"
         assert p1_preview == "team 12"
         assert p2_preview == "team 1"
         assert side == "p1"
-        expected = copy.deepcopy(preopening_state)
+        expected = _parent_state()
         target = expected["sides"][0]["pokemon"][pokemon_index]
         target["set"]["evs"] = dict(stat_points)
         target["baseStoredStats"] = {
