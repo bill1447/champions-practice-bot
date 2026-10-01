@@ -125,6 +125,7 @@ def _request() -> RecoveryRequest:
         authority_root_particles=(particle,),
         authority_root_public_view=checkpoint,
         authority_observations=(),
+        authority_history_complete=True,
         checkpoint_particles=(particle,),
         checkpoint_public_view=checkpoint,
         observations=(
@@ -401,6 +402,7 @@ def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
                 public_view=checkpoint_view,
             ),
         ),
+        authority_history_complete=True,
         checkpoint_particles=(
             BeliefParticle(
                 checkpoint_state,
@@ -537,6 +539,7 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
         authority_root_particles=request.authority_root_particles,
         authority_root_public_view=request.authority_root_public_view,
         authority_observations=request.authority_observations,
+        authority_history_complete=True,
         checkpoint_particles=request.checkpoint_particles,
         checkpoint_public_view=request.checkpoint_public_view,
         observations=(
