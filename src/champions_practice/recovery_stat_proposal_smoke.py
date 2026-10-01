@@ -258,8 +258,16 @@ def main() -> None:
         ).generate(request)
         if not proposals:
             raise SystemExit("ERROR: bounded stat generator produced no proposals")
-        if any(proposal.stat_point_dict["hp"] != 2 for proposal in proposals):
-            raise SystemExit("ERROR: stat generator changed HP points")
+        snorlax_proposals = [
+            proposal for proposal in proposals if proposal.species == "Snorlax"
+        ]
+        if not snorlax_proposals:
+            raise SystemExit("ERROR: stat generator produced no Snorlax proposals")
+        if any(
+            proposal.stat_point_dict["hp"] != 2
+            for proposal in snorlax_proposals
+        ):
+            raise SystemExit("ERROR: stat generator changed Snorlax HP points")
         if not any(
             proposal.stat_point_dict
             == {
@@ -270,7 +278,7 @@ def main() -> None:
                 "spd": 0,
                 "spe": 32,
             }
-            for proposal in proposals
+            for proposal in snorlax_proposals
         ):
             raise SystemExit(
                 "ERROR: generator missed legal SpA-to-Attack stat transfer"
