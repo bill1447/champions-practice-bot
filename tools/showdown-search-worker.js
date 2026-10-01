@@ -337,13 +337,15 @@ function publicMechanicsEventDelta(battle, sideId) {
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
   let logTurn = 0;
   let actionContext = null;
-  const byTurn = new Map();
+  let current = { turn: null, events: [], unsupported: [] };
+  let latest = null;
 
-  function turnRecord() {
-    if (!byTurn.has(logTurn)) {
-      byTurn.set(logTurn, { events: [], unsupported: [] });
-    }
-    return byTurn.get(logTurn);
+  function hasEvidence(record) {
+    return record.events.length || record.unsupported.length;
+  }
+
+  function preserveCurrent() {
+    if (current.turn !== null && hasEvidence(current)) latest = current;
   }
 
   for (const line of visibleLog) {
@@ -351,8 +353,10 @@ function publicMechanicsEventDelta(battle, sideId) {
     const event = parts[1];
 
     if (event === "turn") {
+      preserveCurrent();
       const parsed = Number(parts[2]);
-      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
+      logTurn = Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+      current = { turn: logTurn || null, events: [], unsupported: [] };
       actionContext = null;
       continue;
     }
@@ -371,8 +375,8 @@ function publicMechanicsEventDelta(battle, sideId) {
 
     if (!PUBLIC_MECHANICS_EVENTS.has(event)) {
       const unsupported = canonicalProtocolIdentity(event);
-      if (unsupported && !turnRecord().unsupported.includes(unsupported)) {
-        turnRecord().unsupported.push(unsupported);
+      if (unsupported && !current.unsupported.includes(unsupported)) {
+        current.unsupported.push(unsupported);
       }
       continue;
     }
@@ -380,28 +384,20 @@ function publicMechanicsEventDelta(battle, sideId) {
     const canonical = canonicalPublicMechanicsEvent(parts, actionContext);
     if (!canonical) {
       const invalid = `${canonicalProtocolIdentity(event)}:invalid`;
-      if (!turnRecord().unsupported.includes(invalid)) {
-        turnRecord().unsupported.push(invalid);
+      if (!current.unsupported.includes(invalid)) {
+        current.unsupported.push(invalid);
       }
       continue;
     }
-    turnRecord().events.push(canonical);
+    current.events.push(canonical);
   }
 
-  const turns = [...byTurn.keys()]
-    .filter((turn) => {
-      const record = byTurn.get(turn);
-      return record.events.length || record.unsupported.length;
-    })
-    .sort((left, right) => right - left);
-  if (!turns.length) return { turn: null, events: [], unsupported: [] };
-
-  const turn = turns[0];
-  const record = byTurn.get(turn);
+  preserveCurrent();
+  if (!latest) return { turn: null, events: [], unsupported: [] };
   return {
-    turn,
-    events: record.events,
-    unsupported: record.unsupported.slice().sort(),
+    turn: latest.turn,
+    events: latest.events,
+    unsupported: latest.unsupported.slice().sort(),
   };
 }
 
