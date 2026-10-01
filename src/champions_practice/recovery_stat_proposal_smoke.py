@@ -11,8 +11,7 @@ from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     RecoveryObservation,
     RecoveryRequest,
-    materialize_stat_proposals,
-    validate_recovery_candidates,
+    validate_stat_recovery_proposals,
 )
 from champions_practice.search_worker import HypotheticalSearchWorker
 
@@ -284,24 +283,20 @@ def main() -> None:
                 "ERROR: generator missed legal SpA-to-Attack stat transfer"
             )
 
-        materialized = materialize_stat_proposals(
+        report = validate_stat_recovery_proposals(
             worker,
             request=request,
             proposals=proposals,
+            rng_seeds_by_observation=((TURN_SEED,),),
         )
-        if not materialized.candidates:
-            reasons = sorted({failure.reason for failure in materialized.failures})
+        if not report.candidate_results:
+            reasons = sorted(
+                {failure.reason for failure in report.materialization_failures}
+            )
             raise SystemExit(
                 "ERROR: Showdown materialized no stat proposals: "
                 f"{reasons!r}"
             )
-
-        report = validate_recovery_candidates(
-            worker,
-            request=request,
-            candidates=materialized.candidates,
-            rng_seeds_by_observation=((TURN_SEED,),),
-        )
 
     validated = report.validated_candidates
     if not validated:
@@ -323,8 +318,11 @@ def main() -> None:
 
     print("Bounded opponent stat-point recovery proposals")
     print(f"Generated proposals: {len(proposals)}")
-    print(f"Showdown-materialized candidates: {len(materialized.candidates)}")
-    print(f"Materialization rejections: {len(materialized.failures)}")
+    print(f"Showdown-materialized candidates: {len(report.candidate_results)}")
+    print(
+        "Materialization rejections: "
+        f"{len(report.materialization_failures)}"
+    )
     print(f"Replay-validated candidates: {len(validated)}")
     print("Direct HP-point materialization accepted: NO")
     print("Illegal >66-point materialization accepted: NO")
