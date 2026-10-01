@@ -105,15 +105,6 @@ function publicExecutionEventDelta(battle, sideId) {
     return actorSide === sideId ? "player" : "opponent";
   }
 
-  function publicTarget(value) {
-    const target = protocolSlotIdentity(value);
-    if (!target) return null;
-    return {
-      side: publicRole(target.side),
-      slot: target.slot,
-    };
-  }
-
   function publicProvenance(parts) {
     const provenance = [];
     for (const value of parts.slice(5)) {
@@ -151,7 +142,6 @@ function publicExecutionEventDelta(battle, sideId) {
         move,
         source: provenance.length ? "called" : "selected",
         provenance,
-        target: publicTarget(parts[4]),
         effects: [],
       };
       turnActions().push(currentAction);
@@ -572,7 +562,9 @@ function playerView(battle, sideId = "p1", previews = null) {
     opponent_last_actions: publicLastOpponentActions(battle, sideId),
     // Selected commands are not proof of execution. This channel-sanitized
     // ledger preserves the ordered, both-side public execution sequence, including
-    // called-move provenance, targets, prevention, and public failure effects.
+    // called-move provenance, prevention, and public failure effects. Raw protocol
+    // animation targets are intentionally excluded; selected target intent is already
+    // represented by sealed/resolved commands and opponent_last_actions.
     public_execution_delta: publicExecutionEventDelta(battle, sideId),
     // This is derived only from the requesting side's Showdown-visible channel.
     // It makes publicly observed mechanics transitions (for example Substitute
