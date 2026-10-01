@@ -1723,6 +1723,8 @@ function resolveBranch(
     p2: battle.p2.pokemon.map((pokemon) => parentPokemon.p2.indexOf(pokemon)),
   };
   if (
+    memberLineage.p1.length !== parentPokemon.p1.length ||
+    memberLineage.p2.length !== parentPokemon.p2.length ||
     memberLineage.p1.some((index) => index < 0) ||
     memberLineage.p2.some((index) => index < 0) ||
     new Set(memberLineage.p1).size !== memberLineage.p1.length ||
