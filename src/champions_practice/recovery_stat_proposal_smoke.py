@@ -135,6 +135,45 @@ def main() -> None:
     with HypotheticalSearchWorker() as worker:
         high_state = _state(worker, HIGH_ATTACK_TEAM)
         low_state = _state(worker, LOW_ATTACK_TEAM)
+        direct_rejections = worker.materialize_recovery_stat_proposals(
+            state=low_state,
+            side="p1",
+            proposals=[
+                {
+                    "proposal_id": "hp-change",
+                    "pokemon_index": 0,
+                    "stat_points": {
+                        "hp": 3,
+                        "atk": 0,
+                        "def": 0,
+                        "spa": 31,
+                        "spd": 0,
+                        "spe": 32,
+                    },
+                },
+                {
+                    "proposal_id": "over-cap",
+                    "pokemon_index": 0,
+                    "stat_points": {
+                        "hp": 2,
+                        "atk": 32,
+                        "def": 32,
+                        "spa": 32,
+                        "spd": 0,
+                        "spe": 0,
+                    },
+                },
+            ],
+        )
+        rejection_reasons = {
+            result["proposal_id"]: result.get("rejected")
+            for result in direct_rejections
+        }
+        if rejection_reasons.get("hp-change") != "hp-broadening-disabled":
+            raise SystemExit("ERROR: materializer accepted HP-point broadening")
+        if rejection_reasons.get("over-cap") != "invalid-stat-points":
+            raise SystemExit("ERROR: materializer accepted an illegal stat-point total")
+
         checkpoint = worker.state_view(
             state=low_state,
             side="p2",
@@ -279,7 +318,9 @@ def main() -> None:
     print(f"Showdown-materialized candidates: {len(materialized.candidates)}")
     print(f"Materialization rejections: {len(materialized.failures)}")
     print(f"Replay-validated candidates: {len(validated)}")
-    print("HP stat-point mutation attempted: NO")
+    print("Direct HP-point materialization accepted: NO")
+    print("Illegal >66-point materialization accepted: NO")
+    print("HP stat-point mutation attempted by generator: NO")
     print("Wrong low-Attack parent explains observed damage: NO")
     print("Validated candidates require 32 Attack points: YES")
     print("RESULT: bounded hidden stat-point broadening is mechanics-authoritative")
