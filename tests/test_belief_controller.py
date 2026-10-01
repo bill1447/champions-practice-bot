@@ -798,6 +798,11 @@ def _patch_live_strategy_pipeline(
                 if is_final
                 else ((baseline_response,),)
             ),
+            rng_samples=(
+                tuple(kwargs["rng_seeds"])
+                if kwargs.get("rng_seeds") is not None
+                else (None,)
+            ),
         )
 
     monkeypatch.setattr(
@@ -879,6 +884,11 @@ def test_repeated_protect_gets_focused_multi_rng_risk_check(monkeypatch) -> None
             response_screening_branch_count=screening,
             branch_count=branch_count,
             response_shortlists=(("move counter",),),
+            rng_samples=(
+                tuple(kwargs["rng_seeds"])
+                if kwargs.get("rng_seeds") is not None
+                else (None,)
+            ),
         )
 
     monkeypatch.setattr(
@@ -910,11 +920,13 @@ def test_live_controller_uses_no_strategy_guidance_without_supported_plan(monkey
     assert decision.strategic_plan is None
     assert decision.strategic_probe_count == 1
     assert decision.strategic_branch_count == 20
-    assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
+    assert decision.strategic_rng_sample_count == 1 + len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["shared_responses"] is not None
     assert seen["shared_candidate_references"] == ("move safe",)
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
+    assert seen["protected_tactical"].rng_seeds == (None,)
+    assert seen["shared_return_rng_seeds"] == (None, *SCREENING_RNG_SEEDS)
     assert seen["guidance"] == guidance
     assert seen["pruning_guidance"] == [None, guidance]
     assert seen["prepared_pruning"] is seen["guided_pruning"]
@@ -1039,15 +1051,20 @@ def test_live_controller_applies_only_selected_supported_plan_guidance(monkeypat
     assert decision.choice == "move safe"
     assert decision.strategic_plan == plan.name
     assert decision.strategic_probe_count == 1
-    assert decision.strategic_rng_sample_count == len(SCREENING_RNG_SEEDS)
+    assert decision.strategic_rng_sample_count == 1 + len(SCREENING_RNG_SEEDS)
     assert seen["rng_seeds"] == SCREENING_RNG_SEEDS
     assert seen["shared_responses"] is not None
     assert seen["shared_candidate_references"] == ("move safe",)
     assert seen["shared_rng_seeds"] == SCREENING_RNG_SEEDS
+    assert seen["protected_tactical"].rng_seeds == (None,)
+    assert seen["shared_return_rng_seeds"] == (None, *SCREENING_RNG_SEEDS)
     assert seen["guidance"] == guidance
     assert seen["pruning_guidance"] == [None, guidance]
     assert seen["prepared_pruning"] is seen["guided_pruning"]
-    assert seen["search_rng_seeds"] == [None, SCREENING_RNG_SEEDS]
+    assert seen["search_rng_seeds"] == [
+        None,
+        (None, *SCREENING_RNG_SEEDS),
+    ]
     assert seen["search_response_shortlists"][1] == (("move counter",),)
     assert decision.branch_count == 33
 
@@ -1081,6 +1098,30 @@ def test_strategy_preserves_known_tactical_response_in_final_union(
         ("move known-counter", "move new-counter"),
     )
     assert decision.choice == "move baseline"
+
+
+def test_strategy_preserves_baseline_native_rng_evidence(monkeypatch) -> None:
+    engine = _decision_engine()
+    _, _, _, seen = _patch_live_strategy_pipeline(
+        monkeypatch,
+        selected=True,
+        baseline_choices=("move baseline",),
+        guided_choices=("move guided",),
+        final_choice="move baseline",
+    )
+
+    decision = engine.choose_ai_action(
+        legal_live=["move baseline", "move guided"],
+    )
+
+    assert seen["protected_tactical"].rng_seeds == (None,)
+    assert seen["shared_return_rng_seeds"] == (None, *SCREENING_RNG_SEEDS)
+    assert seen["search_rng_seeds"] == [
+        None,
+        (None, *SCREENING_RNG_SEEDS),
+    ]
+    assert decision.choice == "move baseline"
+    assert decision.strategic_rng_sample_count == 1 + len(SCREENING_RNG_SEEDS)
 
 
 def test_strategy_preserves_repeated_protect_rng_evidence(monkeypatch) -> None:
@@ -1119,15 +1160,21 @@ def test_strategy_preserves_repeated_protect_rng_evidence(monkeypatch) -> None:
 
     decision = engine.choose_ai_action(legal_live=[protect, safe])
 
-    assert seen["protected_tactical"].rng_seeds == FINAL_RNG_SEEDS
-    assert seen["shared_return_rng_seeds"] == FINAL_RNG_SEEDS
+    assert seen["protected_tactical"].rng_seeds == (
+        None,
+        *FINAL_RNG_SEEDS,
+    )
+    assert seen["shared_return_rng_seeds"] == (
+        None,
+        *FINAL_RNG_SEEDS,
+    )
     assert seen["search_rng_seeds"] == [
         None,
         FINAL_RNG_SEEDS,
-        FINAL_RNG_SEEDS,
+        (None, *FINAL_RNG_SEEDS),
     ]
     assert decision.choice == safe
-    assert decision.strategic_rng_sample_count == len(FINAL_RNG_SEEDS)
+    assert decision.strategic_rng_sample_count == 1 + len(FINAL_RNG_SEEDS)
 
 
 def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence(
@@ -1158,7 +1205,7 @@ def test_final_union_keeps_baseline_winner_and_guided_candidate_on_same_evidence
         ("move baseline", "move guided"),
     ]
     assert seen["search_response_shortlists"][1] == (("move counter",),)
-    assert seen["search_rng_seeds"][1] == SCREENING_RNG_SEEDS
+    assert seen["search_rng_seeds"][1] == (None, *SCREENING_RNG_SEEDS)
     assert decision.choice == "move baseline"
     assert decision.strategic_plan is None
 
