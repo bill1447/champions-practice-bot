@@ -5,7 +5,10 @@ from __future__ import annotations
 import copy
 
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.observation_beliefs import BeliefParticle
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    identity_member_lineage,
+)
 from champions_practice.recovery import (
     OpponentStatProposal,
     RecoveryCandidateStatus,
@@ -316,6 +319,8 @@ def main() -> None:
                     1.0,
                     world_id="counter-parent",
                     history_id="initial-checkpoint",
+                    p1_member_lineage=identity_member_lineage(parent, "p1"),
+                    p2_member_lineage=identity_member_lineage(parent, "p2"),
                 ),
             ),
             opening_authorities=(
@@ -343,6 +348,8 @@ def main() -> None:
                     1.0,
                     world_id="counter-parent",
                     history_id="initial-checkpoint",
+                    p1_member_lineage=identity_member_lineage(parent, "p1"),
+                    p2_member_lineage=identity_member_lineage(parent, "p2"),
                 ),
             ),
             checkpoint_public_view=checkpoint,
@@ -361,6 +368,7 @@ def main() -> None:
             proposal_id="spa16",
             parent_particle_index=0,
             pokemon_index=0,
+            root_pokemon_index=0,
             species="Annihilape",
             stat_points=(
                 ("hp", 0),
@@ -371,7 +379,7 @@ def main() -> None:
                 ("spe", 0),
             ),
             changed_hidden_dimensions=(
-                "opponent.annihilape.stat_points.spa",
+                "opponent.member0.annihilape.stat_points.spa",
             ),
         )
 
