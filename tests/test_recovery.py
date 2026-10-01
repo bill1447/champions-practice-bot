@@ -1,13 +1,18 @@
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from champions_practice.observation_beliefs import BeliefParticle
 from champions_practice.recovery import (
+    BoundedOpponentStatProposalGenerator,
+    OpponentStatProposal,
     RecoveryCandidate,
     RecoveryCandidateStatus,
     RecoveryObservation,
     RecoveryRequest,
+    materialize_stat_proposals,
     validate_recovery_candidates,
 )
 
@@ -81,6 +86,191 @@ def _request() -> RecoveryRequest:
         ai_side="p2",
         previews={"p1": ["Snorlax"], "p2": ["Indeedee-F"]},
     )
+
+
+def _stat_request() -> RecoveryRequest:
+    state = {
+        "sides": [
+            {
+                "pokemon": [
+                    {
+                        "set": {
+                            "species": "Snorlax",
+                            "evs": {
+                                "hp": 2,
+                                "atk": 0,
+                                "def": 0,
+                                "spa": 32,
+                                "spd": 0,
+                                "spe": 32,
+                            },
+                        }
+                    },
+                    {
+                        "set": {
+                            "species": "Shuckle",
+                            "evs": {
+                                "hp": 32,
+                                "atk": 0,
+                                "def": 32,
+                                "spa": 0,
+                                "spd": 2,
+                                "spe": 0,
+                            },
+                        }
+                    },
+                ]
+            },
+            {"pokemon": [{"set": {"species": "Indeedee-F", "evs": {}}}]},
+        ]
+    }
+    checkpoint = {
+        "turn": 1,
+        "opponent": {
+            "revealed": [
+                {"species": "Snorlax", "seen": True},
+                {"species": "Shuckle", "seen": False},
+            ]
+        },
+    }
+    return RecoveryRequest(
+        checkpoint_particles=(
+            BeliefParticle(state, 1.0, world_id="stat-parent"),
+        ),
+        checkpoint_public_view=checkpoint,
+        observations=(
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=checkpoint,
+                public_view={"turn": 2},
+            ),
+        ),
+        ai_side="p2",
+        previews={"p1": ["Snorlax", "Shuckle"], "p2": ["Indeedee-F"]},
+    )
+
+
+def test_bounded_stat_generator_only_broadens_seen_opponent_non_hp_points() -> None:
+    request = _stat_request()
+    before = copy.deepcopy(request.checkpoint_particles[0].state)
+    generator = BoundedOpponentStatProposalGenerator(max_proposals=64)
+
+    proposals = generator.generate(request)
+
+    assert proposals
+    assert len(proposals) <= 64
+    assert all(proposal.pokemon_index == 0 for proposal in proposals)
+    assert all(proposal.species == "Snorlax" for proposal in proposals)
+    assert all(proposal.stat_point_dict["hp"] == 2 for proposal in proposals)
+    assert all(
+        max(proposal.stat_point_dict.values()) <= 32
+        and sum(proposal.stat_point_dict.values()) <= 66
+        for proposal in proposals
+    )
+    assert any(
+        proposal.stat_point_dict
+        == {
+            "hp": 2,
+            "atk": 32,
+            "def": 0,
+            "spa": 0,
+            "spd": 0,
+            "spe": 32,
+        }
+        for proposal in proposals
+    )
+    assert request.checkpoint_particles[0].state == before
+
+
+def test_bounded_stat_generator_is_deterministic_and_honors_limit() -> None:
+    request = _stat_request()
+    generator = BoundedOpponentStatProposalGenerator(max_proposals=3)
+
+    left = generator.generate(request)
+    right = generator.generate(request)
+
+    assert left == right
+    assert len(left) == 3
+    assert len({proposal.proposal_id for proposal in left}) == 3
+
+
+class _MaterializationWorker:
+    def materialize_recovery_stat_proposals(self, *, state, side, proposals):
+        assert side == "p1"
+        resolved = []
+        for proposal in proposals:
+            if proposal["proposal_id"] == "reject":
+                resolved.append(
+                    {"proposal_id": proposal["proposal_id"], "rejected": "unsafe"}
+                )
+                continue
+            candidate = copy.deepcopy(state)
+            candidate["materialized"] = proposal["proposal_id"]
+            resolved.append(
+                {"proposal_id": proposal["proposal_id"], "state": candidate}
+            )
+        return resolved
+
+
+def test_stat_materialization_preserves_parent_identity_and_reports_rejections() -> None:
+    request = _stat_request()
+    proposals = (
+        OpponentStatProposal(
+            proposal_id="keep",
+            parent_particle_index=0,
+            pokemon_index=0,
+            species="Snorlax",
+            stat_points=(
+                ("hp", 2),
+                ("atk", 32),
+                ("def", 0),
+                ("spa", 0),
+                ("spd", 0),
+                ("spe", 32),
+            ),
+            changed_hidden_dimensions=(
+                "opponent.snorlax.stat_points.atk",
+                "opponent.snorlax.stat_points.spa",
+            ),
+        ),
+        OpponentStatProposal(
+            proposal_id="reject",
+            parent_particle_index=0,
+            pokemon_index=0,
+            species="Snorlax",
+            stat_points=(
+                ("hp", 2),
+                ("atk", 16),
+                ("def", 0),
+                ("spa", 16),
+                ("spd", 0),
+                ("spe", 32),
+            ),
+            changed_hidden_dimensions=(
+                "opponent.snorlax.stat_points.atk",
+                "opponent.snorlax.stat_points.spa",
+            ),
+        ),
+    )
+
+    report = materialize_stat_proposals(
+        _MaterializationWorker(),
+        request=request,
+        proposals=proposals,
+    )
+
+    assert len(report.candidates) == 1
+    candidate = report.candidates[0]
+    assert candidate.candidate_id == "keep"
+    assert candidate.parent_particle_index == 0
+    assert candidate.particle.world_id == "stat-parent"
+    assert candidate.particle.weight == 1.0
+    assert candidate.particle.state["materialized"] == "keep"
+    assert candidate.source == "bounded-opponent-stat-points"
+    assert len(report.failures) == 1
+    assert report.failures[0].proposal.proposal_id == "reject"
+    assert report.failures[0].reason == "unsafe"
 
 
 def test_recovery_requires_checkpoint_and_complete_history_replay() -> None:
