@@ -133,6 +133,10 @@ jobs:
         shell: pwsh
         run: .\execution-evidence-smoke.ps1
 
+      - name: Ordered both-side execution authority smoke test
+        shell: pwsh
+        run: .\execution-authority-smoke.ps1
+
       - name: Persistent belief battle controller smoke test
         shell: pwsh
         run: .\belief-controller-smoke.ps1

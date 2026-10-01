@@ -117,13 +117,15 @@ def _execution_actions(view: dict) -> list[dict]:
 def _haze_outcome(view: dict) -> str | None:
     for action in _execution_actions(view):
         if (
-            action.get("slot") == 1
+            action.get("side") == "opponent"
+            and action.get("slot") == 1
             and action.get("outcome") == "executed"
             and action.get("move") == "haze"
         ):
             return "executed"
         if (
-            action.get("slot") == 1
+            action.get("side") == "opponent"
+            and action.get("slot") == 1
             and action.get("outcome") == "prevented"
             and action.get("reason") == "par"
         ):
