@@ -862,7 +862,6 @@ class RecoveryValidationReport:
 
 class _ReplayStopReason(str, Enum):
     COMPLETE = "complete"
-    RESOLVED_COMMAND_ILLEGAL = "resolved-command-illegal"
     SAMPLING_EXHAUSTED = "sampling-exhausted"
 
 
@@ -1024,34 +1023,6 @@ def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
     return sides[index]
 
 
-def _resolved_opponent_choice_legal_for_any_particle(
-    worker: RecoveryStatValidationWorker,
-    *,
-    particles: tuple[BeliefParticle, ...],
-    ai_side: SideId,
-    choice: str,
-) -> bool:
-    opponent_side = "p2" if ai_side == "p1" else "p1"
-    validator = getattr(worker, "validate_choices", None)
-    for particle in particles:
-        if callable(validator):
-            if validator(
-                state=particle.state,
-                side=opponent_side,
-                candidates=[choice],
-            ):
-                return True
-            continue
-        if choice in set(
-            worker.legal_choices(
-                state=particle.state,
-                side=opponent_side,
-            )
-        ):
-            return True
-    return False
-
-
 def _replay_observations(
     worker: RecoveryStatValidationWorker,
     *,
@@ -1062,10 +1033,10 @@ def _replay_observations(
 ) -> _ReplayOutcome:
     """Replay retained observations without treating finite RNG misses as proof.
 
-    A resolved opponent command that is illegal in every surviving exact state is a
-    mechanically proven incompatibility. By contrast, a legal command whose supplied
-    finite RNG samples fail to reproduce the public observation is unresolved: the
-    missing witness may simply not have been sampled.
+    The supplied RNG seed sets are bounded samples, not exhaustive mechanics
+    enumeration. A matching branch is positive evidence of reachability. Failure to
+    produce one is only sampling exhaustion, even when every sampled mismatch looks
+    structural or every sampled state rejects the next resolved command.
     """
     current = particles
     generated = 0
@@ -1079,19 +1050,6 @@ def _replay_observations(
         resolved_choice = observation.resolved_opponent_choice
         if resolved_choice is None:
             raise ValueError("recovery replay requires resolved opponent command")
-        if not _resolved_opponent_choice_legal_for_any_particle(
-            worker,
-            particles=current,
-            ai_side=request.ai_side,
-            choice=resolved_choice,
-        ):
-            return _ReplayOutcome(
-                particles=(),
-                generated=generated,
-                matched=matched,
-                replayed=replayed,
-                stop_reason=_ReplayStopReason.RESOLVED_COMMAND_ILLEGAL,
-            )
 
         update = condition_particles(
             worker,
@@ -1287,21 +1245,11 @@ def _validate_materialized_stat_candidates(
             rng_seeds_by_observation=authority_rng_seeds_by_observation,
         )
         if prefix.stop_reason is not _ReplayStopReason.COMPLETE:
-            proven_impossible = (
-                prefix.stop_reason
-                is _ReplayStopReason.RESOLVED_COMMAND_ILLEGAL
-            )
             results.append(
                 RecoveryCandidateValidation(
                     candidate=candidate,
-                    status=(
-                        RecoveryCandidateStatus.HISTORY_MISMATCH
-                        if proven_impossible
-                        else RecoveryCandidateStatus.SAMPLING_EXHAUSTED
-                    ),
-                    checkpoint_compatible=(
-                        False if proven_impossible else None
-                    ),
+                    status=RecoveryCandidateStatus.SAMPLING_EXHAUSTED,
+                    checkpoint_compatible=None,
                     authority_observations_replayed=prefix.replayed,
                     observations_replayed=0,
                     generated_branches=prefix.generated,
@@ -1312,7 +1260,7 @@ def _validate_materialized_stat_candidates(
 
         checkpoint_particles = tuple(
             particle
-            for particle in checkpoint_particles
+            for particle in prefix.particles
             if _exact_ai_side(
                 particle.state,
                 request.ai_side,
@@ -1322,8 +1270,8 @@ def _validate_materialized_stat_candidates(
             results.append(
                 RecoveryCandidateValidation(
                     candidate=candidate,
-                    status=RecoveryCandidateStatus.KNOWN_STATE_MISMATCH,
-                    checkpoint_compatible=False,
+                    status=RecoveryCandidateStatus.SAMPLING_EXHAUSTED,
+                    checkpoint_compatible=None,
                     authority_observations_replayed=prefix.replayed,
                     observations_replayed=0,
                     generated_branches=prefix.generated,
@@ -1339,15 +1287,11 @@ def _validate_materialized_stat_candidates(
             observations=request.observations,
             rng_seeds_by_observation=rng_seeds_by_observation,
         )
-        if suffix.stop_reason is _ReplayStopReason.COMPLETE:
-            status = RecoveryCandidateStatus.VALIDATED
-        elif (
-            suffix.stop_reason
-            is _ReplayStopReason.RESOLVED_COMMAND_ILLEGAL
-        ):
-            status = RecoveryCandidateStatus.REPLAY_MISMATCH
-        else:
-            status = RecoveryCandidateStatus.SAMPLING_EXHAUSTED
+        status = (
+            RecoveryCandidateStatus.VALIDATED
+            if suffix.stop_reason is _ReplayStopReason.COMPLETE
+            else RecoveryCandidateStatus.SAMPLING_EXHAUSTED
+        )
         results.append(
             RecoveryCandidateValidation(
                 candidate=candidate,
