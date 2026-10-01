@@ -110,6 +110,7 @@ def test_belief_search_prefers_robust_choice_across_worlds() -> None:
     assert result.evaluated_choices == ("attack", "safe")
     assert result.branch_count == 8
     assert result.response_screening_branch_count == 0
+    assert result.rng_samples == (None,)
     assert result.timing.total_seconds >= 0
     assert result.timing.candidate_legal_seconds >= 0
     assert result.timing.response_legal_seconds >= 0
@@ -223,6 +224,7 @@ def test_belief_search_averages_rng_before_world_minimax() -> None:
     )
 
     assert result.branch_count == 4
+    assert result.rng_samples == ("low", "high")
     assert result.chosen.worlds[0].legal_response_count == 2
     assert result.chosen.worlds[0].score_breakdown is not None
     assert result.chosen.worlds[0].worst_sample_summary is not None
