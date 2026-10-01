@@ -1155,6 +1155,125 @@ function enumerateLegalChoices(battle, sideId) {
   return validateChoices(battle.toJSON(), sideId, proposedChoices(battle, side));
 }
 
+const RECOVERY_STATS = ["hp", "atk", "def", "spa", "spd", "spe"];
+const RECOVERY_NON_HP_STATS = ["atk", "def", "spa", "spd", "spe"];
+const CHAMPIONS_STAT_POINT_CAP = 32;
+const CHAMPIONS_TOTAL_STAT_POINTS = 66;
+
+function recoveryStatPoints(value) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const normalized = {};
+  let total = 0;
+  for (const stat of RECOVERY_STATS) {
+    const points = value[stat];
+    if (!Number.isInteger(points)) return null;
+    if (points < 0 || points > CHAMPIONS_STAT_POINT_CAP) return null;
+    normalized[stat] = points;
+    total += points;
+  }
+  if (total > CHAMPIONS_TOTAL_STAT_POINTS) return null;
+  return normalized;
+}
+
+function materializeRecoveryStatProposal(state, sideId, proposal) {
+  const battle = Battle.fromJSON(JSON.stringify(state));
+  battle.restart(() => {});
+  try {
+    const side = sideId === "p1" ? battle.p1 : battle.p2;
+    const pokemonIndex = proposal.pokemon_index;
+    if (
+      !Number.isInteger(pokemonIndex) ||
+      pokemonIndex < 0 ||
+      pokemonIndex >= side.pokemon.length
+    ) {
+      return { proposal_id: proposal.proposal_id, rejected: "invalid-pokemon-index" };
+    }
+
+    const pokemon = side.pokemon[pokemonIndex];
+    if (pokemon.transformed) {
+      return { proposal_id: proposal.proposal_id, rejected: "transformed-pokemon" };
+    }
+
+    for (const stat of RECOVERY_NON_HP_STATS) {
+      if (pokemon.storedStats[stat] !== pokemon.baseStoredStats[stat]) {
+        return {
+          proposal_id: proposal.proposal_id,
+          rejected: "temporary-stored-stat-mutation",
+        };
+      }
+    }
+
+    const points = recoveryStatPoints(proposal.stat_points);
+    if (!points) {
+      return { proposal_id: proposal.proposal_id, rejected: "invalid-stat-points" };
+    }
+    const currentHpPoints = Number(pokemon.set.evs?.hp || 0);
+    if (points.hp !== currentHpPoints) {
+      return { proposal_id: proposal.proposal_id, rejected: "hp-broadening-disabled" };
+    }
+
+    pokemon.set.evs = { ...points };
+    const recalculated = battle.spreadModify(pokemon.species.baseStats, pokemon.set);
+    if (recalculated.hp !== pokemon.baseMaxhp) {
+      return {
+        proposal_id: proposal.proposal_id,
+        rejected: "hp-rematerialization-changed-maxhp",
+      };
+    }
+
+    for (const stat of RECOVERY_STATS) {
+      pokemon.baseStoredStats[stat] = recalculated[stat];
+    }
+    for (const stat of RECOVERY_NON_HP_STATS) {
+      pokemon.storedStats[stat] = recalculated[stat];
+    }
+    pokemon.updateSpeed();
+
+    return {
+      proposal_id: proposal.proposal_id,
+      state: battle.toJSON(),
+      stats: { ...recalculated },
+    };
+  } finally {
+    battle.destroy();
+  }
+}
+
+function materializeRecoveryStatProposals(request) {
+  if (!request.state) {
+    throw new Error("materialize_recovery_stat_proposals requires state");
+  }
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error("materialize_recovery_stat_proposals requires p1 or p2 side");
+  }
+  if (!Array.isArray(request.proposals) || request.proposals.length === 0) {
+    throw new Error("materialize_recovery_stat_proposals requires proposals");
+  }
+  if (request.proposals.length > 256) {
+    throw new Error("materialize_recovery_stat_proposals accepts at most 256 proposals");
+  }
+
+  const ids = new Set();
+  for (const proposal of request.proposals) {
+    if (!proposal || typeof proposal !== "object") {
+      throw new Error("recovery stat proposal must be an object");
+    }
+    if (typeof proposal.proposal_id !== "string" || !proposal.proposal_id) {
+      throw new Error("recovery stat proposal requires proposal_id");
+    }
+    if (ids.has(proposal.proposal_id)) {
+      throw new Error("recovery stat proposal ids must be unique");
+    }
+    ids.add(proposal.proposal_id);
+  }
+
+  return {
+    proposals: request.proposals.map((proposal) =>
+      materializeRecoveryStatProposal(request.state, request.side, proposal)
+    ),
+  };
+}
+
 function stateView(request) {
   if (!request.state) {
     throw new Error("state_view requires a serialized battle state");
@@ -1493,6 +1612,8 @@ function handle(request) {
       return legalChoices(request);
     case "validate_choices":
       return validateRequestedChoices(request);
+    case "materialize_recovery_stat_proposals":
+      return materializeRecoveryStatProposals(request);
     case "state_view":
       return stateView(request);
     case "session_start":

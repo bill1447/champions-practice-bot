@@ -344,6 +344,19 @@ class HypotheticalSearchWorker:
             candidates=candidates,
         )
 
+    def materialize_recovery_stat_proposals(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        proposals: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return self.__worker.materialize_recovery_stat_proposals(
+            state=state,
+            side=side,
+            proposals=proposals,
+        )
+
     def abort(self, *, timeout_seconds: float = 0.25) -> None:
         self.__worker.abort(timeout_seconds=timeout_seconds)
 
@@ -919,6 +932,31 @@ class ShowdownSearchWorker:
         ):
             raise RuntimeError("Showdown worker returned invalid validated choices")
         return choices
+
+    def materialize_recovery_stat_proposals(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        proposals: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Materialize bounded stat-point variants in hypothetical Showdown states."""
+        if not proposals:
+            return []
+        result = self.request(
+            "materialize_recovery_stat_proposals",
+            state=state,
+            side=side,
+            proposals=proposals,
+        )
+        variants = result.get("proposals")
+        if not isinstance(variants, list) or not all(
+            isinstance(variant, dict) for variant in variants
+        ):
+            raise RuntimeError(
+                "Showdown worker returned invalid recovery stat proposals"
+            )
+        return variants
 
     def session_public_choices(self, session_id: str, *, side: str) -> list[str]:
         """Enumerate choices using only the side's public request information."""
