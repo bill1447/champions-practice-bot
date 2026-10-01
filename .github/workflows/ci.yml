@@ -129,6 +129,10 @@ jobs:
         shell: pwsh
         run: .\public-event-conditioning-smoke.ps1
 
+      - name: Quantitative public transition authority smoke test
+        shell: pwsh
+        run: .\quantitative-transition-smoke.ps1
+
       - name: Public action execution evidence smoke test
         shell: pwsh
         run: .\execution-evidence-smoke.ps1
