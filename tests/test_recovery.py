@@ -378,7 +378,10 @@ def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
     root_view = _checkpoint()
     checkpoint_view = {
         "turn": 2,
-        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
+        "opponent": {
+            "active": [{"species": "Snorlax", "hp_percent": 95}],
+            "revealed": [{"species": "Snorlax", "seen": True}],
+        },
     }
     suffix_view = {
         "turn": 3,
