@@ -11,6 +11,7 @@ from champions_practice.recovery import (
     OpponentStatProposal,
     RecoveryCandidateStatus,
     RecoveryObservation,
+    RecoveryOpeningAuthority,
     RecoveryRequest,
     validate_stat_recovery_proposals,
 )
@@ -112,6 +113,23 @@ def _second_view() -> dict:
     }
 
 
+def _opening_authority(
+    particle: BeliefParticle,
+) -> RecoveryOpeningAuthority:
+    return RecoveryOpeningAuthority(
+        particle=BeliefParticle(
+            copy.deepcopy(particle.state),
+            particle.weight,
+            world_id=particle.world_id,
+            history_id=particle.history_id,
+        ),
+        p1_preview_choice="team 12",
+        p2_preview_choice="team 1",
+        p1_root_to_preopening=(0, 1),
+        p2_root_to_preopening=(0,),
+    )
+
+
 def _request() -> RecoveryRequest:
     checkpoint = _checkpoint()
     first = _first_view()
@@ -123,6 +141,7 @@ def _request() -> RecoveryRequest:
     )
     return RecoveryRequest(
         authority_root_particles=(particle,),
+        opening_authorities=(_opening_authority(particle),),
         authority_root_public_view=checkpoint,
         authority_observations=(),
         authority_history_complete=True,
@@ -264,6 +283,55 @@ class _TypedRecoveryWorker:
             and target["baseStoredStats"] == expected_base
             and target["storedStats"] == expected_stored
             and target["speed"] == expected_stored["spe"]
+        )
+
+    def materialize_recovery_opening_stat_proposals(
+        self,
+        *,
+        state,
+        side,
+        p1_preview,
+        p2_preview,
+        proposals,
+    ):
+        assert p1_preview == "team 12"
+        assert p2_preview == "team 1"
+        return self.materialize_recovery_stat_proposals(
+            state=state,
+            side=side,
+            proposals=proposals,
+        )
+
+    def validate_recovery_opening_authority(
+        self,
+        *,
+        preopening_state,
+        root_state,
+        p1_preview,
+        p2_preview,
+    ):
+        assert p1_preview == "team 12"
+        assert p2_preview == "team 1"
+        return preopening_state == root_state
+
+    def validate_recovery_opening_stat_candidate(
+        self,
+        *,
+        preopening_state,
+        candidate_state,
+        side,
+        pokemon_index,
+        stat_points,
+        p1_preview,
+        p2_preview,
+    ):
+        assert p1_preview == "team 12"
+        assert p2_preview == "team 1"
+        return self.validate_recovery_stat_candidate(
+            state=candidate_state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
         )
 
     def state_view(self, *, state, side, previews=None):
@@ -430,15 +498,15 @@ def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
         "turn": 3,
         "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
     }
+    root_particle = BeliefParticle(
+        root_state,
+        1.0,
+        world_id="stat-parent",
+        history_id="root",
+    )
     request = RecoveryRequest(
-        authority_root_particles=(
-            BeliefParticle(
-                root_state,
-                1.0,
-                world_id="stat-parent",
-                history_id="root",
-            ),
-        ),
+        authority_root_particles=(root_particle,),
+        opening_authorities=(_opening_authority(root_particle),),
         authority_root_public_view=root_view,
         authority_observations=(
             RecoveryObservation(
@@ -593,6 +661,7 @@ def test_static_recovery_rejects_incomplete_authority_history() -> None:
     request = _request()
     incomplete = RecoveryRequest(
         authority_root_particles=request.authority_root_particles,
+        opening_authorities=request.opening_authorities,
         authority_root_public_view=request.authority_root_public_view,
         authority_observations=request.authority_observations,
         authority_history_complete=False,
@@ -617,6 +686,7 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
     request = _request()
     broken = RecoveryRequest(
         authority_root_particles=request.authority_root_particles,
+        opening_authorities=request.opening_authorities,
         authority_root_public_view=request.authority_root_public_view,
         authority_observations=request.authority_observations,
         authority_history_complete=True,
