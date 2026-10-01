@@ -198,8 +198,13 @@ def _run_case(
                 f"{reviver_choices}"
             )
         other_side = "p2" if reviver_side == "p1" else "p1"
-        if worker.session_legal_choices(session_id, side=other_side) != [FORCED_WAIT_CHOICE]:
-            raise SystemExit(f"ERROR: {label} opponent did not wait for replacement")
+        if worker.session_legal_choices(
+            session_id,
+            side=other_side,
+        ) != [FORCED_WAIT_CHOICE]:
+            raise SystemExit(
+                f"ERROR: {label} opponent did not wait for replacement"
+            )
 
         p1_choice, p2_choice = _side_choice(
             reviver_side,
@@ -245,10 +250,20 @@ def _run_case(
                 f"ERROR: {label} exact enumerator omitted Revival Blessing target: "
                 f"{exact_choices}"
             )
-        if worker.session_public_choices(session_id, side=other_side) != [FORCED_WAIT_CHOICE]:
-            raise SystemExit(f"ERROR: {label} other side did not expose public wait")
-        if worker.session_legal_choices(session_id, side=other_side) != [FORCED_WAIT_CHOICE]:
-            raise SystemExit(f"ERROR: {label} other side did not expose exact wait")
+        if worker.session_public_choices(
+            session_id,
+            side=other_side,
+        ) != [FORCED_WAIT_CHOICE]:
+            raise SystemExit(
+                f"ERROR: {label} other side did not expose public wait"
+            )
+        if worker.session_legal_choices(
+            session_id,
+            side=other_side,
+        ) != [FORCED_WAIT_CHOICE]:
+            raise SystemExit(
+                f"ERROR: {label} other side did not expose exact wait"
+            )
 
         pre_selection_state = worker.session_snapshot(session_id)["state"]
         before_selection = worker.session_view(session_id, side="p2")["view"]
