@@ -214,12 +214,14 @@ def main() -> None:
         candidates = (
             RecoveryCandidate(
                 candidate_id="high-attack",
+                parent_particle_index=0,
                 particle=request.checkpoint_particles[0],
                 source="fixture-hidden-stat-broadening",
                 changed_hidden_dimensions=("opponent.snorlax.atk",),
             ),
             RecoveryCandidate(
                 candidate_id="low-attack",
+                parent_particle_index=1,
                 particle=request.checkpoint_particles[1],
                 source="fixture-hidden-stat-broadening",
                 changed_hidden_dimensions=("opponent.snorlax.atk",),
