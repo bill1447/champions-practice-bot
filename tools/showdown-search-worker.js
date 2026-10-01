@@ -1434,11 +1434,20 @@ function validateRecoveryOpeningAuthority(request) {
   if (!canonical.state) {
     throw new Error("could not rebuild recovery opening authority");
   }
+  const expectedP1Lineage = request.p1_root_to_input;
+  const expectedP2Lineage = request.p2_root_to_input;
+  const lineageValid =
+    Array.isArray(expectedP1Lineage) &&
+    Array.isArray(expectedP2Lineage) &&
+    isDeepStrictEqual(canonical.preview_lineage.p1, expectedP1Lineage) &&
+    isDeepStrictEqual(canonical.preview_lineage.p2, expectedP2Lineage);
   return {
-    valid: isDeepStrictEqual(
-      normalizedRecoveryState(canonical.state),
-      normalizedRecoveryState(request.root_state),
-    ),
+    valid:
+      lineageValid &&
+      isDeepStrictEqual(
+        normalizedRecoveryState(canonical.state),
+        normalizedRecoveryState(request.root_state),
+      ),
   };
 }
 
