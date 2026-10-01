@@ -327,6 +327,8 @@ class _TypedRecoveryWorker:
         root_state,
         p1_preview,
         p2_preview,
+        p1_root_to_input,
+        p2_root_to_input,
     ):
         assert battle_format == "test-format"
         assert p1_team == "synthetic-p1-team"
@@ -336,6 +338,8 @@ class _TypedRecoveryWorker:
         assert seed == "1,2,3,4"
         assert p1_preview == "team 12"
         assert p2_preview == "team 1"
+        assert p1_root_to_input == (0, 1)
+        assert p2_root_to_input == (0,)
         return root_state == _parent_state()
 
     def validate_recovery_opening_stat_candidate(
