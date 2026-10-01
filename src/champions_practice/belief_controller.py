@@ -1883,14 +1883,17 @@ class _BeliefBattleCoordinator:
 
         # close() or another terminal transition won the race after the
         # worker created the session. Never resurrect coordinator ownership.
+        cleanup_error: Exception | None = None
         try:
             self._worker.close_session(session_id)
+        except Exception as error:
+            cleanup_error = error
         finally:
             self._worker.close()
         raise RuntimeError(
             "battle state changed during session startup; "
             f"state is {state.value}"
-        )
+        ) from cleanup_error
 
     def submit_preview(
         self,
