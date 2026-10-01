@@ -1410,6 +1410,41 @@ function recoveryStateDiffPaths(left, right, path = "$", limit = 64) {
   return isDeepStrictEqual(left, right) ? [] : [path];
 }
 
+function recoveryLogDiffSummary(left, right, limit = 8) {
+  if (!Array.isArray(left) || !Array.isArray(right)) {
+    return [
+      `canonical_log_type=${Array.isArray(left) ? "array" : typeof left}`,
+      `root_log_type=${Array.isArray(right) ? "array" : typeof right}`,
+    ];
+  }
+  const summary = [
+    `canonical_log_length=${left.length}`,
+    `root_log_length=${right.length}`,
+  ];
+  const shared = Math.min(left.length, right.length);
+  let firstMismatch = -1;
+  for (let index = 0; index < shared; index++) {
+    if (!isDeepStrictEqual(left[index], right[index])) {
+      firstMismatch = index;
+      break;
+    }
+  }
+  if (firstMismatch < 0 && left.length !== right.length) {
+    firstMismatch = shared;
+  }
+  if (firstMismatch >= 0) {
+    summary.push(`first_log_mismatch=${firstMismatch}`);
+    const start = Math.max(0, firstMismatch - 2);
+    const end = Math.min(Math.max(left.length, right.length), start + limit);
+    for (let index = start; index < end; index++) {
+      summary.push(
+        `log[${index}] canonical=${JSON.stringify(left[index] ?? null)} root=${JSON.stringify(right[index] ?? null)}`,
+      );
+    }
+  }
+  return summary;
+}
+
 function validateRecoveryOpeningAuthority(request) {
   if (!request.preopening_state || !request.root_state) {
     throw new Error(
@@ -1438,6 +1473,7 @@ function validateRecoveryOpeningAuthority(request) {
   return {
     valid,
     diff_paths: valid ? [] : recoveryStateDiffPaths(canonical, root),
+    log_diff: valid ? [] : recoveryLogDiffSummary(canonical.log, root.log),
   };
 }
 
