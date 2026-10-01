@@ -343,13 +343,12 @@ def _bounded_non_hp_stat_variants(
 
 @dataclass(frozen=True)
 class _MaterializedStatCandidate:
-    """Internal result of trusted Showdown stat materialization.
-
-    Public recovery authority APIs never accept this serialized state from callers.
-    """
+    """Internal root-state result of trusted Showdown stat materialization."""
 
     candidate_id: str
+    proposal_id: str
     parent_particle_index: int
+    authority_root_particle_index: int
     particle: BeliefParticle
     source: str
     changed_hidden_dimensions: tuple[str, ...] = ()
@@ -371,7 +370,7 @@ class RecoveryStatValidationWorker(
     RecoveryStatMaterializationWorker,
     Protocol,
 ):
-    """Typed stat recovery needs materialization plus hypothetical replay."""
+    """Typed static-stat recovery needs materialization plus hypothetical replay."""
 
     def state_view(
         self,
@@ -404,38 +403,93 @@ class RecoveryStatValidationWorker(
     ) -> list[dict[str, Any]]: ...
 
 
-class RecoveryReplayWorker(Protocol):
-    """Minimal hypothetical mechanics capability required for validation."""
+def _opponent_side_index(ai_side: SideId) -> int:
+    return 1 if ai_side == "p1" else 0
 
-    def state_view(
-        self,
-        *,
-        state: dict[str, Any],
-        side: str,
-        previews: dict[str, list[str]] | None = None,
-    ) -> dict[str, Any]: ...
 
-    def validate_choices(
-        self,
-        *,
-        state: dict[str, Any],
-        side: str,
-        candidates: list[str],
-    ) -> list[str]: ...
+def _target_pokemon(
+    state: dict[str, Any],
+    *,
+    ai_side: SideId,
+    pokemon_index: int,
+) -> dict[str, Any]:
+    sides = state.get("sides")
+    side_index = _opponent_side_index(ai_side)
+    if not isinstance(sides, list) or len(sides) <= side_index:
+        raise ValueError("recovery state is missing opponent side data")
+    side = sides[side_index]
+    if not isinstance(side, dict):
+        raise ValueError("recovery opponent side is invalid")
+    pokemon = side.get("pokemon")
+    if not isinstance(pokemon, list) or not 0 <= pokemon_index < len(pokemon):
+        raise ValueError("recovery proposal targets an invalid opponent Pokemon")
+    target = pokemon[pokemon_index]
+    if not isinstance(target, dict):
+        raise ValueError("recovery target Pokemon is invalid")
+    return target
 
-    def legal_choices(
-        self,
-        *,
-        state: dict[str, Any],
-        side: str,
-    ) -> list[str]: ...
 
-    def branch_many(
-        self,
-        *,
-        state: dict[str, Any],
-        branches: list[dict[str, Any]],
-    ) -> list[dict[str, Any]]: ...
+def _target_set(
+    particle: BeliefParticle,
+    *,
+    ai_side: SideId,
+    pokemon_index: int,
+) -> dict[str, Any]:
+    target = _target_pokemon(
+        particle.state,
+        ai_side=ai_side,
+        pokemon_index=pokemon_index,
+    )
+    set_data = target.get("set")
+    if not isinstance(set_data, dict):
+        raise ValueError("recovery target Pokemon is missing set data")
+    return set_data
+
+
+def _matching_authority_roots(
+    request: RecoveryRequest,
+    proposal: OpponentStatProposal,
+) -> tuple[tuple[int, BeliefParticle], ...]:
+    parent = request.checkpoint_particles[proposal.parent_particle_index]
+    if not parent.world_id:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} parent has no world lineage"
+        )
+    parent_set = _target_set(
+        parent,
+        ai_side=request.ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    parent_species = _id(
+        str(parent_set.get("species") or parent_set.get("name") or "")
+    )
+    parent_points = _stat_points_from_set(parent_set)
+
+    roots: list[tuple[int, BeliefParticle]] = []
+    for root_index, root in enumerate(request.authority_root_particles):
+        if root.world_id != parent.world_id:
+            continue
+        try:
+            root_set = _target_set(
+                root,
+                ai_side=request.ai_side,
+                pokemon_index=proposal.pokemon_index,
+            )
+            root_species = _id(
+                str(root_set.get("species") or root_set.get("name") or "")
+            )
+            root_points = _stat_points_from_set(root_set)
+        except ValueError:
+            continue
+        if root_species != parent_species or root_points != parent_points:
+            continue
+        roots.append((root_index, root))
+
+    if not roots:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has no matching authority root"
+        )
+    return tuple(roots)
 
 
 def _validate_typed_stat_proposal(
@@ -450,14 +504,11 @@ def _validate_typed_stat_proposal(
             f"stat proposal {proposal.proposal_id!r} has invalid parent"
         )
     parent = request.checkpoint_particles[proposal.parent_particle_index]
-    target = _target_pokemon(
-        parent.state,
+    set_data = _target_set(
+        parent,
         ai_side=request.ai_side,
         pokemon_index=proposal.pokemon_index,
     )
-    set_data = target.get("set")
-    if not isinstance(set_data, dict):
-        raise ValueError("stat proposal target is missing set data")
 
     species = str(set_data.get("species") or set_data.get("name") or "")
     if _id(species) != _id(proposal.species):
@@ -511,6 +562,7 @@ def _validate_typed_stat_proposal(
         raise ValueError(
             f"stat proposal {proposal.proposal_id!r} has inconsistent dimensions"
         )
+    _matching_authority_roots(request, proposal)
 
 
 def _materialize_stat_proposals(
@@ -519,31 +571,35 @@ def _materialize_stat_proposals(
     request: RecoveryRequest,
     proposals: tuple[OpponentStatProposal, ...],
 ) -> RecoveryMaterializationReport:
-    """Ask Showdown to rebuild coherent checkpoint states for stat proposals."""
+    """Materialize static stat proposals only at replayable authority roots."""
     if not proposals:
         return RecoveryMaterializationReport((), ())
 
     opponent_side = "p2" if request.ai_side == "p1" else "p1"
-    grouped: dict[int, list[OpponentStatProposal]] = {}
+    grouped: dict[int, list[tuple[OpponentStatProposal, str]]] = {}
     for proposal in proposals:
         _validate_typed_stat_proposal(request=request, proposal=proposal)
-        grouped.setdefault(proposal.parent_particle_index, []).append(proposal)
+        for root_index, _root in _matching_authority_roots(request, proposal):
+            materialization_id = f"{proposal.proposal_id}@root-{root_index}"
+            grouped.setdefault(root_index, []).append(
+                (proposal, materialization_id)
+            )
 
     candidates: list[_MaterializedStatCandidate] = []
     failures: list[RecoveryMaterializationFailure] = []
-    for parent_index in sorted(grouped):
-        parent = request.checkpoint_particles[parent_index]
-        batch = grouped[parent_index]
+    for root_index in sorted(grouped):
+        root = request.authority_root_particles[root_index]
+        batch = grouped[root_index]
         resolved = worker.materialize_recovery_stat_proposals(
-            state=deepcopy(parent.state),
+            state=deepcopy(root.state),
             side=opponent_side,
             proposals=[
                 {
-                    "proposal_id": proposal.proposal_id,
+                    "proposal_id": materialization_id,
                     "pokemon_index": proposal.pokemon_index,
                     "stat_points": proposal.stat_point_dict,
                 }
-                for proposal in batch
+                for proposal, materialization_id in batch
             ],
         )
         by_id = {
@@ -551,24 +607,29 @@ def _materialize_stat_proposals(
             for result in resolved
             if isinstance(result, dict)
         }
-        for proposal in batch:
-            result = by_id.get(proposal.proposal_id)
+        for proposal, materialization_id in batch:
+            result = by_id.get(materialization_id)
             if result is None:
                 raise RuntimeError(
-                    f"Showdown omitted stat proposal {proposal.proposal_id!r}"
+                    f"Showdown omitted stat proposal {materialization_id!r}"
                 )
             state = result.get("state")
             if isinstance(state, dict):
+                checkpoint_parent = request.checkpoint_particles[
+                    proposal.parent_particle_index
+                ]
                 candidates.append(
                     _MaterializedStatCandidate(
-                        candidate_id=proposal.proposal_id,
+                        candidate_id=materialization_id,
+                        proposal_id=proposal.proposal_id,
                         parent_particle_index=proposal.parent_particle_index,
+                        authority_root_particle_index=root_index,
                         particle=BeliefParticle(
                             state=state,
-                            weight=parent.weight,
-                            world_id=parent.world_id,
+                            weight=checkpoint_parent.weight,
+                            world_id=checkpoint_parent.world_id,
                             history_id=(
-                                f"{parent.history_id}|recovery:{proposal.proposal_id}"
+                                f"{root.history_id}|recovery:{proposal.proposal_id}"
                             ).strip("|"),
                         ),
                         source="bounded-opponent-stat-points",
@@ -595,8 +656,9 @@ def _materialize_stat_proposals(
 
 class RecoveryCandidateStatus(str, Enum):
     UNAUTHORIZED_STATE_DELTA = "unauthorized-state-delta"
+    AUTHORITY_ROOT_MISMATCH = "authority-root-mismatch"
+    HISTORY_MISMATCH = "history-mismatch"
     KNOWN_STATE_MISMATCH = "known-state-mismatch"
-    CHECKPOINT_MISMATCH = "checkpoint-mismatch"
     REPLAY_MISMATCH = "replay-mismatch"
     VALIDATED = "validated"
 
@@ -606,6 +668,7 @@ class RecoveryCandidateValidation:
     candidate: _MaterializedStatCandidate
     status: RecoveryCandidateStatus
     checkpoint_compatible: bool
+    authority_observations_replayed: int
     observations_replayed: int
     generated_branches: int
     matched_branches: int
@@ -618,7 +681,7 @@ class RecoveryCandidateValidation:
 
 @dataclass(frozen=True)
 class RecoveryValidationReport:
-    """Typed stat-recovery evidence; there is no install/apply operation."""
+    """Typed static-stat recovery evidence; there is no install/apply operation."""
 
     candidate_results: tuple[RecoveryCandidateValidation, ...]
     materialization_failures: tuple[RecoveryMaterializationFailure, ...] = ()
@@ -638,64 +701,76 @@ class RecoveryValidationReport:
         )
 
 
+def _validate_observation_chain(
+    *,
+    start_view: dict[str, Any],
+    observations: tuple[RecoveryObservation, ...],
+    label: str,
+) -> str:
+    previous_signature = public_observation_signature(start_view)
+    for index, observation in enumerate(observations):
+        if observation.previous_public_view is None:
+            raise ValueError(
+                f"{label} observation {index} is missing previous public view"
+            )
+        supplied_previous = public_observation_signature(
+            observation.previous_public_view
+        )
+        if supplied_previous != previous_signature:
+            raise ValueError(
+                f"{label} observation history is not contiguous at index {index}"
+            )
+        previous_signature = public_observation_signature(
+            observation.public_view
+        )
+    return previous_signature
+
+
 def _validate_request(
     request: RecoveryRequest,
+    authority_rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> None:
     if _recovery_request_fingerprint(request) != request._authority_fingerprint:
         raise ValueError("recovery request authority inputs were mutated")
     if request.ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
+    if not request.authority_root_particles:
+        raise ValueError("static recovery requires authority root particles")
+    if not request.checkpoint_particles:
+        raise ValueError("static recovery requires checkpoint particles")
     if not request.observations:
         raise ValueError("recovery requires at least one retained observation")
+    if len(authority_rng_seeds_by_observation) != len(
+        request.authority_observations
+    ):
+        raise ValueError(
+            "every authority observation requires an RNG seed set"
+        )
     if len(rng_seeds_by_observation) != len(request.observations):
         raise ValueError("every recovery observation requires an RNG seed set")
+    if any(not seeds for seeds in authority_rng_seeds_by_observation):
+        raise ValueError("authority RNG seed sets must not be empty")
     if any(not seeds for seeds in rng_seeds_by_observation):
         raise ValueError("recovery RNG seed sets must not be empty")
 
+    prefix_end = _validate_observation_chain(
+        start_view=request.authority_root_public_view,
+        observations=request.authority_observations,
+        label="authority",
+    )
     checkpoint_signature = public_observation_signature(
         request.checkpoint_public_view
     )
-    previous_signature = checkpoint_signature
-    for index, observation in enumerate(request.observations):
-        if observation.previous_public_view is not None:
-            supplied_previous = public_observation_signature(
-                observation.previous_public_view
-            )
-            if supplied_previous != previous_signature:
-                raise ValueError(
-                    "recovery observation history is not contiguous at "
-                    f"index {index}"
-                )
-        previous_signature = public_observation_signature(
-            observation.public_view
+    if prefix_end != checkpoint_signature:
+        raise ValueError(
+            "authority history does not terminate at the recovery checkpoint"
         )
-
-
-def _opponent_side_index(ai_side: SideId) -> int:
-    return 1 if ai_side == "p1" else 0
-
-
-def _target_pokemon(
-    state: dict[str, Any],
-    *,
-    ai_side: SideId,
-    pokemon_index: int,
-) -> dict[str, Any]:
-    sides = state.get("sides")
-    side_index = _opponent_side_index(ai_side)
-    if not isinstance(sides, list) or len(sides) <= side_index:
-        raise ValueError("recovery state is missing opponent side data")
-    side = sides[side_index]
-    if not isinstance(side, dict):
-        raise ValueError("recovery opponent side is invalid")
-    pokemon = side.get("pokemon")
-    if not isinstance(pokemon, list) or not 0 <= pokemon_index < len(pokemon):
-        raise ValueError("recovery proposal targets an invalid opponent Pokemon")
-    target = pokemon[pokemon_index]
-    if not isinstance(target, dict):
-        raise ValueError("recovery target Pokemon is invalid")
-    return target
+    _validate_observation_chain(
+        start_view=request.checkpoint_public_view,
+        observations=request.observations,
+        label="recovery",
+    )
 
 
 def _state_without_allowed_stat_delta(
@@ -722,18 +797,18 @@ def _state_without_allowed_stat_delta(
 
 def _stat_candidate_delta_authorized(
     *,
-    parent: BeliefParticle,
+    authority_root: BeliefParticle,
     candidate: _MaterializedStatCandidate,
     proposal: OpponentStatProposal,
     ai_side: SideId,
 ) -> bool:
     if candidate.parent_particle_index != proposal.parent_particle_index:
         return False
-    if candidate.candidate_id != proposal.proposal_id:
+    if candidate.proposal_id != proposal.proposal_id:
         return False
 
-    parent_target = _target_pokemon(
-        parent.state,
+    root_target = _target_pokemon(
+        authority_root.state,
         ai_side=ai_side,
         pokemon_index=proposal.pokemon_index,
     )
@@ -742,13 +817,13 @@ def _stat_candidate_delta_authorized(
         ai_side=ai_side,
         pokemon_index=proposal.pokemon_index,
     )
-    parent_set = parent_target.get("set")
+    root_set = root_target.get("set")
     candidate_set = candidate_target.get("set")
-    if not isinstance(parent_set, dict) or not isinstance(candidate_set, dict):
+    if not isinstance(root_set, dict) or not isinstance(candidate_set, dict):
         return False
 
     try:
-        parent_points = _stat_points_from_set(parent_set)
+        root_points = _stat_points_from_set(root_set)
         candidate_points = _stat_points_from_set(candidate_set)
     except ValueError:
         return False
@@ -757,11 +832,11 @@ def _stat_candidate_delta_authorized(
         return False
     if candidate_points != proposal.stat_point_dict:
         return False
-    if candidate_points["hp"] != parent_points["hp"]:
+    if candidate_points["hp"] != root_points["hp"]:
         return False
 
-    parent_reduced = _state_without_allowed_stat_delta(
-        parent.state,
+    root_reduced = _state_without_allowed_stat_delta(
+        authority_root.state,
         ai_side=ai_side,
         pokemon_index=proposal.pokemon_index,
     )
@@ -770,7 +845,7 @@ def _stat_candidate_delta_authorized(
         ai_side=ai_side,
         pokemon_index=proposal.pokemon_index,
     )
-    return parent_reduced == candidate_reduced
+    return root_reduced == candidate_reduced
 
 
 def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
@@ -781,47 +856,89 @@ def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
     return sides[index]
 
 
+def _replay_observations(
+    worker: RecoveryStatValidationWorker,
+    *,
+    particles: tuple[BeliefParticle, ...],
+    request: RecoveryRequest,
+    observations: tuple[RecoveryObservation, ...],
+    rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
+) -> tuple[tuple[BeliefParticle, ...], int, int, int]:
+    current = particles
+    generated = 0
+    matched = 0
+    replayed = 0
+    for observation, rng_seeds in zip(
+        observations,
+        rng_seeds_by_observation,
+        strict=True,
+    ):
+        update = condition_particles(
+            worker,
+            particles=current,
+            ai_side=request.ai_side,
+            ai_choice=observation.ai_choice,
+            actual_public_view=observation.public_view,
+            previous_public_view=observation.previous_public_view,
+            resolved_opponent_choice=observation.resolved_opponent_choice,
+            rng_seeds=rng_seeds,
+            previews=request.previews,
+        )
+        generated += update.generated
+        matched += update.matched
+        if not update.particles:
+            return (), generated, matched, replayed
+        current = update.particles
+        replayed += 1
+    return current, generated, matched, replayed
+
+
 def _validate_materialized_stat_candidates(
-    worker: RecoveryReplayWorker,
+    worker: RecoveryStatValidationWorker,
     *,
     request: RecoveryRequest,
     candidates: tuple[_MaterializedStatCandidate, ...],
     proposals_by_id: dict[str, OpponentStatProposal],
+    authority_rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> RecoveryValidationReport:
-    """Validate only Showdown-materialized typed stat proposals.
-
-    The serialized candidate is not trusted merely because it came back from a
-    proposal step. Before any public replay, its delta from the trusted parent
-    must be confined to the target Pokemon's set.evs plus simulator-derived
-    base/stored stat and speed fields.
-    """
-    _validate_request(request, rng_seeds_by_observation)
+    """Rebuild static hypotheses at root and replay all public history."""
+    _validate_request(
+        request,
+        authority_rng_seeds_by_observation,
+        rng_seeds_by_observation,
+    )
 
     candidate_ids = [candidate.candidate_id for candidate in candidates]
     if len(candidate_ids) != len(set(candidate_ids)):
-        raise ValueError("recovery candidate ids must be unique")
+        raise ValueError("materialized recovery candidate ids must be unique")
 
-    wanted_checkpoint = public_observation_signature(
-        request.checkpoint_public_view
+    wanted_root = public_observation_signature(
+        request.authority_root_public_view
     )
     results: list[RecoveryCandidateValidation] = []
 
     for candidate in candidates:
-        proposal = proposals_by_id.get(candidate.candidate_id)
+        proposal = proposals_by_id.get(candidate.proposal_id)
         if proposal is None:
             raise ValueError(
                 f"materialized candidate {candidate.candidate_id!r} has no typed proposal"
             )
-        if not 0 <= candidate.parent_particle_index < len(
-            request.checkpoint_particles
+        if not 0 <= candidate.authority_root_particle_index < len(
+            request.authority_root_particles
         ):
             raise ValueError(
-                f"recovery candidate {candidate.candidate_id!r} has invalid parent"
+                f"recovery candidate {candidate.candidate_id!r} has invalid root"
             )
-        parent = request.checkpoint_particles[candidate.parent_particle_index]
+        authority_root = request.authority_root_particles[
+            candidate.authority_root_particle_index
+        ]
+        checkpoint_parent = request.checkpoint_particles[
+            proposal.parent_particle_index
+        ]
+
         if not _stat_candidate_delta_authorized(
-            parent=parent,
+            authority_root=authority_root,
             candidate=candidate,
             proposal=proposal,
             ai_side=request.ai_side,
@@ -831,21 +948,23 @@ def _validate_materialized_stat_candidates(
                     candidate=candidate,
                     status=RecoveryCandidateStatus.UNAUTHORIZED_STATE_DELTA,
                     checkpoint_compatible=False,
+                    authority_observations_replayed=0,
                     observations_replayed=0,
                     generated_branches=0,
                     matched_branches=0,
                 )
             )
             continue
-        if _exact_ai_side(candidate.particle.state, request.ai_side) != _exact_ai_side(
-            parent.state,
+        if _exact_ai_side(
+            candidate.particle.state,
             request.ai_side,
-        ):
+        ) != _exact_ai_side(authority_root.state, request.ai_side):
             results.append(
                 RecoveryCandidateValidation(
                     candidate=candidate,
                     status=RecoveryCandidateStatus.KNOWN_STATE_MISMATCH,
                     checkpoint_compatible=False,
+                    authority_observations_replayed=0,
                     observations_replayed=0,
                     generated_branches=0,
                     matched_branches=0,
@@ -853,17 +972,18 @@ def _validate_materialized_stat_candidates(
             )
             continue
 
-        checkpoint_view = worker.state_view(
+        root_view = worker.state_view(
             state=candidate.particle.state,
             side=request.ai_side,
             previews=request.previews,
         )
-        if public_observation_signature(checkpoint_view) != wanted_checkpoint:
+        if public_observation_signature(root_view) != wanted_root:
             results.append(
                 RecoveryCandidateValidation(
                     candidate=candidate,
-                    status=RecoveryCandidateStatus.CHECKPOINT_MISMATCH,
+                    status=RecoveryCandidateStatus.AUTHORITY_ROOT_MISMATCH,
                     checkpoint_compatible=False,
+                    authority_observations_replayed=0,
                     observations_replayed=0,
                     generated_branches=0,
                     matched_branches=0,
@@ -871,37 +991,69 @@ def _validate_materialized_stat_candidates(
             )
             continue
 
-        particles = (candidate.particle,)
-        generated = 0
-        matched = 0
-        observations_replayed = 0
-
-        for observation, rng_seeds in zip(
-            request.observations,
-            rng_seeds_by_observation,
-            strict=True,
-        ):
-            update = condition_particles(
-                worker,
-                particles=particles,
-                ai_side=request.ai_side,
-                ai_choice=observation.ai_choice,
-                actual_public_view=observation.public_view,
-                previous_public_view=observation.previous_public_view,
-                resolved_opponent_choice=observation.resolved_opponent_choice,
-                rng_seeds=rng_seeds,
-                previews=request.previews,
+        (
+            checkpoint_particles,
+            prefix_generated,
+            prefix_matched,
+            prefix_replayed,
+        ) = _replay_observations(
+            worker,
+            particles=(candidate.particle,),
+            request=request,
+            observations=request.authority_observations,
+            rng_seeds_by_observation=authority_rng_seeds_by_observation,
+        )
+        if prefix_replayed != len(request.authority_observations):
+            results.append(
+                RecoveryCandidateValidation(
+                    candidate=candidate,
+                    status=RecoveryCandidateStatus.HISTORY_MISMATCH,
+                    checkpoint_compatible=False,
+                    authority_observations_replayed=prefix_replayed,
+                    observations_replayed=0,
+                    generated_branches=prefix_generated,
+                    matched_branches=prefix_matched,
+                )
             )
-            generated += update.generated
-            matched += update.matched
-            if not update.particles:
-                break
-            particles = update.particles
-            observations_replayed += 1
+            continue
 
+        checkpoint_particles = tuple(
+            particle
+            for particle in checkpoint_particles
+            if _exact_ai_side(
+                particle.state,
+                request.ai_side,
+            ) == _exact_ai_side(checkpoint_parent.state, request.ai_side)
+        )
+        if not checkpoint_particles:
+            results.append(
+                RecoveryCandidateValidation(
+                    candidate=candidate,
+                    status=RecoveryCandidateStatus.KNOWN_STATE_MISMATCH,
+                    checkpoint_compatible=False,
+                    authority_observations_replayed=prefix_replayed,
+                    observations_replayed=0,
+                    generated_branches=prefix_generated,
+                    matched_branches=prefix_matched,
+                )
+            )
+            continue
+
+        (
+            final_particles,
+            suffix_generated,
+            suffix_matched,
+            suffix_replayed,
+        ) = _replay_observations(
+            worker,
+            particles=checkpoint_particles,
+            request=request,
+            observations=request.observations,
+            rng_seeds_by_observation=rng_seeds_by_observation,
+        )
         status = (
             RecoveryCandidateStatus.VALIDATED
-            if observations_replayed == len(request.observations) and particles
+            if suffix_replayed == len(request.observations) and final_particles
             else RecoveryCandidateStatus.REPLAY_MISMATCH
         )
         results.append(
@@ -909,10 +1061,15 @@ def _validate_materialized_stat_candidates(
                 candidate=candidate,
                 status=status,
                 checkpoint_compatible=True,
-                observations_replayed=observations_replayed,
-                generated_branches=generated,
-                matched_branches=matched,
-                final_particles=particles if status is RecoveryCandidateStatus.VALIDATED else (),
+                authority_observations_replayed=prefix_replayed,
+                observations_replayed=suffix_replayed,
+                generated_branches=prefix_generated + suffix_generated,
+                matched_branches=prefix_matched + suffix_matched,
+                final_particles=(
+                    final_particles
+                    if status is RecoveryCandidateStatus.VALIDATED
+                    else ()
+                ),
             )
         )
 
@@ -924,16 +1081,24 @@ def validate_stat_recovery_proposals(
     *,
     request: RecoveryRequest,
     proposals: tuple[OpponentStatProposal, ...],
+    authority_rng_seeds_by_observation: tuple[
+        tuple[str | None, ...],
+        ...,
+    ] = (),
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> RecoveryValidationReport:
-    """Materialize and validate typed stat proposals from trusted parents.
+    """Validate lifelong stat proposals from root through all retained history.
 
-    Callers cannot supply serialized candidate states. The only candidate states
-    considered for authority are produced internally from request checkpoint
-    parents by the hypothetical Showdown stat materializer, then checked against
-    a strict serialized-state delta allowlist before replay.
+    Static stat proposals are materialized only at matching post-preview authority
+    roots. The changed hypothesis must then mechanically reproduce every retained
+    public transition through the current checkpoint before any recovery suffix is
+    considered. A copied midgame ledger or final-board match has no authority.
     """
-    _validate_request(request, rng_seeds_by_observation)
+    _validate_request(
+        request,
+        authority_rng_seeds_by_observation,
+        rng_seeds_by_observation,
+    )
     proposal_ids = [proposal.proposal_id for proposal in proposals]
     if len(proposal_ids) != len(set(proposal_ids)):
         raise ValueError("recovery stat proposal ids must be unique")
@@ -943,12 +1108,17 @@ def validate_stat_recovery_proposals(
         request=request,
         proposals=proposals,
     )
-    _validate_request(request, rng_seeds_by_observation)
+    _validate_request(
+        request,
+        authority_rng_seeds_by_observation,
+        rng_seeds_by_observation,
+    )
     validated = _validate_materialized_stat_candidates(
         worker,
         request=request,
         candidates=materialized.candidates,
         proposals_by_id={proposal.proposal_id: proposal for proposal in proposals},
+        authority_rng_seeds_by_observation=authority_rng_seeds_by_observation,
         rng_seeds_by_observation=rng_seeds_by_observation,
     )
     return RecoveryValidationReport(
