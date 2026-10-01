@@ -1249,6 +1249,285 @@ def _stub_sealed_engine(
     return decision
 
 
+class _BlockingStartWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.start_calls = 0
+        self.start_started = Event()
+        self.release_start = Event()
+
+    def start_session(self, **kwargs):
+        self.start_calls += 1
+        self.started_with = kwargs
+        self.start_started.set()
+        assert self.release_start.wait(timeout=2)
+        return {"session_id": "live-1"}
+
+
+def test_concurrent_start_claims_single_session_owner() -> None:
+    worker = _BlockingStartWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            controller.start,
+            opponent_team="hidden-team",
+        )
+        assert worker.start_started.wait(timeout=1)
+        assert controller.turn_state is SealedTurnState.STARTING
+        assert controller.human_legal_choices() == []
+
+        second = pool.submit(
+            controller.start,
+            opponent_team="hidden-team",
+        )
+        with pytest.raises(RuntimeError, match="starting"):
+            second.result(timeout=1)
+
+        worker.release_start.set()
+        first.result(timeout=2)
+
+    assert worker.start_calls == 1
+    assert controller.turn_state is SealedTurnState.PREVIEW
+    assert controller._session_id == "live-1"
+
+
+class _RejectedStartWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.start_calls = 0
+        self.reject_once = True
+
+    def start_session(self, **kwargs):
+        self.start_calls += 1
+        if self.reject_once:
+            self.reject_once = False
+            raise ShowdownRequestError(
+                "session_start",
+                "injected known startup rejection",
+                mutating=True,
+            )
+        return super().start_session(**kwargs)
+
+
+def test_known_start_rejection_returns_to_retryable_new_state() -> None:
+    worker = _RejectedStartWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+
+    with pytest.raises(ShowdownRequestError, match="known startup rejection"):
+        controller.start(opponent_team="hidden-team")
+
+    assert controller.turn_state is SealedTurnState.NEW
+    assert controller._session_id is None
+
+    controller.start(opponent_team="hidden-team")
+
+    assert worker.start_calls == 2
+    assert controller.turn_state is SealedTurnState.PREVIEW
+    assert controller._session_id == "live-1"
+
+
+class _AmbiguousStartWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.start_calls = 0
+        self.aborted = False
+
+    def start_session(self, **kwargs):
+        self.start_calls += 1
+        raise RuntimeError("injected ambiguous startup failure")
+
+    def abort(self, *, timeout_seconds=0.25):
+        self.aborted = True
+
+
+def test_ambiguous_start_failure_aborts_and_cannot_resubmit() -> None:
+    worker = _AmbiguousStartWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+
+    with pytest.raises(RuntimeError, match="ambiguous startup failure"):
+        controller.start(opponent_team="hidden-team")
+
+    assert worker.aborted is True
+    assert worker.start_calls == 1
+    assert controller.turn_state is SealedTurnState.CLOSED
+    assert controller._session_id is None
+
+    with pytest.raises(RuntimeError, match="closed"):
+        controller.start(opponent_team="hidden-team")
+    assert worker.start_calls == 1
+
+
+class _BlockingPreviewWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.preview_started = Event()
+        self.release_preview = Event()
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.preview_started.set()
+        assert self.release_preview.wait(timeout=2)
+        return {}
+
+
+def test_concurrent_preview_submission_has_single_mutation_owner(
+    monkeypatch,
+) -> None:
+    worker = _BlockingPreviewWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.PREVIEW
+    monkeypatch.setattr(
+        controller._engine,
+        "initialize_preview",
+        lambda *, view, ai_choice: view,
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        first = pool.submit(
+            controller.submit_preview,
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+        assert worker.preview_started.wait(timeout=1)
+        assert controller.turn_state is SealedTurnState.PREVIEW_SUBMITTING
+        assert controller.human_legal_choices() == []
+
+        second = pool.submit(
+            controller.submit_preview,
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+        with pytest.raises(RuntimeError, match="preview_submitting"):
+            second.result(timeout=1)
+
+        worker.release_preview.set()
+        first.result(timeout=2)
+
+    assert worker.submissions == [
+        ("live-1", "team 4321", "team 1234"),
+    ]
+    assert controller.turn_state is SealedTurnState.IDLE
+
+
+class _PostPreviewViewFailureWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.preview_submitted = False
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        self.preview_submitted = True
+        return {}
+
+    def session_view(self, session_id, *, side):
+        if self.preview_submitted and side == "p2":
+            raise RuntimeError("post-preview public view unavailable")
+        return super().session_view(session_id, side=side)
+
+
+def test_post_preview_observation_failure_requires_restart() -> None:
+    worker = _PostPreviewViewFailureWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.PREVIEW
+
+    with pytest.raises(RuntimeError, match="post-submit initialization failed"):
+        controller.submit_preview(
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+
+    assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert controller.human_legal_choices() == []
+    assert len(worker.submissions) == 1
+
+    with pytest.raises(RuntimeError, match="restart_required"):
+        controller.submit_preview(
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+    assert len(worker.submissions) == 1
+
+
+class _RejectedPreviewWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.reject_once = True
+
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        if self.reject_once:
+            self.reject_once = False
+            raise ShowdownRequestError(
+                "session_choose",
+                "[Invalid choice] injected preview rejection",
+                mutating=True,
+            )
+        return {}
+
+
+def test_known_preview_rejection_restores_preview_for_safe_retry(
+    monkeypatch,
+) -> None:
+    worker = _RejectedPreviewWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.PREVIEW
+    monkeypatch.setattr(
+        controller._engine,
+        "initialize_preview",
+        lambda *, view, ai_choice: view,
+    )
+
+    with pytest.raises(ShowdownRequestError, match="preview rejection"):
+        controller.submit_preview(
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+
+    assert controller.turn_state is SealedTurnState.PREVIEW
+
+    controller.submit_preview(
+        human_choice="team 4321",
+        ai_choice="team 1234",
+    )
+
+    assert len(worker.submissions) == 2
+    assert controller.turn_state is SealedTurnState.IDLE
+
+
 def test_concurrent_double_lock_allows_only_one_computation(monkeypatch) -> None:
     worker = _CoordinatorWorker()
     controller = _BeliefBattleCoordinator(
