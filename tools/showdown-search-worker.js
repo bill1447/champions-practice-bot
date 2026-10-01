@@ -2,6 +2,7 @@
 
 const readline = require("readline");
 const path = require("path");
+const { isDeepStrictEqual } = require("node:util");
 
 const root = path.resolve(__dirname, "..");
 const showdownRoot = path.join(root, "external", "pokemon-showdown");
@@ -10,6 +11,7 @@ const {
   extractChannelMessages,
 } = require(path.join(showdownRoot, "dist", "sim", "battle"));
 const { Teams } = require(path.join(showdownRoot, "dist", "sim", "teams"));
+const { State } = require(path.join(showdownRoot, "dist", "sim", "state"));
 
 const sessions = new Map();
 const sessionPreviewSpecies = new Map();
@@ -1274,6 +1276,217 @@ function materializeRecoveryStatProposals(request) {
   };
 }
 
+function validateRecoveryOpeningInputs(request) {
+  if (
+    typeof request.format !== "string" ||
+    !request.format ||
+    typeof request.p1_team !== "string" ||
+    !request.p1_team ||
+    typeof request.p2_team !== "string" ||
+    !request.p2_team ||
+    typeof request.seed !== "string" ||
+    !request.seed
+  ) {
+    throw new Error(
+      "recovery opening authority requires exact format, teams, and RNG seed",
+    );
+  }
+  if (
+    typeof request.p1_preview !== "string" ||
+    !request.p1_preview ||
+    typeof request.p2_preview !== "string" ||
+    !request.p2_preview
+  ) {
+    throw new Error("recovery opening authority requires exact preview choices");
+  }
+}
+
+function recoveryOpeningOptions(request) {
+  validateRecoveryOpeningInputs(request);
+  return battleOptions({
+    format: request.format,
+    p1_team: request.p1_team,
+    p2_team: request.p2_team,
+    p1_name: request.p1_name || "Search P1",
+    p2_name: request.p2_name || "Search P2",
+    seed: request.seed,
+  });
+}
+
+function applyRecoveryOpeningStatProposal(options, sideId, proposal) {
+  const points = recoveryStatPoints(proposal.stat_points);
+  if (!points) return "invalid-stat-points";
+  const team = options[sideId]?.team;
+  const pokemonIndex = proposal.pokemon_index;
+  if (
+    !Array.isArray(team) ||
+    !Number.isInteger(pokemonIndex) ||
+    pokemonIndex < 0 ||
+    pokemonIndex >= team.length
+  ) {
+    return "invalid-pokemon-index";
+  }
+
+  const set = team[pokemonIndex];
+  const currentHpPoints = Number(set.evs?.hp || 0);
+  if (
+    !Number.isInteger(currentHpPoints) ||
+    currentHpPoints < 0 ||
+    currentHpPoints > CHAMPIONS_STAT_POINT_CAP
+  ) {
+    return "invalid-current-hp-points";
+  }
+  if (points.hp !== currentHpPoints) return "hp-broadening-disabled";
+
+  set.evs = { ...points };
+  return null;
+}
+
+function resolveFreshRecoveryOpening(request, proposal = null) {
+  const options = recoveryOpeningOptions(request);
+  if (proposal !== null) {
+    if (request.side !== "p1" && request.side !== "p2") {
+      throw new Error("recovery opening stat proposal requires p1 or p2 side");
+    }
+    const rejected = applyRecoveryOpeningStatProposal(
+      options,
+      request.side,
+      proposal,
+    );
+    if (rejected) return { rejected };
+  }
+
+  const battle = new Battle(options);
+  try {
+    const originalPokemon = {
+      p1: [...battle.p1.pokemon],
+      p2: [...battle.p2.pokemon],
+    };
+    battle.makeChoices(request.p1_preview, request.p2_preview);
+    const lineage = {
+      p1: battle.p1.pokemon.map((pokemon) => originalPokemon.p1.indexOf(pokemon)),
+      p2: battle.p2.pokemon.map((pokemon) => originalPokemon.p2.indexOf(pokemon)),
+    };
+    if (
+      lineage.p1.some((index) => index < 0) ||
+      lineage.p2.some((index) => index < 0)
+    ) {
+      throw new Error("Could not derive recovery opening member lineage");
+    }
+    return {
+      state: battle.toJSON(),
+      preview_lineage: lineage,
+    };
+  } finally {
+    battle.destroy();
+  }
+}
+
+function normalizedRecoveryState(state) {
+  return State.normalize(cloneJson(state));
+}
+
+function materializeRecoveryOpeningStatProposals(request) {
+  validateRecoveryOpeningInputs(request);
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals requires p1 or p2 side",
+    );
+  }
+  if (!Array.isArray(request.proposals) || request.proposals.length === 0) {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals requires proposals",
+    );
+  }
+  if (request.proposals.length > 256) {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals accepts at most 256 proposals",
+    );
+  }
+
+  const ids = new Set();
+  const proposals = request.proposals.map((proposal) => {
+    if (!proposal || typeof proposal !== "object") {
+      throw new Error("recovery opening stat proposal must be an object");
+    }
+    if (typeof proposal.proposal_id !== "string" || !proposal.proposal_id) {
+      throw new Error("recovery opening stat proposal requires proposal_id");
+    }
+    if (ids.has(proposal.proposal_id)) {
+      throw new Error("recovery opening stat proposal ids must be unique");
+    }
+    ids.add(proposal.proposal_id);
+
+    const resolved = resolveFreshRecoveryOpening(request, proposal);
+    if (resolved.rejected) {
+      return {
+        proposal_id: proposal.proposal_id,
+        rejected: resolved.rejected,
+      };
+    }
+    return {
+      proposal_id: proposal.proposal_id,
+      state: resolved.state,
+    };
+  });
+  return { proposals };
+}
+
+function validateRecoveryOpeningAuthority(request) {
+  if (!request.root_state) {
+    throw new Error("validate_recovery_opening_authority requires root state");
+  }
+  const canonical = resolveFreshRecoveryOpening(request);
+  if (!canonical.state) {
+    throw new Error("could not rebuild recovery opening authority");
+  }
+  const expectedP1Lineage = request.p1_root_to_input;
+  const expectedP2Lineage = request.p2_root_to_input;
+  const lineageValid =
+    Array.isArray(expectedP1Lineage) &&
+    Array.isArray(expectedP2Lineage) &&
+    isDeepStrictEqual(canonical.preview_lineage.p1, expectedP1Lineage) &&
+    isDeepStrictEqual(canonical.preview_lineage.p2, expectedP2Lineage);
+  return {
+    valid:
+      lineageValid &&
+      isDeepStrictEqual(
+        normalizedRecoveryState(canonical.state),
+        normalizedRecoveryState(request.root_state),
+      ),
+  };
+}
+
+function validateRecoveryOpeningStatCandidate(request) {
+  if (!request.candidate_state) {
+    throw new Error(
+      "validate_recovery_opening_stat_candidate requires candidate state",
+    );
+  }
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error(
+      "validate_recovery_opening_stat_candidate requires p1 or p2 side",
+    );
+  }
+  const result = resolveFreshRecoveryOpening(request, {
+    proposal_id: "validation",
+    pokemon_index: request.pokemon_index,
+    stat_points: request.stat_points,
+  });
+  if (!result.state) {
+    return {
+      valid: false,
+      reason: result.rejected || "opening-materialization-rejected",
+    };
+  }
+  return {
+    valid: isDeepStrictEqual(
+      normalizedRecoveryState(result.state),
+      normalizedRecoveryState(request.candidate_state),
+    ),
+  };
+}
+
 function validateRecoveryStatCandidate(request) {
   if (!request.state) {
     throw new Error("validate_recovery_stat_candidate requires state");
@@ -1433,19 +1646,37 @@ function battleOptions(request) {
 
 function createBattle(request) {
   const battle = new Battle(battleOptions(request));
+  let previewLineage = null;
 
   if (request.p1_preview || request.p2_preview) {
     if (!request.p1_preview || !request.p2_preview) {
       battle.destroy();
       throw new Error("Both preview choices are required when either is provided");
     }
+
+    const originalPokemon = {
+      p1: [...battle.p1.pokemon],
+      p2: [...battle.p2.pokemon],
+    };
     battle.makeChoices(request.p1_preview, request.p2_preview);
+    previewLineage = {
+      p1: battle.p1.pokemon.map((pokemon) => originalPokemon.p1.indexOf(pokemon)),
+      p2: battle.p2.pokemon.map((pokemon) => originalPokemon.p2.indexOf(pokemon)),
+    };
+    if (
+      previewLineage.p1.some((index) => index < 0) ||
+      previewLineage.p2.some((index) => index < 0)
+    ) {
+      battle.destroy();
+      throw new Error("Could not derive preview member lineage");
+    }
   }
 
   const response = {
     state: battle.toJSON(),
     summary: summarize(battle),
   };
+  if (previewLineage !== null) response.preview_lineage = previewLineage;
   battle.destroy();
   return response;
 }
@@ -1697,8 +1928,14 @@ function handle(request) {
       return validateRequestedChoices(request);
     case "materialize_recovery_stat_proposals":
       return materializeRecoveryStatProposals(request);
+    case "materialize_recovery_opening_stat_proposals":
+      return materializeRecoveryOpeningStatProposals(request);
     case "validate_recovery_stat_candidate":
       return validateRecoveryStatCandidate(request);
+    case "validate_recovery_opening_authority":
+      return validateRecoveryOpeningAuthority(request);
+    case "validate_recovery_opening_stat_candidate":
+      return validateRecoveryOpeningStatCandidate(request);
     case "state_view":
       return stateView(request);
     case "session_start":

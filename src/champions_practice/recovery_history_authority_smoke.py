@@ -8,6 +8,7 @@ from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     RecoveryCandidateStatus,
     RecoveryObservation,
+    RecoveryOpeningAuthority,
     RecoveryRequest,
     validate_stat_recovery_proposals,
 )
@@ -126,7 +127,7 @@ def _order(view: dict) -> tuple[tuple[str, int], ...]:
 def main() -> None:
     previews = _previews()
     with HypotheticalSearchWorker() as worker:
-        root_state = worker.create_state(
+        opening = worker.create_state_with_opening_authority(
             battle_format=CHAMPIONS_FORMAT,
             p1_team=HUMAN_TEAM,
             p2_team=AI_TEAM,
@@ -134,6 +135,7 @@ def main() -> None:
             p2_preview=PREVIEW,
             seed=BATTLE_SEED,
         )
+        root_state = opening["state"]
         root_view = worker.state_view(
             state=root_state,
             side="p2",
@@ -188,6 +190,22 @@ def main() -> None:
         )
         request = RecoveryRequest(
             authority_root_particles=(root_particle,),
+            opening_authorities=(
+                RecoveryOpeningAuthority(
+                    world_id="slow-rillaboom",
+                    history_id="post-preview",
+                    battle_format=CHAMPIONS_FORMAT,
+                    p1_team=HUMAN_TEAM,
+                    p2_team=AI_TEAM,
+                    p1_name="Search P1",
+                    p2_name="Search P2",
+                    seed=BATTLE_SEED,
+                    p1_preview_choice=PREVIEW,
+                    p2_preview_choice=PREVIEW,
+                    p1_root_to_input=opening["preview_lineage"]["p1"],
+                    p2_root_to_input=opening["preview_lineage"]["p2"],
+                ),
+            ),
             authority_root_public_view=root_view,
             authority_observations=(
                 RecoveryObservation(

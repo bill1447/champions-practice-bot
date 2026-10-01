@@ -10,6 +10,7 @@ from champions_practice.recovery import (
     OpponentStatProposal,
     RecoveryCandidateStatus,
     RecoveryObservation,
+    RecoveryOpeningAuthority,
     RecoveryRequest,
     validate_stat_recovery_proposals,
 )
@@ -131,6 +132,117 @@ class _HostileMaterializer:
             stat_points=stat_points,
         )
 
+    def materialize_recovery_opening_stat_proposals(
+        self,
+        *,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
+        side,
+        p1_preview,
+        p2_preview,
+        proposals,
+    ):
+        resolved = self.worker.materialize_recovery_opening_stat_proposals(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            side=side,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            proposals=proposals,
+        )
+        if self.mutation is None:
+            return resolved
+
+        tampered = copy.deepcopy(resolved)
+        for result in tampered:
+            candidate = result.get("state")
+            if not isinstance(candidate, dict):
+                continue
+            target = candidate["sides"][0]["pokemon"][0]
+            if self.mutation == "timesAttacked":
+                target["timesAttacked"] = 99
+            elif self.mutation == "queue":
+                candidate["queue"] = [{"choice": "forged"}]
+            elif self.mutation == "pp":
+                target["moveSlots"][0]["pp"] = 1
+            elif self.mutation == "baseStoredStats":
+                target["baseStoredStats"]["spa"] = 999
+            elif self.mutation == "storedStats":
+                target["storedStats"]["spa"] = 999
+            elif self.mutation == "speed":
+                target["speed"] = 999
+            else:
+                raise AssertionError(f"unknown hostile mutation: {self.mutation}")
+        return tampered
+
+    def validate_recovery_opening_authority(
+        self,
+        *,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
+        root_state,
+        p1_preview,
+        p2_preview,
+        p1_root_to_input,
+        p2_root_to_input,
+    ):
+        return self.worker.validate_recovery_opening_authority(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            root_state=root_state,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            p1_root_to_input=p1_root_to_input,
+            p2_root_to_input=p2_root_to_input,
+        )
+
+    def validate_recovery_opening_stat_candidate(
+        self,
+        *,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
+        candidate_state,
+        side,
+        pokemon_index,
+        stat_points,
+        p1_preview,
+        p2_preview,
+    ):
+        return self.worker.validate_recovery_opening_stat_candidate(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            candidate_state=candidate_state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+        )
+
     def state_view(self, *, state, side, previews=None):
         return self.worker.state_view(
             state=state,
@@ -163,7 +275,7 @@ def _previews() -> dict[str, list[str]]:
 def main() -> None:
     previews = _previews()
     with HypotheticalSearchWorker() as worker:
-        parent = worker.create_state(
+        opening = worker.create_state_with_opening_authority(
             battle_format=CHAMPIONS_FORMAT,
             p1_team=HUMAN_TEAM,
             p2_team=AI_TEAM,
@@ -171,6 +283,7 @@ def main() -> None:
             p2_preview=PREVIEW,
             seed=BATTLE_SEED,
         )
+        parent = opening["state"]
         if parent["sides"][0]["pokemon"][0].get("timesAttacked") != 0:
             raise SystemExit("ERROR: fixture Annihilape counter did not start at zero")
 
@@ -203,6 +316,22 @@ def main() -> None:
                     1.0,
                     world_id="counter-parent",
                     history_id="initial-checkpoint",
+                ),
+            ),
+            opening_authorities=(
+                RecoveryOpeningAuthority(
+                    world_id="counter-parent",
+                    history_id="initial-checkpoint",
+                    battle_format=CHAMPIONS_FORMAT,
+                    p1_team=HUMAN_TEAM,
+                    p2_team=AI_TEAM,
+                    p1_name="Search P1",
+                    p2_name="Search P2",
+                    seed=BATTLE_SEED,
+                    p1_preview_choice=PREVIEW,
+                    p2_preview_choice=PREVIEW,
+                    p1_root_to_input=opening["preview_lineage"]["p1"],
+                    p2_root_to_input=opening["preview_lineage"]["p2"],
                 ),
             ),
             authority_root_public_view=checkpoint,

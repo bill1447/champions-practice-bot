@@ -11,6 +11,7 @@ from champions_practice.recovery import (
     OpponentStatProposal,
     RecoveryCandidateStatus,
     RecoveryObservation,
+    RecoveryOpeningAuthority,
     RecoveryRequest,
     validate_stat_recovery_proposals,
 )
@@ -112,6 +113,25 @@ def _second_view() -> dict:
     }
 
 
+def _opening_authority(
+    particle: BeliefParticle,
+) -> RecoveryOpeningAuthority:
+    return RecoveryOpeningAuthority(
+        world_id=particle.world_id,
+        history_id=particle.history_id,
+        battle_format="test-format",
+        p1_team="synthetic-p1-team",
+        p2_team="synthetic-p2-team",
+        p1_name="Search P1",
+        p2_name="Search P2",
+        seed="1,2,3,4",
+        p1_preview_choice="team 12",
+        p2_preview_choice="team 1",
+        p1_root_to_input=(0, 1),
+        p2_root_to_input=(0,),
+    )
+
+
 def _request() -> RecoveryRequest:
     checkpoint = _checkpoint()
     first = _first_view()
@@ -123,6 +143,7 @@ def _request() -> RecoveryRequest:
     )
     return RecoveryRequest(
         authority_root_particles=(particle,),
+        opening_authorities=(_opening_authority(particle),),
         authority_root_public_view=checkpoint,
         authority_observations=(),
         authority_history_complete=True,
@@ -265,6 +286,104 @@ class _TypedRecoveryWorker:
             and target["storedStats"] == expected_stored
             and target["speed"] == expected_stored["spe"]
         )
+
+    def materialize_recovery_opening_stat_proposals(
+        self,
+        *,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
+        side,
+        p1_preview,
+        p2_preview,
+        proposals,
+    ):
+        assert battle_format == "test-format"
+        assert p1_team == "synthetic-p1-team"
+        assert p2_team == "synthetic-p2-team"
+        assert p1_name == "Search P1"
+        assert p2_name == "Search P2"
+        assert seed == "1,2,3,4"
+        assert p1_preview == "team 12"
+        assert p2_preview == "team 1"
+        return self.materialize_recovery_stat_proposals(
+            state=_parent_state(),
+            side=side,
+            proposals=proposals,
+        )
+
+    def validate_recovery_opening_authority(
+        self,
+        *,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
+        root_state,
+        p1_preview,
+        p2_preview,
+        p1_root_to_input,
+        p2_root_to_input,
+    ):
+        assert battle_format == "test-format"
+        assert p1_team == "synthetic-p1-team"
+        assert p2_team == "synthetic-p2-team"
+        assert p1_name == "Search P1"
+        assert p2_name == "Search P2"
+        assert seed == "1,2,3,4"
+        assert p1_preview == "team 12"
+        assert p2_preview == "team 1"
+        assert p1_root_to_input == (0, 1)
+        assert p2_root_to_input == (0,)
+        return root_state == _parent_state()
+
+    def validate_recovery_opening_stat_candidate(
+        self,
+        *,
+        battle_format,
+        p1_team,
+        p2_team,
+        p1_name,
+        p2_name,
+        seed,
+        candidate_state,
+        side,
+        pokemon_index,
+        stat_points,
+        p1_preview,
+        p2_preview,
+    ):
+        assert battle_format == "test-format"
+        assert p1_team == "synthetic-p1-team"
+        assert p2_team == "synthetic-p2-team"
+        assert p1_name == "Search P1"
+        assert p2_name == "Search P2"
+        assert seed == "1,2,3,4"
+        assert p1_preview == "team 12"
+        assert p2_preview == "team 1"
+        assert side == "p1"
+        expected = _parent_state()
+        target = expected["sides"][0]["pokemon"][pokemon_index]
+        target["set"]["evs"] = dict(stat_points)
+        target["baseStoredStats"] = {
+            "hp": 200,
+            "atk": 100 + stat_points["atk"],
+            "def": 100 + stat_points["def"],
+            "spa": 100 + stat_points["spa"],
+            "spd": 100 + stat_points["spd"],
+            "spe": 100 + stat_points["spe"],
+        }
+        target["storedStats"] = {
+            stat: target["baseStoredStats"][stat]
+            for stat in ("atk", "def", "spa", "spd", "spe")
+        }
+        target["speed"] = target["storedStats"]["spe"]
+        return candidate_state == expected
 
     def state_view(self, *, state, side, previews=None):
         assert side == "p2"
@@ -430,15 +549,15 @@ def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
         "turn": 3,
         "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
     }
+    root_particle = BeliefParticle(
+        root_state,
+        1.0,
+        world_id="stat-parent",
+        history_id="root",
+    )
     request = RecoveryRequest(
-        authority_root_particles=(
-            BeliefParticle(
-                root_state,
-                1.0,
-                world_id="stat-parent",
-                history_id="root",
-            ),
-        ),
+        authority_root_particles=(root_particle,),
+        opening_authorities=(_opening_authority(root_particle),),
         authority_root_public_view=root_view,
         authority_observations=(
             RecoveryObservation(
@@ -593,6 +712,7 @@ def test_static_recovery_rejects_incomplete_authority_history() -> None:
     request = _request()
     incomplete = RecoveryRequest(
         authority_root_particles=request.authority_root_particles,
+        opening_authorities=request.opening_authorities,
         authority_root_public_view=request.authority_root_public_view,
         authority_observations=request.authority_observations,
         authority_history_complete=False,
@@ -617,6 +737,7 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
     request = _request()
     broken = RecoveryRequest(
         authority_root_particles=request.authority_root_particles,
+        opening_authorities=request.opening_authorities,
         authority_root_public_view=request.authority_root_public_view,
         authority_observations=request.authority_observations,
         authority_history_complete=True,

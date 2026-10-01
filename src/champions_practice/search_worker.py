@@ -302,6 +302,29 @@ class HypotheticalSearchWorker:
             seed=seed,
         )
 
+    def create_state_with_opening_authority(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_preview: str,
+        p2_preview: str,
+        p1_name: str = "Search P1",
+        p2_name: str = "Search P2",
+        seed: str | None = None,
+    ) -> dict[str, Any]:
+        return self.__worker.create_state_with_opening_authority(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+        )
+
     def branch_many(
         self,
         *,
@@ -355,6 +378,93 @@ class HypotheticalSearchWorker:
             state=state,
             side=side,
             proposals=proposals,
+        )
+
+    def materialize_recovery_opening_stat_proposals(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
+        side: str,
+        p1_preview: str,
+        p2_preview: str,
+        proposals: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        return self.__worker.materialize_recovery_opening_stat_proposals(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            side=side,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            proposals=proposals,
+        )
+
+    def validate_recovery_opening_authority(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
+        root_state: dict[str, Any],
+        p1_preview: str,
+        p2_preview: str,
+        p1_root_to_input: tuple[int, ...],
+        p2_root_to_input: tuple[int, ...],
+    ) -> bool:
+        return self.__worker.validate_recovery_opening_authority(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            root_state=root_state,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            p1_root_to_input=p1_root_to_input,
+            p2_root_to_input=p2_root_to_input,
+        )
+
+    def validate_recovery_opening_stat_candidate(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
+        candidate_state: dict[str, Any],
+        side: str,
+        pokemon_index: int,
+        stat_points: dict[str, int],
+        p1_preview: str,
+        p2_preview: str,
+    ) -> bool:
+        return self.__worker.validate_recovery_opening_stat_candidate(
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            candidate_state=candidate_state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
         )
 
     def validate_recovery_stat_candidate(
@@ -851,6 +961,56 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned an invalid created state")
         return state
 
+    def create_state_with_opening_authority(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_preview: str,
+        p2_preview: str,
+        p1_name: str = "Search P1",
+        p2_name: str = "Search P2",
+        seed: str | None = None,
+    ) -> dict[str, Any]:
+        """Create an exact post-preview state plus its trusted pre-opening ancestor."""
+        payload: dict[str, Any] = {
+            "format": battle_format,
+            "p1_team": p1_team,
+            "p2_team": p2_team,
+            "p1_name": p1_name,
+            "p2_name": p2_name,
+            "p1_preview": p1_preview,
+            "p2_preview": p2_preview,
+        }
+        if seed is not None:
+            payload["seed"] = seed
+        result = self.request("create", **payload)
+        state = result.get("state")
+        lineage = result.get("preview_lineage")
+        if not isinstance(state, dict):
+            raise RuntimeError(
+                "Showdown worker returned invalid opening-authority state"
+            )
+        if not isinstance(lineage, dict):
+            raise RuntimeError(
+                "Showdown worker returned invalid preview member lineage"
+            )
+        normalized_lineage: dict[str, tuple[int, ...]] = {}
+        for side in ("p1", "p2"):
+            values = lineage.get(side)
+            if not isinstance(values, list) or not all(
+                isinstance(value, int) and value >= 0 for value in values
+            ):
+                raise RuntimeError(
+                    "Showdown worker returned invalid preview member lineage"
+                )
+            normalized_lineage[side] = tuple(values)
+        return {
+            "state": state,
+            "preview_lineage": normalized_lineage,
+        }
+
     def start_session(
         self,
         *,
@@ -972,6 +1132,121 @@ class ShowdownSearchWorker:
                 "Showdown worker returned invalid recovery stat proposals"
             )
         return variants
+
+    def materialize_recovery_opening_stat_proposals(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
+        side: str,
+        p1_preview: str,
+        p2_preview: str,
+        proposals: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]:
+        """Apply typed stat proposals before constructing a fresh battle."""
+        if not proposals:
+            return []
+        result = self.request(
+            "materialize_recovery_opening_stat_proposals",
+            format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            side=side,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            proposals=proposals,
+        )
+        variants = result.get("proposals")
+        if not isinstance(variants, list) or not all(
+            isinstance(variant, dict) for variant in variants
+        ):
+            raise RuntimeError(
+                "Showdown worker returned invalid opening stat proposals"
+            )
+        return variants
+
+    def validate_recovery_opening_authority(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
+        root_state: dict[str, Any],
+        p1_preview: str,
+        p2_preview: str,
+        p1_root_to_input: tuple[int, ...],
+        p2_root_to_input: tuple[int, ...],
+    ) -> bool:
+        """Rebuild a fresh battle and prove its opening root exactly."""
+        result = self.request(
+            "validate_recovery_opening_authority",
+            format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            root_state=root_state,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+            p1_root_to_input=list(p1_root_to_input),
+            p2_root_to_input=list(p2_root_to_input),
+        )
+        valid = result.get("valid")
+        if not isinstance(valid, bool):
+            raise RuntimeError(
+                "Showdown worker returned invalid opening-authority validation"
+            )
+        return valid
+
+    def validate_recovery_opening_stat_candidate(
+        self,
+        *,
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
+        candidate_state: dict[str, Any],
+        side: str,
+        pokemon_index: int,
+        stat_points: dict[str, int],
+        p1_preview: str,
+        p2_preview: str,
+    ) -> bool:
+        """Rebuild a proposed fresh opening and compare exact state."""
+        result = self.request(
+            "validate_recovery_opening_stat_candidate",
+            format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
+            candidate_state=candidate_state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+        )
+        valid = result.get("valid")
+        if not isinstance(valid, bool):
+            raise RuntimeError(
+                "Showdown worker returned invalid opening candidate validation"
+            )
+        return valid
 
     def validate_recovery_stat_candidate(
         self,
