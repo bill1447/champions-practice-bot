@@ -40,6 +40,19 @@ def test_hypothetical_worker_exposes_no_live_session_capabilities() -> None:
         assert not hasattr(HypotheticalSearchWorker, name)
 
 
+def test_decision_engine_has_no_hidden_state_recovery_install_surface() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+
+    assert not hasattr(engine, "recovery_candidate_generator")
+    assert not hasattr(engine, "validate_recovery_candidates")
+    assert not hasattr(engine, "install_recovered_particles")
+
+
 def test_decision_engine_owns_no_live_worker_or_session_identifier() -> None:
     engine = BeliefDecisionEngine(
         ".",
