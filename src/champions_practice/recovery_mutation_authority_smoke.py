@@ -275,7 +275,7 @@ def main() -> None:
                 request=request,
                 proposals=(proposal,),
                 authority_rng_seeds_by_observation=(),
-            rng_seeds_by_observation=((TURN_SEED,),),
+                rng_seeds_by_observation=((TURN_SEED,),),
             )
             if len(report.candidate_results) != 1:
                 raise SystemExit(
