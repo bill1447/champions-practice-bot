@@ -11,6 +11,7 @@ const {
   extractChannelMessages,
 } = require(path.join(showdownRoot, "dist", "sim", "battle"));
 const { Teams } = require(path.join(showdownRoot, "dist", "sim", "teams"));
+const { State } = require(path.join(showdownRoot, "dist", "sim", "state"));
 
 const sessions = new Map();
 const sessionPreviewSpecies = new Map();
@@ -1362,6 +1363,10 @@ function materializeRecoveryOpeningStatProposals(request) {
   };
 }
 
+function normalizedRecoveryState(state) {
+  return State.normalize(cloneJson(state));
+}
+
 function recoveryStateDiffPaths(left, right, path = "$", limit = 64) {
   if (limit <= 0) return [];
   if (typeof left !== typeof right || left === null || right === null) {
@@ -1421,15 +1426,18 @@ function validateRecoveryOpeningAuthority(request) {
       "validate_recovery_opening_authority requires exact preview choices",
     );
   }
-  const canonical = resolveRecoveryOpeningState(
-    request.preopening_state,
-    request.p1_preview,
-    request.p2_preview,
+  const canonical = normalizedRecoveryState(
+    resolveRecoveryOpeningState(
+      request.preopening_state,
+      request.p1_preview,
+      request.p2_preview,
+    ),
   );
-  const valid = isDeepStrictEqual(canonical, request.root_state);
+  const root = normalizedRecoveryState(request.root_state);
+  const valid = isDeepStrictEqual(canonical, root);
   return {
     valid,
-    diff_paths: valid ? [] : recoveryStateDiffPaths(canonical, request.root_state),
+    diff_paths: valid ? [] : recoveryStateDiffPaths(canonical, root),
   };
 }
 
@@ -1475,7 +1483,10 @@ function validateRecoveryOpeningStatCandidate(request) {
     };
   }
   return {
-    valid: isDeepStrictEqual(result.state, request.candidate_state),
+    valid: isDeepStrictEqual(
+      normalizedRecoveryState(result.state),
+      normalizedRecoveryState(request.candidate_state),
+    ),
   };
 }
 
