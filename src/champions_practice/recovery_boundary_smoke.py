@@ -134,23 +134,6 @@ def main() -> None:
         high_state = high_opening["state"]
         low_state = low_opening["state"]
 
-        if not worker.validate_recovery_opening_authority(
-            preopening_state=low_opening["preopening_state"],
-            root_state=low_state,
-            p1_preview=PREVIEW,
-            p2_preview=PREVIEW,
-        ):
-            paths = worker.recovery_opening_authority_diff_paths(
-                preopening_state=low_opening["preopening_state"],
-                root_state=low_state,
-                p1_preview=PREVIEW,
-                p2_preview=PREVIEW,
-            )
-            raise SystemExit(
-                "ERROR: pre-opening replay diverged from its own root: "
-                + ", ".join(paths)
-            )
-
         checkpoint = worker.state_view(
             state=low_state,
             side="p2",
@@ -196,16 +179,18 @@ def main() -> None:
             ),
             opening_authorities=(
                 RecoveryOpeningAuthority(
-                    particle=BeliefParticle(
-                        low_opening["preopening_state"],
-                        1.0,
-                        world_id="low-attack-parent",
-                        history_id="checkpoint",
-                    ),
+                    world_id="low-attack-parent",
+                    history_id="checkpoint",
+                    battle_format=CHAMPIONS_FORMAT,
+                    p1_team=LOW_ATTACK_TEAM,
+                    p2_team=AI_TEAM,
+                    p1_name="Search P1",
+                    p2_name="Search P2",
+                    seed=BATTLE_SEED,
                     p1_preview_choice=PREVIEW,
                     p2_preview_choice=PREVIEW,
-                    p1_root_to_preopening=low_opening["preview_lineage"]["p1"],
-                    p2_root_to_preopening=low_opening["preview_lineage"]["p2"],
+                    p1_root_to_input=low_opening["preview_lineage"]["p1"],
+                    p2_root_to_input=low_opening["preview_lineage"]["p2"],
                 ),
             ),
             authority_root_public_view=checkpoint,
