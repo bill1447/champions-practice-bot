@@ -1297,6 +1297,44 @@ def test_concurrent_start_claims_single_session_owner() -> None:
     assert controller._session_id == "live-1"
 
 
+class _CloseRacingStartWorker(_BlockingStartWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.worker_close_calls = 0
+
+    def close(self):
+        self.worker_close_calls += 1
+
+
+def test_close_during_startup_cannot_resurrect_late_session() -> None:
+    worker = _CloseRacingStartWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        starting = pool.submit(
+            controller.start,
+            opponent_team="hidden-team",
+        )
+        assert worker.start_started.wait(timeout=1)
+
+        controller.close()
+        assert controller.turn_state is SealedTurnState.CLOSED
+
+        worker.release_start.set()
+        with pytest.raises(RuntimeError, match="state is closed"):
+            starting.result(timeout=2)
+
+    assert controller.turn_state is SealedTurnState.CLOSED
+    assert controller._session_id is None
+    assert worker.closed == ["live-1"]
+    assert worker.worker_close_calls >= 1
+
+
 class _RejectedStartWorker(_CoordinatorWorker):
     def __init__(self) -> None:
         super().__init__()
