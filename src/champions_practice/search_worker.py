@@ -1095,7 +1095,8 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid legal choices")
         if any(choice == "" for choice in choices):
             raise RuntimeError(
-                "Showdown worker returned invalid legal choices; raw empty choices are forbidden"
+                "Showdown worker returned invalid legal choices; "
+                "raw empty choices are forbidden"
             )
         return choices
 
@@ -1127,7 +1128,8 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid validated choices")
         if any(choice == "" for choice in choices):
             raise RuntimeError(
-                "Showdown worker returned invalid validated choices; raw empty choices are forbidden"
+                "Showdown worker returned invalid validated choices; "
+                "raw empty choices are forbidden"
             )
         return choices
 
@@ -1308,7 +1310,8 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid public session choices")
         if any(choice == "" for choice in choices):
             raise RuntimeError(
-                "Showdown worker returned invalid public session choices; raw empty choices are forbidden"
+                "Showdown worker returned invalid public session choices; "
+                "raw empty choices are forbidden"
             )
         return choices
 
@@ -1326,7 +1329,8 @@ class ShowdownSearchWorker:
             raise RuntimeError("Showdown worker returned invalid session choices")
         if any(choice == "" for choice in choices):
             raise RuntimeError(
-                "Showdown worker returned invalid session choices; raw empty choices are forbidden"
+                "Showdown worker returned invalid session choices; "
+                "raw empty choices are forbidden"
             )
         return choices
 
