@@ -1476,6 +1476,44 @@ def test_post_preview_observation_failure_requires_restart() -> None:
     assert len(worker.submissions) == 1
 
 
+def test_preview_initialization_failure_requires_restart(monkeypatch) -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.PREVIEW
+
+    def fail_initialize(*, view, ai_choice):
+        raise RuntimeError("injected preview initialization failure")
+
+    monkeypatch.setattr(
+        controller._engine,
+        "initialize_preview",
+        fail_initialize,
+    )
+
+    with pytest.raises(RuntimeError, match="post-submit initialization failed"):
+        controller.submit_preview(
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+
+    assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert worker.submissions == [
+        ("live-1", "team 4321", "team 1234"),
+    ]
+
+    with pytest.raises(RuntimeError, match="restart_required"):
+        controller.submit_preview(
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+
+
 class _RejectedPreviewWorker(_CoordinatorWorker):
     def __init__(self) -> None:
         super().__init__()
