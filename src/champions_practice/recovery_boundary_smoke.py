@@ -134,6 +134,23 @@ def main() -> None:
         high_state = high_opening["state"]
         low_state = low_opening["state"]
 
+        if not worker.validate_recovery_opening_authority(
+            preopening_state=low_opening["preopening_state"],
+            root_state=low_state,
+            p1_preview=PREVIEW,
+            p2_preview=PREVIEW,
+        ):
+            paths = worker.recovery_opening_authority_diff_paths(
+                preopening_state=low_opening["preopening_state"],
+                root_state=low_state,
+                p1_preview=PREVIEW,
+                p2_preview=PREVIEW,
+            )
+            raise SystemExit(
+                "ERROR: pre-opening replay diverged from its own root: "
+                + ", ".join(paths)
+            )
+
         checkpoint = worker.state_view(
             state=low_state,
             side="p2",
