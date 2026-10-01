@@ -90,7 +90,6 @@ function protocolSlotIdentity(value) {
 }
 
 function publicExecutionEventDelta(battle, sideId) {
-  const opponentPrefix = sideId === "p1" ? "p2" : "p1";
   const channel = sideId === "p1" ? 1 : 2;
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
   let logTurn = 0;
@@ -100,6 +99,29 @@ function publicExecutionEventDelta(battle, sideId) {
   function turnActions() {
     if (!byTurn.has(logTurn)) byTurn.set(logTurn, []);
     return byTurn.get(logTurn);
+  }
+
+  function publicRole(actorSide) {
+    return actorSide === sideId ? "player" : "opponent";
+  }
+
+  function publicTarget(value) {
+    const target = protocolSlotIdentity(value);
+    if (!target) return null;
+    return {
+      side: publicRole(target.side),
+      slot: target.slot,
+    };
+  }
+
+  function publicProvenance(parts) {
+    const provenance = [];
+    for (const value of parts.slice(5)) {
+      if (!String(value).trim().toLowerCase().startsWith("[from]")) continue;
+      const normalized = canonicalProtocolIdentity(value);
+      if (normalized) provenance.push(normalized);
+    }
+    return provenance;
   }
 
   for (const line of visibleLog) {
@@ -117,17 +139,19 @@ function publicExecutionEventDelta(battle, sideId) {
     if (event === "move") {
       currentAction = null;
       const actor = protocolSlotIdentity(parts[2]);
-      if (!actor || actor.side !== opponentPrefix) continue;
-      if (parts.slice(5).some((part) => String(part).startsWith("[from]"))) {
-        continue;
-      }
+      if (!actor) continue;
 
       const move = toId(parts[3]);
       if (!move) continue;
+      const provenance = publicProvenance(parts);
       currentAction = {
+        side: publicRole(actor.side),
         slot: actor.slot,
         outcome: "executed",
         move,
+        source: provenance.length ? "called" : "selected",
+        provenance,
+        target: publicTarget(parts[4]),
         effects: [],
       };
       turnActions().push(currentAction);
@@ -137,11 +161,14 @@ function publicExecutionEventDelta(battle, sideId) {
     if (event === "cant") {
       currentAction = null;
       const actor = protocolSlotIdentity(parts[2]);
-      if (!actor || actor.side !== opponentPrefix) continue;
+      if (!actor) continue;
+      const attemptedMove = toId(parts[4]);
       currentAction = {
+        side: publicRole(actor.side),
         slot: actor.slot,
         outcome: "prevented",
         reason: canonicalProtocolIdentity(parts[3]),
+        attempted_move: attemptedMove || null,
         effects: [],
       };
       turnActions().push(currentAction);
@@ -158,15 +185,14 @@ function publicExecutionEventDelta(battle, sideId) {
   const turns = [...byTurn.keys()].sort((left, right) => right - left);
   if (!turns.length) return { turn: null, actions: [] };
   const turn = turns[0];
-  const actions = byTurn.get(turn)
-    .map((action) => ({
-      ...action,
-      effects: action.effects.slice().sort(),
-    }))
-    // Execution evidence answers what happened to each selected opponent slot.
-    // Do not make total move order part of this signature; speed-order evidence is
-    // a separate concern and would over-constrain otherwise valid reconstructions.
-    .sort((left, right) => left.slot - right.slot);
+  const actions = byTurn.get(turn).map((action) => ({
+    ...action,
+    effects: action.effects.slice().sort(),
+  }));
+  // Preserve the exact channel-visible execution sequence. Order is mechanics
+  // evidence: Showdown carries state such as lastMove across turns. The sequence
+  // also includes both sides and called/nested moves so an exact public match
+  // cannot hide persistent state behind an identical final snapshot.
   return { turn, actions };
 }
 
@@ -452,7 +478,10 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     } else if (event === "-curestatus") {
       observation.status = null;
     } else if (event === "move") {
-      observation.moves.add(toId(parts[3]));
+      const called = parts.slice(5).some(
+        (part) => String(part).trim().toLowerCase().startsWith("[from]"),
+      );
+      if (!called) observation.moves.add(toId(parts[3]));
     } else if (event === "-item" || event === "-enditem") {
       observation.items.add(toId(parts[3]));
     } else if (event === "-mega") {
@@ -541,10 +570,9 @@ function playerView(battle, sideId = "p1", previews = null) {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
     opponent_last_actions: publicLastOpponentActions(battle, sideId),
-    // Selected commands are not proof of execution. This channel-sanitized,
-    // opponent-scoped ledger records per-slot execution/prevention and public
-    // failure effects without treating animation targets or total speed order as
-    // authoritative command semantics.
+    // Selected commands are not proof of execution. This channel-sanitized
+    // ledger preserves the ordered, both-side public execution sequence, including
+    // called-move provenance, targets, prevention, and public failure effects.
     public_execution_delta: publicExecutionEventDelta(battle, sideId),
     // This is derived only from the requesting side's Showdown-visible channel.
     // It makes publicly observed mechanics transitions (for example Substitute
