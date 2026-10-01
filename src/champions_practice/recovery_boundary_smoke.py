@@ -163,7 +163,18 @@ def main() -> None:
             raise SystemExit("ERROR: authoritative recovery fixture omitted public view")
 
         request = RecoveryRequest(
-            checkpoint_particles=(
+            authority_root_particles=(
+                BeliefParticle(
+                    low_state,
+                    1.0,
+                    world_id="low-attack-parent",
+                    history_id="checkpoint",
+                ),
+            ),
+            authority_root_public_view=checkpoint,
+            authority_observations=(),
+            authority_history_complete=True,
+        checkpoint_particles=(
                 BeliefParticle(
                     low_state,
                     1.0,
@@ -206,6 +217,7 @@ def main() -> None:
             worker,
             request=request,
             proposals=(proposal,),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=((TURN_SEED,),),
         )
 

@@ -1,3 +1,4 @@
+import copy
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from types import SimpleNamespace
@@ -372,6 +373,95 @@ def test_zero_match_conditioning_keeps_last_good_posterior_for_recovery() -> Non
     assert update.matched_branches == 0
 
 
+def test_successful_conditioning_records_static_recovery_authority_history() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    previous = {"turn": 1, "opponent": {}, "player": {}, "request": {}}
+    current = {"turn": 2, "opponent": {}, "player": {}, "request": {}}
+    engine.previews = {"p1": [], "p2": []}
+    engine.particles = (particle,)
+    engine.last_public_view = previous
+    engine.recovery_authority_root_particles = (particle,)
+    engine.recovery_authority_root_public_view = copy.deepcopy(previous)
+    engine._run_until_deadline = lambda operation, deadline: (
+        ParticleUpdate((particle,), 1, 1, 0),
+        False,
+    )
+
+    engine.observe_public_turn(
+        view=current,
+        resolved_opponent_choice="move human",
+        decision=BeliefDecision(
+            choice="move ai",
+            mode="test",
+            particle_count=1,
+            candidate_count=0,
+            branch_count=0,
+            elapsed_seconds=0.0,
+        ),
+    )
+
+    assert engine.recovery_authority_history_complete is True
+    assert len(engine.recovery_authority_history) == 1
+    observation = engine.recovery_authority_history[0]
+    assert observation.ai_choice == "move ai"
+    assert observation.resolved_opponent_choice == "move human"
+    assert observation.previous_public_view == previous
+    assert observation.public_view == current
+
+
+def test_missing_resolved_command_invalidates_static_recovery_history() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    previous = {"turn": 1, "opponent": {}, "player": {}, "request": {}}
+    current = {"turn": 2, "opponent": {}, "player": {}, "request": {}}
+    engine.previews = {"p1": [], "p2": []}
+    engine.particles = (particle,)
+    engine.last_public_view = previous
+    engine.recovery_authority_root_particles = (particle,)
+    engine.recovery_authority_root_public_view = copy.deepcopy(previous)
+    engine._run_until_deadline = lambda operation, deadline: (
+        ParticleUpdate((particle,), 1, 1, 0),
+        False,
+    )
+
+    engine.observe_public_turn(
+        view=current,
+        resolved_opponent_choice=None,
+        decision=BeliefDecision(
+            choice="move ai",
+            mode="test",
+            particle_count=1,
+            candidate_count=0,
+            branch_count=0,
+            elapsed_seconds=0.0,
+        ),
+    )
+
+    assert engine.recovery_authority_history_complete is False
+    assert engine.recovery_authority_history == []
+
+
 def test_observed_action_rng_multiplier_uses_incremental_chunks(
     monkeypatch,
 ) -> None:
@@ -489,6 +579,8 @@ def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
         history_id="rng-1",
     )
     engine.particles = (particle,)
+    engine.recovery_authority_root_particles = (particle,)
+    engine.recovery_authority_root_public_view = {"turn": 1}
     engine.pending_observations = [
         (
             "move protect",
@@ -513,6 +605,11 @@ def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
     assert seen == ["switch 3, pass"]
     assert engine.pending_observations == []
     assert engine.degraded is False
+    assert len(engine.recovery_authority_history) == 1
+    assert (
+        engine.recovery_authority_history[0].resolved_opponent_choice
+        == "switch 3, pass"
+    )
 
 
 class _CollapseDiagnosticWorker:

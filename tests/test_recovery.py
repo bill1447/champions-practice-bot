@@ -115,15 +115,18 @@ def _second_view() -> dict:
 def _request() -> RecoveryRequest:
     checkpoint = _checkpoint()
     first = _first_view()
+    particle = BeliefParticle(
+        _parent_state(),
+        1.0,
+        world_id="stat-parent",
+        history_id="checkpoint",
+    )
     return RecoveryRequest(
-        checkpoint_particles=(
-            BeliefParticle(
-                _parent_state(),
-                1.0,
-                world_id="stat-parent",
-                history_id="checkpoint",
-            ),
-        ),
+        authority_root_particles=(particle,),
+        authority_root_public_view=checkpoint,
+        authority_observations=(),
+        authority_history_complete=True,
+        checkpoint_particles=(particle,),
         checkpoint_public_view=checkpoint,
         observations=(
             RecoveryObservation(
@@ -193,7 +196,8 @@ class _TypedRecoveryWorker:
         resolved = []
         for proposal in proposals:
             proposal_id = proposal["proposal_id"]
-            if proposal_id in self.reject_ids:
+            typed_id = proposal_id.split("@root-", 1)[0]
+            if typed_id in self.reject_ids:
                 resolved.append(
                     {"proposal_id": proposal_id, "rejected": "unsafe-fixture"}
                 )
@@ -230,6 +234,14 @@ class _TypedRecoveryWorker:
     def state_view(self, *, state, side, previews=None):
         assert side == "p2"
         points = state["sides"][0]["pokemon"][0]["set"]["evs"]
+        if state.get("test_step") == 1:
+            return {
+                "turn": 2,
+                "opponent": {
+                    "active": [{"species": "Snorlax", "hp_percent": 95}],
+                    "revealed": [{"species": "Snorlax", "seen": True}],
+                },
+            }
         if points["def"] == 32:
             return {
                 "turn": 1,
@@ -338,11 +350,12 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
         worker,
         request=request,
         proposals=proposals,
+        authority_rng_seeds_by_observation=(),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
     by_id = {
-        result.candidate.candidate_id: result
+        result.candidate.proposal_id: result
         for result in report.candidate_results
     }
     assert by_id["good"].status is RecoveryCandidateStatus.VALIDATED
@@ -358,12 +371,84 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
 
     assert (
         by_id["checkpoint-mismatch"].status
-        is RecoveryCandidateStatus.CHECKPOINT_MISMATCH
+        is RecoveryCandidateStatus.AUTHORITY_ROOT_MISMATCH
     )
     assert by_id["checkpoint-mismatch"].generated_branches == 0
-    assert [result.candidate.candidate_id for result in report.validated_candidates] == [
+    assert [result.candidate.proposal_id for result in report.validated_candidates] == [
         "good"
     ]
+
+
+def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
+    root_state = _parent_state()
+    checkpoint_state = copy.deepcopy(root_state)
+    checkpoint_state["test_step"] = 1
+    root_view = _checkpoint()
+    checkpoint_view = {
+        "turn": 2,
+        "opponent": {
+            "active": [{"species": "Snorlax", "hp_percent": 95}],
+            "revealed": [{"species": "Snorlax", "seen": True}],
+        },
+    }
+    suffix_view = {
+        "turn": 3,
+        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
+    }
+    request = RecoveryRequest(
+        authority_root_particles=(
+            BeliefParticle(
+                root_state,
+                1.0,
+                world_id="stat-parent",
+                history_id="root",
+            ),
+        ),
+        authority_root_public_view=root_view,
+        authority_observations=(
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=root_view,
+                public_view=checkpoint_view,
+            ),
+        ),
+        authority_history_complete=True,
+        checkpoint_particles=(
+            BeliefParticle(
+                checkpoint_state,
+                1.0,
+                world_id="stat-parent",
+                history_id="checkpoint",
+            ),
+        ),
+        checkpoint_public_view=checkpoint_view,
+        observations=(
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=checkpoint_view,
+                public_view=suffix_view,
+            ),
+        ),
+        ai_side="p2",
+        previews={"p1": ["Snorlax", "Shuckle"], "p2": ["Indeedee-F"]},
+    )
+
+    report = validate_stat_recovery_proposals(
+        _TypedRecoveryWorker(),
+        request=request,
+        proposals=(_proposal("historically-impossible", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(("prefix-seed",),),
+        rng_seeds_by_observation=(("suffix-seed",),),
+    )
+
+    result = report.candidate_results[0]
+    assert result.status is RecoveryCandidateStatus.HISTORY_MISMATCH
+    assert result.checkpoint_compatible is False
+    assert result.authority_observations_replayed == 0
+    assert result.observations_replayed == 0
+    assert result.final_particles == ()
 
 
 @pytest.mark.parametrize("hostile_delta", ["timesAttacked", "queue", "pp"])
@@ -377,6 +462,7 @@ def test_typed_stat_authority_rejects_non_stat_checkpoint_edits(
         worker,
         request=request,
         proposals=(_proposal("hostile", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
@@ -395,6 +481,7 @@ def test_typed_stat_authority_reports_materialization_rejections() -> None:
         worker,
         request=request,
         proposals=(_proposal("reject", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
@@ -421,6 +508,7 @@ def test_recovery_request_detects_parent_mutation_before_authority() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(_proposal("mutated-parent", atk=32, spa=0),),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
@@ -451,6 +539,31 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(proposal,),
+            authority_rng_seeds_by_observation=(),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
+
+
+def test_static_recovery_rejects_incomplete_authority_history() -> None:
+    request = _request()
+    incomplete = RecoveryRequest(
+        authority_root_particles=request.authority_root_particles,
+        authority_root_public_view=request.authority_root_public_view,
+        authority_observations=request.authority_observations,
+        authority_history_complete=False,
+        checkpoint_particles=request.checkpoint_particles,
+        checkpoint_public_view=request.checkpoint_public_view,
+        observations=request.observations,
+        ai_side=request.ai_side,
+        previews=request.previews,
+    )
+
+    with pytest.raises(ValueError, match="authority history is incomplete"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=incomplete,
+            proposals=(),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
@@ -458,6 +571,10 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
 def test_recovery_rejects_noncontiguous_public_history() -> None:
     request = _request()
     broken = RecoveryRequest(
+        authority_root_particles=request.authority_root_particles,
+        authority_root_public_view=request.authority_root_public_view,
+        authority_observations=request.authority_observations,
+        authority_history_complete=True,
         checkpoint_particles=request.checkpoint_particles,
         checkpoint_public_view=request.checkpoint_public_view,
         observations=(
@@ -478,6 +595,7 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
             _TypedRecoveryWorker(),
             request=broken,
             proposals=(),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
@@ -491,6 +609,7 @@ def test_stat_proposal_ids_must_be_unique() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(proposal, proposal),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
@@ -503,5 +622,6 @@ def test_recovery_requires_rng_coverage_for_every_observation() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=(("seed-1",),),
         )

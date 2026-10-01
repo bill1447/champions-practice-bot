@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
 import json
@@ -55,6 +56,17 @@ from champions_practice.strategy_tactics import (
 
 FallbackSelector = Callable[[list[str]], str]
 T = TypeVar("T")
+
+_STATIC_RECOVERY_HISTORY_LIMIT = 512
+
+
+@dataclass(frozen=True)
+class _RecoveryAuthorityObservation:
+    ai_choice: str
+    resolved_opponent_choice: str
+    previous_public_view: dict
+    public_view: dict
+
 
 
 def _choice_repeats_protect(
@@ -196,9 +208,13 @@ class _EngineObservationSnapshot:
     last_public_view: dict | None
     particles: tuple[BeliefParticle, ...]
     pending_observations: tuple[
-        tuple[str, dict[str, object] | None, dict],
+        tuple[str, str | None, dict[str, object] | None, dict],
         ...,
     ]
+    recovery_authority_root_particles: tuple[BeliefParticle, ...]
+    recovery_authority_root_public_view: dict | None
+    recovery_authority_history: tuple[_RecoveryAuthorityObservation, ...]
+    recovery_authority_history_complete: bool
     degraded: bool
 
 
@@ -530,6 +546,10 @@ class BeliefDecisionEngine:
         self.pending_observations: list[
             tuple[str, str | None, dict[str, object] | None, dict]
         ] = []
+        self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
+        self.recovery_authority_root_public_view: dict | None = None
+        self.recovery_authority_history: list[_RecoveryAuthorityObservation] = []
+        self.recovery_authority_history_complete = True
         self.degraded = False
 
     def _particle_seed(self) -> str:
@@ -608,6 +628,18 @@ class BeliefDecisionEngine:
             limit=self.max_particles,
             seed=53,
         )
+        self.recovery_authority_root_particles = tuple(
+            BeliefParticle(
+                state=deepcopy(particle.state),
+                weight=particle.weight,
+                world_id=particle.world_id,
+                history_id=particle.history_id,
+            )
+            for particle in self.particles
+        )
+        self.recovery_authority_root_public_view = deepcopy(view)
+        self.recovery_authority_history.clear()
+        self.recovery_authority_history_complete = bool(self.particles)
         self.degraded = not bool(self.particles)
         return view
 
@@ -775,6 +807,57 @@ class BeliefDecisionEngine:
             structural_mismatches,
         )
 
+    def _record_recovery_authority_observation(
+        self,
+        *,
+        ai_choice: str,
+        resolved_opponent_choice: str | None,
+        previous_view: dict[str, object] | None,
+        view: dict,
+    ) -> None:
+        if not self.recovery_authority_history_complete:
+            return
+        if (
+            resolved_opponent_choice is None
+            or not isinstance(previous_view, dict)
+            or self.recovery_authority_root_public_view is None
+        ):
+            self.recovery_authority_history_complete = False
+            self.recovery_authority_history.clear()
+            return
+        if len(self.recovery_authority_history) >= _STATIC_RECOVERY_HISTORY_LIMIT:
+            self.recovery_authority_history_complete = False
+            self.recovery_authority_history.clear()
+            return
+        self.recovery_authority_history.append(
+            _RecoveryAuthorityObservation(
+                ai_choice=ai_choice,
+                resolved_opponent_choice=resolved_opponent_choice,
+                previous_public_view=deepcopy(previous_view),
+                public_view=deepcopy(view),
+            )
+        )
+
+    def _promote_pending_to_recovery_authority(
+        self,
+        pending: tuple[
+            tuple[str, str | None, dict[str, object] | None, dict],
+            ...,
+        ],
+    ) -> None:
+        for (
+            ai_choice,
+            resolved_opponent_choice,
+            previous_view,
+            view,
+        ) in pending:
+            self._record_recovery_authority_observation(
+                ai_choice=ai_choice,
+                resolved_opponent_choice=resolved_opponent_choice,
+                previous_view=previous_view,
+                view=view,
+            )
+
     def _retry_pending_with_more_rng(
         self,
         *,
@@ -825,6 +908,7 @@ class BeliefDecisionEngine:
             return False
 
         self.particles = recovered
+        self._promote_pending_to_recovery_authority(pending)
         self.pending_observations.clear()
         self.degraded = False
         return True
@@ -1700,6 +1784,12 @@ class BeliefDecisionEngine:
                     limit=self.max_particles,
                     seed=int(view.get("turn", 0)) + 53,
                 )
+                self._record_recovery_authority_observation(
+                    ai_choice=decision.choice,
+                    resolved_opponent_choice=resolved_opponent_choice,
+                    previous_view=previous_view,
+                    view=view,
+                )
                 self.degraded = False
                 generated = update.generated
                 matched = update.matched
@@ -1806,6 +1896,18 @@ class _BeliefBattleCoordinator:
             last_public_view=self._engine.last_public_view,
             particles=self._engine.particles,
             pending_observations=tuple(self._engine.pending_observations),
+            recovery_authority_root_particles=(
+                self._engine.recovery_authority_root_particles
+            ),
+            recovery_authority_root_public_view=(
+                deepcopy(self._engine.recovery_authority_root_public_view)
+            ),
+            recovery_authority_history=tuple(
+                self._engine.recovery_authority_history
+            ),
+            recovery_authority_history_complete=(
+                self._engine.recovery_authority_history_complete
+            ),
             degraded=self._engine.degraded,
         )
 
@@ -1816,6 +1918,18 @@ class _BeliefBattleCoordinator:
         self._engine.last_public_view = snapshot.last_public_view
         self._engine.particles = snapshot.particles
         self._engine.pending_observations = list(snapshot.pending_observations)
+        self._engine.recovery_authority_root_particles = (
+            snapshot.recovery_authority_root_particles
+        )
+        self._engine.recovery_authority_root_public_view = deepcopy(
+            snapshot.recovery_authority_root_public_view
+        )
+        self._engine.recovery_authority_history = list(
+            snapshot.recovery_authority_history
+        )
+        self._engine.recovery_authority_history_complete = (
+            snapshot.recovery_authority_history_complete
+        )
         self._engine.degraded = snapshot.degraded
 
     def start(
