@@ -1836,6 +1836,12 @@ class _BeliefBattleCoordinator:
                 p2_name=p2_name,
                 seed=session_seed,
             )
+            raw_session_id = started.get("session_id")
+            if not isinstance(raw_session_id, str) or not raw_session_id:
+                raise RuntimeError(
+                    "Showdown worker returned an invalid live session identifier"
+                )
+            session_id = raw_session_id
         except ShowdownWorkerTimeout as error:
             if error.mutating:
                 self._worker.abort(timeout_seconds=0.25)
@@ -1867,7 +1873,6 @@ class _BeliefBattleCoordinator:
                     self._turn_state = SealedTurnState.CLOSED
             raise
 
-        session_id = str(started["session_id"])
         with self._state_lock:
             if self._turn_state is not SealedTurnState.STARTING:
                 state = self._turn_state
