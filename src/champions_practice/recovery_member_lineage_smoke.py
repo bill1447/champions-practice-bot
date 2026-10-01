@@ -322,10 +322,6 @@ def main() -> None:
 
     if len(report.candidate_results) != 2:
         raise SystemExit("ERROR: stable-member proposals did not both materialize")
-    by_species = {
-        result.candidate.proposal_id.split("-r", 1)[0]: result
-        for result in report.candidate_results
-    }
     if any(
         result.status is not RecoveryCandidateStatus.VALIDATED
         for result in report.candidate_results
