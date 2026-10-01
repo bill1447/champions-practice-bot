@@ -5,7 +5,10 @@ import copy
 import pytest
 
 import champions_practice.recovery as recovery
-from champions_practice.observation_beliefs import BeliefParticle
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    identity_member_lineage,
+)
 from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     OpponentStatProposal,
@@ -113,6 +116,33 @@ def _second_view() -> dict:
     }
 
 
+def _tracked_particle(
+    state: dict,
+    weight: float,
+    *,
+    world_id: str,
+    history_id: str,
+    p1_member_lineage: tuple[int, ...] | None = None,
+    p2_member_lineage: tuple[int, ...] | None = None,
+) -> BeliefParticle:
+    return BeliefParticle(
+        state,
+        weight,
+        world_id=world_id,
+        history_id=history_id,
+        p1_member_lineage=(
+            identity_member_lineage(state, "p1")
+            if p1_member_lineage is None
+            else p1_member_lineage
+        ),
+        p2_member_lineage=(
+            identity_member_lineage(state, "p2")
+            if p2_member_lineage is None
+            else p2_member_lineage
+        ),
+    )
+
+
 def _opening_authority(
     particle: BeliefParticle,
 ) -> RecoveryOpeningAuthority:
@@ -135,7 +165,7 @@ def _opening_authority(
 def _request() -> RecoveryRequest:
     checkpoint = _checkpoint()
     first = _first_view()
-    particle = BeliefParticle(
+    particle = _tracked_particle(
         _parent_state(),
         1.0,
         world_id="stat-parent",
@@ -186,6 +216,7 @@ def _proposal(
         proposal_id=proposal_id,
         parent_particle_index=0,
         pokemon_index=0,
+        root_pokemon_index=0,
         species="Snorlax",
         stat_points=(
             ("hp", 2),
@@ -196,7 +227,7 @@ def _proposal(
             ("spe", 32),
         ),
         changed_hidden_dimensions=tuple(
-            f"opponent.snorlax.stat_points.{stat}" for stat in changed
+            f"opponent.member0.snorlax.stat_points.{stat}" for stat in changed
         ),
     )
 
@@ -442,7 +473,14 @@ class _TypedRecoveryWorker:
             }
 
         return [
-            {"state": copy.deepcopy(next_state), "view": copy.deepcopy(view)}
+            {
+                "state": copy.deepcopy(next_state),
+                "view": copy.deepcopy(view),
+                "member_lineage": {
+                    "p1": list(identity_member_lineage(next_state, "p1")),
+                    "p2": list(identity_member_lineage(next_state, "p2")),
+                },
+            }
             for _branch in branches
         ]
 
@@ -457,6 +495,7 @@ def test_bounded_stat_generator_only_broadens_seen_opponent_non_hp_points() -> N
     assert proposals
     assert len(proposals) <= 64
     assert all(proposal.pokemon_index == 0 for proposal in proposals)
+    assert all(proposal.root_pokemon_index == 0 for proposal in proposals)
     assert all(proposal.species == "Snorlax" for proposal in proposals)
     assert all(proposal.stat_point_dict["hp"] == 2 for proposal in proposals)
     assert all(
@@ -477,6 +516,59 @@ def test_bounded_stat_generator_only_broadens_seen_opponent_non_hp_points() -> N
         for proposal in proposals
     )
     assert request.checkpoint_particles[0].state == before
+
+
+def test_stat_generator_uses_stable_root_member_after_checkpoint_reorder() -> None:
+    root_state = _parent_state()
+    checkpoint_state = copy.deepcopy(root_state)
+    checkpoint_state["sides"][0]["pokemon"] = [
+        checkpoint_state["sides"][0]["pokemon"][1],
+        checkpoint_state["sides"][0]["pokemon"][0],
+    ]
+    root_particle = _tracked_particle(
+        root_state,
+        1.0,
+        world_id="stat-parent",
+        history_id="root",
+    )
+    checkpoint_particle = _tracked_particle(
+        checkpoint_state,
+        1.0,
+        world_id="stat-parent",
+        history_id="checkpoint",
+        p1_member_lineage=(1, 0),
+    )
+    request = RecoveryRequest(
+        authority_root_particles=(root_particle,),
+        opening_authorities=(_opening_authority(root_particle),),
+        authority_root_public_view=_checkpoint(),
+        authority_observations=(),
+        authority_history_complete=True,
+        checkpoint_particles=(checkpoint_particle,),
+        checkpoint_public_view=_checkpoint(),
+        observations=(
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=_checkpoint(),
+                public_view=_first_view(),
+            ),
+        ),
+        ai_side="p2",
+        previews={"p1": ["Snorlax", "Shuckle"], "p2": ["Indeedee-F"]},
+    )
+
+    proposals = BoundedOpponentStatProposalGenerator(max_proposals=64).generate(request)
+    snorlax = [proposal for proposal in proposals if proposal.species == "Snorlax"]
+
+    assert snorlax
+    assert all(proposal.pokemon_index == 1 for proposal in snorlax)
+    assert all(proposal.root_pokemon_index == 0 for proposal in snorlax)
+    assert all(
+        dimension.startswith("opponent.member0.snorlax.")
+        for proposal in snorlax
+        for dimension in proposal.changed_hidden_dimensions
+    )
 
 
 def test_bounded_stat_generator_is_deterministic_and_honors_limit() -> None:
@@ -550,7 +642,7 @@ def test_static_stat_recovery_does_not_turn_sampled_prefix_miss_into_proof() -> 
         "turn": 3,
         "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
     }
-    root_particle = BeliefParticle(
+    root_particle = _tracked_particle(
         root_state,
         1.0,
         world_id="stat-parent",
@@ -570,7 +662,7 @@ def test_static_stat_recovery_does_not_turn_sampled_prefix_miss_into_proof() -> 
         ),
         authority_history_complete=True,
         checkpoint_particles=(
-            BeliefParticle(
+            _tracked_particle(
                 checkpoint_state,
                 1.0,
                 world_id="stat-parent",
@@ -681,7 +773,7 @@ def test_sampled_checkpoint_hidden_state_miss_is_inconclusive() -> None:
         },
     }
     suffix_view = _second_view()
-    root_particle = BeliefParticle(
+    root_particle = _tracked_particle(
         root_state,
         1.0,
         world_id="stat-parent",
@@ -701,7 +793,7 @@ def test_sampled_checkpoint_hidden_state_miss_is_inconclusive() -> None:
         ),
         authority_history_complete=True,
         checkpoint_particles=(
-            BeliefParticle(
+            _tracked_particle(
                 checkpoint_state,
                 1.0,
                 world_id="stat-parent",
@@ -815,6 +907,7 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
         proposal_id="wrong-species",
         parent_particle_index=0,
         pokemon_index=0,
+        root_pokemon_index=0,
         species="Shuckle",
         stat_points=(
             ("hp", 2),
@@ -825,8 +918,8 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
             ("spe", 32),
         ),
         changed_hidden_dimensions=(
-            "opponent.shuckle.stat_points.atk",
-            "opponent.shuckle.stat_points.spa",
+            "opponent.member0.shuckle.stat_points.atk",
+            "opponent.member0.shuckle.stat_points.spa",
         ),
     )
 
