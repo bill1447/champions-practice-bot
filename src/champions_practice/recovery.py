@@ -55,6 +55,7 @@ class RecoveryCandidate:
     """One proposed hidden-world variant at the last-good checkpoint."""
 
     candidate_id: str
+    parent_particle_index: int
     particle: BeliefParticle
     source: str
     changed_hidden_dimensions: tuple[str, ...] = ()
@@ -108,6 +109,7 @@ class RecoveryReplayWorker(Protocol):
 
 
 class RecoveryCandidateStatus(str, Enum):
+    KNOWN_STATE_MISMATCH = "known-state-mismatch"
     CHECKPOINT_MISMATCH = "checkpoint-mismatch"
     REPLAY_MISMATCH = "replay-mismatch"
     VALIDATED = "validated"
@@ -181,6 +183,14 @@ def _validate_request(
         )
 
 
+def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
+    sides = state.get("sides")
+    index = 0 if ai_side == "p1" else 1
+    if not isinstance(sides, list) or len(sides) <= index:
+        raise ValueError("recovery candidate state is missing exact side data")
+    return sides[index]
+
+
 def validate_recovery_candidates(
     worker: RecoveryReplayWorker,
     *,
@@ -191,8 +201,9 @@ def validate_recovery_candidates(
     """Replay candidate checkpoint states through all retained public evidence.
 
     A proposal is valid only when:
-      1. its checkpoint state reproduces the last-good public view, and
-      2. pinned mechanics replay reproduces every queued observation in order.
+      1. the AI's known exact side is unchanged from its last-good parent,
+      2. its checkpoint state reproduces the last-good public view, and
+      3. pinned mechanics replay reproduces every queued observation in order.
 
     Candidate metadata, mismatch classification, or final-board similarity never
     authorizes a state. This function does not mutate the live belief engine.
@@ -209,6 +220,29 @@ def validate_recovery_candidates(
     results: list[RecoveryCandidateValidation] = []
 
     for candidate in candidates:
+        if not 0 <= candidate.parent_particle_index < len(
+            request.checkpoint_particles
+        ):
+            raise ValueError(
+                f"recovery candidate {candidate.candidate_id!r} has invalid parent"
+            )
+        parent = request.checkpoint_particles[candidate.parent_particle_index]
+        if _exact_ai_side(candidate.particle.state, request.ai_side) != _exact_ai_side(
+            parent.state,
+            request.ai_side,
+        ):
+            results.append(
+                RecoveryCandidateValidation(
+                    candidate=candidate,
+                    status=RecoveryCandidateStatus.KNOWN_STATE_MISMATCH,
+                    checkpoint_compatible=False,
+                    observations_replayed=0,
+                    generated_branches=0,
+                    matched_branches=0,
+                )
+            )
+            continue
+
         checkpoint_view = worker.state_view(
             state=candidate.particle.state,
             side=request.ai_side,
