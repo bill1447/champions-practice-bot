@@ -18,6 +18,8 @@ class BeliefParticle:
     weight: float
     world_id: str = ""
     history_id: str = ""
+    p1_member_lineage: tuple[int, ...] = ()
+    p2_member_lineage: tuple[int, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -159,6 +161,98 @@ def classify_public_observation_mismatch(
 
 def _state_key(state: dict[str, Any]) -> str:
     return json.dumps(state, sort_keys=True, separators=(",", ":"))
+
+
+def identity_member_lineage(
+    state: dict[str, Any],
+    side: str,
+) -> tuple[int, ...]:
+    if side not in {"p1", "p2"}:
+        raise ValueError("side must be p1 or p2")
+    sides = state.get("sides")
+    side_index = 0 if side == "p1" else 1
+    if (
+        not isinstance(sides, list)
+        or len(sides) <= side_index
+        or not isinstance(sides[side_index], dict)
+        or not isinstance(sides[side_index].get("pokemon"), list)
+    ):
+        raise ValueError("particle state is missing side Pokemon for member lineage")
+    return tuple(range(len(sides[side_index]["pokemon"])))
+
+
+def particle_member_lineage(
+    particle: BeliefParticle,
+    side: str,
+    *,
+    require_tracked: bool = False,
+) -> tuple[int, ...]:
+    if side not in {"p1", "p2"}:
+        raise ValueError("side must be p1 or p2")
+    lineage = (
+        particle.p1_member_lineage
+        if side == "p1"
+        else particle.p2_member_lineage
+    )
+    identity = identity_member_lineage(particle.state, side)
+    if not lineage:
+        if require_tracked:
+            raise ValueError("belief particle is missing tracked member lineage")
+        return identity
+    if (
+        len(lineage) != len(identity)
+        or len(set(lineage)) != len(lineage)
+        or set(lineage) != set(identity)
+    ):
+        raise ValueError("belief particle has invalid member lineage")
+    return lineage
+
+
+def _particle_key(particle: BeliefParticle) -> str:
+    return json.dumps(
+        {
+            "state": particle.state,
+            "p1_member_lineage": particle.p1_member_lineage,
+            "p2_member_lineage": particle.p2_member_lineage,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _compose_branch_member_lineage(
+    particle: BeliefParticle,
+    *,
+    child_state: dict[str, Any],
+    raw_lineage: object,
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    tracking_active = bool(
+        particle.p1_member_lineage or particle.p2_member_lineage
+    )
+    if raw_lineage is None:
+        if tracking_active:
+            raise RuntimeError(
+                "particle branch omitted required stable member lineage"
+            )
+        return (), ()
+    if not isinstance(raw_lineage, dict):
+        raise RuntimeError("particle branch returned invalid member lineage")
+
+    composed: list[tuple[int, ...]] = []
+    for side in ("p1", "p2"):
+        values = raw_lineage.get(side)
+        parent = particle_member_lineage(particle, side)
+        child_identity = identity_member_lineage(child_state, side)
+        if (
+            not isinstance(values, list)
+            or len(values) != len(child_identity)
+            or not all(isinstance(value, int) for value in values)
+            or len(set(values)) != len(values)
+            or set(values) != set(range(len(parent)))
+        ):
+            raise RuntimeError("particle branch returned invalid member lineage")
+        composed.append(tuple(parent[value] for value in values))
+    return composed[0], composed[1]
 
 
 def _id(value: object) -> str:
@@ -325,6 +419,8 @@ def _normalize(particles: Iterable[BeliefParticle]) -> tuple[BeliefParticle, ...
             weight=particle.weight / total,
             world_id=particle.world_id,
             history_id=particle.history_id,
+            p1_member_lineage=particle.p1_member_lineage,
+            p2_member_lineage=particle.p2_member_lineage,
         )
         for particle in particles
     )
@@ -361,7 +457,7 @@ def resample_particles(
             index += 1
             cumulative += normalized[index].weight
         particle = normalized[index]
-        key = _state_key(particle.state)
+        key = _particle_key(particle)
         previous = counts.get(key)
         if previous is None:
             counts[key] = (particle, 1)
@@ -374,6 +470,8 @@ def resample_particles(
             weight=count / limit,
             world_id=particle.world_id,
             history_id=particle.history_id,
+            p1_member_lineage=particle.p1_member_lineage,
+            p2_member_lineage=particle.p2_member_lineage,
         )
         for particle, count in counts.values()
     )
@@ -438,6 +536,8 @@ def resample_particles_by_world(
                 weight=particle.weight * group_mass,
                 world_id=particle.world_id,
                 history_id=particle.history_id,
+                p1_member_lineage=particle.p1_member_lineage,
+                p2_member_lineage=particle.p2_member_lineage,
             )
             for particle in chosen
         )
@@ -621,12 +721,19 @@ def condition_particles(
             matched += 1
             rng_label = "native" if rng_seed is None else rng_seed
             history = f"{particle.history_id}|{response}|{rng_label}".strip("|")
+            p1_lineage, p2_lineage = _compose_branch_member_lineage(
+                particle,
+                child_state=state,
+                raw_lineage=result.get("member_lineage"),
+            )
             survivors.append(
                 BeliefParticle(
                     state=state,
                     weight=branch_weight,
                     world_id=particle.world_id,
                     history_id=history,
+                    p1_member_lineage=p1_lineage,
+                    p2_member_lineage=p2_lineage,
                 )
             )
 
@@ -642,6 +749,8 @@ def condition_particles(
                 weight=previous.weight + particle.weight,
                 world_id=previous.world_id or particle.world_id,
                 history_id=previous.history_id,
+                p1_member_lineage=previous.p1_member_lineage,
+                p2_member_lineage=previous.p2_member_lineage,
             )
 
     posterior = _normalize(merged.values())
