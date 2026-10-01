@@ -1,9 +1,9 @@
-"""Adversarial lifecycle smoke for PR #106 worker hardening."""
+"""Adversarial lifecycle smoke for worker startup and transport hardening."""
 
 from __future__ import annotations
 
 from pathlib import Path
-from threading import enumerate as enumerate_threads
+from threading import Event, Thread, enumerate as enumerate_threads
 from time import perf_counter, sleep
 
 import champions_practice.belief_controller as belief_controller
@@ -101,21 +101,26 @@ def _startup_deadline_probe() -> float:
     return elapsed
 
 
-def _transport_timeout_probe() -> float:
+def _write_runtime_script(name: str, source: str) -> Path:
     root = Path(__file__).resolve().parents[2]
     runtime = root / ".runtime"
     runtime.mkdir(parents=True, exist_ok=True)
-    script = runtime / "transport-stall-worker.js"
-    script.write_text(
+    script = runtime / name
+    script.write_text(source.strip() + "\n", encoding="utf-8")
+    return script
+
+
+def _transport_timeout_probe() -> float:
+    root = Path(__file__).resolve().parents[2]
+    script = _write_runtime_script(
+        "transport-stall-worker.js",
         """
 const readline = require("readline");
 const rl = readline.createInterface({input: process.stdin, crlfDelay: Infinity});
 rl.on("line", () => {
   // Intentionally consume the request without ever emitting a response.
 });
-""".strip()
-        + "\n",
-        encoding="utf-8",
+""",
     )
 
     baseline = active_showdown_worker_pids()
@@ -140,6 +145,15 @@ rl.on("line", () => {
                 raise SystemExit(
                     "ERROR: mutating transport timeout lost unknown-outcome metadata"
                 )
+            if error.phase != "response":
+                raise SystemExit(
+                    "ERROR: response stall was not classified as response timeout: "
+                    f"{error.phase!r}"
+                )
+            if worker._transport_closed.is_set():
+                raise SystemExit(
+                    "ERROR: response-only timeout unnecessarily aborted transport"
+                )
         else:
             raise SystemExit("ERROR: stalled worker request did not time out")
     finally:
@@ -150,6 +164,263 @@ rl.on("line", () => {
     if elapsed > 0.30:
         raise SystemExit(
             f"ERROR: stalled transport exceeded bounded timeout: {elapsed:.3f}s"
+        )
+    return elapsed
+
+
+def _blocked_stdin_probe() -> float:
+    root = Path(__file__).resolve().parents[2]
+    script = _write_runtime_script(
+        "transport-no-read-worker.js",
+        """
+setInterval(() => {}, 1000);
+""",
+    )
+    baseline = active_showdown_worker_pids()
+    worker = ShowdownSearchWorker(
+        root,
+        request_timeout_seconds=0.12,
+        worker_script=script,
+    )
+    try:
+        started = perf_counter()
+        try:
+            worker.request(
+                "session_choose",
+                timeout_seconds=0.12,
+                mutating=True,
+                session_id="fake",
+                p1_choice="",
+                p2_choice="",
+                padding="x" * 2_000_000,
+            )
+        except ShowdownWorkerTimeout as error:
+            elapsed = perf_counter() - started
+            if not error.mutating:
+                raise SystemExit(
+                    "ERROR: blocked mutating write lost unknown-outcome metadata"
+                )
+            if error.phase != "write":
+                raise SystemExit(
+                    "ERROR: blocked stdin was not classified as write timeout: "
+                    f"{error.phase!r}"
+                )
+            if not worker._transport_closed.is_set():
+                raise SystemExit(
+                    "ERROR: blocked write timeout did not abort uncertain transport"
+                )
+        else:
+            raise SystemExit("ERROR: worker with unread stdin did not time out")
+    finally:
+        worker.abort(timeout_seconds=0.10)
+        script.unlink(missing_ok=True)
+
+    _wait_for_process_baseline(baseline)
+    if elapsed > 0.35:
+        raise SystemExit(
+            f"ERROR: blocked stdin exceeded absolute request deadline: {elapsed:.3f}s"
+        )
+    return elapsed
+
+
+def _write_lock_deadline_probe() -> float:
+    baseline = active_showdown_worker_pids()
+    worker = ShowdownSearchWorker(".", request_timeout_seconds=1.0)
+    entered = Event()
+    release = Event()
+
+    def hold_write_lock() -> None:
+        with worker._write_lock:
+            entered.set()
+            release.wait(timeout=1.0)
+
+    holder = Thread(target=hold_write_lock, daemon=True)
+    holder.start()
+    if not entered.wait(timeout=0.25):
+        worker.abort(timeout_seconds=0.10)
+        raise SystemExit("ERROR: lock-holder thread did not acquire write lock")
+
+    try:
+        started = perf_counter()
+        try:
+            worker.request("ping", timeout_seconds=0.08)
+        except ShowdownWorkerTimeout as error:
+            elapsed = perf_counter() - started
+            if error.phase != "write-lock":
+                raise SystemExit(
+                    "ERROR: write-lock stall used wrong timeout phase: "
+                    f"{error.phase!r}"
+                )
+        else:
+            raise SystemExit("ERROR: request escaped a blocked write-lock deadline")
+    finally:
+        release.set()
+        holder.join(timeout=0.25)
+
+    try:
+        if not worker.ping():
+            raise SystemExit("ERROR: write-lock timeout corrupted healthy transport")
+    finally:
+        worker.close()
+
+    _wait_for_process_baseline(baseline)
+    if elapsed > 0.25:
+        raise SystemExit(
+            f"ERROR: write-lock deadline returned too late: {elapsed:.3f}s"
+        )
+    return elapsed
+
+
+def _abort_unblocks_waiter_probe() -> float:
+    root = Path(__file__).resolve().parents[2]
+    script = _write_runtime_script(
+        "transport-abort-waiter-worker.js",
+        """
+const readline = require("readline");
+const rl = readline.createInterface({input: process.stdin, crlfDelay: Infinity});
+rl.on("line", () => {
+  // Consume input but never answer; abort must wake the pending request.
+});
+""",
+    )
+    baseline = active_showdown_worker_pids()
+    worker = ShowdownSearchWorker(
+        root,
+        request_timeout_seconds=5.0,
+        worker_script=script,
+    )
+    errors: list[BaseException] = []
+    done = Event()
+
+    def blocked_request() -> None:
+        try:
+            worker.request(
+                "session_choose",
+                timeout_seconds=5.0,
+                mutating=True,
+                session_id="fake",
+                p1_choice="",
+                p2_choice="",
+            )
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            done.set()
+
+    request_thread = Thread(target=blocked_request, daemon=True)
+    request_thread.start()
+
+    pending_deadline = perf_counter() + 0.50
+    while perf_counter() < pending_deadline:
+        with worker._pending_lock:
+            if worker._pending:
+                break
+        sleep(0.01)
+    else:
+        worker.abort(timeout_seconds=0.10)
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: abort probe never reached pending response wait")
+
+    started = perf_counter()
+    worker.abort(timeout_seconds=0.10)
+    if not done.wait(timeout=0.30):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: abort did not wake pending request")
+    elapsed = perf_counter() - started
+    request_thread.join(timeout=0.10)
+    script.unlink(missing_ok=True)
+
+    if len(errors) != 1 or not isinstance(errors[0], ShowdownWorkerTimeout):
+        raise SystemExit(
+            "ERROR: aborted mutating waiter did not receive timeout semantics: "
+            f"{errors!r}"
+        )
+    error = errors[0]
+    if not error.mutating or error.phase != "transport-abort":
+        raise SystemExit(
+            "ERROR: aborted mutating waiter lost fail-closed metadata: "
+            f"mutating={error.mutating}, phase={error.phase!r}"
+        )
+
+    _wait_for_process_baseline(baseline)
+    if elapsed > 0.30:
+        raise SystemExit(
+            f"ERROR: abort waiter wakeup returned too late: {elapsed:.3f}s"
+        )
+    return elapsed
+
+
+def _close_blocked_stdin_probe() -> float:
+    root = Path(__file__).resolve().parents[2]
+    script = _write_runtime_script(
+        "transport-close-blocked-worker.js",
+        """
+setInterval(() => {}, 1000);
+""",
+    )
+    baseline = active_showdown_worker_pids()
+    worker = ShowdownSearchWorker(
+        root,
+        request_timeout_seconds=5.0,
+        worker_script=script,
+    )
+    errors: list[BaseException] = []
+    done = Event()
+
+    def blocked_write() -> None:
+        try:
+            worker.request(
+                "session_choose",
+                timeout_seconds=5.0,
+                mutating=True,
+                session_id="fake",
+                p1_choice="",
+                p2_choice="",
+                padding="x" * 2_000_000,
+            )
+        except BaseException as error:
+            errors.append(error)
+        finally:
+            done.set()
+
+    request_thread = Thread(target=blocked_write, daemon=True)
+    request_thread.start()
+
+    pending_deadline = perf_counter() + 0.50
+    while perf_counter() < pending_deadline:
+        with worker._pending_lock:
+            pending = bool(worker._pending)
+        if pending and worker._write_lock.locked():
+            break
+        sleep(0.01)
+    else:
+        worker.abort(timeout_seconds=0.10)
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: close probe never reached blocked write")
+
+    sleep(0.05)
+    started = perf_counter()
+    worker.close()
+    elapsed = perf_counter() - started
+
+    if not done.wait(timeout=0.30):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: close did not unblock blocked stdin writer")
+    request_thread.join(timeout=0.10)
+    script.unlink(missing_ok=True)
+
+    if len(errors) != 1 or not isinstance(errors[0], ShowdownWorkerTimeout):
+        raise SystemExit(
+            "ERROR: close did not preserve mutating fail-closed semantics: "
+            f"{errors!r}"
+        )
+    if not errors[0].mutating:
+        raise SystemExit("ERROR: close lost mutating unknown-outcome metadata")
+
+    _wait_for_process_baseline(baseline)
+    if elapsed > 1.00:
+        raise SystemExit(
+            f"ERROR: close blocked on unread stdin: {elapsed:.3f}s"
         )
     return elapsed
 
@@ -207,15 +478,23 @@ def main() -> None:
 
     startup_elapsed = _startup_deadline_probe()
     transport_elapsed = _transport_timeout_probe()
+    blocked_write_elapsed = _blocked_stdin_probe()
+    lock_elapsed = _write_lock_deadline_probe()
+    abort_elapsed = _abort_unblocks_waiter_probe()
+    close_elapsed = _close_blocked_stdin_probe()
     _invalid_facade_config_probe()
     _close_failure_probe()
 
     print("Worker lifecycle hardening")
     print(f"Injected slow startup returned in: {startup_elapsed:.3f}s")
-    print(f"Stalled live transport returned in: {transport_elapsed:.3f}s")
+    print(f"Stalled response returned in: {transport_elapsed:.3f}s")
+    print(f"Blocked stdin write returned in: {blocked_write_elapsed:.3f}s")
+    print(f"Blocked write lock returned in: {lock_elapsed:.3f}s")
+    print(f"Abort waiter wakeup returned in: {abort_elapsed:.3f}s")
+    print(f"Close with blocked stdin returned in: {close_elapsed:.3f}s")
     print("Invalid facade config spawned worker: NO")
     print("Session-close failure leaked worker: NO")
-    print("RESULT: startup, transport, and worker ownership are bounded")
+    print("RESULT: full worker request and shutdown lifecycle are bounded")
 
 
 if __name__ == "__main__":
