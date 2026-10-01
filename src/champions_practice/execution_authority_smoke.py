@@ -364,9 +364,20 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
         ),
         None,
     )
-    if called_index is None or haze_index is None or called_index >= haze_index:
+    if called_index is None:
         raise SystemExit(
-            "ERROR: both-side execution ledger lost called-move provenance/order"
+            "ERROR: called Defense Curl missing provenance in execution ledger: "
+            f"{actions!r}"
+        )
+    if haze_index is None:
+        raise SystemExit(
+            "ERROR: opponent Haze missing from both-side execution ledger: "
+            f"{actions!r}"
+        )
+    if called_index >= haze_index:
+        raise SystemExit(
+            "ERROR: execution ledger did not preserve Defense Curl before Haze: "
+            f"{actions!r}"
         )
 
     update = condition_particles(
