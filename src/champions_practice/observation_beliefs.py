@@ -739,7 +739,7 @@ def condition_particles(
 
     merged: dict[str, BeliefParticle] = {}
     for particle in survivors:
-        key = _state_key(particle.state)
+        key = _particle_key(particle)
         previous = merged.get(key)
         if previous is None:
             merged[key] = particle
