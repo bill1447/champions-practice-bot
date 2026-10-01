@@ -120,6 +120,10 @@ def main() -> None:
                         "ERROR: invalid Helping Hand fixture was not classified "
                         "as a choice rejection"
                     ) from error
+                if not error.safe_retry:
+                    raise SystemExit(
+                        "ERROR: transactional rejection did not carry rollback proof"
+                    ) from error
             else:
                 raise SystemExit(
                     "ERROR: exact Showdown unexpectedly accepted invalid "

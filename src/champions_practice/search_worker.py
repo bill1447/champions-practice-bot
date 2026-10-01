@@ -28,10 +28,12 @@ class ShowdownRequestError(RuntimeError):
         detail: str,
         *,
         mutating: bool = False,
+        safe_retry: bool = False,
     ) -> None:
         self.op = op
         self.detail = detail
         self.mutating = mutating
+        self.safe_retry = safe_retry
         self.choice_rejected = (
             "[Invalid choice]" in detail
             or "[Unavailable choice]" in detail
@@ -675,6 +677,7 @@ class ShowdownSearchWorker:
                 op,
                 detail,
                 mutating=mutating,
+                safe_retry=response.get("safe_retry") is True,
             )
 
         result = response.get("result")

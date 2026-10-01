@@ -160,7 +160,9 @@ class SealedDecisionReady:
 
 class SealedTurnState(str, Enum):
     NEW = "new"
+    STARTING = "starting"
     PREVIEW = "preview"
+    PREVIEW_SUBMITTING = "preview_submitting"
     IDLE = "idle"
     COMPUTING = "computing"
     LOCKED = "locked"
@@ -1818,7 +1820,13 @@ class _BeliefBattleCoordinator:
     ) -> None:
         with self._state_lock:
             if self._turn_state is not SealedTurnState.NEW:
-                raise RuntimeError("battle has already been started")
+                raise RuntimeError(
+                    f"cannot start battle while state is {self._turn_state.value}"
+                )
+            # Claim startup ownership before releasing the coordinator lock.
+            # A second caller must never be able to create another live session.
+            self._turn_state = SealedTurnState.STARTING
+
         try:
             started = self._worker.start_session(
                 battle_format=self._battle_format,
@@ -1828,20 +1836,76 @@ class _BeliefBattleCoordinator:
                 p2_name=p2_name,
                 seed=session_seed,
             )
+            raw_session_id = started.get("session_id")
+            if not isinstance(raw_session_id, str) or not raw_session_id:
+                raise RuntimeError(
+                    "Showdown worker returned an invalid live session identifier"
+                )
+            session_id = raw_session_id
         except ShowdownWorkerTimeout as error:
             if error.mutating:
-                self._worker.abort(timeout_seconds=0.25)
                 with self._state_lock:
-                    self._turn_state = SealedTurnState.CLOSED
+                    if self._turn_state is SealedTurnState.STARTING:
+                        self._turn_state = SealedTurnState.CLOSED
+                self._worker.abort(timeout_seconds=0.25)
                 raise RuntimeError(
                     "live session start timed out with unknown outcome; "
                     "create a new battle"
                 ) from error
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.STARTING:
+                    self._turn_state = SealedTurnState.NEW
+            raise
+        except ShowdownRequestError as error:
+            if error.safe_retry:
+                with self._state_lock:
+                    if self._turn_state is SealedTurnState.STARTING:
+                        self._turn_state = SealedTurnState.NEW
+                raise
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.STARTING:
+                    self._turn_state = SealedTurnState.CLOSED
+            self._worker.abort(timeout_seconds=0.25)
+            raise
+        except Exception:
+            # Any other failure after entering a mutating live request is
+            # conservatively treated as ambiguous. Do not permit another
+            # start on the same transport.
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.STARTING:
+                    self._turn_state = SealedTurnState.CLOSED
+            self._worker.abort(timeout_seconds=0.25)
             raise
 
         with self._state_lock:
-            self._session_id = str(started["session_id"])
-            self._turn_state = SealedTurnState.PREVIEW
+            if self._turn_state is not SealedTurnState.STARTING:
+                state = self._turn_state
+            else:
+                self._session_id = session_id
+                self._turn_state = SealedTurnState.PREVIEW
+                return
+
+        # close() or another terminal transition won the race after the
+        # worker created the session. Never resurrect coordinator ownership.
+        cleanup_error: Exception | None = None
+        try:
+            self._worker.close_session(session_id)
+        except Exception as error:
+            cleanup_error = error
+        finally:
+            self._worker.close()
+        raise RuntimeError(
+            "battle state changed during session startup; "
+            f"state is {state.value}"
+        ) from cleanup_error
+
+    def _invalidate_preview_session(self) -> None:
+        """Abandon a preview-mutated live session that cannot be reconciled."""
+        with self._state_lock:
+            if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
+                self._turn_state = SealedTurnState.RESTART_REQUIRED
+                self._session_id = None
+        self._worker.abort(timeout_seconds=0.25)
 
     def submit_preview(
         self,
@@ -1851,8 +1915,14 @@ class _BeliefBattleCoordinator:
     ) -> None:
         with self._state_lock:
             if self._turn_state is not SealedTurnState.PREVIEW:
-                raise RuntimeError("battle is not awaiting preview choices")
+                raise RuntimeError(
+                    "battle is not awaiting preview choices; "
+                    f"state is {self._turn_state.value}"
+                )
             session_id = self._require_session()
+            # Preview choice submission mutates the authoritative live session.
+            # Claim it before releasing the lock so only one caller owns it.
+            self._turn_state = SealedTurnState.PREVIEW_SUBMITTING
 
         try:
             self._worker.choose_session(
@@ -1862,20 +1932,49 @@ class _BeliefBattleCoordinator:
             )
         except ShowdownWorkerTimeout as error:
             if error.mutating:
-                with self._state_lock:
-                    self._turn_state = SealedTurnState.UNKNOWN
+                self._invalidate_preview_session()
                 raise RuntimeError(
                     "preview submission timed out with unknown outcome; "
                     "restart the battle before submitting again"
                 ) from error
+            with self._state_lock:
+                if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
+                    self._turn_state = SealedTurnState.PREVIEW
+            raise
+        except ShowdownRequestError as error:
+            if error.safe_retry:
+                with self._state_lock:
+                    if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
+                        self._turn_state = SealedTurnState.PREVIEW
+            else:
+                self._invalidate_preview_session()
+            raise
+        except Exception:
+            self._invalidate_preview_session()
             raise
 
-        view = self._worker.session_view(session_id, side="p2")["view"]
-        self._engine.initialize_preview(
-            view=view,
-            ai_choice=ai_choice,
-        )
+        try:
+            view = self._worker.session_view(session_id, side="p2")["view"]
+            self._engine.initialize_preview(
+                view=view,
+                ai_choice=ai_choice,
+            )
+        except Exception as error:
+            # The live preview mutation already succeeded. Without a verified
+            # public observation and initialized belief state, resubmission
+            # could double-apply preview. Fail closed and require a new battle.
+            self._invalidate_preview_session()
+            raise RuntimeError(
+                "preview was submitted but post-submit initialization failed; "
+                "restart the battle"
+            ) from error
+
         with self._state_lock:
+            if self._turn_state is not SealedTurnState.PREVIEW_SUBMITTING:
+                raise RuntimeError(
+                    "battle state changed during preview submission; "
+                    f"state is {self._turn_state.value}"
+                )
             self._turn_state = (
                 SealedTurnState.TERMINAL
                 if bool(view.get("ended"))
@@ -1893,6 +1992,8 @@ class _BeliefBattleCoordinator:
     def human_legal_choices(self) -> list[str]:
         with self._state_lock:
             if self._turn_state in {
+                SealedTurnState.STARTING,
+                SealedTurnState.PREVIEW_SUBMITTING,
                 SealedTurnState.FAILED,
                 SealedTurnState.UNKNOWN,
                 SealedTurnState.RESTART_REQUIRED,

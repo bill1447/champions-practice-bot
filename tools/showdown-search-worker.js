@@ -1220,6 +1220,16 @@ function branchMany(request) {
   };
 }
 
+function markSafeRetry(error) {
+  if (error instanceof Error) {
+    error.safeRetry = true;
+    return error;
+  }
+  const wrapped = new Error(String(error));
+  wrapped.safeRetry = true;
+  return wrapped;
+}
+
 function getSession(sessionId) {
   const battle = sessions.get(sessionId);
   if (!battle) {
@@ -1231,17 +1241,30 @@ function getSession(sessionId) {
 function startSession(request) {
   const battle = new Battle(battleOptions(request));
   const sessionId = `session-${nextSessionId++}`;
-  const previews = {
-    p1: battle.p1.pokemon.map((mon) => mon.set.species),
-    p2: battle.p2.pokemon.map((mon) => mon.set.species),
-  };
-  sessions.set(sessionId, battle);
-  sessionPreviewSpecies.set(sessionId, previews);
+  try {
+    const previews = {
+      p1: battle.p1.pokemon.map((mon) => mon.set.species),
+      p2: battle.p2.pokemon.map((mon) => mon.set.species),
+    };
+    const view = playerView(battle, "p1", previews);
 
-  return {
-    session_id: sessionId,
-    view: playerView(battle, "p1", previews),
-  };
+    // Do not publish ownership until every response component is built.
+    // A thrown serialization/view error must not leave an unreachable live session.
+    sessions.set(sessionId, battle);
+    sessionPreviewSpecies.set(sessionId, previews);
+    return {
+      session_id: sessionId,
+      view,
+    };
+  } catch (error) {
+    try {
+      battle.destroy();
+    } finally {
+      sessions.delete(sessionId);
+      sessionPreviewSpecies.delete(sessionId);
+    }
+    throw markSafeRetry(error);
+  }
 }
 
 function sessionView(request) {
@@ -1291,29 +1314,38 @@ function sessionChoose(request) {
     throw new Error("session_choose requires p1_choice and p2_choice strings");
   }
 
-  // Battle#makeChoices submits sides sequentially. If the second choice throws,
-  // the first side may already have a queued private choice in the live battle.
-  // Make the operation transactional so a rejected joint command cannot leave
-  // partially submitted human information behind for a later AI reseal/retry.
+  // Battle#makeChoices submits sides sequentially. If either choice or the
+  // response-view construction throws, restore the exact pre-submit snapshot.
+  // An explicit request error must therefore mean the live mutation did not stick.
   const before = battle.toJSON();
   try {
     battle.makeChoices(request.p1_choice, request.p2_choice);
-  } catch (error) {
-    battle.destroy();
-    const restored = Battle.fromJSON(JSON.stringify(before));
-    restored.restart(() => {});
-    sessions.set(request.session_id, restored);
-    throw error;
-  }
-
-  return {
-    session_id: request.session_id,
-    view: playerView(
+    const view = playerView(
       battle,
       "p1",
       sessionPreviewSpecies.get(request.session_id),
-    ),
-  };
+    );
+    return {
+      session_id: request.session_id,
+      view,
+    };
+  } catch (error) {
+    try {
+      battle.destroy();
+      const restored = Battle.fromJSON(JSON.stringify(before));
+      restored.restart(() => {});
+      sessions.set(request.session_id, restored);
+    } catch (rollbackError) {
+      sessions.delete(request.session_id);
+      sessionPreviewSpecies.delete(request.session_id);
+      throw new Error(
+        `session_choose rollback failed: ${
+          rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+        }`,
+      );
+    }
+    throw markSafeRetry(error);
+  }
 }
 
 function closeSession(request) {
@@ -1392,6 +1424,7 @@ rl.on("line", (line) => {
         id,
         ok: false,
         error: error instanceof Error ? error.message : String(error),
+        safe_retry: error instanceof Error && error.safeRetry === true,
       }) + "\n",
     );
   }
