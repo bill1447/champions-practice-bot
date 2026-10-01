@@ -327,12 +327,24 @@ class _TypedRecoveryWorker:
     ):
         assert p1_preview == "team 12"
         assert p2_preview == "team 1"
-        return self.validate_recovery_stat_candidate(
-            state=candidate_state,
-            side=side,
-            pokemon_index=pokemon_index,
-            stat_points=stat_points,
-        )
+        assert side == "p1"
+        expected = copy.deepcopy(preopening_state)
+        target = expected["sides"][0]["pokemon"][pokemon_index]
+        target["set"]["evs"] = dict(stat_points)
+        target["baseStoredStats"] = {
+            "hp": 200,
+            "atk": 100 + stat_points["atk"],
+            "def": 100 + stat_points["def"],
+            "spa": 100 + stat_points["spa"],
+            "spd": 100 + stat_points["spd"],
+            "spe": 100 + stat_points["spe"],
+        }
+        target["storedStats"] = {
+            stat: target["baseStoredStats"][stat]
+            for stat in ("atk", "def", "spa", "spd", "spe")
+        }
+        target["speed"] = target["storedStats"]["spe"]
+        return candidate_state == expected
 
     def state_view(self, *, state, side, previews=None):
         assert side == "p2"
