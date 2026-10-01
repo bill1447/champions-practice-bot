@@ -37,6 +37,7 @@ from champions_practice.observation_beliefs import (
     resample_particles_by_world,
 )
 from champions_practice.search_worker import (
+    FORCED_WAIT_CHOICE,
     HypotheticalSearchWorker,
     ShowdownRequestError,
     ShowdownSearchWorker,
@@ -2203,9 +2204,15 @@ class _BeliefBattleCoordinator:
 
         try:
             legal_live = self._ai_preseal_choices()
-            if legal_live == [""]:
+            if FORCED_WAIT_CHOICE in legal_live and legal_live != [
+                FORCED_WAIT_CHOICE
+            ]:
+                raise RuntimeError(
+                    "forced-wait token must be the only publicly selectable choice"
+                )
+            if legal_live == [FORCED_WAIT_CHOICE]:
                 decision = BeliefDecision(
-                    choice="",
+                    choice=FORCED_WAIT_CHOICE,
                     mode="forced-wait",
                     particle_count=len(self._engine.particles),
                     candidate_count=1,
