@@ -1856,12 +1856,16 @@ class _BeliefBattleCoordinator:
                 if self._turn_state is SealedTurnState.STARTING:
                     self._turn_state = SealedTurnState.NEW
             raise
-        except ShowdownRequestError:
-            # A worker response that explicitly rejected session_start is a
-            # known non-created session, so retry from NEW is safe.
+        except ShowdownRequestError as error:
+            if error.safe_retry:
+                with self._state_lock:
+                    if self._turn_state is SealedTurnState.STARTING:
+                        self._turn_state = SealedTurnState.NEW
+                raise
             with self._state_lock:
                 if self._turn_state is SealedTurnState.STARTING:
-                    self._turn_state = SealedTurnState.NEW
+                    self._turn_state = SealedTurnState.CLOSED
+            self._worker.abort(timeout_seconds=0.25)
             raise
         except Exception:
             # Any other failure after entering a mutating live request is
@@ -1931,12 +1935,14 @@ class _BeliefBattleCoordinator:
                 if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
                     self._turn_state = SealedTurnState.PREVIEW
             raise
-        except ShowdownRequestError:
-            # session_choose is transactional: an explicit worker rejection
-            # restores the pre-submit live snapshot, so PREVIEW is retryable.
+        except ShowdownRequestError as error:
             with self._state_lock:
                 if self._turn_state is SealedTurnState.PREVIEW_SUBMITTING:
-                    self._turn_state = SealedTurnState.PREVIEW
+                    self._turn_state = (
+                        SealedTurnState.PREVIEW
+                        if error.safe_retry
+                        else SealedTurnState.RESTART_REQUIRED
+                    )
             raise
         except Exception:
             with self._state_lock:
