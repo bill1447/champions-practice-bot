@@ -195,6 +195,8 @@ class _HostileMaterializer:
         root_state,
         p1_preview,
         p2_preview,
+        p1_root_to_input,
+        p2_root_to_input,
     ):
         return self.worker.validate_recovery_opening_authority(
             battle_format=battle_format,
@@ -206,6 +208,8 @@ class _HostileMaterializer:
             root_state=root_state,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
+            p1_root_to_input=p1_root_to_input,
+            p2_root_to_input=p2_root_to_input,
         )
 
     def validate_recovery_opening_stat_candidate(
