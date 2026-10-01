@@ -10,7 +10,10 @@ The live session's exact hidden state is never an input to this API.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+import hashlib
+import json
+from copy import deepcopy
+from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Literal, Protocol
 
@@ -41,19 +44,58 @@ class RecoveryObservation:
 
 @dataclass(frozen=True)
 class RecoveryRequest:
-    """Inputs available to a recovery candidate generator.
-
-    checkpoint_particles are the engine's last-good hypothetical belief states.
-    checkpoint_public_view and observations are sanitized public information.
-    No live-session worker, session identifier, or authoritative hidden state is
-    exposed to candidate generation.
-    """
+    """Trusted last-good checkpoint plus sanitized retained public evidence."""
 
     checkpoint_particles: tuple[BeliefParticle, ...]
     checkpoint_public_view: dict[str, Any]
     observations: tuple[RecoveryObservation, ...]
     ai_side: SideId
     previews: dict[str, list[str]] | None = None
+    _authority_fingerprint: str = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "_authority_fingerprint",
+            _recovery_request_fingerprint(self),
+        )
+
+
+def _stable_json_hash(value: object) -> str:
+    encoded = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
+    payload = {
+        "checkpoint_particles": [
+            {
+                "state": particle.state,
+                "weight": particle.weight,
+                "world_id": particle.world_id,
+                "history_id": particle.history_id,
+            }
+            for particle in request.checkpoint_particles
+        ],
+        "checkpoint_public_view": request.checkpoint_public_view,
+        "observations": [
+            {
+                "ai_choice": observation.ai_choice,
+                "resolved_opponent_choice": observation.resolved_opponent_choice,
+                "previous_public_view": observation.previous_public_view,
+                "public_view": observation.public_view,
+            }
+            for observation in request.observations
+        ],
+        "ai_side": request.ai_side,
+        "previews": request.previews,
+    }
+    return _stable_json_hash(payload)
 
 
 @dataclass(frozen=True)
@@ -80,7 +122,7 @@ class RecoveryMaterializationFailure:
 
 @dataclass(frozen=True)
 class RecoveryMaterializationReport:
-    candidates: tuple["RecoveryCandidate", ...]
+    candidates: tuple["_MaterializedStatCandidate", ...]
     failures: tuple[RecoveryMaterializationFailure, ...]
 
 
@@ -272,27 +314,17 @@ def _bounded_non_hp_stat_variants(
 
 
 @dataclass(frozen=True)
-class RecoveryCandidate:
-    """One proposed hidden-world variant at the last-good checkpoint."""
+class _MaterializedStatCandidate:
+    """Internal result of trusted Showdown stat materialization.
+
+    Public recovery authority APIs never accept this serialized state from callers.
+    """
 
     candidate_id: str
     parent_particle_index: int
     particle: BeliefParticle
     source: str
     changed_hidden_dimensions: tuple[str, ...] = ()
-
-
-class RecoveryCandidateGenerator(Protocol):
-    """Public/belief-only proposal boundary.
-
-    Generators receive RecoveryRequest only. Mechanics authority belongs to
-    validate_recovery_candidates(), which uses a hypothetical Showdown worker.
-    """
-
-    def generate(
-        self,
-        request: RecoveryRequest,
-    ) -> tuple[RecoveryCandidate, ...]: ...
 
 
 class RecoveryStatMaterializationWorker(Protocol):
@@ -304,6 +336,43 @@ class RecoveryStatMaterializationWorker(Protocol):
         state: dict[str, Any],
         side: str,
         proposals: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]: ...
+
+
+class RecoveryStatValidationWorker(
+    RecoveryStatMaterializationWorker,
+    Protocol,
+):
+    """Typed stat recovery needs materialization plus hypothetical replay."""
+
+    def state_view(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        previews: dict[str, list[str]] | None = None,
+    ) -> dict[str, Any]: ...
+
+    def validate_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        candidates: list[str],
+    ) -> list[str]: ...
+
+    def legal_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+    ) -> list[str]: ...
+
+    def branch_many(
+        self,
+        *,
+        state: dict[str, Any],
+        branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]: ...
 
 
@@ -341,7 +410,82 @@ class RecoveryReplayWorker(Protocol):
     ) -> list[dict[str, Any]]: ...
 
 
-def materialize_stat_proposals(
+def _validate_typed_stat_proposal(
+    *,
+    request: RecoveryRequest,
+    proposal: OpponentStatProposal,
+) -> None:
+    if not 0 <= proposal.parent_particle_index < len(
+        request.checkpoint_particles
+    ):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has invalid parent"
+        )
+    parent = request.checkpoint_particles[proposal.parent_particle_index]
+    target = _target_pokemon(
+        parent.state,
+        ai_side=request.ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    set_data = target.get("set")
+    if not isinstance(set_data, dict):
+        raise ValueError("stat proposal target is missing set data")
+
+    species = str(set_data.get("species") or set_data.get("name") or "")
+    if _id(species) != _id(proposal.species):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} species does not match parent"
+        )
+    if _id(species) not in _publicly_seen_opponent_species(
+        request.checkpoint_public_view
+    ):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} targets an unseen opponent"
+        )
+
+    parent_points = _stat_points_from_set(set_data)
+    points = proposal.stat_point_dict
+    if set(points) != set(_RECOVERY_STATS):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} must specify all six stats"
+        )
+    if any(
+        not isinstance(points[stat], int)
+        or points[stat] < 0
+        or points[stat] > CHAMPIONS_STAT_POINT_CAP
+        for stat in _RECOVERY_STATS
+    ):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has invalid stat points"
+        )
+    if sum(points.values()) > CHAMPIONS_TOTAL_STAT_POINTS:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} exceeds the total stat cap"
+        )
+    if points["hp"] != parent_points["hp"]:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} changes HP points"
+        )
+
+    changed = tuple(
+        stat
+        for stat in _RECOVERY_NON_HP_STATS
+        if points[stat] != parent_points[stat]
+    )
+    if not changed:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} changes no recoverable stat"
+        )
+    expected_dimensions = tuple(
+        f"opponent.{_id(species)}.stat_points.{stat}" for stat in changed
+    )
+    if proposal.changed_hidden_dimensions != expected_dimensions:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has inconsistent dimensions"
+        )
+
+
+def _materialize_stat_proposals(
     worker: RecoveryStatMaterializationWorker,
     *,
     request: RecoveryRequest,
@@ -354,21 +498,16 @@ def materialize_stat_proposals(
     opponent_side = "p2" if request.ai_side == "p1" else "p1"
     grouped: dict[int, list[OpponentStatProposal]] = {}
     for proposal in proposals:
-        if not 0 <= proposal.parent_particle_index < len(
-            request.checkpoint_particles
-        ):
-            raise ValueError(
-                f"stat proposal {proposal.proposal_id!r} has invalid parent"
-            )
+        _validate_typed_stat_proposal(request=request, proposal=proposal)
         grouped.setdefault(proposal.parent_particle_index, []).append(proposal)
 
-    candidates: list[RecoveryCandidate] = []
+    candidates: list[_MaterializedStatCandidate] = []
     failures: list[RecoveryMaterializationFailure] = []
     for parent_index in sorted(grouped):
         parent = request.checkpoint_particles[parent_index]
         batch = grouped[parent_index]
         resolved = worker.materialize_recovery_stat_proposals(
-            state=parent.state,
+            state=deepcopy(parent.state),
             side=opponent_side,
             proposals=[
                 {
@@ -393,7 +532,7 @@ def materialize_stat_proposals(
             state = result.get("state")
             if isinstance(state, dict):
                 candidates.append(
-                    RecoveryCandidate(
+                    _MaterializedStatCandidate(
                         candidate_id=proposal.proposal_id,
                         parent_particle_index=proposal.parent_particle_index,
                         particle=BeliefParticle(
@@ -427,6 +566,7 @@ def materialize_stat_proposals(
 
 
 class RecoveryCandidateStatus(str, Enum):
+    UNAUTHORIZED_STATE_DELTA = "unauthorized-state-delta"
     KNOWN_STATE_MISMATCH = "known-state-mismatch"
     CHECKPOINT_MISMATCH = "checkpoint-mismatch"
     REPLAY_MISMATCH = "replay-mismatch"
@@ -435,7 +575,7 @@ class RecoveryCandidateStatus(str, Enum):
 
 @dataclass(frozen=True)
 class RecoveryCandidateValidation:
-    candidate: RecoveryCandidate
+    candidate: _MaterializedStatCandidate
     status: RecoveryCandidateStatus
     checkpoint_compatible: bool
     observations_replayed: int
@@ -450,9 +590,10 @@ class RecoveryCandidateValidation:
 
 @dataclass(frozen=True)
 class RecoveryValidationReport:
-    """Validation evidence only; there is deliberately no install/apply operation."""
+    """Typed stat-recovery evidence; there is no install/apply operation."""
 
     candidate_results: tuple[RecoveryCandidateValidation, ...]
+    materialization_failures: tuple[RecoveryMaterializationFailure, ...] = ()
 
     @property
     def validated_candidates(self) -> tuple[RecoveryCandidateValidation, ...]:
@@ -473,6 +614,8 @@ def _validate_request(
     request: RecoveryRequest,
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> None:
+    if _recovery_request_fingerprint(request) != request._authority_fingerprint:
+        raise ValueError("recovery request authority inputs were mutated")
     if request.ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
     if not request.observations:
@@ -501,6 +644,107 @@ def _validate_request(
         )
 
 
+def _opponent_side_index(ai_side: SideId) -> int:
+    return 1 if ai_side == "p1" else 0
+
+
+def _target_pokemon(
+    state: dict[str, Any],
+    *,
+    ai_side: SideId,
+    pokemon_index: int,
+) -> dict[str, Any]:
+    sides = state.get("sides")
+    side_index = _opponent_side_index(ai_side)
+    if not isinstance(sides, list) or len(sides) <= side_index:
+        raise ValueError("recovery state is missing opponent side data")
+    side = sides[side_index]
+    if not isinstance(side, dict):
+        raise ValueError("recovery opponent side is invalid")
+    pokemon = side.get("pokemon")
+    if not isinstance(pokemon, list) or not 0 <= pokemon_index < len(pokemon):
+        raise ValueError("recovery proposal targets an invalid opponent Pokemon")
+    target = pokemon[pokemon_index]
+    if not isinstance(target, dict):
+        raise ValueError("recovery target Pokemon is invalid")
+    return target
+
+
+def _state_without_allowed_stat_delta(
+    state: dict[str, Any],
+    *,
+    ai_side: SideId,
+    pokemon_index: int,
+) -> dict[str, Any]:
+    reduced = deepcopy(state)
+    target = _target_pokemon(
+        reduced,
+        ai_side=ai_side,
+        pokemon_index=pokemon_index,
+    )
+    set_data = target.get("set")
+    if not isinstance(set_data, dict):
+        raise ValueError("recovery target Pokemon is missing set data")
+    set_data.pop("evs", None)
+    target.pop("baseStoredStats", None)
+    target.pop("storedStats", None)
+    target.pop("speed", None)
+    return reduced
+
+
+def _stat_candidate_delta_authorized(
+    *,
+    parent: BeliefParticle,
+    candidate: _MaterializedStatCandidate,
+    proposal: OpponentStatProposal,
+    ai_side: SideId,
+) -> bool:
+    if candidate.parent_particle_index != proposal.parent_particle_index:
+        return False
+    if candidate.candidate_id != proposal.proposal_id:
+        return False
+
+    parent_target = _target_pokemon(
+        parent.state,
+        ai_side=ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    candidate_target = _target_pokemon(
+        candidate.particle.state,
+        ai_side=ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    parent_set = parent_target.get("set")
+    candidate_set = candidate_target.get("set")
+    if not isinstance(parent_set, dict) or not isinstance(candidate_set, dict):
+        return False
+
+    try:
+        parent_points = _stat_points_from_set(parent_set)
+        candidate_points = _stat_points_from_set(candidate_set)
+    except ValueError:
+        return False
+    candidate_raw_points = candidate_set.get("evs")
+    if candidate_raw_points != proposal.stat_point_dict:
+        return False
+    if candidate_points != proposal.stat_point_dict:
+        return False
+    if candidate_points["hp"] != parent_points["hp"]:
+        return False
+
+    parent_reduced = _state_without_allowed_stat_delta(
+        parent.state,
+        ai_side=ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    candidate_reduced = _state_without_allowed_stat_delta(
+        candidate.particle.state,
+        ai_side=ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    return parent_reduced == candidate_reduced
+
+
 def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
     sides = state.get("sides")
     index = 0 if ai_side == "p1" else 1
@@ -509,22 +753,20 @@ def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
     return sides[index]
 
 
-def validate_recovery_candidates(
+def _validate_materialized_stat_candidates(
     worker: RecoveryReplayWorker,
     *,
     request: RecoveryRequest,
-    candidates: tuple[RecoveryCandidate, ...],
+    candidates: tuple[_MaterializedStatCandidate, ...],
+    proposals_by_id: dict[str, OpponentStatProposal],
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> RecoveryValidationReport:
-    """Replay candidate checkpoint states through all retained public evidence.
+    """Validate only Showdown-materialized typed stat proposals.
 
-    A proposal is valid only when:
-      1. the AI's known exact side is unchanged from its last-good parent,
-      2. its checkpoint state reproduces the last-good public view, and
-      3. pinned mechanics replay reproduces every queued observation in order.
-
-    Candidate metadata, mismatch classification, or final-board similarity never
-    authorizes a state. This function does not mutate the live belief engine.
+    The serialized candidate is not trusted merely because it came back from a
+    proposal step. Before any public replay, its delta from the trusted parent
+    must be confined to the target Pokemon's set.evs plus simulator-derived
+    base/stored stat and speed fields.
     """
     _validate_request(request, rng_seeds_by_observation)
 
@@ -538,6 +780,11 @@ def validate_recovery_candidates(
     results: list[RecoveryCandidateValidation] = []
 
     for candidate in candidates:
+        proposal = proposals_by_id.get(candidate.candidate_id)
+        if proposal is None:
+            raise ValueError(
+                f"materialized candidate {candidate.candidate_id!r} has no typed proposal"
+            )
         if not 0 <= candidate.parent_particle_index < len(
             request.checkpoint_particles
         ):
@@ -545,6 +792,23 @@ def validate_recovery_candidates(
                 f"recovery candidate {candidate.candidate_id!r} has invalid parent"
             )
         parent = request.checkpoint_particles[candidate.parent_particle_index]
+        if not _stat_candidate_delta_authorized(
+            parent=parent,
+            candidate=candidate,
+            proposal=proposal,
+            ai_side=request.ai_side,
+        ):
+            results.append(
+                RecoveryCandidateValidation(
+                    candidate=candidate,
+                    status=RecoveryCandidateStatus.UNAUTHORIZED_STATE_DELTA,
+                    checkpoint_compatible=False,
+                    observations_replayed=0,
+                    generated_branches=0,
+                    matched_branches=0,
+                )
+            )
+            continue
         if _exact_ai_side(candidate.particle.state, request.ai_side) != _exact_ai_side(
             parent.state,
             request.ai_side,
@@ -625,3 +889,41 @@ def validate_recovery_candidates(
         )
 
     return RecoveryValidationReport(tuple(results))
+
+
+def validate_stat_recovery_proposals(
+    worker: RecoveryStatValidationWorker,
+    *,
+    request: RecoveryRequest,
+    proposals: tuple[OpponentStatProposal, ...],
+    rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
+) -> RecoveryValidationReport:
+    """Materialize and validate typed stat proposals from trusted parents.
+
+    Callers cannot supply serialized candidate states. The only candidate states
+    considered for authority are produced internally from request checkpoint
+    parents by the hypothetical Showdown stat materializer, then checked against
+    a strict serialized-state delta allowlist before replay.
+    """
+    _validate_request(request, rng_seeds_by_observation)
+    proposal_ids = [proposal.proposal_id for proposal in proposals]
+    if len(proposal_ids) != len(set(proposal_ids)):
+        raise ValueError("recovery stat proposal ids must be unique")
+
+    materialized = _materialize_stat_proposals(
+        worker,
+        request=request,
+        proposals=proposals,
+    )
+    _validate_request(request, rng_seeds_by_observation)
+    validated = _validate_materialized_stat_candidates(
+        worker,
+        request=request,
+        candidates=materialized.candidates,
+        proposals_by_id={proposal.proposal_id: proposal for proposal in proposals},
+        rng_seeds_by_observation=rng_seeds_by_observation,
+    )
+    return RecoveryValidationReport(
+        candidate_results=validated.candidate_results,
+        materialization_failures=materialized.failures,
+    )

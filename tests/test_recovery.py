@@ -4,92 +4,23 @@ import copy
 
 import pytest
 
+import champions_practice.recovery as recovery
 from champions_practice.observation_beliefs import BeliefParticle
 from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     OpponentStatProposal,
-    RecoveryCandidate,
     RecoveryCandidateStatus,
     RecoveryObservation,
     RecoveryRequest,
-    materialize_stat_proposals,
-    validate_recovery_candidates,
+    validate_stat_recovery_proposals,
 )
 
 
-class _RecoveryWorker:
-    def __init__(self, *, checkpoints, transitions) -> None:
-        self.checkpoints = checkpoints
-        self.transitions = transitions
-        self.branch_calls = 0
-
-    def state_view(self, *, state, side, previews=None):
-        assert side == "p2"
-        return self.checkpoints[state["id"]]
-
-    def validate_choices(self, *, state, side, candidates):
-        assert side == "p1"
-        return list(candidates)
-
-    def legal_choices(self, *, state, side):
-        return ["move human"]
-
-    def branch_many(self, *, state, branches):
-        self.branch_calls += 1
-        step = int(state.get("step", 0)) + 1
-        view = self.transitions[(state["id"], step)]
-        return [
-            {
-                "state": {"id": state["id"], "step": step},
-                "view": view,
-            }
-            for _branch in branches
-        ]
-
-
-def _request() -> RecoveryRequest:
-    checkpoint = {
+def _parent_state() -> dict:
+    return {
+        "test_step": 0,
         "turn": 1,
-        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 100}]},
-    }
-    first = {
-        "turn": 2,
-        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 80}]},
-    }
-    second = {
-        "turn": 3,
-        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 60}]},
-    }
-    return RecoveryRequest(
-        checkpoint_particles=(
-            BeliefParticle(
-                {"id": "original", "sides": [{"foe": "base"}, {"own": "fixed"}]},
-                1.0,
-                world_id="world-1",
-            ),
-        ),
-        checkpoint_public_view=checkpoint,
-        observations=(
-            RecoveryObservation(
-                ai_choice="move ai",
-                resolved_opponent_choice="move human",
-                previous_public_view=checkpoint,
-                public_view=first,
-            ),
-            RecoveryObservation(
-                ai_choice="move ai",
-                resolved_opponent_choice="move human",
-                previous_public_view=first,
-                public_view=second,
-            ),
-        ),
-        ai_side="p2",
-        previews={"p1": ["Snorlax"], "p2": ["Indeedee-F"]},
-    )
-
-
-def _stat_request() -> RecoveryRequest:
-    state = {
+        "queue": [],
         "sides": [
             {
                 "pokemon": [
@@ -104,7 +35,27 @@ def _stat_request() -> RecoveryRequest:
                                 "spd": 0,
                                 "spe": 32,
                             },
-                        }
+                        },
+                        "baseStoredStats": {
+                            "hp": 200,
+                            "atk": 100,
+                            "def": 100,
+                            "spa": 132,
+                            "spd": 100,
+                            "spe": 132,
+                        },
+                        "storedStats": {
+                            "atk": 100,
+                            "def": 100,
+                            "spa": 132,
+                            "spd": 100,
+                            "spe": 132,
+                        },
+                        "speed": 132,
+                        "hp": 200,
+                        "maxhp": 200,
+                        "timesAttacked": 0,
+                        "moveSlots": [{"id": "bodyslam", "pp": 24}],
                     },
                     {
                         "set": {
@@ -121,21 +72,57 @@ def _stat_request() -> RecoveryRequest:
                     },
                 ]
             },
-            {"pokemon": [{"set": {"species": "Indeedee-F", "evs": {}}}]},
-        ]
+            {
+                "pokemon": [
+                    {
+                        "set": {"species": "Indeedee-F", "evs": {}},
+                        "hp": 180,
+                        "maxhp": 180,
+                    }
+                ]
+            },
+        ],
     }
-    checkpoint = {
+
+
+def _checkpoint() -> dict:
+    return {
         "turn": 1,
         "opponent": {
+            "active": [{"species": "Snorlax", "hp_percent": 100}],
             "revealed": [
                 {"species": "Snorlax", "seen": True},
                 {"species": "Shuckle", "seen": False},
-            ]
+            ],
         },
     }
+
+
+def _first_view() -> dict:
+    return {
+        "turn": 2,
+        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 80}]},
+    }
+
+
+def _second_view() -> dict:
+    return {
+        "turn": 3,
+        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 60}]},
+    }
+
+
+def _request() -> RecoveryRequest:
+    checkpoint = _checkpoint()
+    first = _first_view()
     return RecoveryRequest(
         checkpoint_particles=(
-            BeliefParticle(state, 1.0, world_id="stat-parent"),
+            BeliefParticle(
+                _parent_state(),
+                1.0,
+                world_id="stat-parent",
+                history_id="checkpoint",
+            ),
         ),
         checkpoint_public_view=checkpoint,
         observations=(
@@ -143,7 +130,13 @@ def _stat_request() -> RecoveryRequest:
                 ai_choice="move ai",
                 resolved_opponent_choice="move human",
                 previous_public_view=checkpoint,
-                public_view={"turn": 2},
+                public_view=first,
+            ),
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=first,
+                public_view=_second_view(),
             ),
         ),
         ai_side="p2",
@@ -151,8 +144,145 @@ def _stat_request() -> RecoveryRequest:
     )
 
 
+def _proposal(
+    proposal_id: str,
+    *,
+    atk: int,
+    defense: int = 0,
+    spa: int,
+) -> OpponentStatProposal:
+    changed = []
+    if atk != 0:
+        changed.append("atk")
+    if defense != 0:
+        changed.append("def")
+    if spa != 32:
+        changed.append("spa")
+    return OpponentStatProposal(
+        proposal_id=proposal_id,
+        parent_particle_index=0,
+        pokemon_index=0,
+        species="Snorlax",
+        stat_points=(
+            ("hp", 2),
+            ("atk", atk),
+            ("def", defense),
+            ("spa", spa),
+            ("spd", 0),
+            ("spe", 32),
+        ),
+        changed_hidden_dimensions=tuple(
+            f"opponent.snorlax.stat_points.{stat}" for stat in changed
+        ),
+    )
+
+
+class _TypedRecoveryWorker:
+    def __init__(
+        self,
+        *,
+        hostile_delta: str | None = None,
+        reject_ids: set[str] | None = None,
+    ) -> None:
+        self.hostile_delta = hostile_delta
+        self.reject_ids = reject_ids or set()
+        self.branch_calls = 0
+
+    def materialize_recovery_stat_proposals(self, *, state, side, proposals):
+        assert side == "p1"
+        resolved = []
+        for proposal in proposals:
+            proposal_id = proposal["proposal_id"]
+            if proposal_id in self.reject_ids:
+                resolved.append(
+                    {"proposal_id": proposal_id, "rejected": "unsafe-fixture"}
+                )
+                continue
+
+            candidate = copy.deepcopy(state)
+            target = candidate["sides"][0]["pokemon"][proposal["pokemon_index"]]
+            points = dict(proposal["stat_points"])
+            target["set"]["evs"] = points
+            target["baseStoredStats"] = {
+                "hp": 200,
+                "atk": 100 + points["atk"],
+                "def": 100 + points["def"],
+                "spa": 100 + points["spa"],
+                "spd": 100 + points["spd"],
+                "spe": 100 + points["spe"],
+            }
+            target["storedStats"] = {
+                stat: target["baseStoredStats"][stat]
+                for stat in ("atk", "def", "spa", "spd", "spe")
+            }
+            target["speed"] = target["storedStats"]["spe"]
+
+            if self.hostile_delta == "timesAttacked":
+                target["timesAttacked"] = 99
+            elif self.hostile_delta == "queue":
+                candidate["queue"] = [{"choice": "forged"}]
+            elif self.hostile_delta == "pp":
+                target["moveSlots"][0]["pp"] = 1
+
+            resolved.append({"proposal_id": proposal_id, "state": candidate})
+        return resolved
+
+    def state_view(self, *, state, side, previews=None):
+        assert side == "p2"
+        points = state["sides"][0]["pokemon"][0]["set"]["evs"]
+        if points["def"] == 32:
+            return {
+                "turn": 1,
+                "opponent": {
+                    "active": [{"species": "Snorlax", "hp_percent": 90}],
+                    "revealed": [{"species": "Snorlax", "seen": True}],
+                },
+            }
+        return _checkpoint()
+
+    def validate_choices(self, *, state, side, candidates):
+        assert side == "p1"
+        return list(candidates)
+
+    def legal_choices(self, *, state, side):
+        return ["move human"]
+
+    def branch_many(self, *, state, branches):
+        self.branch_calls += 1
+        points = state["sides"][0]["pokemon"][0]["set"]["evs"]
+        step = int(state.get("test_step", 0)) + 1
+        next_state = copy.deepcopy(state)
+        next_state["test_step"] = step
+
+        if points["atk"] == 32:
+            view = _first_view() if step == 1 else _second_view()
+        elif points["atk"] == 16:
+            view = (
+                _first_view()
+                if step == 1
+                else {
+                    "turn": 3,
+                    "opponent": {
+                        "active": [{"species": "Snorlax", "hp_percent": 61}]
+                    },
+                }
+            )
+        else:
+            view = {
+                "turn": step + 1,
+                "opponent": {
+                    "active": [{"species": "Snorlax", "hp_percent": 95}]
+                },
+            }
+
+        return [
+            {"state": copy.deepcopy(next_state), "view": copy.deepcopy(view)}
+            for _branch in branches
+        ]
+
+
 def test_bounded_stat_generator_only_broadens_seen_opponent_non_hp_points() -> None:
-    request = _stat_request()
+    request = _request()
     before = copy.deepcopy(request.checkpoint_particles[0].state)
     generator = BoundedOpponentStatProposalGenerator(max_proposals=64)
 
@@ -184,7 +314,7 @@ def test_bounded_stat_generator_only_broadens_seen_opponent_non_hp_points() -> N
 
 
 def test_bounded_stat_generator_is_deterministic_and_honors_limit() -> None:
-    request = _stat_request()
+    request = _request()
     generator = BoundedOpponentStatProposalGenerator(max_proposals=3)
 
     left = generator.generate(request)
@@ -195,156 +325,19 @@ def test_bounded_stat_generator_is_deterministic_and_honors_limit() -> None:
     assert len({proposal.proposal_id for proposal in left}) == 3
 
 
-class _MaterializationWorker:
-    def materialize_recovery_stat_proposals(self, *, state, side, proposals):
-        assert side == "p1"
-        resolved = []
-        for proposal in proposals:
-            if proposal["proposal_id"] == "reject":
-                resolved.append(
-                    {"proposal_id": proposal["proposal_id"], "rejected": "unsafe"}
-                )
-                continue
-            candidate = copy.deepcopy(state)
-            candidate["materialized"] = proposal["proposal_id"]
-            resolved.append(
-                {"proposal_id": proposal["proposal_id"], "state": candidate}
-            )
-        return resolved
-
-
-def test_stat_materialization_preserves_parent_identity_and_reports_rejections() -> None:
-    request = _stat_request()
-    proposals = (
-        OpponentStatProposal(
-            proposal_id="keep",
-            parent_particle_index=0,
-            pokemon_index=0,
-            species="Snorlax",
-            stat_points=(
-                ("hp", 2),
-                ("atk", 32),
-                ("def", 0),
-                ("spa", 0),
-                ("spd", 0),
-                ("spe", 32),
-            ),
-            changed_hidden_dimensions=(
-                "opponent.snorlax.stat_points.atk",
-                "opponent.snorlax.stat_points.spa",
-            ),
-        ),
-        OpponentStatProposal(
-            proposal_id="reject",
-            parent_particle_index=0,
-            pokemon_index=0,
-            species="Snorlax",
-            stat_points=(
-                ("hp", 2),
-                ("atk", 16),
-                ("def", 0),
-                ("spa", 16),
-                ("spd", 0),
-                ("spe", 32),
-            ),
-            changed_hidden_dimensions=(
-                "opponent.snorlax.stat_points.atk",
-                "opponent.snorlax.stat_points.spa",
-            ),
-        ),
-    )
-
-    report = materialize_stat_proposals(
-        _MaterializationWorker(),
-        request=request,
-        proposals=proposals,
-    )
-
-    assert len(report.candidates) == 1
-    candidate = report.candidates[0]
-    assert candidate.candidate_id == "keep"
-    assert candidate.parent_particle_index == 0
-    assert candidate.particle.world_id == "stat-parent"
-    assert candidate.particle.weight == 1.0
-    assert candidate.particle.state["materialized"] == "keep"
-    assert candidate.source == "bounded-opponent-stat-points"
-    assert len(report.failures) == 1
-    assert report.failures[0].proposal.proposal_id == "reject"
-    assert report.failures[0].reason == "unsafe"
-
-
-def test_recovery_requires_checkpoint_and_complete_history_replay() -> None:
+def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
     request = _request()
-    checkpoint = request.checkpoint_public_view
-    bad_checkpoint = {
-        "turn": 1,
-        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 90}]},
-    }
-    first = request.observations[0].public_view
-    second = request.observations[1].public_view
-    wrong_second = {
-        "turn": 3,
-        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 61}]},
-    }
-    worker = _RecoveryWorker(
-        checkpoints={
-            "good": checkpoint,
-            "late-mismatch": checkpoint,
-            "checkpoint-mismatch": bad_checkpoint,
-        },
-        transitions={
-            ("good", 1): first,
-            ("good", 2): second,
-            ("late-mismatch", 1): first,
-            ("late-mismatch", 2): wrong_second,
-        },
-    )
-    candidates = (
-        RecoveryCandidate(
-            "good",
-            0,
-            BeliefParticle(
-                {"id": "good", "sides": [{"foe": "variant"}, {"own": "fixed"}]},
-                1.0,
-                world_id="good",
-            ),
-            source="test-generator",
-            changed_hidden_dimensions=("opponent.atk",),
-        ),
-        RecoveryCandidate(
-            "late-mismatch",
-            0,
-            BeliefParticle(
-                {
-                    "id": "late-mismatch",
-                    "sides": [{"foe": "variant"}, {"own": "fixed"}],
-                },
-                1.0,
-                world_id="late-mismatch",
-            ),
-            source="test-generator",
-            changed_hidden_dimensions=("opponent.atk",),
-        ),
-        RecoveryCandidate(
-            "checkpoint-mismatch",
-            0,
-            BeliefParticle(
-                {
-                    "id": "checkpoint-mismatch",
-                    "sides": [{"foe": "variant"}, {"own": "fixed"}],
-                },
-                1.0,
-                world_id="checkpoint-mismatch",
-            ),
-            source="test-generator",
-            changed_hidden_dimensions=("opponent.hp",),
-        ),
+    worker = _TypedRecoveryWorker()
+    proposals = (
+        _proposal("good", atk=32, spa=0),
+        _proposal("late-mismatch", atk=16, spa=16),
+        _proposal("checkpoint-mismatch", atk=0, defense=32, spa=0),
     )
 
-    report = validate_recovery_candidates(
+    report = validate_stat_recovery_proposals(
         worker,
         request=request,
-        candidates=candidates,
+        proposals=proposals,
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
@@ -367,47 +360,99 @@ def test_recovery_requires_checkpoint_and_complete_history_replay() -> None:
         by_id["checkpoint-mismatch"].status
         is RecoveryCandidateStatus.CHECKPOINT_MISMATCH
     )
-    assert by_id["checkpoint-mismatch"].checkpoint_compatible is False
     assert by_id["checkpoint-mismatch"].generated_branches == 0
-
     assert [result.candidate.candidate_id for result in report.validated_candidates] == [
         "good"
     ]
-    assert len(report.validated_particles) == 1
 
 
-def test_recovery_rejects_changes_to_ai_known_exact_state() -> None:
+@pytest.mark.parametrize("hostile_delta", ["timesAttacked", "queue", "pp"])
+def test_typed_stat_authority_rejects_non_stat_checkpoint_edits(
+    hostile_delta: str,
+) -> None:
     request = _request()
-    worker = _RecoveryWorker(
-        checkpoints={"own-mutated": request.checkpoint_public_view},
-        transitions={},
-    )
-    candidate = RecoveryCandidate(
-        "own-mutated",
-        0,
-        BeliefParticle(
-            {
-                "id": "own-mutated",
-                "sides": [{"foe": "variant"}, {"own": "changed"}],
-            },
-            1.0,
-            world_id="own-mutated",
-        ),
-        source="test-generator",
-        changed_hidden_dimensions=("player.known-state",),
-    )
+    worker = _TypedRecoveryWorker(hostile_delta=hostile_delta)
 
-    report = validate_recovery_candidates(
+    report = validate_stat_recovery_proposals(
         worker,
         request=request,
-        candidates=(candidate,),
+        proposals=(_proposal("hostile", atk=32, spa=0),),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
     result = report.candidate_results[0]
-    assert result.status is RecoveryCandidateStatus.KNOWN_STATE_MISMATCH
+    assert result.status is RecoveryCandidateStatus.UNAUTHORIZED_STATE_DELTA
     assert result.generated_branches == 0
+    assert result.final_particles == ()
     assert worker.branch_calls == 0
+
+
+def test_typed_stat_authority_reports_materialization_rejections() -> None:
+    request = _request()
+    worker = _TypedRecoveryWorker(reject_ids={"reject"})
+
+    report = validate_stat_recovery_proposals(
+        worker,
+        request=request,
+        proposals=(_proposal("reject", atk=32, spa=0),),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+    )
+
+    assert report.candidate_results == ()
+    assert len(report.materialization_failures) == 1
+    assert report.materialization_failures[0].proposal.proposal_id == "reject"
+    assert report.materialization_failures[0].reason == "unsafe-fixture"
+
+
+def test_typed_stat_authority_has_no_public_raw_candidate_input() -> None:
+    assert not hasattr(recovery, "validate_recovery_candidates")
+    assert not hasattr(recovery, "materialize_stat_proposals")
+    assert not hasattr(recovery, "RecoveryCandidate")
+
+
+def test_recovery_request_detects_parent_mutation_before_authority() -> None:
+    request = _request()
+    request.checkpoint_particles[0].state["sides"][0]["pokemon"][0][
+        "timesAttacked"
+    ] = 99
+
+    with pytest.raises(ValueError, match="authority inputs were mutated"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=request,
+            proposals=(_proposal("mutated-parent", atk=32, spa=0),),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
+
+
+def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
+    request = _request()
+    proposal = OpponentStatProposal(
+        proposal_id="wrong-species",
+        parent_particle_index=0,
+        pokemon_index=0,
+        species="Shuckle",
+        stat_points=(
+            ("hp", 2),
+            ("atk", 32),
+            ("def", 0),
+            ("spa", 0),
+            ("spd", 0),
+            ("spe", 32),
+        ),
+        changed_hidden_dimensions=(
+            "opponent.shuckle.stat_points.atk",
+            "opponent.shuckle.stat_points.spa",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="species does not match parent"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=request,
+            proposals=(proposal,),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
 
 
 def test_recovery_rejects_noncontiguous_public_history() -> None:
@@ -427,51 +472,36 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
         ai_side="p2",
         previews=request.previews,
     )
-    worker = _RecoveryWorker(checkpoints={}, transitions={})
 
     with pytest.raises(ValueError, match="not contiguous"):
-        validate_recovery_candidates(
-            worker,
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
             request=broken,
-            candidates=(),
+            proposals=(),
             rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
-def test_recovery_candidate_ids_must_be_unique() -> None:
+def test_stat_proposal_ids_must_be_unique() -> None:
     request = _request()
-    worker = _RecoveryWorker(
-        checkpoints={"a": request.checkpoint_public_view},
-        transitions={},
-    )
-    candidate = RecoveryCandidate(
-        "duplicate",
-        0,
-        BeliefParticle(
-            {"id": "a", "sides": [{"foe": "variant"}, {"own": "fixed"}]},
-            1.0,
-            world_id="a",
-        ),
-        source="test-generator",
-    )
+    proposal = _proposal("duplicate", atk=32, spa=0)
 
-    with pytest.raises(ValueError, match="ids must be unique"):
-        validate_recovery_candidates(
-            worker,
+    with pytest.raises(ValueError, match="proposal ids must be unique"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
             request=request,
-            candidates=(candidate, candidate),
+            proposals=(proposal, proposal),
             rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
 def test_recovery_requires_rng_coverage_for_every_observation() -> None:
     request = _request()
-    worker = _RecoveryWorker(checkpoints={}, transitions={})
 
     with pytest.raises(ValueError, match="every recovery observation"):
-        validate_recovery_candidates(
-            worker,
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
             request=request,
-            candidates=(),
+            proposals=(),
             rng_seeds_by_observation=(("seed-1",),),
         )
