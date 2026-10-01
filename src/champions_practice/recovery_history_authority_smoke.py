@@ -294,17 +294,17 @@ def main() -> None:
     if len(report.candidate_results) != 1:
         raise SystemExit("ERROR: speed proposal did not produce one root candidate")
     result = report.candidate_results[0]
-    if result.status is not RecoveryCandidateStatus.HISTORY_MISMATCH:
+    if result.status is not RecoveryCandidateStatus.SAMPLING_EXHAUSTED:
         raise SystemExit(
-            "ERROR: historically impossible Speed proposal was not rejected: "
+            "ERROR: contradicted Speed proposal was not left unresolved: "
             f"{result.status.value}"
         )
     if result.authority_observations_replayed != 0:
         raise SystemExit(
-            "ERROR: impossible Speed proposal replayed past contradicted turn one"
+            "ERROR: contradicted Speed proposal replayed past turn-one mismatch"
         )
     if result.final_particles:
-        raise SystemExit("ERROR: historically impossible proposal exposed particles")
+        raise SystemExit("ERROR: unresolved contradicted proposal exposed particles")
     if len(fast_order) < 2 or fast_order[:2] != (
         ("opponent", 1),
         ("player", 1),
@@ -317,9 +317,10 @@ def main() -> None:
     print(f"Observed turn-one order: {actual_order[:2]}")
     print(f"Proposed fast-world order: {fast_order[:2]}")
     print("Midgame copied-history shortcut accepted: NO")
-    print("Historically impossible 32-Speed Rillaboom validated: NO")
-    print("Prefix observations replayed before rejection: 0")
-    print("RESULT: static stat recovery cannot resurrect disproved history")
+    print("Contradicted 32-Speed Rillaboom validated: NO")
+    print("Finite replay miss reported mechanically impossible: NO")
+    print("Prefix observations replayed before sampling exhaustion: 0")
+    print("RESULT: contradicted history stays non-validating without false impossibility")
 
 
 if __name__ == "__main__":
