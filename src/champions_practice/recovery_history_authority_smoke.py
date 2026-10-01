@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.observation_beliefs import BeliefParticle
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    identity_member_lineage,
+)
 from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     RecoveryCandidateStatus,
@@ -91,7 +94,7 @@ def _branch(
     p2_choice: str,
     seed: str,
     previews: dict[str, list[str]],
-) -> tuple[dict, dict]:
+) -> tuple[dict, dict, dict[str, tuple[int, ...]]]:
     result = worker.branch_many(
         state=state,
         branches=[
@@ -107,9 +110,32 @@ def _branch(
     )[0]
     next_state = result.get("state")
     view = result.get("view")
-    if not isinstance(next_state, dict) or not isinstance(view, dict):
-        raise SystemExit("ERROR: history authority fixture omitted state/view")
-    return next_state, view
+    raw_lineage = result.get("member_lineage")
+    if (
+        not isinstance(next_state, dict)
+        or not isinstance(view, dict)
+        or not isinstance(raw_lineage, dict)
+    ):
+        raise SystemExit("ERROR: history authority fixture omitted state/view/lineage")
+    lineage: dict[str, tuple[int, ...]] = {}
+    for side in ("p1", "p2"):
+        values = raw_lineage.get(side)
+        if not isinstance(values, list) or not all(
+            isinstance(value, int) for value in values
+        ):
+            raise SystemExit("ERROR: history authority fixture returned invalid lineage")
+        lineage[side] = tuple(values)
+    return next_state, view, lineage
+
+
+def _compose_lineage(
+    parent: dict[str, tuple[int, ...]],
+    step: dict[str, tuple[int, ...]],
+) -> dict[str, tuple[int, ...]]:
+    return {
+        side: tuple(parent[side][index] for index in step[side])
+        for side in ("p1", "p2")
+    }
 
 
 def _order(view: dict) -> tuple[tuple[str, int], ...]:
@@ -142,7 +168,11 @@ def main() -> None:
             previews=previews,
         )
 
-        state_1, view_1 = _branch(
+        root_lineage = {
+            "p1": identity_member_lineage(root_state, "p1"),
+            "p2": identity_member_lineage(root_state, "p2"),
+        }
+        state_1, view_1, step_1_lineage = _branch(
             worker,
             state=root_state,
             p1_choice=HUMAN_QUIET,
@@ -150,7 +180,8 @@ def main() -> None:
             seed=TURN_1_SEED,
             previews=previews,
         )
-        state_2, view_2 = _branch(
+        lineage_1 = _compose_lineage(root_lineage, step_1_lineage)
+        state_2, view_2, step_2_lineage = _branch(
             worker,
             state=state_1,
             p1_choice=HUMAN_QUIET,
@@ -158,7 +189,8 @@ def main() -> None:
             seed=TURN_2_SEED,
             previews=previews,
         )
-        _state_3, view_3 = _branch(
+        lineage_2 = _compose_lineage(lineage_1, step_2_lineage)
+        _state_3, view_3, _step_3_lineage = _branch(
             worker,
             state=state_2,
             p1_choice=HUMAN_QUIET,
@@ -181,12 +213,16 @@ def main() -> None:
             1.0,
             world_id="slow-rillaboom",
             history_id="post-preview",
+            p1_member_lineage=root_lineage["p1"],
+            p2_member_lineage=root_lineage["p2"],
         )
         checkpoint_particle = BeliefParticle(
             state_2,
             1.0,
             world_id="slow-rillaboom",
             history_id="through-turn-2",
+            p1_member_lineage=lineage_2["p1"],
+            p2_member_lineage=lineage_2["p2"],
         )
         request = RecoveryRequest(
             authority_root_particles=(root_particle,),
@@ -281,7 +317,7 @@ def main() -> None:
         fast_root = materialized.get("state")
         if not isinstance(fast_root, dict):
             raise SystemExit("ERROR: diagnostic fast root was not materialized")
-        _fast_state_1, fast_view_1 = _branch(
+        _fast_state_1, fast_view_1, _fast_lineage = _branch(
             worker,
             state=fast_root,
             p1_choice=HUMAN_QUIET,
