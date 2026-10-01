@@ -176,6 +176,16 @@ def main() -> None:
             raise SystemExit("ERROR: quiet authority fixture omitted public view")
 
         request = RecoveryRequest(
+            authority_root_particles=(
+                BeliefParticle(
+                    parent,
+                    1.0,
+                    world_id="counter-parent",
+                    history_id="initial-checkpoint",
+                ),
+            ),
+            authority_root_public_view=checkpoint,
+            authority_observations=(),
             checkpoint_particles=(
                 BeliefParticle(
                     parent,
@@ -218,6 +228,7 @@ def main() -> None:
             _HostileMaterializer(worker, mutation=None),
             request=request,
             proposals=(proposal,),
+            authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=((TURN_SEED,),),
         )
         if len(approved.candidate_results) != 1:
@@ -234,7 +245,8 @@ def main() -> None:
                 hostile,
                 request=request,
                 proposals=(proposal,),
-                rng_seeds_by_observation=((TURN_SEED,),),
+                authority_rng_seeds_by_observation=(),
+            rng_seeds_by_observation=((TURN_SEED,),),
             )
             if len(report.candidate_results) != 1:
                 raise SystemExit(
