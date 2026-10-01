@@ -44,8 +44,17 @@ class RecoveryObservation:
 
 @dataclass(frozen=True)
 class RecoveryRequest:
-    """Trusted last-good checkpoint plus sanitized retained public evidence."""
+    """Trusted static-history root, current checkpoint, and retained suffix evidence.
 
+    Static hidden dimensions such as stat points are lifelong. A proposal therefore
+    cannot gain authority by mutating a midgame checkpoint and replaying only later
+    observations. authority_root_particles and authority_observations provide the
+    mechanically replayable prefix from post-preview through checkpoint_public_view.
+    """
+
+    authority_root_particles: tuple[BeliefParticle, ...]
+    authority_root_public_view: dict[str, Any]
+    authority_observations: tuple[RecoveryObservation, ...]
     checkpoint_particles: tuple[BeliefParticle, ...]
     checkpoint_public_view: dict[str, Any]
     observations: tuple[RecoveryObservation, ...]
@@ -73,6 +82,25 @@ def _stable_json_hash(value: object) -> str:
 
 def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
     payload = {
+        "authority_root_particles": [
+            {
+                "state": particle.state,
+                "weight": particle.weight,
+                "world_id": particle.world_id,
+                "history_id": particle.history_id,
+            }
+            for particle in request.authority_root_particles
+        ],
+        "authority_root_public_view": request.authority_root_public_view,
+        "authority_observations": [
+            {
+                "ai_choice": observation.ai_choice,
+                "resolved_opponent_choice": observation.resolved_opponent_choice,
+                "previous_public_view": observation.previous_public_view,
+                "public_view": observation.public_view,
+            }
+            for observation in request.authority_observations
+        ],
         "checkpoint_particles": [
             {
                 "state": particle.state,
