@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+
+import pytest
 from threading import Thread
 
 from champions_practice.belief_controller import (
@@ -250,6 +252,28 @@ def test_demo_unknown_outcome_is_reconcilable_and_transport_abort_is_lock_free()
 
     assert results == [{"aborted": True}]
     assert facade.transport_aborted is True
+
+
+def test_demo_clears_sealed_token_when_battle_requires_restart() -> None:
+    class RejectedFacade(FakeFacade):
+        def commit_human_action(self, *, token: str, human_choice: str):
+            self.turn_state = SealedTurnState.RESTART_REQUIRED
+            raise RuntimeError("battle restart required")
+
+    facade = RejectedFacade()
+    session = DemoBattleSession(facade_factory=lambda: facade)
+    session.start()
+    session.commit_preview("team 1234")
+    session.lock_ai_action()
+
+    with pytest.raises(RuntimeError, match="restart required"):
+        session.commit_human_action("move human")
+
+    snapshot = session.snapshot()
+    assert snapshot["turn_state"] == "restart_required"
+    assert snapshot["ai_ready"] is False
+    assert snapshot["can_reconcile"] is False
+    assert snapshot["legal_choices"] == []
 
 
 def test_starting_new_demo_battle_closes_old_session_and_clears_trace() -> None:

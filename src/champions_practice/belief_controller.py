@@ -35,6 +35,7 @@ from champions_practice.observation_beliefs import (
 )
 from champions_practice.search_worker import (
     HypotheticalSearchWorker,
+    ShowdownRequestError,
     ShowdownSearchWorker,
     ShowdownWorkerTimeout,
 )
@@ -167,6 +168,7 @@ class SealedTurnState(str, Enum):
     RESOLVED = "resolved"
     FAILED = "failed"
     UNKNOWN = "unknown"
+    RESTART_REQUIRED = "restart_required"
     TERMINAL = "terminal"
     CLOSED = "closed"
 
@@ -1876,6 +1878,7 @@ class _BeliefBattleCoordinator:
             if self._turn_state in {
                 SealedTurnState.FAILED,
                 SealedTurnState.UNKNOWN,
+                SealedTurnState.RESTART_REQUIRED,
                 SealedTurnState.TERMINAL,
                 SealedTurnState.CLOSED,
             }:
@@ -1923,6 +1926,11 @@ class _BeliefBattleCoordinator:
             else:
                 decision = self._engine.choose_ai_action(
                     legal_live=legal_live,
+                )
+            if decision.choice not in legal_live:
+                raise RuntimeError(
+                    "decision engine returned an action outside the "
+                    "publicly selectable set"
                 )
             token = secrets.token_urlsafe(18)
         except Exception:
@@ -2066,6 +2074,8 @@ class _BeliefBattleCoordinator:
                     "reconcile before retrying"
                 ) from error
             submission_error = error
+        except ShowdownRequestError as error:
+            submission_error = error
         except Exception as error:
             submission_error = error
 
@@ -2081,6 +2091,21 @@ class _BeliefBattleCoordinator:
 
         after_signature = public_observation_signature(public_view)
         if submission_error is not None and after_signature == self._pre_submit_signature:
+            if (
+                isinstance(submission_error, ShowdownRequestError)
+                and submission_error.choice_rejected
+            ):
+                with self._state_lock:
+                    self._sealed_decision = None
+                    self._pending_human_choice = None
+                    self._pending_public_view = None
+                    self._pre_submit_signature = None
+                    self._turn_state = SealedTurnState.RESTART_REQUIRED
+                raise RuntimeError(
+                    "Showdown rejected the sealed joint command; "
+                    "the battle is fail-closed and must be restarted"
+                ) from submission_error
+
             with self._state_lock:
                 self._pending_human_choice = None
                 self._pre_submit_signature = None
