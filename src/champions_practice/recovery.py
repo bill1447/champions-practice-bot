@@ -11,8 +11,10 @@ The live session's exact hidden state is never an input to this API.
 from __future__ import annotations
 
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
+import hashlib
+import json
 from typing import Any, Literal, Protocol
 
 from champions_practice.observation_beliefs import (
@@ -42,19 +44,58 @@ class RecoveryObservation:
 
 @dataclass(frozen=True)
 class RecoveryRequest:
-    """Inputs available to a recovery candidate generator.
-
-    checkpoint_particles are the engine's last-good hypothetical belief states.
-    checkpoint_public_view and observations are sanitized public information.
-    No live-session worker, session identifier, or authoritative hidden state is
-    exposed to candidate generation.
-    """
+    """Trusted last-good checkpoint plus sanitized retained public evidence."""
 
     checkpoint_particles: tuple[BeliefParticle, ...]
     checkpoint_public_view: dict[str, Any]
     observations: tuple[RecoveryObservation, ...]
     ai_side: SideId
     previews: dict[str, list[str]] | None = None
+    _authority_fingerprint: str = field(init=False, repr=False)
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "_authority_fingerprint",
+            _recovery_request_fingerprint(self),
+        )
+
+
+def _stable_json_hash(value: object) -> str:
+    encoded = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
+    payload = {
+        "checkpoint_particles": [
+            {
+                "state": particle.state,
+                "weight": particle.weight,
+                "world_id": particle.world_id,
+                "history_id": particle.history_id,
+            }
+            for particle in request.checkpoint_particles
+        ],
+        "checkpoint_public_view": request.checkpoint_public_view,
+        "observations": [
+            {
+                "ai_choice": observation.ai_choice,
+                "resolved_opponent_choice": observation.resolved_opponent_choice,
+                "previous_public_view": observation.previous_public_view,
+                "public_view": observation.public_view,
+            }
+            for observation in request.observations
+        ],
+        "ai_side": request.ai_side,
+        "previews": request.previews,
+    }
+    return _stable_json_hash(payload)
 
 
 @dataclass(frozen=True)
@@ -503,6 +544,8 @@ def _validate_request(
     request: RecoveryRequest,
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
 ) -> None:
+    if _recovery_request_fingerprint(request) != request._authority_fingerprint:
+        raise ValueError("recovery request authority inputs were mutated")
     if request.ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
     if not request.observations:
