@@ -383,14 +383,24 @@ class HypotheticalSearchWorker:
     def materialize_recovery_opening_stat_proposals(
         self,
         *,
-        state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         side: str,
         p1_preview: str,
         p2_preview: str,
         proposals: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         return self.__worker.materialize_recovery_opening_stat_proposals(
-            state=state,
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
             side=side,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
@@ -400,28 +410,23 @@ class HypotheticalSearchWorker:
     def validate_recovery_opening_authority(
         self,
         *,
-        preopening_state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         root_state: dict[str, Any],
         p1_preview: str,
         p2_preview: str,
     ) -> bool:
         return self.__worker.validate_recovery_opening_authority(
-            preopening_state=preopening_state,
-            root_state=root_state,
-            p1_preview=p1_preview,
-            p2_preview=p2_preview,
-        )
-
-    def recovery_opening_authority_diff_paths(
-        self,
-        *,
-        preopening_state: dict[str, Any],
-        root_state: dict[str, Any],
-        p1_preview: str,
-        p2_preview: str,
-    ) -> tuple[str, ...]:
-        return self.__worker.recovery_opening_authority_diff_paths(
-            preopening_state=preopening_state,
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
             root_state=root_state,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
@@ -430,7 +435,12 @@ class HypotheticalSearchWorker:
     def validate_recovery_opening_stat_candidate(
         self,
         *,
-        preopening_state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         candidate_state: dict[str, Any],
         side: str,
         pokemon_index: int,
@@ -439,7 +449,12 @@ class HypotheticalSearchWorker:
         p2_preview: str,
     ) -> bool:
         return self.__worker.validate_recovery_opening_stat_candidate(
-            preopening_state=preopening_state,
+            battle_format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
             candidate_state=candidate_state,
             side=side,
             pokemon_index=pokemon_index,
@@ -968,11 +983,10 @@ class ShowdownSearchWorker:
             payload["seed"] = seed
         result = self.request("create", **payload)
         state = result.get("state")
-        preopening_state = result.get("preopening_state")
         lineage = result.get("preview_lineage")
-        if not isinstance(state, dict) or not isinstance(preopening_state, dict):
+        if not isinstance(state, dict):
             raise RuntimeError(
-                "Showdown worker returned invalid opening-authority states"
+                "Showdown worker returned invalid opening-authority state"
             )
         if not isinstance(lineage, dict):
             raise RuntimeError(
@@ -990,7 +1004,6 @@ class ShowdownSearchWorker:
             normalized_lineage[side] = tuple(values)
         return {
             "state": state,
-            "preopening_state": preopening_state,
             "preview_lineage": normalized_lineage,
         }
 
@@ -1119,18 +1132,28 @@ class ShowdownSearchWorker:
     def materialize_recovery_opening_stat_proposals(
         self,
         *,
-        state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         side: str,
         p1_preview: str,
         p2_preview: str,
         proposals: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
-        """Apply typed stat proposals before preview and resolve opening mechanics."""
+        """Apply typed stat proposals before constructing a fresh battle."""
         if not proposals:
             return []
         result = self.request(
             "materialize_recovery_opening_stat_proposals",
-            state=state,
+            format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
             side=side,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
@@ -1148,15 +1171,25 @@ class ShowdownSearchWorker:
     def validate_recovery_opening_authority(
         self,
         *,
-        preopening_state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         root_state: dict[str, Any],
         p1_preview: str,
         p2_preview: str,
     ) -> bool:
-        """Prove that a retained root is the exact mechanics result of preview."""
+        """Rebuild a fresh battle and prove its opening root exactly."""
         result = self.request(
             "validate_recovery_opening_authority",
-            preopening_state=preopening_state,
+            format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
             root_state=root_state,
             p1_preview=p1_preview,
             p2_preview=p2_preview,
@@ -1168,39 +1201,15 @@ class ShowdownSearchWorker:
             )
         return valid
 
-    def recovery_opening_authority_diff_paths(
-        self,
-        *,
-        preopening_state: dict[str, Any],
-        root_state: dict[str, Any],
-        p1_preview: str,
-        p2_preview: str,
-    ) -> tuple[str, ...]:
-        """Return bounded exact-state diff paths for opening-authority diagnostics."""
-        result = self.request(
-            "validate_recovery_opening_authority",
-            preopening_state=preopening_state,
-            root_state=root_state,
-            p1_preview=p1_preview,
-            p2_preview=p2_preview,
-        )
-        paths = result.get("diff_paths")
-        log_diff = result.get("log_diff", [])
-        if (
-            not isinstance(paths, list)
-            or not all(isinstance(path, str) for path in paths)
-            or not isinstance(log_diff, list)
-            or not all(isinstance(value, str) for value in log_diff)
-        ):
-            raise RuntimeError(
-                "Showdown worker returned invalid opening-authority diagnostics"
-            )
-        return tuple(paths) + tuple(f"log:{value}" for value in log_diff)
-
     def validate_recovery_opening_stat_candidate(
         self,
         *,
-        preopening_state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         candidate_state: dict[str, Any],
         side: str,
         pokemon_index: int,
@@ -1208,10 +1217,15 @@ class ShowdownSearchWorker:
         p1_preview: str,
         p2_preview: str,
     ) -> bool:
-        """Rebuild an opening candidate from typed inputs and compare exact state."""
+        """Rebuild a proposed fresh opening and compare exact state."""
         result = self.request(
             "validate_recovery_opening_stat_candidate",
-            preopening_state=preopening_state,
+            format=battle_format,
+            p1_team=p1_team,
+            p2_team=p2_team,
+            p1_name=p1_name,
+            p2_name=p2_name,
+            seed=seed,
             candidate_state=candidate_state,
             side=side,
             pokemon_index=pokemon_index,
