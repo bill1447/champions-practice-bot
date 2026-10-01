@@ -366,6 +366,12 @@ rl.on("line", () => {
         raise SystemExit("ERROR: abort did not wake pending request")
     elapsed = perf_counter() - started
     request_thread.join(timeout=0.10)
+    if not worker._cleanup_done.wait(timeout=0.50):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: abort transport cleanup did not finish")
+    if not _streams_closed(worker):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: abort cleanup left pipe streams open")
     script.unlink(missing_ok=True)
 
     if len(errors) != 1 or not isinstance(errors[0], ShowdownWorkerTimeout):
