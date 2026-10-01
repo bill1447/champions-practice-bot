@@ -659,6 +659,7 @@ class RecoveryCandidateStatus(str, Enum):
     AUTHORITY_ROOT_MISMATCH = "authority-root-mismatch"
     HISTORY_MISMATCH = "history-mismatch"
     KNOWN_STATE_MISMATCH = "known-state-mismatch"
+    CHECKPOINT_PARENT_MISMATCH = "checkpoint-parent-mismatch"
     REPLAY_MISMATCH = "replay-mismatch"
     VALIDATED = "validated"
 
@@ -737,6 +738,14 @@ def _validate_request(
         raise ValueError("ai_side must be p1 or p2")
     if not request.authority_root_particles:
         raise ValueError("static recovery requires authority root particles")
+    root_turn = request.authority_root_public_view.get("turn")
+    if root_turn != 1:
+        raise ValueError("static recovery authority root must be post-preview turn 1")
+    if any(
+        particle.state.get("turn") != 1
+        for particle in request.authority_root_particles
+    ):
+        raise ValueError("static recovery authority particles must be turn-1 roots")
     if not request.checkpoint_particles:
         raise ValueError("static recovery requires checkpoint particles")
     if not request.observations:
@@ -936,6 +945,26 @@ def _validate_materialized_stat_candidates(
         checkpoint_parent = request.checkpoint_particles[
             proposal.parent_particle_index
         ]
+        checkpoint_parent_view = worker.state_view(
+            state=checkpoint_parent.state,
+            side=request.ai_side,
+            previews=request.previews,
+        )
+        if public_observation_signature(
+            checkpoint_parent_view
+        ) != public_observation_signature(request.checkpoint_public_view):
+            results.append(
+                RecoveryCandidateValidation(
+                    candidate=candidate,
+                    status=RecoveryCandidateStatus.CHECKPOINT_PARENT_MISMATCH,
+                    checkpoint_compatible=False,
+                    authority_observations_replayed=0,
+                    observations_replayed=0,
+                    generated_branches=0,
+                    matched_branches=0,
+                )
+            )
+            continue
 
         if not _stat_candidate_delta_authorized(
             authority_root=authority_root,
