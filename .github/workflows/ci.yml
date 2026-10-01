@@ -149,6 +149,10 @@ jobs:
         shell: pwsh
         run: .\recovery-sampling-inconclusive-smoke.ps1
 
+      - name: Stable recovery member-lineage smoke test
+        shell: pwsh
+        run: .\recovery-member-lineage-smoke.ps1
+
       - name: Static recovery prefix authority smoke test
         shell: pwsh
         run: .\recovery-history-authority-smoke.ps1
