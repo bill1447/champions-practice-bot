@@ -370,6 +370,74 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
     ]
 
 
+def test_static_stat_recovery_rejects_prefix_history_mismatch() -> None:
+    root_state = _parent_state()
+    checkpoint_state = copy.deepcopy(root_state)
+    checkpoint_state["test_step"] = 1
+    root_view = _checkpoint()
+    checkpoint_view = {
+        "turn": 2,
+        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
+    }
+    suffix_view = {
+        "turn": 3,
+        "opponent": {"active": [{"species": "Snorlax", "hp_percent": 95}]},
+    }
+    request = RecoveryRequest(
+        authority_root_particles=(
+            BeliefParticle(
+                root_state,
+                1.0,
+                world_id="stat-parent",
+                history_id="root",
+            ),
+        ),
+        authority_root_public_view=root_view,
+        authority_observations=(
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=root_view,
+                public_view=checkpoint_view,
+            ),
+        ),
+        checkpoint_particles=(
+            BeliefParticle(
+                checkpoint_state,
+                1.0,
+                world_id="stat-parent",
+                history_id="checkpoint",
+            ),
+        ),
+        checkpoint_public_view=checkpoint_view,
+        observations=(
+            RecoveryObservation(
+                ai_choice="move ai",
+                resolved_opponent_choice="move human",
+                previous_public_view=checkpoint_view,
+                public_view=suffix_view,
+            ),
+        ),
+        ai_side="p2",
+        previews={"p1": ["Snorlax", "Shuckle"], "p2": ["Indeedee-F"]},
+    )
+
+    report = validate_stat_recovery_proposals(
+        _TypedRecoveryWorker(),
+        request=request,
+        proposals=(_proposal("historically-impossible", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(("prefix-seed",),),
+        rng_seeds_by_observation=(("suffix-seed",),),
+    )
+
+    result = report.candidate_results[0]
+    assert result.status is RecoveryCandidateStatus.HISTORY_MISMATCH
+    assert result.checkpoint_compatible is False
+    assert result.authority_observations_replayed == 0
+    assert result.observations_replayed == 0
+    assert result.final_particles == ()
+
+
 @pytest.mark.parametrize("hostile_delta", ["timesAttacked", "queue", "pp"])
 def test_typed_stat_authority_rejects_non_stat_checkpoint_edits(
     hostile_delta: str,
