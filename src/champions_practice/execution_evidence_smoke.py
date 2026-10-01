@@ -135,7 +135,11 @@ def _haze_outcome(view: dict) -> str | None:
 
 def _old_signature(view: dict) -> str:
     reduced = copy.deepcopy(view)
+    # Recreate the historical selected-command-only boundary. #107 added the
+    # execution ledger and #114 now independently preserves prevented/executed
+    # mechanics in the public transition ledger.
     reduced.pop("public_execution_delta", None)
+    reduced.pop("public_event_delta", None)
     return public_observation_signature(reduced)
 
 
