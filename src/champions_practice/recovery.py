@@ -374,6 +374,15 @@ class RecoveryStatValidationWorker(
 ):
     """Typed static-stat recovery needs materialization plus hypothetical replay."""
 
+    def validate_recovery_stat_candidate(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        pokemon_index: int,
+        stat_points: dict[str, int],
+    ) -> bool: ...
+
     def state_view(
         self,
         *,
@@ -947,6 +956,7 @@ def _validate_materialized_stat_candidates(
     wanted_root = public_observation_signature(
         request.authority_root_public_view
     )
+    opponent_side = "p2" if request.ai_side == "p1" else "p1"
     results: list[RecoveryCandidateValidation] = []
 
     for candidate in candidates:
@@ -993,6 +1003,24 @@ def _validate_materialized_stat_candidates(
             candidate=candidate,
             proposal=proposal,
             ai_side=request.ai_side,
+        ):
+            results.append(
+                RecoveryCandidateValidation(
+                    candidate=candidate,
+                    status=RecoveryCandidateStatus.UNAUTHORIZED_STATE_DELTA,
+                    checkpoint_compatible=False,
+                    authority_observations_replayed=0,
+                    observations_replayed=0,
+                    generated_branches=0,
+                    matched_branches=0,
+                )
+            )
+            continue
+        if not worker.validate_recovery_stat_candidate(
+            state=deepcopy(candidate.particle.state),
+            side=opponent_side,
+            pokemon_index=proposal.pokemon_index,
+            stat_points=proposal.stat_point_dict,
         ):
             results.append(
                 RecoveryCandidateValidation(
