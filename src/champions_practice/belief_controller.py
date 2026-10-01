@@ -1844,10 +1844,10 @@ class _BeliefBattleCoordinator:
             session_id = raw_session_id
         except ShowdownWorkerTimeout as error:
             if error.mutating:
-                self._worker.abort(timeout_seconds=0.25)
                 with self._state_lock:
                     if self._turn_state is SealedTurnState.STARTING:
                         self._turn_state = SealedTurnState.CLOSED
+                self._worker.abort(timeout_seconds=0.25)
                 raise RuntimeError(
                     "live session start timed out with unknown outcome; "
                     "create a new battle"
@@ -1867,10 +1867,10 @@ class _BeliefBattleCoordinator:
             # Any other failure after entering a mutating live request is
             # conservatively treated as ambiguous. Do not permit another
             # start on the same transport.
-            self._worker.abort(timeout_seconds=0.25)
             with self._state_lock:
                 if self._turn_state is SealedTurnState.STARTING:
                     self._turn_state = SealedTurnState.CLOSED
+            self._worker.abort(timeout_seconds=0.25)
             raise
 
         with self._state_lock:
