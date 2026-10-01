@@ -410,6 +410,81 @@ class RecoveryReplayWorker(Protocol):
     ) -> list[dict[str, Any]]: ...
 
 
+def _validate_typed_stat_proposal(
+    *,
+    request: RecoveryRequest,
+    proposal: OpponentStatProposal,
+) -> None:
+    if not 0 <= proposal.parent_particle_index < len(
+        request.checkpoint_particles
+    ):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has invalid parent"
+        )
+    parent = request.checkpoint_particles[proposal.parent_particle_index]
+    target = _target_pokemon(
+        parent.state,
+        ai_side=request.ai_side,
+        pokemon_index=proposal.pokemon_index,
+    )
+    set_data = target.get("set")
+    if not isinstance(set_data, dict):
+        raise ValueError("stat proposal target is missing set data")
+
+    species = str(set_data.get("species") or set_data.get("name") or "")
+    if _id(species) != _id(proposal.species):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} species does not match parent"
+        )
+    if _id(species) not in _publicly_seen_opponent_species(
+        request.checkpoint_public_view
+    ):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} targets an unseen opponent"
+        )
+
+    parent_points = _stat_points_from_set(set_data)
+    points = proposal.stat_point_dict
+    if set(points) != set(_RECOVERY_STATS):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} must specify all six stats"
+        )
+    if any(
+        not isinstance(points[stat], int)
+        or points[stat] < 0
+        or points[stat] > CHAMPIONS_STAT_POINT_CAP
+        for stat in _RECOVERY_STATS
+    ):
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has invalid stat points"
+        )
+    if sum(points.values()) > CHAMPIONS_TOTAL_STAT_POINTS:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} exceeds the total stat cap"
+        )
+    if points["hp"] != parent_points["hp"]:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} changes HP points"
+        )
+
+    changed = tuple(
+        stat
+        for stat in _RECOVERY_NON_HP_STATS
+        if points[stat] != parent_points[stat]
+    )
+    if not changed:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} changes no recoverable stat"
+        )
+    expected_dimensions = tuple(
+        f"opponent.{_id(species)}.stat_points.{stat}" for stat in changed
+    )
+    if proposal.changed_hidden_dimensions != expected_dimensions:
+        raise ValueError(
+            f"stat proposal {proposal.proposal_id!r} has inconsistent dimensions"
+        )
+
+
 def _materialize_stat_proposals(
     worker: RecoveryStatMaterializationWorker,
     *,
@@ -423,12 +498,7 @@ def _materialize_stat_proposals(
     opponent_side = "p2" if request.ai_side == "p1" else "p1"
     grouped: dict[int, list[OpponentStatProposal]] = {}
     for proposal in proposals:
-        if not 0 <= proposal.parent_particle_index < len(
-            request.checkpoint_particles
-        ):
-            raise ValueError(
-                f"stat proposal {proposal.proposal_id!r} has invalid parent"
-            )
+        _validate_typed_stat_proposal(request=request, proposal=proposal)
         grouped.setdefault(proposal.parent_particle_index, []).append(proposal)
 
     candidates: list[_MaterializedStatCandidate] = []
