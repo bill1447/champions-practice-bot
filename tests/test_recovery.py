@@ -195,7 +195,8 @@ class _TypedRecoveryWorker:
         resolved = []
         for proposal in proposals:
             proposal_id = proposal["proposal_id"]
-            if proposal_id in self.reject_ids:
+            typed_id = proposal_id.split("@root-", 1)[0]
+            if typed_id in self.reject_ids:
                 resolved.append(
                     {"proposal_id": proposal_id, "rejected": "unsafe-fixture"}
                 )
