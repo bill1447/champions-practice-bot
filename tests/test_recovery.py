@@ -57,7 +57,11 @@ def _request() -> RecoveryRequest:
     }
     return RecoveryRequest(
         checkpoint_particles=(
-            BeliefParticle({"id": "original"}, 1.0, world_id="world-1"),
+            BeliefParticle(
+                {"id": "original", "sides": [{"foe": "base"}, {"own": "fixed"}]},
+                1.0,
+                world_id="world-1",
+            ),
         ),
         checkpoint_public_view=checkpoint,
         observations=(
@@ -108,14 +112,23 @@ def test_recovery_requires_checkpoint_and_complete_history_replay() -> None:
     candidates = (
         RecoveryCandidate(
             "good",
-            BeliefParticle({"id": "good"}, 1.0, world_id="good"),
+            0,
+            BeliefParticle(
+                {"id": "good", "sides": [{"foe": "variant"}, {"own": "fixed"}]},
+                1.0,
+                world_id="good",
+            ),
             source="test-generator",
             changed_hidden_dimensions=("opponent.atk",),
         ),
         RecoveryCandidate(
             "late-mismatch",
+            0,
             BeliefParticle(
-                {"id": "late-mismatch"},
+                {
+                    "id": "late-mismatch",
+                    "sides": [{"foe": "variant"}, {"own": "fixed"}],
+                },
                 1.0,
                 world_id="late-mismatch",
             ),
@@ -124,8 +137,12 @@ def test_recovery_requires_checkpoint_and_complete_history_replay() -> None:
         ),
         RecoveryCandidate(
             "checkpoint-mismatch",
+            0,
             BeliefParticle(
-                {"id": "checkpoint-mismatch"},
+                {
+                    "id": "checkpoint-mismatch",
+                    "sides": [{"foe": "variant"}, {"own": "fixed"}],
+                },
                 1.0,
                 world_id="checkpoint-mismatch",
             ),
@@ -169,6 +186,40 @@ def test_recovery_requires_checkpoint_and_complete_history_replay() -> None:
     assert len(report.validated_particles) == 1
 
 
+def test_recovery_rejects_changes_to_ai_known_exact_state() -> None:
+    request = _request()
+    worker = _RecoveryWorker(
+        checkpoints={"own-mutated": request.checkpoint_public_view},
+        transitions={},
+    )
+    candidate = RecoveryCandidate(
+        "own-mutated",
+        0,
+        BeliefParticle(
+            {
+                "id": "own-mutated",
+                "sides": [{"foe": "variant"}, {"own": "changed"}],
+            },
+            1.0,
+            world_id="own-mutated",
+        ),
+        source="test-generator",
+        changed_hidden_dimensions=("player.known-state",),
+    )
+
+    report = validate_recovery_candidates(
+        worker,
+        request=request,
+        candidates=(candidate,),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+    )
+
+    result = report.candidate_results[0]
+    assert result.status is RecoveryCandidateStatus.KNOWN_STATE_MISMATCH
+    assert result.generated_branches == 0
+    assert worker.branch_calls == 0
+
+
 def test_recovery_rejects_noncontiguous_public_history() -> None:
     request = _request()
     broken = RecoveryRequest(
@@ -205,7 +256,12 @@ def test_recovery_candidate_ids_must_be_unique() -> None:
     )
     candidate = RecoveryCandidate(
         "duplicate",
-        BeliefParticle({"id": "a"}, 1.0, world_id="a"),
+        0,
+        BeliefParticle(
+            {"id": "a", "sides": [{"foe": "variant"}, {"own": "fixed"}]},
+            1.0,
+            world_id="a",
+        ),
         source="test-generator",
     )
 
