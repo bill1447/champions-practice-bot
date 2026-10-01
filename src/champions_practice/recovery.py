@@ -295,6 +295,43 @@ class RecoveryStatMaterializationWorker(Protocol):
     ) -> list[dict[str, Any]]: ...
 
 
+class RecoveryStatValidationWorker(
+    RecoveryStatMaterializationWorker,
+    Protocol,
+):
+    """Typed stat recovery needs materialization plus hypothetical replay."""
+
+    def state_view(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        previews: dict[str, list[str]] | None = None,
+    ) -> dict[str, Any]: ...
+
+    def validate_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        candidates: list[str],
+    ) -> list[str]: ...
+
+    def legal_choices(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+    ) -> list[str]: ...
+
+    def branch_many(
+        self,
+        *,
+        state: dict[str, Any],
+        branches: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]: ...
+
+
 class RecoveryReplayWorker(Protocol):
     """Minimal hypothetical mechanics capability required for validation."""
 
@@ -736,7 +773,7 @@ def _validate_materialized_stat_candidates(
 
 
 def validate_stat_recovery_proposals(
-    worker: RecoveryStatMaterializationWorker & RecoveryReplayWorker,
+    worker: RecoveryStatValidationWorker,
     *,
     request: RecoveryRequest,
     proposals: tuple[OpponentStatProposal, ...],
