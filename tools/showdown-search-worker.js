@@ -2,6 +2,7 @@
 
 const readline = require("readline");
 const path = require("path");
+const { isDeepStrictEqual } = require("node:util");
 
 const root = path.resolve(__dirname, "..");
 const showdownRoot = path.join(root, "external", "pokemon-showdown");
@@ -1274,6 +1275,163 @@ function materializeRecoveryStatProposals(request) {
   };
 }
 
+function resolveRecoveryOpeningState(state, p1Preview, p2Preview) {
+  const battle = Battle.fromJSON(JSON.stringify(state));
+  battle.restart(() => {});
+  try {
+    battle.makeChoices(p1Preview, p2Preview);
+    return battle.toJSON();
+  } finally {
+    battle.destroy();
+  }
+}
+
+function materializeRecoveryOpeningStatProposal(
+  state,
+  sideId,
+  proposal,
+  p1Preview,
+  p2Preview,
+) {
+  const materialized = materializeRecoveryStatProposal(state, sideId, proposal);
+  if (!materialized.state) return materialized;
+  return {
+    proposal_id: proposal.proposal_id,
+    state: resolveRecoveryOpeningState(
+      materialized.state,
+      p1Preview,
+      p2Preview,
+    ),
+  };
+}
+
+function materializeRecoveryOpeningStatProposals(request) {
+  if (!request.state) {
+    throw new Error("materialize_recovery_opening_stat_proposals requires state");
+  }
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals requires p1 or p2 side",
+    );
+  }
+  if (
+    typeof request.p1_preview !== "string" ||
+    !request.p1_preview ||
+    typeof request.p2_preview !== "string" ||
+    !request.p2_preview
+  ) {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals requires exact preview choices",
+    );
+  }
+  if (!Array.isArray(request.proposals) || request.proposals.length === 0) {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals requires proposals",
+    );
+  }
+  if (request.proposals.length > 256) {
+    throw new Error(
+      "materialize_recovery_opening_stat_proposals accepts at most 256 proposals",
+    );
+  }
+
+  const ids = new Set();
+  for (const proposal of request.proposals) {
+    if (!proposal || typeof proposal !== "object") {
+      throw new Error("recovery opening stat proposal must be an object");
+    }
+    if (typeof proposal.proposal_id !== "string" || !proposal.proposal_id) {
+      throw new Error("recovery opening stat proposal requires proposal_id");
+    }
+    if (ids.has(proposal.proposal_id)) {
+      throw new Error("recovery opening stat proposal ids must be unique");
+    }
+    ids.add(proposal.proposal_id);
+  }
+
+  return {
+    proposals: request.proposals.map((proposal) =>
+      materializeRecoveryOpeningStatProposal(
+        request.state,
+        request.side,
+        proposal,
+        request.p1_preview,
+        request.p2_preview,
+      )
+    ),
+  };
+}
+
+function validateRecoveryOpeningAuthority(request) {
+  if (!request.preopening_state || !request.root_state) {
+    throw new Error(
+      "validate_recovery_opening_authority requires preopening and root states",
+    );
+  }
+  if (
+    typeof request.p1_preview !== "string" ||
+    !request.p1_preview ||
+    typeof request.p2_preview !== "string" ||
+    !request.p2_preview
+  ) {
+    throw new Error(
+      "validate_recovery_opening_authority requires exact preview choices",
+    );
+  }
+  const canonical = resolveRecoveryOpeningState(
+    request.preopening_state,
+    request.p1_preview,
+    request.p2_preview,
+  );
+  return { valid: isDeepStrictEqual(canonical, request.root_state) };
+}
+
+function validateRecoveryOpeningStatCandidate(request) {
+  if (
+    !request.preopening_state ||
+    !request.candidate_state
+  ) {
+    throw new Error(
+      "validate_recovery_opening_stat_candidate requires preopening and candidate states",
+    );
+  }
+  if (request.side !== "p1" && request.side !== "p2") {
+    throw new Error(
+      "validate_recovery_opening_stat_candidate requires p1 or p2 side",
+    );
+  }
+  if (
+    typeof request.p1_preview !== "string" ||
+    !request.p1_preview ||
+    typeof request.p2_preview !== "string" ||
+    !request.p2_preview
+  ) {
+    throw new Error(
+      "validate_recovery_opening_stat_candidate requires exact preview choices",
+    );
+  }
+  const result = materializeRecoveryOpeningStatProposal(
+    request.preopening_state,
+    request.side,
+    {
+      proposal_id: "validation",
+      pokemon_index: request.pokemon_index,
+      stat_points: request.stat_points,
+    },
+    request.p1_preview,
+    request.p2_preview,
+  );
+  if (!result.state) {
+    return {
+      valid: false,
+      reason: result.rejected || "opening-materialization-rejected",
+    };
+  }
+  return {
+    valid: isDeepStrictEqual(result.state, request.candidate_state),
+  };
+}
+
 function validateRecoveryStatCandidate(request) {
   if (!request.state) {
     throw new Error("validate_recovery_stat_candidate requires state");
@@ -1433,19 +1591,42 @@ function battleOptions(request) {
 
 function createBattle(request) {
   const battle = new Battle(battleOptions(request));
+  let preopeningState = null;
+  let previewLineage = null;
 
   if (request.p1_preview || request.p2_preview) {
     if (!request.p1_preview || !request.p2_preview) {
       battle.destroy();
       throw new Error("Both preview choices are required when either is provided");
     }
+
+    preopeningState = battle.toJSON();
+    const preopeningPokemon = {
+      p1: [...battle.p1.pokemon],
+      p2: [...battle.p2.pokemon],
+    };
     battle.makeChoices(request.p1_preview, request.p2_preview);
+    previewLineage = {
+      p1: battle.p1.pokemon.map((pokemon) => preopeningPokemon.p1.indexOf(pokemon)),
+      p2: battle.p2.pokemon.map((pokemon) => preopeningPokemon.p2.indexOf(pokemon)),
+    };
+    if (
+      previewLineage.p1.some((index) => index < 0) ||
+      previewLineage.p2.some((index) => index < 0)
+    ) {
+      battle.destroy();
+      throw new Error("Could not derive preview member lineage");
+    }
   }
 
   const response = {
     state: battle.toJSON(),
     summary: summarize(battle),
   };
+  if (preopeningState !== null) {
+    response.preopening_state = preopeningState;
+    response.preview_lineage = previewLineage;
+  }
   battle.destroy();
   return response;
 }
@@ -1697,8 +1878,14 @@ function handle(request) {
       return validateRequestedChoices(request);
     case "materialize_recovery_stat_proposals":
       return materializeRecoveryStatProposals(request);
+    case "materialize_recovery_opening_stat_proposals":
+      return materializeRecoveryOpeningStatProposals(request);
     case "validate_recovery_stat_candidate":
       return validateRecoveryStatCandidate(request);
+    case "validate_recovery_opening_authority":
+      return validateRecoveryOpeningAuthority(request);
+    case "validate_recovery_opening_stat_candidate":
+      return validateRecoveryOpeningStatCandidate(request);
     case "state_view":
       return stateView(request);
     case "session_start":
