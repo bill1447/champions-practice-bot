@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import gc
+import os
 from pathlib import Path
 from threading import Event, Thread, enumerate as enumerate_threads
 from time import perf_counter, sleep
 
 import champions_practice.belief_controller as belief_controller
+import champions_practice.search_worker as search_worker_module
 from champions_practice.belief_controller import (
     BeliefDecisionEngine,
     SealedBattleFacade,
@@ -19,6 +22,50 @@ from champions_practice.search_worker import (
     active_showdown_worker_pids,
 )
 from champions_practice.teams import SMOKE_TEAM
+
+
+def _retained_worker_count() -> int:
+    with search_worker_module._ACTIVE_SHOWDOWN_PROCESSES_LOCK:
+        return len(search_worker_module._ACTIVE_SHOWDOWN_PROCESSES)
+
+
+def _self_handle_count() -> int | None:
+    if os.name == "nt":
+        import ctypes
+        from ctypes import wintypes
+
+        kernel32 = ctypes.windll.kernel32
+        kernel32.GetCurrentProcess.argtypes = []
+        kernel32.GetCurrentProcess.restype = wintypes.HANDLE
+        kernel32.GetProcessHandleCount.argtypes = [
+            wintypes.HANDLE,
+            ctypes.POINTER(wintypes.DWORD),
+        ]
+        kernel32.GetProcessHandleCount.restype = wintypes.BOOL
+
+        count = wintypes.DWORD()
+        if not kernel32.GetProcessHandleCount(
+            kernel32.GetCurrentProcess(),
+            ctypes.byref(count),
+        ):
+            return None
+        return int(count.value)
+
+    proc_fd = Path("/proc/self/fd")
+    if proc_fd.is_dir():
+        return len(tuple(proc_fd.iterdir()))
+    return None
+
+
+def _streams_closed(worker: ShowdownSearchWorker) -> bool:
+    return all(
+        stream is None or stream.closed
+        for stream in (
+            worker._process.stdin,
+            worker._process.stdout,
+            worker._process.stderr,
+        )
+    )
 
 
 def _executor_thread_count() -> int:
@@ -328,6 +375,12 @@ rl.on("line", () => {
         raise SystemExit("ERROR: abort did not wake pending request")
     elapsed = perf_counter() - started
     request_thread.join(timeout=0.10)
+    if not worker._cleanup_done.wait(timeout=0.50):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: abort transport cleanup did not finish")
+    if not _streams_closed(worker):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: abort cleanup left pipe streams open")
     script.unlink(missing_ok=True)
 
     if len(errors) != 1 or not isinstance(errors[0], ShowdownWorkerTimeout):
@@ -407,6 +460,12 @@ setInterval(() => {}, 1000);
         script.unlink(missing_ok=True)
         raise SystemExit("ERROR: close did not unblock blocked stdin writer")
     request_thread.join(timeout=0.10)
+    if not worker._cleanup_done.wait(timeout=0.50):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: blocked writer transport cleanup did not finish")
+    if not _streams_closed(worker):
+        script.unlink(missing_ok=True)
+        raise SystemExit("ERROR: blocked writer cleanup left pipe streams open")
     script.unlink(missing_ok=True)
 
     if len(errors) != 1 or not isinstance(errors[0], ShowdownWorkerTimeout):
@@ -423,6 +482,56 @@ setInterval(() => {}, 1000);
             f"ERROR: close blocked on unread stdin: {elapsed:.3f}s"
         )
     return elapsed
+
+
+def _resource_lifetime_probe(iterations: int = 12) -> tuple[int | None, int | None]:
+    baseline_registry = _retained_worker_count()
+    baseline_handles = _self_handle_count()
+
+    for index in range(iterations):
+        worker = ShowdownSearchWorker(".", request_timeout_seconds=1.0)
+        if not worker.ping():
+            worker.close()
+            raise SystemExit(
+                f"ERROR: resource probe worker {index} did not answer ping"
+            )
+
+        worker.close()
+        if not worker._cleanup_done.wait(timeout=1.0):
+            raise SystemExit(
+                f"ERROR: resource probe worker {index} cleanup did not finish"
+            )
+        if worker._process.poll() is None:
+            raise SystemExit(
+                f"ERROR: resource probe worker {index} child is still alive"
+            )
+        if not _streams_closed(worker):
+            raise SystemExit(
+                f"ERROR: resource probe worker {index} retained an open pipe"
+            )
+
+        del worker
+        gc.collect()
+
+    final_registry = _retained_worker_count()
+    if final_registry != baseline_registry:
+        raise SystemExit(
+            "ERROR: normally closed workers remain strongly registered: "
+            f"baseline={baseline_registry}, final={final_registry}"
+        )
+
+    final_handles = _self_handle_count()
+    if (
+        baseline_handles is not None
+        and final_handles is not None
+        and final_handles > baseline_handles + 6
+    ):
+        raise SystemExit(
+            "ERROR: repeated normal worker close leaked process handles/fds: "
+            f"before={baseline_handles}, after={final_handles}"
+        )
+
+    return baseline_handles, final_handles
 
 
 def _invalid_facade_config_probe() -> None:
@@ -482,6 +591,7 @@ def main() -> None:
     lock_elapsed = _write_lock_deadline_probe()
     abort_elapsed = _abort_unblocks_waiter_probe()
     close_elapsed = _close_blocked_stdin_probe()
+    handle_before, handle_after = _resource_lifetime_probe()
     _invalid_facade_config_probe()
     _close_failure_probe()
 
@@ -492,9 +602,18 @@ def main() -> None:
     print(f"Blocked write lock returned in: {lock_elapsed:.3f}s")
     print(f"Abort waiter wakeup returned in: {abort_elapsed:.3f}s")
     print(f"Close with blocked stdin returned in: {close_elapsed:.3f}s")
+    print(
+        "Repeated close handles/fds: "
+        f"{handle_before!r} -> {handle_after!r}"
+    )
+    print("Normally closed workers retained in registry: NO")
+    print("Normally closed worker pipe streams retained: NO")
     print("Invalid facade config spawned worker: NO")
     print("Session-close failure leaked worker: NO")
-    print("RESULT: full worker request and shutdown lifecycle are bounded")
+    print(
+        "RESULT: worker timing, process ownership, and transport resources "
+        "are bounded and released"
+    )
 
 
 if __name__ == "__main__":
