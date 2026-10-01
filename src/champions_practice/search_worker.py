@@ -412,6 +412,21 @@ class HypotheticalSearchWorker:
             p2_preview=p2_preview,
         )
 
+    def recovery_opening_authority_diff_paths(
+        self,
+        *,
+        preopening_state: dict[str, Any],
+        root_state: dict[str, Any],
+        p1_preview: str,
+        p2_preview: str,
+    ) -> tuple[str, ...]:
+        return self.__worker.recovery_opening_authority_diff_paths(
+            preopening_state=preopening_state,
+            root_state=root_state,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+        )
+
     def validate_recovery_opening_stat_candidate(
         self,
         *,
@@ -1152,6 +1167,31 @@ class ShowdownSearchWorker:
                 "Showdown worker returned invalid opening-authority validation"
             )
         return valid
+
+    def recovery_opening_authority_diff_paths(
+        self,
+        *,
+        preopening_state: dict[str, Any],
+        root_state: dict[str, Any],
+        p1_preview: str,
+        p2_preview: str,
+    ) -> tuple[str, ...]:
+        """Return bounded exact-state diff paths for opening-authority diagnostics."""
+        result = self.request(
+            "validate_recovery_opening_authority",
+            preopening_state=preopening_state,
+            root_state=root_state,
+            p1_preview=p1_preview,
+            p2_preview=p2_preview,
+        )
+        paths = result.get("diff_paths")
+        if not isinstance(paths, list) or not all(
+            isinstance(path, str) for path in paths
+        ):
+            raise RuntimeError(
+                "Showdown worker returned invalid opening-authority diff paths"
+            )
+        return tuple(paths)
 
     def validate_recovery_opening_stat_candidate(
         self,
