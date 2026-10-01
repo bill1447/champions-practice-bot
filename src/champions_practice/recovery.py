@@ -809,6 +809,7 @@ class RecoveryCandidateStatus(str, Enum):
     KNOWN_STATE_MISMATCH = "known-state-mismatch"
     CHECKPOINT_PARENT_MISMATCH = "checkpoint-parent-mismatch"
     REPLAY_MISMATCH = "replay-mismatch"
+    SAMPLING_EXHAUSTED = "sampling-exhausted"
     VALIDATED = "validated"
 
 
@@ -816,7 +817,7 @@ class RecoveryCandidateStatus(str, Enum):
 class RecoveryCandidateValidation:
     candidate: _MaterializedStatCandidate
     status: RecoveryCandidateStatus
-    checkpoint_compatible: bool
+    checkpoint_compatible: bool | None
     authority_observations_replayed: int
     observations_replayed: int
     generated_branches: int
@@ -848,6 +849,30 @@ class RecoveryValidationReport:
             for result in self.validated_candidates
             for particle in result.final_particles
         )
+
+
+    @property
+    def inconclusive_candidates(self) -> tuple[RecoveryCandidateValidation, ...]:
+        return tuple(
+            result
+            for result in self.candidate_results
+            if result.status is RecoveryCandidateStatus.SAMPLING_EXHAUSTED
+        )
+
+
+class _ReplayStopReason(str, Enum):
+    COMPLETE = "complete"
+    RESOLVED_COMMAND_ILLEGAL = "resolved-command-illegal"
+    SAMPLING_EXHAUSTED = "sampling-exhausted"
+
+
+@dataclass(frozen=True)
+class _ReplayOutcome:
+    particles: tuple[BeliefParticle, ...]
+    generated: int
+    matched: int
+    replayed: int
+    stop_reason: _ReplayStopReason
 
 
 def _validate_observation_chain(
@@ -999,6 +1024,34 @@ def _exact_ai_side(state: dict[str, Any], ai_side: SideId) -> object:
     return sides[index]
 
 
+def _resolved_opponent_choice_legal_for_any_particle(
+    worker: RecoveryStatValidationWorker,
+    *,
+    particles: tuple[BeliefParticle, ...],
+    ai_side: SideId,
+    choice: str,
+) -> bool:
+    opponent_side = "p2" if ai_side == "p1" else "p1"
+    validator = getattr(worker, "validate_choices", None)
+    for particle in particles:
+        if callable(validator):
+            if validator(
+                state=particle.state,
+                side=opponent_side,
+                candidates=[choice],
+            ):
+                return True
+            continue
+        if choice in set(
+            worker.legal_choices(
+                state=particle.state,
+                side=opponent_side,
+            )
+        ):
+            return True
+    return False
+
+
 def _replay_observations(
     worker: RecoveryStatValidationWorker,
     *,
@@ -1006,7 +1059,14 @@ def _replay_observations(
     request: RecoveryRequest,
     observations: tuple[RecoveryObservation, ...],
     rng_seeds_by_observation: tuple[tuple[str | None, ...], ...],
-) -> tuple[tuple[BeliefParticle, ...], int, int, int]:
+) -> _ReplayOutcome:
+    """Replay retained observations without treating finite RNG misses as proof.
+
+    A resolved opponent command that is illegal in every surviving exact state is a
+    mechanically proven incompatibility. By contrast, a legal command whose supplied
+    finite RNG samples fail to reproduce the public observation is unresolved: the
+    missing witness may simply not have been sampled.
+    """
     current = particles
     generated = 0
     matched = 0
@@ -1016,6 +1076,23 @@ def _replay_observations(
         rng_seeds_by_observation,
         strict=True,
     ):
+        resolved_choice = observation.resolved_opponent_choice
+        if resolved_choice is None:
+            raise ValueError("recovery replay requires resolved opponent command")
+        if not _resolved_opponent_choice_legal_for_any_particle(
+            worker,
+            particles=current,
+            ai_side=request.ai_side,
+            choice=resolved_choice,
+        ):
+            return _ReplayOutcome(
+                particles=(),
+                generated=generated,
+                matched=matched,
+                replayed=replayed,
+                stop_reason=_ReplayStopReason.RESOLVED_COMMAND_ILLEGAL,
+            )
+
         update = condition_particles(
             worker,
             particles=current,
@@ -1023,18 +1100,30 @@ def _replay_observations(
             ai_choice=observation.ai_choice,
             actual_public_view=observation.public_view,
             previous_public_view=observation.previous_public_view,
-            resolved_opponent_choice=observation.resolved_opponent_choice,
+            resolved_opponent_choice=resolved_choice,
             rng_seeds=rng_seeds,
             previews=request.previews,
         )
         generated += update.generated
         matched += update.matched
         if not update.particles:
-            return (), generated, matched, replayed
+            return _ReplayOutcome(
+                particles=(),
+                generated=generated,
+                matched=matched,
+                replayed=replayed,
+                stop_reason=_ReplayStopReason.SAMPLING_EXHAUSTED,
+            )
         current = update.particles
         replayed += 1
-    return current, generated, matched, replayed
 
+    return _ReplayOutcome(
+        particles=current,
+        generated=generated,
+        matched=matched,
+        replayed=replayed,
+        stop_reason=_ReplayStopReason.COMPLETE,
+    )
 
 def _validate_materialized_stat_candidates(
     worker: RecoveryStatValidationWorker,
@@ -1190,28 +1279,33 @@ def _validate_materialized_stat_candidates(
             )
             continue
 
-        (
-            checkpoint_particles,
-            prefix_generated,
-            prefix_matched,
-            prefix_replayed,
-        ) = _replay_observations(
+        prefix = _replay_observations(
             worker,
             particles=(candidate.particle,),
             request=request,
             observations=request.authority_observations,
             rng_seeds_by_observation=authority_rng_seeds_by_observation,
         )
-        if prefix_replayed != len(request.authority_observations):
+        if prefix.stop_reason is not _ReplayStopReason.COMPLETE:
+            proven_impossible = (
+                prefix.stop_reason
+                is _ReplayStopReason.RESOLVED_COMMAND_ILLEGAL
+            )
             results.append(
                 RecoveryCandidateValidation(
                     candidate=candidate,
-                    status=RecoveryCandidateStatus.HISTORY_MISMATCH,
-                    checkpoint_compatible=False,
-                    authority_observations_replayed=prefix_replayed,
+                    status=(
+                        RecoveryCandidateStatus.HISTORY_MISMATCH
+                        if proven_impossible
+                        else RecoveryCandidateStatus.SAMPLING_EXHAUSTED
+                    ),
+                    checkpoint_compatible=(
+                        False if proven_impossible else None
+                    ),
+                    authority_observations_replayed=prefix.replayed,
                     observations_replayed=0,
-                    generated_branches=prefix_generated,
-                    matched_branches=prefix_matched,
+                    generated_branches=prefix.generated,
+                    matched_branches=prefix.matched,
                 )
             )
             continue
@@ -1230,42 +1324,41 @@ def _validate_materialized_stat_candidates(
                     candidate=candidate,
                     status=RecoveryCandidateStatus.KNOWN_STATE_MISMATCH,
                     checkpoint_compatible=False,
-                    authority_observations_replayed=prefix_replayed,
+                    authority_observations_replayed=prefix.replayed,
                     observations_replayed=0,
-                    generated_branches=prefix_generated,
-                    matched_branches=prefix_matched,
+                    generated_branches=prefix.generated,
+                    matched_branches=prefix.matched,
                 )
             )
             continue
 
-        (
-            final_particles,
-            suffix_generated,
-            suffix_matched,
-            suffix_replayed,
-        ) = _replay_observations(
+        suffix = _replay_observations(
             worker,
             particles=checkpoint_particles,
             request=request,
             observations=request.observations,
             rng_seeds_by_observation=rng_seeds_by_observation,
         )
-        status = (
-            RecoveryCandidateStatus.VALIDATED
-            if suffix_replayed == len(request.observations) and final_particles
-            else RecoveryCandidateStatus.REPLAY_MISMATCH
-        )
+        if suffix.stop_reason is _ReplayStopReason.COMPLETE:
+            status = RecoveryCandidateStatus.VALIDATED
+        elif (
+            suffix.stop_reason
+            is _ReplayStopReason.RESOLVED_COMMAND_ILLEGAL
+        ):
+            status = RecoveryCandidateStatus.REPLAY_MISMATCH
+        else:
+            status = RecoveryCandidateStatus.SAMPLING_EXHAUSTED
         results.append(
             RecoveryCandidateValidation(
                 candidate=candidate,
                 status=status,
                 checkpoint_compatible=True,
-                authority_observations_replayed=prefix_replayed,
-                observations_replayed=suffix_replayed,
-                generated_branches=prefix_generated + suffix_generated,
-                matched_branches=prefix_matched + suffix_matched,
+                authority_observations_replayed=prefix.replayed,
+                observations_replayed=suffix.replayed,
+                generated_branches=prefix.generated + suffix.generated,
+                matched_branches=prefix.matched + suffix.matched,
                 final_particles=(
-                    final_particles
+                    suffix.particles
                     if status is RecoveryCandidateStatus.VALIDATED
                     else ()
                 ),
@@ -1292,7 +1385,9 @@ def validate_stat_recovery_proposals(
     Pinned Showdown must construct a fresh battle, resolve the exact preview choices
     and opening mechanics, independently prove the returned turn-one candidate,
     and then reproduce every retained public transition through the current
-    checkpoint before any recovery suffix is considered.
+    checkpoint before any recovery suffix is considered. Finite RNG samples may
+    witness compatibility, but failure to sample a witness is reported as
+    SAMPLING_EXHAUSTED rather than mechanical incompatibility.
     """
     _validate_request(
         request,
