@@ -441,6 +441,8 @@ class RecoveryStatValidationWorker(
         root_state: dict[str, Any],
         p1_preview: str,
         p2_preview: str,
+        p1_root_to_input: tuple[int, ...],
+        p2_root_to_input: tuple[int, ...],
     ) -> bool: ...
 
     def validate_recovery_opening_stat_candidate(
@@ -1075,6 +1077,8 @@ def _validate_materialized_stat_candidates(
             root_state=deepcopy(root.state),
             p1_preview=opening.p1_preview_choice,
             p2_preview=opening.p2_preview_choice,
+            p1_root_to_input=opening.p1_root_to_input,
+            p2_root_to_input=opening.p2_root_to_input,
         ):
             raise ValueError(
                 "pre-opening authority does not mechanically reproduce "
