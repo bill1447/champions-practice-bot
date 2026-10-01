@@ -140,6 +140,13 @@ class BeliefSearchResult:
         default=(),
         compare=False,
     )
+    # None is a real tactical sample: it means continue from each serialized
+    # belief world's native Showdown PRNG state instead of resetting to an
+    # explicit seed. Later strategy layers must preserve this evidence too.
+    rng_samples: tuple[str | None, ...] = field(
+        default=(None,),
+        compare=False,
+    )
 
 
 @dataclass(frozen=True)
@@ -770,7 +777,7 @@ def search_exact_belief_turn(
     choices: list[str] | None = None,
     response_limit: int | None = None,
     autonomous_responses: bool = False,
-    rng_seeds: tuple[str, ...] | None = None,
+    rng_seeds: tuple[str | None, ...] | None = None,
     response_shortlists: tuple[tuple[str, ...], ...] | None = None,
 ) -> BeliefSearchResult:
     """Rank actions across exact states generated only from public belief worlds.
@@ -790,7 +797,9 @@ def search_exact_belief_turn(
 
     total_started = perf_counter()
     candidate_legal_started = perf_counter()
-    samples: tuple[str | None, ...] = rng_seeds or (None,)
+    samples: tuple[str | None, ...] = (
+        tuple(rng_seeds) if rng_seeds is not None else (None,)
+    )
     opponent: SideId = "p2" if side == "p1" else "p1"
 
     legal_cache: dict[tuple[SideId, str], list[str]] = {}
@@ -973,6 +982,7 @@ def search_exact_belief_turn(
             legal_cache_misses=legal_cache_misses,
         ),
         response_shortlists=tuple(used_response_shortlists),
+        rng_samples=samples,
     )
 
 
