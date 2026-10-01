@@ -1220,6 +1220,16 @@ function branchMany(request) {
   };
 }
 
+function markSafeRetry(error) {
+  if (error instanceof Error) {
+    error.safeRetry = true;
+    return error;
+  }
+  const wrapped = new Error(String(error));
+  wrapped.safeRetry = true;
+  return wrapped;
+}
+
 function getSession(sessionId) {
   const battle = sessions.get(sessionId);
   if (!battle) {
@@ -1247,10 +1257,13 @@ function startSession(request) {
       view,
     };
   } catch (error) {
-    battle.destroy();
-    sessions.delete(sessionId);
-    sessionPreviewSpecies.delete(sessionId);
-    throw error;
+    try {
+      battle.destroy();
+    } finally {
+      sessions.delete(sessionId);
+      sessionPreviewSpecies.delete(sessionId);
+    }
+    throw markSafeRetry(error);
   }
 }
 
@@ -1317,11 +1330,21 @@ function sessionChoose(request) {
       view,
     };
   } catch (error) {
-    battle.destroy();
-    const restored = Battle.fromJSON(JSON.stringify(before));
-    restored.restart(() => {});
-    sessions.set(request.session_id, restored);
-    throw error;
+    try {
+      battle.destroy();
+      const restored = Battle.fromJSON(JSON.stringify(before));
+      restored.restart(() => {});
+      sessions.set(request.session_id, restored);
+    } catch (rollbackError) {
+      sessions.delete(request.session_id);
+      sessionPreviewSpecies.delete(request.session_id);
+      throw new Error(
+        `session_choose rollback failed: ${
+          rollbackError instanceof Error ? rollbackError.message : String(rollbackError)
+        }`,
+      );
+    }
+    throw markSafeRetry(error);
   }
 }
 
@@ -1401,6 +1424,7 @@ rl.on("line", (line) => {
         id,
         ok: false,
         error: error instanceof Error ? error.message : String(error),
+        safe_retry: error instanceof Error && error.safeRetry === true,
       }) + "\n",
     );
   }
