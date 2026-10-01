@@ -507,7 +507,7 @@ def _materialize_stat_proposals(
         parent = request.checkpoint_particles[parent_index]
         batch = grouped[parent_index]
         resolved = worker.materialize_recovery_stat_proposals(
-            state=parent.state,
+            state=deepcopy(parent.state),
             side=opponent_side,
             proposals=[
                 {
@@ -915,6 +915,7 @@ def validate_stat_recovery_proposals(
         request=request,
         proposals=proposals,
     )
+    _validate_request(request, rng_seeds_by_observation)
     validated = _validate_materialized_stat_candidates(
         worker,
         request=request,
