@@ -133,6 +133,11 @@ jobs:
         shell: pwsh
         run: .\sethp-projection-smoke.ps1
 
+      - name: Isolated mechanics-authoritative recovery boundary smoke test
+        shell: pwsh
+        run: .\recovery-boundary-smoke.ps1
+
+
       - name: Quantitative public transition authority smoke test
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1

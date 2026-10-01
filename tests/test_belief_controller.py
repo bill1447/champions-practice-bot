@@ -40,6 +40,19 @@ def test_hypothetical_worker_exposes_no_live_session_capabilities() -> None:
         assert not hasattr(HypotheticalSearchWorker, name)
 
 
+def test_decision_engine_has_no_hidden_state_recovery_install_surface() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+
+    assert not hasattr(engine, "recovery_candidate_generator")
+    assert not hasattr(engine, "validate_recovery_candidates")
+    assert not hasattr(engine, "install_recovered_particles")
+
+
 def test_decision_engine_owns_no_live_worker_or_session_identifier() -> None:
     engine = BeliefDecisionEngine(
         ".",
@@ -462,7 +475,7 @@ def test_incremental_conditioning_returns_before_hard_deadline(
 
 
 
-def test_pending_recovery_reuses_exact_resolved_human_command() -> None:
+def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
     engine = BeliefDecisionEngine(
         ".",
         battle_format="test",
@@ -496,7 +509,7 @@ def test_pending_recovery_reuses_exact_resolved_human_command() -> None:
         (operation(SimpleNamespace()), False)
     )
 
-    assert engine._recover_pending() is True
+    assert engine._retry_pending_with_more_rng() is True
     assert seen == ["switch 3, pass"]
     assert engine.pending_observations == []
     assert engine.degraded is False
