@@ -22,6 +22,12 @@ from champions_practice.observation_beliefs import (
 
 SideId = Literal["p1", "p2"]
 
+CHAMPIONS_STAT_POINT_CAP = 32
+CHAMPIONS_TOTAL_STAT_POINTS = 66
+_RECOVERY_STATS = ("hp", "atk", "def", "spa", "spd", "spe")
+_RECOVERY_NON_HP_STATS = ("atk", "def", "spa", "spd", "spe")
+_DEFAULT_STAT_POINT_GRID = (0, 16, 32)
+
 
 @dataclass(frozen=True)
 class RecoveryObservation:
@@ -51,6 +57,221 @@ class RecoveryRequest:
 
 
 @dataclass(frozen=True)
+class OpponentStatProposal:
+    """One bounded stat-point alternative for a publicly seen opponent."""
+
+    proposal_id: str
+    parent_particle_index: int
+    pokemon_index: int
+    species: str
+    stat_points: tuple[tuple[str, int], ...]
+    changed_hidden_dimensions: tuple[str, ...]
+
+    @property
+    def stat_point_dict(self) -> dict[str, int]:
+        return dict(self.stat_points)
+
+
+@dataclass(frozen=True)
+class RecoveryMaterializationFailure:
+    proposal: OpponentStatProposal
+    reason: str
+
+
+@dataclass(frozen=True)
+class RecoveryMaterializationReport:
+    candidates: tuple["RecoveryCandidate", ...]
+    failures: tuple[RecoveryMaterializationFailure, ...]
+
+
+class BoundedOpponentStatProposalGenerator:
+    """Generate deterministic, bounded non-HP Champions stat-point alternatives.
+
+    The generator only inspects last-good hypothetical particles and the sanitized
+    public checkpoint. It never receives a live worker or session identifier.
+    HP stat points are intentionally frozen until public-HP interval recovery is
+    implemented; changing max HP without that mapping would invent exact HP state.
+    """
+
+    def __init__(
+        self,
+        *,
+        max_proposals: int = 64,
+        stat_point_grid: tuple[int, ...] = _DEFAULT_STAT_POINT_GRID,
+    ) -> None:
+        if max_proposals <= 0:
+            raise ValueError("max_proposals must be positive")
+        if not stat_point_grid:
+            raise ValueError("stat_point_grid must not be empty")
+        if any(
+            not isinstance(value, int)
+            or value < 0
+            or value > CHAMPIONS_STAT_POINT_CAP
+            for value in stat_point_grid
+        ):
+            raise ValueError("stat-point grid values must be integers from 0 to 32")
+        self.max_proposals = max_proposals
+        self.stat_point_grid = tuple(sorted(set(stat_point_grid)))
+
+    def generate(
+        self,
+        request: RecoveryRequest,
+    ) -> tuple[OpponentStatProposal, ...]:
+        seen_species = _publicly_seen_opponent_species(
+            request.checkpoint_public_view
+        )
+        if not seen_species:
+            return ()
+
+        opponent_side_index = 1 if request.ai_side == "p1" else 0
+        ranked: list[tuple[int, int, int, tuple[int, ...], OpponentStatProposal]] = []
+
+        for parent_index, particle in enumerate(request.checkpoint_particles):
+            sides = particle.state.get("sides")
+            if not isinstance(sides, list) or len(sides) <= opponent_side_index:
+                raise ValueError("checkpoint particle is missing opponent side data")
+            pokemon = sides[opponent_side_index].get("pokemon")
+            if not isinstance(pokemon, list):
+                raise ValueError("checkpoint particle is missing opponent Pokemon")
+
+            for pokemon_index, mon in enumerate(pokemon):
+                if not isinstance(mon, dict):
+                    continue
+                set_data = mon.get("set")
+                if not isinstance(set_data, dict):
+                    continue
+                species = str(set_data.get("species") or set_data.get("name") or "")
+                if _id(species) not in seen_species:
+                    continue
+                current = _stat_points_from_set(set_data)
+                variants = _bounded_non_hp_stat_variants(
+                    current,
+                    grid=self.stat_point_grid,
+                )
+                for variant in variants:
+                    changed = tuple(
+                        stat
+                        for stat in _RECOVERY_NON_HP_STATS
+                        if variant[stat] != current[stat]
+                    )
+                    if not changed:
+                        continue
+                    distance = sum(
+                        abs(variant[stat] - current[stat])
+                        for stat in _RECOVERY_NON_HP_STATS
+                    )
+                    signature = tuple(variant[stat] for stat in _RECOVERY_STATS)
+                    proposal = OpponentStatProposal(
+                        proposal_id=(
+                            f"p{parent_index}-m{pokemon_index}-"
+                            + "-".join(
+                                f"{stat}{variant[stat]}" for stat in _RECOVERY_STATS
+                            )
+                        ),
+                        parent_particle_index=parent_index,
+                        pokemon_index=pokemon_index,
+                        species=species,
+                        stat_points=tuple(
+                            (stat, variant[stat]) for stat in _RECOVERY_STATS
+                        ),
+                        changed_hidden_dimensions=tuple(
+                            f"opponent.{_id(species)}.stat_points.{stat}"
+                            for stat in changed
+                        ),
+                    )
+                    ranked.append(
+                        (distance, parent_index, pokemon_index, signature, proposal)
+                    )
+
+        ranked.sort(key=lambda item: item[:-1])
+        return tuple(item[-1] for item in ranked[: self.max_proposals])
+
+
+def _id(value: str) -> str:
+    return "".join(character for character in value.lower() if character.isalnum())
+
+
+def _publicly_seen_opponent_species(view: dict[str, Any]) -> set[str]:
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return set()
+    revealed = opponent.get("revealed")
+    if not isinstance(revealed, list):
+        return set()
+    return {
+        _id(str(entry.get("species", "")))
+        for entry in revealed
+        if isinstance(entry, dict) and entry.get("seen") is True
+    } - {""}
+
+
+def _stat_points_from_set(set_data: dict[str, Any]) -> dict[str, int]:
+    raw = set_data.get("evs")
+    if not isinstance(raw, dict):
+        raw = {}
+    points: dict[str, int] = {}
+    for stat in _RECOVERY_STATS:
+        value = raw.get(stat, 0)
+        if not isinstance(value, int):
+            raise ValueError(f"checkpoint {stat} stat points are not an integer")
+        if value < 0 or value > CHAMPIONS_STAT_POINT_CAP:
+            raise ValueError(f"checkpoint {stat} stat points are outside 0-32")
+        points[stat] = value
+    if sum(points.values()) > CHAMPIONS_TOTAL_STAT_POINTS:
+        raise ValueError("checkpoint stat points exceed the Champions total cap")
+    return points
+
+
+def _bounded_non_hp_stat_variants(
+    current: dict[str, int],
+    *,
+    grid: tuple[int, ...],
+) -> tuple[dict[str, int], ...]:
+    variants: dict[tuple[int, ...], dict[str, int]] = {}
+
+    def add(candidate: dict[str, int]) -> None:
+        if candidate["hp"] != current["hp"]:
+            return
+        if any(
+            candidate[stat] < 0 or candidate[stat] > CHAMPIONS_STAT_POINT_CAP
+            for stat in _RECOVERY_STATS
+        ):
+            return
+        if sum(candidate.values()) > CHAMPIONS_TOTAL_STAT_POINTS:
+            return
+        signature = tuple(candidate[stat] for stat in _RECOVERY_STATS)
+        if signature != tuple(current[stat] for stat in _RECOVERY_STATS):
+            variants[signature] = candidate
+
+    # Direct lower/equal-budget alternatives allow recovery from an overly high
+    # parent hypothesis without inventing how freed points must have been spent.
+    for stat in _RECOVERY_NON_HP_STATS:
+        for value in grid:
+            candidate = dict(current)
+            candidate[stat] = value
+            add(candidate)
+
+    # Pairwise transfers preserve the total budget and can recover a missing
+    # investment even when the parent already spends the full 66 points.
+    for donor in _RECOVERY_NON_HP_STATS:
+        for target in _RECOVERY_NON_HP_STATS:
+            if donor == target:
+                continue
+            transferable = min(
+                current[donor],
+                CHAMPIONS_STAT_POINT_CAP - current[target],
+            )
+            if transferable <= 0:
+                continue
+            candidate = dict(current)
+            candidate[donor] -= transferable
+            candidate[target] += transferable
+            add(candidate)
+
+    return tuple(variants[key] for key in sorted(variants))
+
+
+@dataclass(frozen=True)
 class RecoveryCandidate:
     """One proposed hidden-world variant at the last-good checkpoint."""
 
@@ -72,6 +293,18 @@ class RecoveryCandidateGenerator(Protocol):
         self,
         request: RecoveryRequest,
     ) -> tuple[RecoveryCandidate, ...]: ...
+
+
+class RecoveryStatMaterializationWorker(Protocol):
+    """Hypothetical-only capability for simulator-coherent stat rematerialization."""
+
+    def materialize_recovery_stat_proposals(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        proposals: list[dict[str, Any]],
+    ) -> list[dict[str, Any]]: ...
 
 
 class RecoveryReplayWorker(Protocol):
@@ -106,6 +339,91 @@ class RecoveryReplayWorker(Protocol):
         state: dict[str, Any],
         branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]: ...
+
+
+def materialize_stat_proposals(
+    worker: RecoveryStatMaterializationWorker,
+    *,
+    request: RecoveryRequest,
+    proposals: tuple[OpponentStatProposal, ...],
+) -> RecoveryMaterializationReport:
+    """Ask Showdown to rebuild coherent checkpoint states for stat proposals."""
+    if not proposals:
+        return RecoveryMaterializationReport((), ())
+
+    opponent_side = "p2" if request.ai_side == "p1" else "p1"
+    grouped: dict[int, list[OpponentStatProposal]] = {}
+    for proposal in proposals:
+        if not 0 <= proposal.parent_particle_index < len(
+            request.checkpoint_particles
+        ):
+            raise ValueError(
+                f"stat proposal {proposal.proposal_id!r} has invalid parent"
+            )
+        grouped.setdefault(proposal.parent_particle_index, []).append(proposal)
+
+    candidates: list[RecoveryCandidate] = []
+    failures: list[RecoveryMaterializationFailure] = []
+    for parent_index in sorted(grouped):
+        parent = request.checkpoint_particles[parent_index]
+        batch = grouped[parent_index]
+        resolved = worker.materialize_recovery_stat_proposals(
+            state=parent.state,
+            side=opponent_side,
+            proposals=[
+                {
+                    "proposal_id": proposal.proposal_id,
+                    "pokemon_index": proposal.pokemon_index,
+                    "stat_points": proposal.stat_point_dict,
+                }
+                for proposal in batch
+            ],
+        )
+        by_id = {
+            str(result.get("proposal_id")): result
+            for result in resolved
+            if isinstance(result, dict)
+        }
+        for proposal in batch:
+            result = by_id.get(proposal.proposal_id)
+            if result is None:
+                raise RuntimeError(
+                    f"Showdown omitted stat proposal {proposal.proposal_id!r}"
+                )
+            state = result.get("state")
+            if isinstance(state, dict):
+                candidates.append(
+                    RecoveryCandidate(
+                        candidate_id=proposal.proposal_id,
+                        parent_particle_index=proposal.parent_particle_index,
+                        particle=BeliefParticle(
+                            state=state,
+                            weight=parent.weight,
+                            world_id=parent.world_id,
+                            history_id=(
+                                f"{parent.history_id}|recovery:{proposal.proposal_id}"
+                            ).strip("|"),
+                        ),
+                        source="bounded-opponent-stat-points",
+                        changed_hidden_dimensions=(
+                            proposal.changed_hidden_dimensions
+                        ),
+                    )
+                )
+                continue
+            reason = result.get("rejected")
+            failures.append(
+                RecoveryMaterializationFailure(
+                    proposal=proposal,
+                    reason=(
+                        str(reason)
+                        if isinstance(reason, str) and reason
+                        else "showdown-materialization-rejected"
+                    ),
+                )
+            )
+
+    return RecoveryMaterializationReport(tuple(candidates), tuple(failures))
 
 
 class RecoveryCandidateStatus(str, Enum):
