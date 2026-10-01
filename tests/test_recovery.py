@@ -533,6 +533,30 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
         )
 
 
+def test_static_recovery_rejects_incomplete_authority_history() -> None:
+    request = _request()
+    incomplete = RecoveryRequest(
+        authority_root_particles=request.authority_root_particles,
+        authority_root_public_view=request.authority_root_public_view,
+        authority_observations=request.authority_observations,
+        authority_history_complete=False,
+        checkpoint_particles=request.checkpoint_particles,
+        checkpoint_public_view=request.checkpoint_public_view,
+        observations=request.observations,
+        ai_side=request.ai_side,
+        previews=request.previews,
+    )
+
+    with pytest.raises(ValueError, match="authority history is incomplete"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=incomplete,
+            proposals=(),
+            authority_rng_seeds_by_observation=(),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
+
+
 def test_recovery_rejects_noncontiguous_public_history() -> None:
     request = _request()
     broken = RecoveryRequest(
