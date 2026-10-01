@@ -775,7 +775,12 @@ class BeliefDecisionEngine:
             structural_mismatches,
         )
 
-    def _recover_pending(self, *, deadline: float | None = None) -> bool:
+    def _retry_pending_with_more_rng(
+        self,
+        *,
+        deadline: float | None = None,
+    ) -> bool:
+        """Retry last-good particles with more RNG; never reconstruct hidden state."""
         if not self.pending_observations:
             return bool(self.particles)
 
@@ -1098,7 +1103,10 @@ class BeliefDecisionEngine:
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
         if self.degraded:
-            if not self._recover_pending(deadline=decision_deadline):
+            # This is continuation resampling from unchanged last-good particles.
+            # Mechanics-authoritative hidden-state reconstruction is isolated in
+            # recovery.py and is intentionally not wired into live decisions.
+            if not self._retry_pending_with_more_rng(deadline=decision_deadline):
                 return self._fallback_decision(
                     legal_live,
                     started=started,
