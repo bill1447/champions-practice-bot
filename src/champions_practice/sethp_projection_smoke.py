@@ -64,7 +64,7 @@ Serious Nature
 TARGET_TURN = "move sleeptalk, move sleeptalk"
 PAIN_SPLIT_TURN = "move painsplit +1, move sleeptalk"
 TARGET_SWITCH_OUT = "switch 3, move sleeptalk"
-TARGET_SWITCH_BACK = "switch 1, move sleeptalk"
+TARGET_SWITCH_BACK = "switch 3, move sleeptalk"
 OBSERVER_WAIT = "move sleeptalk, move sleeptalk"
 
 
