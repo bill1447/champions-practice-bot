@@ -593,13 +593,14 @@ class BeliefDecisionEngine:
             for world_index, world in enumerate(worlds, 1):
                 opponent_preview = preview_choice_for_world(belief, world)
                 for rng_index in range(self.particles_per_world):
+                    opening_seed = self._particle_seed()
                     opening = worker.create_state_with_opening_authority(
                         battle_format=self.battle_format,
                         p1_team=world.team_text,
                         p2_team=particle_ai_team,
                         p1_preview=opponent_preview,
                         p2_preview=ai_choice,
-                        seed=self._particle_seed(),
+                        seed=opening_seed,
                     )
                     state = opening["state"]
                     particle_view = worker.state_view(
@@ -635,16 +636,18 @@ class BeliefDecisionEngine:
                     )
                     opening_by_lineage[(world_id, history_id)] = (
                         RecoveryOpeningAuthority(
-                            particle=BeliefParticle(
-                                state=deepcopy(opening["preopening_state"]),
-                                weight=particle_weight,
-                                world_id=world_id,
-                                history_id=history_id,
-                            ),
+                            world_id=world_id,
+                            history_id=history_id,
+                            battle_format=self.battle_format,
+                            p1_team=world.team_text,
+                            p2_team=particle_ai_team,
+                            p1_name="Search P1",
+                            p2_name="Search P2",
+                            seed=opening_seed,
                             p1_preview_choice=opponent_preview,
                             p2_preview_choice=ai_choice,
-                            p1_root_to_preopening=opening["preview_lineage"]["p1"],
-                            p2_root_to_preopening=opening["preview_lineage"]["p2"],
+                            p1_root_to_input=opening["preview_lineage"]["p1"],
+                            p2_root_to_input=opening["preview_lineage"]["p2"],
                         )
                     )
 
@@ -670,20 +673,7 @@ class BeliefDecisionEngine:
                 raise RuntimeError(
                     "retained belief particle lost pre-opening authority lineage"
                 )
-            retained_opening_authorities.append(
-                RecoveryOpeningAuthority(
-                    particle=BeliefParticle(
-                        state=deepcopy(opening.particle.state),
-                        weight=particle.weight,
-                        world_id=particle.world_id,
-                        history_id=particle.history_id,
-                    ),
-                    p1_preview_choice=opening.p1_preview_choice,
-                    p2_preview_choice=opening.p2_preview_choice,
-                    p1_root_to_preopening=opening.p1_root_to_preopening,
-                    p2_root_to_preopening=opening.p2_root_to_preopening,
-                )
-            )
+            retained_opening_authorities.append(opening)
         self.recovery_opening_authorities = tuple(retained_opening_authorities)
         self.recovery_authority_root_public_view = deepcopy(view)
         self.recovery_authority_history.clear()
