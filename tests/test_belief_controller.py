@@ -1349,6 +1349,7 @@ class _RejectedStartWorker(_CoordinatorWorker):
                 "session_start",
                 "injected known startup rejection",
                 mutating=True,
+                safe_retry=True,
             )
         return super().start_session(**kwargs)
 
@@ -1409,6 +1410,39 @@ def test_ambiguous_start_failure_aborts_and_cannot_resubmit() -> None:
     with pytest.raises(RuntimeError, match="closed"):
         controller.start(opponent_team="hidden-team")
     assert worker.start_calls == 1
+
+
+class _UnsafeRejectedStartWorker(_CoordinatorWorker):
+    def __init__(self) -> None:
+        super().__init__()
+        self.aborted = False
+
+    def start_session(self, **kwargs):
+        raise ShowdownRequestError(
+            "session_start",
+            "startup failure without rollback proof",
+            mutating=True,
+        )
+
+    def abort(self, *, timeout_seconds=0.25):
+        self.aborted = True
+
+
+def test_start_request_error_without_rollback_proof_fails_closed() -> None:
+    worker = _UnsafeRejectedStartWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+
+    with pytest.raises(ShowdownRequestError, match="without rollback proof"):
+        controller.start(opponent_team="hidden-team")
+
+    assert worker.aborted is True
+    assert controller.turn_state is SealedTurnState.CLOSED
+    assert controller._session_id is None
 
 
 class _BlockingPreviewWorker(_CoordinatorWorker):
@@ -1565,8 +1599,41 @@ class _RejectedPreviewWorker(_CoordinatorWorker):
                 "session_choose",
                 "[Invalid choice] injected preview rejection",
                 mutating=True,
+                safe_retry=True,
             )
         return {}
+
+
+class _UnsafeRejectedPreviewWorker(_CoordinatorWorker):
+    def choose_session(self, session_id, *, p1_choice, p2_choice):
+        self.submissions.append((session_id, p1_choice, p2_choice))
+        raise ShowdownRequestError(
+            "session_choose",
+            "preview failure without rollback proof",
+            mutating=True,
+        )
+
+
+def test_preview_request_error_without_rollback_proof_requires_restart() -> None:
+    worker = _UnsafeRejectedPreviewWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.PREVIEW
+
+    with pytest.raises(ShowdownRequestError, match="without rollback proof"):
+        controller.submit_preview(
+            human_choice="team 4321",
+            ai_choice="team 1234",
+        )
+
+    assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert controller.human_legal_choices() == []
+    assert len(worker.submissions) == 1
 
 
 def test_known_preview_rejection_restores_preview_for_safe_retry(
