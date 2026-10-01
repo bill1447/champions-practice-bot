@@ -453,10 +453,20 @@ class ShowdownSearchWorker:
             with self._stderr_lock:
                 self._stderr_lines.append(line.rstrip())
 
+    def _signal_transport_closed(self) -> None:
+        self._transport_closed.set()
+        with self._pending_lock:
+            waiters = tuple(self._pending.values())
+        for waiter in waiters:
+            try:
+                waiter.put_nowait(None)
+            except queue.Full:
+                pass
+
     def _drain_stdout(self) -> None:
         stream = self._process.stdout
         if stream is None:
-            self._transport_closed.set()
+            self._signal_transport_closed()
             return
         try:
             for line in stream:
@@ -470,16 +480,30 @@ class ShowdownSearchWorker:
                 with self._pending_lock:
                     waiter = self._pending.get(request_id)
                 if waiter is not None:
-                    waiter.put(response)
+                    try:
+                        waiter.put_nowait(response)
+                    except queue.Full:
+                        # An abort/close may already have woken this request.
+                        pass
         finally:
-            self._transport_closed.set()
-            with self._pending_lock:
-                waiters = tuple(self._pending.values())
-            for waiter in waiters:
-                try:
-                    waiter.put_nowait(None)
-                except queue.Full:
-                    pass
+            self._signal_transport_closed()
+
+    def _raise_transport_closed(
+        self,
+        op: str,
+        *,
+        mutating: bool,
+    ) -> None:
+        if mutating:
+            raise ShowdownWorkerTimeout(
+                op,
+                mutating=True,
+                phase="transport-abort",
+            )
+        raise RuntimeError(
+            "Showdown search worker transport is closed. "
+            f"stderr={self._stderr_text().strip()!r}"
+        )
 
     def request(
         self,
@@ -494,6 +518,8 @@ class ShowdownSearchWorker:
                 "Showdown search worker exited unexpectedly: "
                 f"{self._stderr_text().strip()}"
             )
+        if self._transport_closed.is_set():
+            self._raise_transport_closed(op, mutating=mutating)
 
         timeout = (
             self._request_timeout_seconds
@@ -503,43 +529,141 @@ class ShowdownSearchWorker:
         if timeout <= 0:
             raise ShowdownWorkerTimeout(op, mutating=mutating)
 
+        deadline = perf_counter() + timeout
         waiter: queue.Queue[dict[str, Any] | None] = queue.Queue(maxsize=1)
-        with self._write_lock:
+        request_id: int | None = None
+
+        acquired_write_lock = False
+        while not acquired_write_lock:
+            if self._transport_closed.is_set():
+                self._raise_transport_closed(op, mutating=mutating)
+            remaining = deadline - perf_counter()
+            if remaining <= 0:
+                raise ShowdownWorkerTimeout(
+                    op,
+                    mutating=mutating,
+                    phase="write-lock",
+                )
+            acquired_write_lock = self._write_lock.acquire(
+                timeout=min(remaining, 0.05)
+            )
+
+        try:
+            if self._transport_closed.is_set():
+                self._raise_transport_closed(op, mutating=mutating)
+            if self._process.poll() is not None:
+                raise RuntimeError(
+                    "Showdown search worker exited unexpectedly: "
+                    f"{self._stderr_text().strip()}"
+                )
+
             request_id = self._next_id
             self._next_id += 1
             message = {"id": request_id, "op": op, **payload}
+            encoded = json.dumps(message, separators=(",", ":")) + "\n"
+            if deadline - perf_counter() <= 0:
+                raise ShowdownWorkerTimeout(
+                    op,
+                    mutating=mutating,
+                    phase="write",
+                )
             if self._process.stdin is None:
                 raise RuntimeError("Showdown search worker stdin is unavailable")
+
             with self._pending_lock:
                 self._pending[request_id] = waiter
-            try:
-                self._process.stdin.write(
-                    json.dumps(message, separators=(",", ":")) + "\n"
-                )
-                self._process.stdin.flush()
-            except Exception:
+
+            write_result: queue.Queue[BaseException | None] = queue.Queue(
+                maxsize=1
+            )
+
+            def write_message() -> None:
+                try:
+                    self._process.stdin.write(encoded)
+                    self._process.stdin.flush()
+                except BaseException as error:
+                    write_result.put(error)
+                else:
+                    write_result.put(None)
+
+            writer = Thread(
+                target=write_message,
+                name=f"showdown-write-{self._process.pid}-{request_id}",
+                daemon=True,
+            )
+            writer.start()
+
+            while True:
+                if self._transport_closed.is_set():
+                    with self._pending_lock:
+                        self._pending.pop(request_id, None)
+                    self._raise_transport_closed(op, mutating=mutating)
+
+                remaining = deadline - perf_counter()
+                if remaining <= 0:
+                    with self._pending_lock:
+                        self._pending.pop(request_id, None)
+                    # A timed-out write may have partially submitted a JSONL
+                    # request. Abort this transport so no later request can be
+                    # framed behind an unknown partial/mutating submission.
+                    self.abort(timeout_seconds=0.0)
+                    raise ShowdownWorkerTimeout(
+                        op,
+                        mutating=mutating,
+                        phase="write",
+                    )
+
+                try:
+                    write_error = write_result.get(
+                        timeout=min(remaining, 0.05)
+                    )
+                    break
+                except queue.Empty:
+                    continue
+
+            if write_error is not None:
                 with self._pending_lock:
                     self._pending.pop(request_id, None)
-                raise
+                self.abort(timeout_seconds=0.0)
+                if mutating:
+                    raise ShowdownWorkerTimeout(
+                        op,
+                        mutating=True,
+                        phase="write",
+                    ) from write_error
+                raise RuntimeError(
+                    f"Showdown worker write failed during {op!r}"
+                ) from write_error
+        finally:
+            self._write_lock.release()
+
+        assert request_id is not None
+        remaining = deadline - perf_counter()
+        if remaining <= 0:
+            with self._pending_lock:
+                self._pending.pop(request_id, None)
+            raise ShowdownWorkerTimeout(
+                op,
+                mutating=mutating,
+                phase="response",
+            )
 
         try:
-            response = waiter.get(timeout=timeout)
+            response = waiter.get(timeout=remaining)
         except queue.Empty as error:
             with self._pending_lock:
                 self._pending.pop(request_id, None)
             raise ShowdownWorkerTimeout(
                 op,
                 mutating=mutating,
+                phase="response",
             ) from error
 
         with self._pending_lock:
             self._pending.pop(request_id, None)
 
         if response is None:
-            raise RuntimeError(
-                "Showdown search worker closed without a response. "
-                f"stderr={self._stderr_text().strip()!r}"
-            )
+            self._raise_transport_closed(op, mutating=mutating)
         if response.get("id") != request_id:
             raise RuntimeError(
                 f"Showdown worker response id mismatch: "
@@ -748,42 +872,46 @@ class ShowdownSearchWorker:
 
 
     def abort(self, *, timeout_seconds: float = 0.25) -> None:
-        """Stop and reap this worker without waiting for a blocked request."""
+        """Stop and reap this worker without waiting for blocked transport I/O."""
+        allowance = max(0.0, timeout_seconds)
+        deadline = perf_counter() + allowance
+        self._signal_transport_closed()
+
         if self._process.poll() is not None:
             return
 
-        allowance = max(0.0, timeout_seconds)
-        self._process.terminate()
         try:
-            self._process.wait(timeout=allowance)
-        except subprocess.TimeoutExpired:
-            self._process.kill()
-            try:
-                self._process.wait(timeout=allowance)
-            except subprocess.TimeoutExpired:
-                return
-        finally:
-            self._transport_closed.set()
+            self._process.terminate()
+        except OSError:
+            pass
 
-    def close(self) -> None:
-        if self._process.poll() is None and self._process.stdin is not None:
-            try:
-                self._process.stdin.close()
-            except OSError:
-                pass
+        if allowance > 0:
+            terminate_wait = min(allowance / 2, max(0.0, deadline - perf_counter()))
+            if terminate_wait > 0:
+                try:
+                    self._process.wait(timeout=terminate_wait)
+                except subprocess.TimeoutExpired:
+                    pass
 
         if self._process.poll() is None:
             try:
-                self._process.wait(timeout=3)
-            except subprocess.TimeoutExpired:
-                self._process.terminate()
-                try:
-                    self._process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    self._process.kill()
-                    self._process.wait(timeout=2)
+                self._process.kill()
+            except OSError:
+                pass
 
-        self._transport_closed.set()
+        remaining = max(0.0, deadline - perf_counter())
+        if remaining > 0 and self._process.poll() is None:
+            try:
+                self._process.wait(timeout=remaining)
+            except subprocess.TimeoutExpired:
+                pass
+
+    def close(self) -> None:
+        # Never politely close/flush stdin here: another thread may be blocked
+        # writing to a full pipe. Abort the transport first, which also wakes
+        # every pending request, then reap/join within fixed bounds.
+        self.abort(timeout_seconds=0.50)
+
         for thread in (
             getattr(self, "_stdout_thread", None),
             getattr(self, "_stderr_thread", None),
