@@ -26,6 +26,7 @@ from champions_practice.belief_worlds import (
 )
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
+from champions_practice.recovery import RecoveryOpeningAuthority
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
@@ -212,6 +213,7 @@ class _EngineObservationSnapshot:
         ...,
     ]
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
+    recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...]
     recovery_authority_root_public_view: dict | None
     recovery_authority_history: tuple[_RecoveryAuthorityObservation, ...]
     recovery_authority_history_complete: bool
@@ -547,6 +549,7 @@ class BeliefDecisionEngine:
             tuple[str, str | None, dict[str, object] | None, dict]
         ] = []
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
+        self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
         self.recovery_authority_history: list[_RecoveryAuthorityObservation] = []
         self.recovery_authority_history_complete = True
@@ -581,12 +584,16 @@ class BeliefDecisionEngine:
         )
         wanted = public_observation_signature(view)
         particles: list[BeliefParticle] = []
+        opening_by_lineage: dict[
+            tuple[str, str],
+            RecoveryOpeningAuthority,
+        ] = {}
 
         with HypotheticalSearchWorker(self.project_root) as worker:
             for world_index, world in enumerate(worlds, 1):
                 opponent_preview = preview_choice_for_world(belief, world)
                 for rng_index in range(self.particles_per_world):
-                    state = worker.create_state(
+                    opening = worker.create_state_with_opening_authority(
                         battle_format=self.battle_format,
                         p1_team=world.team_text,
                         p2_team=particle_ai_team,
@@ -594,6 +601,7 @@ class BeliefDecisionEngine:
                         p2_preview=ai_choice,
                         seed=self._particle_seed(),
                     )
+                    state = opening["state"]
                     particle_view = worker.state_view(
                         state=state,
                         side="p2",
@@ -614,12 +622,29 @@ class BeliefDecisionEngine:
                                 for path in self.preview_mismatch_paths
                             )
                         continue
+                    world_id = f"world-{world_index}"
+                    history_id = f"rng-{rng_index + 1}"
+                    particle_weight = world.weight / self.particles_per_world
                     particles.append(
                         BeliefParticle(
                             state=state,
-                            weight=world.weight / self.particles_per_world,
-                            world_id=f"world-{world_index}",
-                            history_id=f"rng-{rng_index + 1}",
+                            weight=particle_weight,
+                            world_id=world_id,
+                            history_id=history_id,
+                        )
+                    )
+                    opening_by_lineage[(world_id, history_id)] = (
+                        RecoveryOpeningAuthority(
+                            particle=BeliefParticle(
+                                state=deepcopy(opening["preopening_state"]),
+                                weight=particle_weight,
+                                world_id=world_id,
+                                history_id=history_id,
+                            ),
+                            p1_preview_choice=opponent_preview,
+                            p2_preview_choice=ai_choice,
+                            p1_root_to_preopening=opening["preview_lineage"]["p1"],
+                            p2_root_to_preopening=opening["preview_lineage"]["p2"],
                         )
                     )
 
@@ -637,6 +662,29 @@ class BeliefDecisionEngine:
             )
             for particle in self.particles
         )
+        retained_opening_authorities: list[RecoveryOpeningAuthority] = []
+        for particle in self.particles:
+            key = (particle.world_id, particle.history_id)
+            opening = opening_by_lineage.get(key)
+            if opening is None:
+                raise RuntimeError(
+                    "retained belief particle lost pre-opening authority lineage"
+                )
+            retained_opening_authorities.append(
+                RecoveryOpeningAuthority(
+                    particle=BeliefParticle(
+                        state=deepcopy(opening.particle.state),
+                        weight=particle.weight,
+                        world_id=particle.world_id,
+                        history_id=particle.history_id,
+                    ),
+                    p1_preview_choice=opening.p1_preview_choice,
+                    p2_preview_choice=opening.p2_preview_choice,
+                    p1_root_to_preopening=opening.p1_root_to_preopening,
+                    p2_root_to_preopening=opening.p2_root_to_preopening,
+                )
+            )
+        self.recovery_opening_authorities = tuple(retained_opening_authorities)
         self.recovery_authority_root_public_view = deepcopy(view)
         self.recovery_authority_history.clear()
         self.recovery_authority_history_complete = bool(self.particles)
@@ -1899,6 +1947,9 @@ class _BeliefBattleCoordinator:
             recovery_authority_root_particles=(
                 self._engine.recovery_authority_root_particles
             ),
+            recovery_opening_authorities=deepcopy(
+                self._engine.recovery_opening_authorities
+            ),
             recovery_authority_root_public_view=(
                 deepcopy(self._engine.recovery_authority_root_public_view)
             ),
@@ -1920,6 +1971,9 @@ class _BeliefBattleCoordinator:
         self._engine.pending_observations = list(snapshot.pending_observations)
         self._engine.recovery_authority_root_particles = (
             snapshot.recovery_authority_root_particles
+        )
+        self._engine.recovery_opening_authorities = deepcopy(
+            snapshot.recovery_opening_authorities
         )
         self._engine.recovery_authority_root_public_view = deepcopy(
             snapshot.recovery_authority_root_public_view
