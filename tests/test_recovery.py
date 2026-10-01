@@ -427,7 +427,7 @@ def test_recovery_request_detects_parent_mutation_before_authority() -> None:
             request=request,
             proposals=(_proposal("mutated-parent", atk=32, spa=0),),
             authority_rng_seeds_by_observation=(),
-        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -458,7 +458,7 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
             request=request,
             proposals=(proposal,),
             authority_rng_seeds_by_observation=(),
-        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -489,7 +489,7 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
             request=broken,
             proposals=(),
             authority_rng_seeds_by_observation=(),
-        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -503,7 +503,7 @@ def test_stat_proposal_ids_must_be_unique() -> None:
             request=request,
             proposals=(proposal, proposal),
             authority_rng_seeds_by_observation=(),
-        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -516,5 +516,5 @@ def test_recovery_requires_rng_coverage_for_every_observation() -> None:
             request=request,
             proposals=(),
             authority_rng_seeds_by_observation=(),
-        rng_seeds_by_observation=(("seed-1",),),
+            rng_seeds_by_observation=(("seed-1",),),
         )
