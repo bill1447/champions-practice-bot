@@ -559,7 +559,7 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
     const observation = observationForActor(parts[2]);
     if (!observation) continue;
 
-    if (["-damage", "-heal"].includes(event)) {
+    if (["-damage", "-heal", "-sethp"].includes(event)) {
       const condition = publicCondition(parts[3]);
       applyCondition(observation, condition);
       slotConditions.set(slot, condition);
