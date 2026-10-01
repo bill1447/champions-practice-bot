@@ -419,6 +419,7 @@ class ShowdownSearchWorker:
         self._writer_threads_lock = Lock()
         self._cleanup_started = Event()
         self._cleanup_done = Event()
+        self._cleanup_lock = Lock()
         self._cleanup_thread: Thread | None = None
 
         process: subprocess.Popen[str] | None = None
@@ -450,16 +451,10 @@ class ShowdownSearchWorker:
             self._stdout_thread.start()
             self._stderr_thread.start()
         except Exception:
-            if process is not None and process.poll() is None:
-                process.terminate()
-                try:
-                    process.wait(timeout=0.25)
-                except subprocess.TimeoutExpired:
-                    process.kill()
-                    try:
-                        process.wait(timeout=0.25)
-                    except subprocess.TimeoutExpired:
-                        pass
+            if process is not None:
+                self._process = process
+                self.abort(timeout_seconds=0.25)
+                self._cleanup_done.wait(timeout=0.25)
             raise
 
     def _stderr_text(self) -> str:
@@ -483,6 +478,83 @@ class ShowdownSearchWorker:
                 waiter.put_nowait(None)
             except queue.Full:
                 pass
+
+    def _transport_io_threads(self) -> tuple[Thread, ...]:
+        with self._writer_threads_lock:
+            writers = tuple(self._writer_threads)
+        readers = tuple(
+            thread
+            for thread in (
+                getattr(self, "_stdout_thread", None),
+                getattr(self, "_stderr_thread", None),
+            )
+            if thread is not None
+        )
+        return readers + writers
+
+    def _close_transport_streams(self) -> None:
+        for stream in (
+            self._process.stdin,
+            self._process.stdout,
+            self._process.stderr,
+        ):
+            if stream is None or stream.closed:
+                continue
+            try:
+                stream.close()
+            except (OSError, ValueError):
+                pass
+
+    def _finalize_transport(self) -> None:
+        process = self._process
+        try:
+            if process.poll() is None:
+                try:
+                    process.wait(timeout=0.25)
+                except subprocess.TimeoutExpired:
+                    try:
+                        process.kill()
+                    except OSError:
+                        pass
+                    try:
+                        process.wait(timeout=0.50)
+                    except subprocess.TimeoutExpired:
+                        return
+
+            # Wait until the request that owned the write lock has released it.
+            # After transport_closed is set, no later request may start another
+            # writer, so this establishes a stable set of owned I/O threads.
+            with self._write_lock:
+                pass
+
+            while True:
+                threads = tuple(
+                    thread
+                    for thread in self._transport_io_threads()
+                    if thread is not current_thread() and thread.is_alive()
+                )
+                if not threads:
+                    break
+                for thread in threads:
+                    thread.join(timeout=0.05)
+
+            self._close_transport_streams()
+            _unregister_showdown_process(process)
+        finally:
+            self._cleanup_done.set()
+
+    def _schedule_transport_cleanup(self) -> None:
+        with self._cleanup_lock:
+            if self._cleanup_started.is_set():
+                return
+            self._cleanup_started.set()
+            thread = Thread(
+                target=self._finalize_transport,
+                name=f"showdown-cleanup-{self._process.pid}",
+                daemon=True,
+            )
+            self._cleanup_thread = thread
+            thread.start()
 
     def _drain_stdout(self) -> None:
         stream = self._process.stdout
@@ -606,12 +678,17 @@ class ShowdownSearchWorker:
                     write_result.put(error)
                 else:
                     write_result.put(None)
+                finally:
+                    with self._writer_threads_lock:
+                        self._writer_threads.discard(current_thread())
 
             writer = Thread(
                 target=write_message,
                 name=f"showdown-write-{self._process.pid}-{request_id}",
                 daemon=True,
             )
+            with self._writer_threads_lock:
+                self._writer_threads.add(writer)
             writer.start()
 
             while True:
@@ -894,52 +971,53 @@ class ShowdownSearchWorker:
 
 
     def abort(self, *, timeout_seconds: float = 0.25) -> None:
-        """Stop and reap this worker without waiting for blocked transport I/O."""
+        """Stop/reap promptly and schedule complete owned transport cleanup."""
         allowance = max(0.0, timeout_seconds)
         deadline = perf_counter() + allowance
         self._signal_transport_closed()
 
-        if self._process.poll() is not None:
-            return
-
-        try:
-            self._process.terminate()
-        except OSError:
-            pass
-
-        if allowance > 0:
-            terminate_wait = min(allowance / 2, max(0.0, deadline - perf_counter()))
-            if terminate_wait > 0:
-                try:
-                    self._process.wait(timeout=terminate_wait)
-                except subprocess.TimeoutExpired:
-                    pass
-
         if self._process.poll() is None:
             try:
-                self._process.kill()
+                self._process.terminate()
             except OSError:
                 pass
 
-        remaining = max(0.0, deadline - perf_counter())
-        if remaining > 0 and self._process.poll() is None:
-            try:
-                self._process.wait(timeout=remaining)
-            except subprocess.TimeoutExpired:
-                pass
+            if allowance > 0:
+                terminate_wait = min(
+                    allowance / 2,
+                    max(0.0, deadline - perf_counter()),
+                )
+                if terminate_wait > 0:
+                    try:
+                        self._process.wait(timeout=terminate_wait)
+                    except subprocess.TimeoutExpired:
+                        pass
+
+            if self._process.poll() is None:
+                try:
+                    self._process.kill()
+                except OSError:
+                    pass
+
+            remaining = max(0.0, deadline - perf_counter())
+            if remaining > 0 and self._process.poll() is None:
+                try:
+                    self._process.wait(timeout=remaining)
+                except subprocess.TimeoutExpired:
+                    pass
+
+        # Stream close is deliberately deferred until all owned readers/writers
+        # have exited. This keeps abort bounded and avoids reintroducing a block
+        # on TextIOWrapper locks held by a stalled stdin writer.
+        self._schedule_transport_cleanup()
 
     def close(self) -> None:
-        # Never politely close/flush stdin here: another thread may be blocked
-        # writing to a full pipe. Abort the transport first, which also wakes
-        # every pending request, then reap/join within fixed bounds.
+        # Never politely close/flush stdin before terminating the child: another
+        # thread may be blocked writing to a full pipe. Abort first, then allow
+        # the finalizer a bounded fast-path window. If owned I/O is still
+        # unwinding, daemon cleanup continues after close() returns.
         self.abort(timeout_seconds=0.50)
-
-        for thread in (
-            getattr(self, "_stdout_thread", None),
-            getattr(self, "_stderr_thread", None),
-        ):
-            if thread is not None and thread.is_alive():
-                thread.join(timeout=0.25)
+        self._cleanup_done.wait(timeout=0.25)
 
     def __enter__(self) -> "ShowdownSearchWorker":
         return self
