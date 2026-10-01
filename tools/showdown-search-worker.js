@@ -1181,7 +1181,11 @@ function materializeRecoveryStatProposal(state, sideId, proposal) {
   try {
     const side = sideId === "p1" ? battle.p1 : battle.p2;
     const pokemonIndex = proposal.pokemon_index;
-    if (!Number.isInteger(pokemonIndex) || pokemonIndex < 0 || pokemonIndex >= side.pokemon.length) {
+    if (
+      !Number.isInteger(pokemonIndex) ||
+      pokemonIndex < 0 ||
+      pokemonIndex >= side.pokemon.length
+    ) {
       return { proposal_id: proposal.proposal_id, rejected: "invalid-pokemon-index" };
     }
 
