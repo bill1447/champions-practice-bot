@@ -420,6 +420,48 @@ def test_successful_conditioning_records_static_recovery_authority_history() -> 
     assert observation.public_view == current
 
 
+def test_missing_resolved_command_invalidates_static_recovery_history() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    previous = {"turn": 1, "opponent": {}, "player": {}, "request": {}}
+    current = {"turn": 2, "opponent": {}, "player": {}, "request": {}}
+    engine.previews = {"p1": [], "p2": []}
+    engine.particles = (particle,)
+    engine.last_public_view = previous
+    engine.recovery_authority_root_particles = (particle,)
+    engine.recovery_authority_root_public_view = copy.deepcopy(previous)
+    engine._run_until_deadline = lambda operation, deadline: (
+        ParticleUpdate((particle,), 1, 1, 0),
+        False,
+    )
+
+    engine.observe_public_turn(
+        view=current,
+        resolved_opponent_choice=None,
+        decision=BeliefDecision(
+            choice="move ai",
+            mode="test",
+            particle_count=1,
+            candidate_count=0,
+            branch_count=0,
+            elapsed_seconds=0.0,
+        ),
+    )
+
+    assert engine.recovery_authority_history_complete is False
+    assert engine.recovery_authority_history == []
+
+
 def test_observed_action_rng_multiplier_uses_incremental_chunks(
     monkeypatch,
 ) -> None:
