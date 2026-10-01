@@ -45,13 +45,20 @@ class RecoveryObservation:
 
 @dataclass(frozen=True)
 class RecoveryOpeningAuthority:
-    """Trusted pre-opening ancestor and exact preview lineage for one root."""
+    """Trusted battle-creation inputs and preview lineage for one turn-one root."""
 
-    particle: BeliefParticle
+    world_id: str
+    history_id: str
+    battle_format: str
+    p1_team: str
+    p2_team: str
+    p1_name: str
+    p2_name: str
+    seed: str
     p1_preview_choice: str
     p2_preview_choice: str
-    p1_root_to_preopening: tuple[int, ...]
-    p2_root_to_preopening: tuple[int, ...]
+    p1_root_to_input: tuple[int, ...]
+    p2_root_to_input: tuple[int, ...]
 
 
 @dataclass(frozen=True)
@@ -60,9 +67,10 @@ class RecoveryRequest:
 
     Static hidden dimensions such as stat points are lifelong. A proposal therefore
     cannot gain authority by mutating a post-preview or midgame state. Each retained
-    root has a trusted pre-opening ancestor plus exact preview choices and member
-    lineage. Showdown must rebuild the proposed turn-one root from that ancestor
-    before authority_observations can replay through checkpoint_public_view.
+    root has trusted battle-creation inputs plus exact preview choices and member
+    lineage. Showdown must construct a fresh battle, apply the typed proposal before
+    initialization, and rebuild the turn-one root before authority_observations can
+    replay through checkpoint_public_view.
     """
 
     authority_root_particles: tuple[BeliefParticle, ...]
@@ -108,16 +116,18 @@ def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
         ],
         "opening_authorities": [
             {
-                "particle": {
-                    "state": authority.particle.state,
-                    "weight": authority.particle.weight,
-                    "world_id": authority.particle.world_id,
-                    "history_id": authority.particle.history_id,
-                },
+                "world_id": authority.world_id,
+                "history_id": authority.history_id,
+                "battle_format": authority.battle_format,
+                "p1_team": authority.p1_team,
+                "p2_team": authority.p2_team,
+                "p1_name": authority.p1_name,
+                "p2_name": authority.p2_name,
+                "seed": authority.seed,
                 "p1_preview_choice": authority.p1_preview_choice,
                 "p2_preview_choice": authority.p2_preview_choice,
-                "p1_root_to_preopening": authority.p1_root_to_preopening,
-                "p2_root_to_preopening": authority.p2_root_to_preopening,
+                "p1_root_to_input": authority.p1_root_to_input,
+                "p2_root_to_input": authority.p2_root_to_input,
             }
             for authority in request.opening_authorities
         ],
@@ -380,7 +390,7 @@ class _MaterializedStatCandidate:
     proposal_id: str
     parent_particle_index: int
     authority_root_particle_index: int
-    preopening_pokemon_index: int
+    input_pokemon_index: int
     particle: BeliefParticle
     source: str
     changed_hidden_dimensions: tuple[str, ...] = ()
@@ -397,11 +407,15 @@ class RecoveryStatMaterializationWorker(Protocol):
         proposals: list[dict[str, Any]],
     ) -> list[dict[str, Any]]: ...
 
-
     def materialize_recovery_opening_stat_proposals(
         self,
         *,
-        state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         side: str,
         p1_preview: str,
         p2_preview: str,
@@ -418,7 +432,12 @@ class RecoveryStatValidationWorker(
     def validate_recovery_opening_authority(
         self,
         *,
-        preopening_state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         root_state: dict[str, Any],
         p1_preview: str,
         p2_preview: str,
@@ -427,7 +446,12 @@ class RecoveryStatValidationWorker(
     def validate_recovery_opening_stat_candidate(
         self,
         *,
-        preopening_state: dict[str, Any],
+        battle_format: str,
+        p1_team: str,
+        p2_team: str,
+        p1_name: str,
+        p2_name: str,
+        seed: str,
         candidate_state: dict[str, Any],
         side: str,
         pokemon_index: int,
@@ -475,7 +499,6 @@ class RecoveryStatValidationWorker(
         branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]: ...
 
-
 def _opponent_side_index(ai_side: SideId) -> int:
     return 1 if ai_side == "p1" else 0
 
@@ -489,10 +512,10 @@ def _opening_authority(
     authority = request.opening_authorities[root_index]
     root = request.authority_root_particles[root_index]
     if (
-        authority.particle.world_id != root.world_id
-        or authority.particle.history_id != root.history_id
+        authority.world_id != root.world_id
+        or authority.history_id != root.history_id
     ):
-        raise ValueError("pre-opening authority lineage does not match root")
+        raise ValueError("opening authority lineage does not match root")
     return authority
 
 
@@ -504,15 +527,15 @@ def _preopening_target_index(
 ) -> int:
     authority = _opening_authority(request, root_index)
     mapping = (
-        authority.p2_root_to_preopening
+        authority.p2_root_to_input
         if request.ai_side == "p1"
-        else authority.p1_root_to_preopening
+        else authority.p1_root_to_input
     )
     if not 0 <= root_pokemon_index < len(mapping):
-        raise ValueError("recovery root target has no pre-opening member lineage")
+        raise ValueError("recovery root target has no opening input member lineage")
     index = mapping[root_pokemon_index]
     if index < 0:
-        raise ValueError("recovery root target has invalid pre-opening member lineage")
+        raise ValueError("recovery root target has invalid opening input member lineage")
     return index
 
 
@@ -689,14 +712,14 @@ def _materialize_stat_proposals(
     for proposal in proposals:
         _validate_typed_stat_proposal(request=request, proposal=proposal)
         for root_index, _root in _matching_authority_roots(request, proposal):
-            preopening_index = _preopening_target_index(
+            input_index = _preopening_target_index(
                 request,
                 root_index=root_index,
                 root_pokemon_index=proposal.pokemon_index,
             )
             materialization_id = f"{proposal.proposal_id}@root-{root_index}"
             grouped.setdefault(root_index, []).append(
-                (proposal, materialization_id, preopening_index)
+                (proposal, materialization_id, input_index)
             )
 
     candidates: list[_MaterializedStatCandidate] = []
@@ -706,17 +729,22 @@ def _materialize_stat_proposals(
         opening = _opening_authority(request, root_index)
         batch = grouped[root_index]
         resolved = worker.materialize_recovery_opening_stat_proposals(
-            state=deepcopy(opening.particle.state),
+            battle_format=opening.battle_format,
+            p1_team=opening.p1_team,
+            p2_team=opening.p2_team,
+            p1_name=opening.p1_name,
+            p2_name=opening.p2_name,
+            seed=opening.seed,
             side=opponent_side,
             p1_preview=opening.p1_preview_choice,
             p2_preview=opening.p2_preview_choice,
             proposals=[
                 {
                     "proposal_id": materialization_id,
-                    "pokemon_index": preopening_index,
+                    "pokemon_index": input_index,
                     "stat_points": proposal.stat_point_dict,
                 }
-                for proposal, materialization_id, preopening_index in batch
+                for proposal, materialization_id, input_index in batch
             ],
         )
         by_id = {
@@ -724,7 +752,7 @@ def _materialize_stat_proposals(
             for result in resolved
             if isinstance(result, dict)
         }
-        for proposal, materialization_id, preopening_index in batch:
+        for proposal, materialization_id, input_index in batch:
             result = by_id.get(materialization_id)
             if result is None:
                 raise RuntimeError(
@@ -741,7 +769,7 @@ def _materialize_stat_proposals(
                         proposal_id=proposal.proposal_id,
                         parent_particle_index=proposal.parent_particle_index,
                         authority_root_particle_index=root_index,
-                        preopening_pokemon_index=preopening_index,
+                        input_pokemon_index=input_index,
                         particle=BeliefParticle(
                             state=state,
                             weight=checkpoint_parent.weight,
@@ -866,17 +894,26 @@ def _validate_request(
         )
     for root_index, root in enumerate(request.authority_root_particles):
         opening = _opening_authority(request, root_index)
-        if (
-            not isinstance(opening.p1_preview_choice, str)
-            or not opening.p1_preview_choice.strip()
-            or not isinstance(opening.p2_preview_choice, str)
-            or not opening.p2_preview_choice.strip()
+        if any(
+            not isinstance(value, str) or not value.strip()
+            for value in (
+                opening.battle_format,
+                opening.p1_team,
+                opening.p2_team,
+                opening.p1_name,
+                opening.p2_name,
+                opening.seed,
+                opening.p1_preview_choice,
+                opening.p2_preview_choice,
+            )
         ):
-            raise ValueError("pre-opening authority requires exact preview choices")
+            raise ValueError(
+                "opening authority requires exact creation and preview inputs"
+            )
         for side_index, mapping in enumerate(
             (
-                opening.p1_root_to_preopening,
-                opening.p2_root_to_preopening,
+                opening.p1_root_to_input,
+                opening.p2_root_to_input,
             )
         ):
             sides = root.state.get("sides")
@@ -889,7 +926,7 @@ def _validate_request(
                 raise ValueError("static recovery root is missing side data")
             expected = len(sides[side_index]["pokemon"])
             if len(mapping) != expected or len(set(mapping)) != len(mapping):
-                raise ValueError("pre-opening member lineage is incomplete")
+                raise ValueError("opening input member lineage is incomplete")
     root_turn = request.authority_root_public_view.get("turn")
     if root_turn != 1:
         raise ValueError("static recovery authority root must be post-preview turn 1")
@@ -1029,7 +1066,12 @@ def _validate_materialized_stat_candidates(
         opening = _opening_authority(request, root_index)
         root = request.authority_root_particles[root_index]
         if not worker.validate_recovery_opening_authority(
-            preopening_state=deepcopy(opening.particle.state),
+            battle_format=opening.battle_format,
+            p1_team=opening.p1_team,
+            p2_team=opening.p2_team,
+            p1_name=opening.p1_name,
+            p2_name=opening.p2_name,
+            seed=opening.seed,
             root_state=deepcopy(root.state),
             p1_preview=opening.p1_preview_choice,
             p2_preview=opening.p2_preview_choice,
@@ -1083,10 +1125,15 @@ def _validate_materialized_stat_candidates(
             candidate.authority_root_particle_index,
         )
         if not worker.validate_recovery_opening_stat_candidate(
-            preopening_state=deepcopy(opening.particle.state),
+            battle_format=opening.battle_format,
+            p1_team=opening.p1_team,
+            p2_team=opening.p2_team,
+            p1_name=opening.p1_name,
+            p2_name=opening.p2_name,
+            seed=opening.seed,
             candidate_state=deepcopy(candidate.particle.state),
             side=opponent_side,
-            pokemon_index=candidate.preopening_pokemon_index,
+            pokemon_index=candidate.input_pokemon_index,
             stat_points=proposal.stat_point_dict,
             p1_preview=opening.p1_preview_choice,
             p2_preview=opening.p2_preview_choice,
@@ -1237,9 +1284,9 @@ def validate_stat_recovery_proposals(
 ) -> RecoveryValidationReport:
     """Validate lifelong stat proposals from root through all retained history.
 
-    Static stat proposals are applied only to trusted pre-opening authority states.
-    Pinned Showdown must resolve the exact preview choices and opening mechanics,
-    independently prove the returned turn-one candidate is that canonical result,
+    Static stat proposals are applied only to trusted battle-creation inputs.
+    Pinned Showdown must construct a fresh battle, resolve the exact preview choices
+    and opening mechanics, independently prove the returned turn-one candidate,
     and then reproduce every retained public transition through the current
     checkpoint before any recovery suffix is considered.
     """
