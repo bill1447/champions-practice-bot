@@ -658,6 +658,13 @@ class _CheckpointHiddenStateMissWorker(_TypedRecoveryWorker):
         results = super().branch_many(state=state, branches=branches)
         for result in results:
             result["state"]["sides"][1]["pokemon"][0]["hp"] = 179
+            result["view"] = {
+                "turn": 2,
+                "opponent": {
+                    "active": [{"species": "Snorlax", "hp_percent": 95}],
+                    "revealed": [{"species": "Snorlax", "seen": True}],
+                },
+            }
         return results
 
 
@@ -666,7 +673,13 @@ def test_sampled_checkpoint_hidden_state_miss_is_inconclusive() -> None:
     checkpoint_state = copy.deepcopy(root_state)
     checkpoint_state["test_step"] = 1
     root_view = _checkpoint()
-    checkpoint_view = _first_view()
+    checkpoint_view = {
+        "turn": 2,
+        "opponent": {
+            "active": [{"species": "Snorlax", "hp_percent": 95}],
+            "revealed": [{"species": "Snorlax", "seen": True}],
+        },
+    }
     suffix_view = _second_view()
     root_particle = BeliefParticle(
         root_state,
