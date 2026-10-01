@@ -8,7 +8,10 @@ from champions_practice.belief_controller import (
     _BeliefBattleCoordinator,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import (
+    FORCED_WAIT_CHOICE,
+    ShowdownSearchWorker,
+)
 
 SELF_KO_TEAM = """Indeedee-F
 Ability: Synchronize
@@ -171,9 +174,9 @@ def _run_human_forced_switch_ai_wait(worker: ShowdownSearchWorker) -> None:
             )
 
         ai_wait = coordinator._ai_preseal_choices()
-        if ai_wait != [""]:
+        if ai_wait != [FORCED_WAIT_CHOICE]:
             raise SystemExit(
-                f"ERROR: waiting AI did not expose one empty choice: {ai_wait}"
+                f"ERROR: waiting AI did not expose explicit wait: {ai_wait}"
             )
 
         forced = coordinator.lock_ai_action()
@@ -195,12 +198,12 @@ def _run_human_forced_switch_ai_wait(worker: ShowdownSearchWorker) -> None:
             raise SystemExit(
                 "ERROR: human forced replacement did not resolve cleanly"
             )
-        if forced_result.decision.choice != "":
+        if forced_result.decision.choice != FORCED_WAIT_CHOICE:
             raise SystemExit(
-                "ERROR: waiting AI submitted a non-empty forced-switch choice"
+                "ERROR: waiting AI did not seal the explicit forced-wait token"
             )
 
-        print("Human forced-switch / AI-wait choice: <empty>")
+        print(f"Human forced-switch / AI-wait choice: {FORCED_WAIT_CHOICE}")
     finally:
         coordinator.close()
 
@@ -280,7 +283,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
                 f"{single_force}"
             )
         human_wait = coordinator.human_legal_choices()
-        if human_wait != [""]:
+        if human_wait != [FORCED_WAIT_CHOICE]:
             raise SystemExit(
                 f"ERROR: human did not wait for AI replacement: {human_wait}"
             )
@@ -290,7 +293,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
         replacement = coordinator.lock_ai_action()
         coordinator.commit_human_action(
             token=replacement.token,
-            human_choice="",
+            human_choice=FORCED_WAIT_CHOICE,
         )
 
         second_legal = coordinator._ai_preseal_choices()
@@ -343,7 +346,11 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
             raise SystemExit(
                 "ERROR: partial AI replacement exposed no legal human response"
             )
-        human_choice = "" if "" in human_force else human_force[0]
+        human_choice = (
+            FORCED_WAIT_CHOICE
+            if FORCED_WAIT_CHOICE in human_force
+            else human_force[0]
+        )
 
         selected = partial_choices[0]
         coordinator._engine.choose_ai_action = (
@@ -431,7 +438,11 @@ def main() -> None:
                         f"{choice}"
                     )
             human_wait = coordinator.human_legal_choices()
-            wait_choice = "" if "" in human_wait else human_wait[0]
+            wait_choice = (
+                FORCED_WAIT_CHOICE
+                if FORCED_WAIT_CHOICE in human_wait
+                else human_wait[0]
+            )
 
             forced = coordinator.lock_ai_action()
             forced_result = coordinator.commit_human_action(
