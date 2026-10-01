@@ -173,7 +173,8 @@ def main() -> None:
             ),
             authority_root_public_view=checkpoint,
             authority_observations=(),
-            checkpoint_particles=(
+            authority_history_complete=True,
+        checkpoint_particles=(
                 BeliefParticle(
                     low_state,
                     1.0,
