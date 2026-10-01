@@ -560,7 +560,6 @@ class ShowdownSearchWorker:
             request_id = self._next_id
             self._next_id += 1
             message = {"id": request_id, "op": op, **payload}
-            encoded = json.dumps(message, separators=(",", ":")) + "\n"
             if deadline - perf_counter() <= 0:
                 raise ShowdownWorkerTimeout(
                     op,
@@ -579,6 +578,7 @@ class ShowdownSearchWorker:
 
             def write_message() -> None:
                 try:
+                    encoded = json.dumps(message, separators=(",", ":")) + "\n"
                     self._process.stdin.write(encoded)
                     self._process.stdin.flush()
                 except BaseException as error:
