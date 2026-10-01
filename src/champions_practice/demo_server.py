@@ -18,6 +18,7 @@ from champions_practice.belief_controller import (
     SealedTurnState,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
+from champions_practice.search_worker import FORCED_WAIT_CHOICE
 from champions_practice.demo_fixture import (
     DEMO_AI_PREVIEW_CHOICE,
     DEMO_AI_TEAM,
@@ -313,7 +314,7 @@ def _choice_label(
     view: dict | None,
     resolved_view: dict | None = None,
 ) -> str:
-    if not choice:
+    if choice == FORCED_WAIT_CHOICE:
         return "wait"
     if choice.startswith("team "):
         return _preview_choice_label(choice, view)
@@ -414,7 +415,7 @@ def _opponent_choice_label(
     view: dict | None,
     resolved_view: dict | None = None,
 ) -> str:
-    if not choice:
+    if choice == FORCED_WAIT_CHOICE:
         return "wait"
     return " | ".join(
         _opponent_action_part_label(
@@ -1012,9 +1013,8 @@ function formatBattleLog(history) {
 
   return history.map(entry => {
     const d = entry.decision || {};
-    const humanRaw = entry.human_choice === "" ? "wait" :
-      (entry.human_choice ?? "unknown");
-    const aiRaw = d.choice === "" ? "wait" : (d.choice ?? "unknown");
+    const humanRaw = entry.human_choice ?? "unknown";
+    const aiRaw = d.choice ?? "unknown";
     const humanLabel = entry.human_choice_label || humanRaw;
     const aiLabel = entry.ai_choice_label || aiRaw;
     const hp = entry.hp_after || {};
@@ -1336,12 +1336,12 @@ async function renderAndAutoLock(next) {
     turnState === "locked" &&
     Array.isArray(next.legal_choices) &&
     next.legal_choices.length === 1 &&
-    next.legal_choices[0] === ""
+    next.legal_choices[0] === "wait"
   ) {
     aiLockPending = true;
     render(next);
     try {
-      const advanced = await request("/api/commit", "POST", {choice: ""});
+      const advanced = await request("/api/commit", "POST", {choice: "wait"});
       aiLockPending = false;
       await renderAndAutoLock(advanced);
       return;
@@ -1505,15 +1505,11 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
         return payload
 
     @staticmethod
-    def _choice(
-        payload: dict[str, object],
-        *,
-        allow_empty: bool = False,
-    ) -> str:
+    def _choice(payload: dict[str, object]) -> str:
         choice = payload.get("choice")
         if not isinstance(choice, str):
             raise ValueError("choice must be a string")
-        if not allow_empty and not choice.strip():
+        if not choice.strip():
             raise ValueError("choice must be a non-empty string")
         return choice
 
@@ -1537,7 +1533,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
                 result = self.app.lock_ai_action()
             elif self.path == "/api/commit":
                 result = self.app.commit_human_action(
-                    self._choice(payload, allow_empty=True)
+                    self._choice(payload)
                 )
             elif self.path == "/api/reconcile":
                 result = self.app.reconcile_failed_turn()
