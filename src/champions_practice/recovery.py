@@ -611,6 +611,9 @@ def _stat_candidate_delta_authorized(
         candidate_points = _stat_points_from_set(candidate_set)
     except ValueError:
         return False
+    candidate_raw_points = candidate_set.get("evs")
+    if candidate_raw_points != proposal.stat_point_dict:
+        return False
     if candidate_points != proposal.stat_point_dict:
         return False
     if candidate_points["hp"] != parent_points["hp"]:
