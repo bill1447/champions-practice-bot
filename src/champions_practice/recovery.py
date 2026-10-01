@@ -771,6 +771,7 @@ def _materialize_stat_proposals(
 
     return RecoveryMaterializationReport(tuple(candidates), tuple(failures))
 
+
 class RecoveryCandidateStatus(str, Enum):
     UNAUTHORIZED_STATE_DELTA = "unauthorized-state-delta"
     AUTHORITY_ROOT_MISMATCH = "authority-root-mismatch"
