@@ -516,10 +516,10 @@ class ShowdownSearchWorker:
                         process.kill()
                     except OSError:
                         pass
-                    try:
-                        process.wait(timeout=0.50)
-                    except subprocess.TimeoutExpired:
-                        return
+                    # This wait runs only in the daemon finalizer. close()/abort()
+                    # remain bounded while cleanup retains ownership until the OS
+                    # actually reaps the child and its pipes can be closed safely.
+                    process.wait()
 
             # Wait until the request that owned the write lock has released it.
             # After transport_closed is set, no later request may start another
@@ -580,6 +580,7 @@ class ShowdownSearchWorker:
                         pass
         finally:
             self._signal_transport_closed()
+            self._schedule_transport_cleanup()
 
     def _raise_transport_closed(
         self,
@@ -689,7 +690,12 @@ class ShowdownSearchWorker:
             )
             with self._writer_threads_lock:
                 self._writer_threads.add(writer)
-            writer.start()
+            try:
+                writer.start()
+            except BaseException:
+                with self._writer_threads_lock:
+                    self._writer_threads.discard(writer)
+                raise
 
             while True:
                 if self._transport_closed.is_set():
