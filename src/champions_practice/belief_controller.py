@@ -1129,6 +1129,19 @@ class BeliefDecisionEngine:
                     result.append(choice)
             return tuple(result)
 
+        def ordered_rng_union(
+            *groups: tuple[str | None, ...],
+        ) -> tuple[str | None, ...]:
+            seen: set[str | None] = set()
+            result: list[str | None] = []
+            for group in groups:
+                for sample in group:
+                    if sample in seen:
+                        continue
+                    seen.add(sample)
+                    result.append(sample)
+            return tuple(result)
+
         def run_baseline(worker: HypotheticalSearchWorker):
             pruning = shortlist_belief_candidates(
                 worker,
@@ -1293,6 +1306,7 @@ class BeliefDecisionEngine:
         tactical_search = baseline_search
         protected_tactical = ProtectedTacticalEvidence(
             response_shortlists=baseline_search.response_shortlists,
+            rng_seeds=baseline_search.rng_samples,
         )
         tactical_extra_branch_count = 0
         protect_risk_branch_count = 0
@@ -1340,7 +1354,10 @@ class BeliefDecisionEngine:
                 tactical_search = protect_risk_search
                 protected_tactical = ProtectedTacticalEvidence(
                     response_shortlists=protect_risk_search.response_shortlists,
-                    rng_seeds=FINAL_RNG_SEEDS,
+                    rng_seeds=ordered_rng_union(
+                        baseline_search.rng_samples,
+                        protect_risk_search.rng_samples,
+                    ),
                 )
                 protect_risk_branch_count = (
                     protect_risk_search.response_screening_branch_count

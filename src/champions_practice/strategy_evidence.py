@@ -40,13 +40,15 @@ class ProtectedTacticalEvidence:
     """Completed tactical evidence that later strategy analysis may only extend."""
 
     response_shortlists: tuple[tuple[str, ...], ...]
-    rng_seeds: tuple[str, ...] = ()
+    # None denotes the serialized PRNG continuation already present in each
+    # belief world. It is completed tactical evidence, not "no RNG evidence".
+    rng_seeds: tuple[str | None, ...] = ()
 
 
 @dataclass(frozen=True)
 class SharedStrategicResponses:
     response_shortlists: tuple[tuple[str, ...], ...]
-    rng_seeds: tuple[str, ...]
+    rng_seeds: tuple[str | None, ...]
     screening_branch_count: int
     total_seconds: float = field(compare=False)
 
@@ -559,9 +561,11 @@ def prepare_shared_strategic_responses(
             "protected tactical response sets must align one-to-one with worlds"
         )
 
-    def ordered_union(*groups: tuple[str, ...]) -> tuple[str, ...]:
-        seen: set[str] = set()
-        values: list[str] = []
+    def ordered_union(
+        *groups: tuple[str | None, ...],
+    ) -> tuple[str | None, ...]:
+        seen: set[str | None] = set()
+        values: list[str | None] = []
         for group in groups:
             for value in group:
                 if value in seen:
@@ -635,7 +639,7 @@ def probe_strategic_plan(
     plan: StrategicPlan,
     candidate_limit: int = 4,
     response_limit: int = 3,
-    rng_seeds: tuple[str, ...] = SCREENING_RNG_SEEDS,
+    rng_seeds: tuple[str | None, ...] = SCREENING_RNG_SEEDS,
     robust_threshold: float = 0.8,
     shared_responses: SharedStrategicResponses | None = None,
     prepared_pruning: BeliefPruningResult | None = None,
@@ -717,15 +721,17 @@ def probe_strategic_plan(
                 )
 
         requested: list[dict[str, str]] = []
-        metadata: list[tuple[str, str, str]] = []
+        metadata: list[tuple[str, str, str | None]] = []
         for choice in choices:
             for response in responses:
                 for rng_seed in sample_rng_seeds:
                     branch = (
-                        {"p1_choice": choice, "p2_choice": response, "rng_seed": rng_seed}
+                        {"p1_choice": choice, "p2_choice": response}
                         if side == "p1"
-                        else {"p1_choice": response, "p2_choice": choice, "rng_seed": rng_seed}
+                        else {"p1_choice": response, "p2_choice": choice}
                     )
+                    if rng_seed is not None:
+                        branch["rng_seed"] = rng_seed
                     requested.append(branch)
                     metadata.append((choice, response, rng_seed))
 

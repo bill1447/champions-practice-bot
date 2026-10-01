@@ -281,6 +281,81 @@ def test_shared_strategy_evidence_extends_protected_tactical_context(
     assert shared.screening_branch_count == 3
 
 
+def test_native_tactical_rng_failure_remains_in_strategy_probe() -> None:
+    class NativeFragilityWorker:
+        choice = "move protect, move protect"
+        response = "move counter +1, move counter +2"
+
+        def legal_choices(self, *, state, side):
+            return [self.choice] if side == "p1" else [self.response]
+
+        def branch_many(self, *, state, branches):
+            results = []
+            for index, branch in enumerate(branches):
+                keeper_hp = 0 if "rng_seed" not in branch else 100
+                results.append(
+                    {
+                        "index": index,
+                        "summary": _summary(
+                            keeper_hp=keeper_hp,
+                            partner_hp=100,
+                            foe_a_hp=100,
+                            foe_b_hp=100,
+                        ),
+                    }
+                )
+            return results
+
+    plan = StrategicPlan(
+        name="preserve-keeper-native-rng",
+        objective="keep Keeper alive across tactical and strategic RNG evidence",
+        desired_board=DesiredBoard(required_resources=("Keeper",)),
+        required_resources=("Keeper",),
+        preserve=("Keeper",),
+        failure_conditions=("critical-resource-lost:Keeper",),
+        tactical_priorities=("preserve:Keeper",),
+    )
+    worker = NativeFragilityWorker()
+    worlds = (
+        ExactBeliefWorldState(
+            state={"id": "native-rng"},
+            weight=1.0,
+            label="world-a",
+        ),
+    )
+    shared = prepare_shared_strategic_responses(
+        worker,
+        worlds=worlds,
+        side="p1",
+        candidate_references=(worker.choice,),
+        response_limit=1,
+        rng_seeds=("strategic-safe",),
+        protected=ProtectedTacticalEvidence(
+            response_shortlists=((worker.response,),),
+            rng_seeds=(None,),
+        ),
+    )
+
+    assert shared.rng_seeds == (None, "strategic-safe")
+
+    probe = probe_strategic_plan(
+        worker,
+        worlds=worlds,
+        assessment=_assessment(),
+        view=_view(),
+        side="p1",
+        plan=plan,
+        candidate_limit=1,
+        response_limit=1,
+        rng_seeds=("strategic-safe",),
+        shared_responses=shared,
+    )
+
+    assert probe.rng_sample_count == 2
+    assert probe.sampled_robust is False
+    assert probe.chosen.evaluation.preserve_failure_mass == 1.0
+
+
 def test_competing_plans_share_response_families_and_rng_futures() -> None:
     worker = SharedEvidenceWorker()
     worlds = (
