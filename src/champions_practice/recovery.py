@@ -55,6 +55,7 @@ class RecoveryRequest:
     authority_root_particles: tuple[BeliefParticle, ...]
     authority_root_public_view: dict[str, Any]
     authority_observations: tuple[RecoveryObservation, ...]
+    authority_history_complete: bool
     checkpoint_particles: tuple[BeliefParticle, ...]
     checkpoint_public_view: dict[str, Any]
     observations: tuple[RecoveryObservation, ...]
@@ -92,6 +93,7 @@ def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
             for particle in request.authority_root_particles
         ],
         "authority_root_public_view": request.authority_root_public_view,
+        "authority_history_complete": request.authority_history_complete,
         "authority_observations": [
             {
                 "ai_choice": observation.ai_choice,
@@ -736,6 +738,8 @@ def _validate_request(
         raise ValueError("recovery request authority inputs were mutated")
     if request.ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
+    if not request.authority_history_complete:
+        raise ValueError("static recovery authority history is incomplete")
     if not request.authority_root_particles:
         raise ValueError("static recovery requires authority root particles")
     root_turn = request.authority_root_public_view.get("turn")
