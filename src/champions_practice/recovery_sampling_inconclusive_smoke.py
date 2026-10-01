@@ -5,6 +5,7 @@ from __future__ import annotations
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.observation_beliefs import (
     BeliefParticle,
+    identity_member_lineage,
     public_observation_signature,
 )
 from champions_practice.recovery import (
@@ -125,6 +126,8 @@ def main() -> None:
             1.0,
             world_id="sampling-parent",
             history_id="checkpoint",
+            p1_member_lineage=identity_member_lineage(low_state, "p1"),
+            p2_member_lineage=identity_member_lineage(low_state, "p2"),
         )
         request = RecoveryRequest(
             authority_root_particles=(root_particle,),
@@ -164,6 +167,7 @@ def main() -> None:
             proposal_id="high-attack-witness",
             parent_particle_index=0,
             pokemon_index=0,
+            root_pokemon_index=0,
             species="Snorlax",
             stat_points=(
                 ("hp", 2),
@@ -174,8 +178,8 @@ def main() -> None:
                 ("spe", 32),
             ),
             changed_hidden_dimensions=(
-                "opponent.snorlax.stat_points.atk",
-                "opponent.snorlax.stat_points.spa",
+                "opponent.member0.snorlax.stat_points.atk",
+                "opponent.member0.snorlax.stat_points.spa",
             ),
         )
 
