@@ -1,3 +1,4 @@
+import copy
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event
 from types import SimpleNamespace
