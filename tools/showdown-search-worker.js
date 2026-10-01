@@ -879,6 +879,25 @@ function publicMoveTargetLocations(request, sourceSlot, targetType, gameType) {
   return locations;
 }
 
+const FORCED_WAIT_CHOICE = "wait";
+
+function exactChoiceForShowdown(battle, sideId, choice) {
+  if (choice === "") {
+    throw new Error(
+      "[Invalid choice] Empty choice is ambiguous; use the explicit forced-wait token",
+    );
+  }
+  if (choice !== FORCED_WAIT_CHOICE) return choice;
+
+  const side = sideId === "p1" ? battle.p1 : battle.p2;
+  if (!side.activeRequest || side.activeRequest.wait !== true) {
+    throw new Error(
+      `[Unavailable choice] ${sideId} is not currently forced to wait`,
+    );
+  }
+  return "";
+}
+
 function availableSwitches(request) {
   return request.side.pokemon
     .map((pokemon, index) => ({ pokemon, slot: index + 1 }))
@@ -957,7 +976,8 @@ function switchCandidates(request) {
 
 function proposedChoices(battle, side) {
   const request = side.activeRequest;
-  if (!request || request.wait) return [""];
+  if (!request) return [];
+  if (request.wait) return [FORCED_WAIT_CHOICE];
   if (request.teamPreview) return previewCandidates(battle, side);
   if (request.forceSwitch) return cartesian(switchCandidates(request));
   if (request.active) {
@@ -982,16 +1002,13 @@ function validateChoices(state, sideId, candidates) {
     for (const candidate of candidates) {
       try {
         side.clearChoice();
-        if (candidate === "") {
-          if (
-            side.requestState === "" ||
-            !side.activeRequest ||
-            side.activeRequest.wait
-          ) {
-            legal.add("");
+        if (candidate === FORCED_WAIT_CHOICE) {
+          if (side.activeRequest?.wait === true) {
+            legal.add(FORCED_WAIT_CHOICE);
           }
           continue;
         }
+        if (candidate === "") continue;
         if (!side.choose(candidate) || !side.isChoiceDone()) continue;
         legal.add(side.getChoice());
       } catch {
@@ -1006,6 +1023,8 @@ function validateChoices(state, sideId, candidates) {
 }
 
 function isPubliclyStructurallySelectable(choice, request, gameType) {
+  if (choice === FORCED_WAIT_CHOICE) return request?.wait === true;
+  if (!choice || request?.wait === true) return false;
   const commands = choice.split(",").map((command) => command.trim());
   const switchSlots = [];
   let transformationCount = 0;
@@ -1716,7 +1735,9 @@ function resolveBranch(
     p2: [...battle.p2.pokemon],
   };
 
-  battle.makeChoices(p1Choice, p2Choice);
+  const exactP1Choice = exactChoiceForShowdown(battle, "p1", p1Choice);
+  const exactP2Choice = exactChoiceForShowdown(battle, "p2", p2Choice);
+  battle.makeChoices(exactP1Choice, exactP2Choice);
 
   const memberLineage = {
     p1: battle.p1.pokemon.map((pokemon) => parentPokemon.p1.indexOf(pokemon)),
@@ -1900,7 +1921,9 @@ function sessionChoose(request) {
   // An explicit request error must therefore mean the live mutation did not stick.
   const before = battle.toJSON();
   try {
-    battle.makeChoices(request.p1_choice, request.p2_choice);
+    const p1Choice = exactChoiceForShowdown(battle, "p1", request.p1_choice);
+    const p2Choice = exactChoiceForShowdown(battle, "p2", request.p2_choice);
+    battle.makeChoices(p1Choice, p2Choice);
     const view = playerView(
       battle,
       "p1",
