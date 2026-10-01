@@ -147,6 +147,17 @@ def _log_contains(state: dict, token: str) -> bool:
     return isinstance(log, list) and any(token in str(line) for line in log[-32:])
 
 
+def _sandslash_boosts_cleared(state: dict) -> bool:
+    sides = state.get("sides")
+    if not isinstance(sides, list) or len(sides) < 2:
+        return False
+    pokemon = sides[1].get("pokemon")
+    if not isinstance(pokemon, list) or not pokemon:
+        return False
+    boosts = pokemon[0].get("boosts")
+    return isinstance(boosts, dict) and all(value == 0 for value in boosts.values())
+
+
 def _execution_actions(view: dict) -> list[dict]:
     delta = view.get("public_execution_delta")
     if not isinstance(delta, dict):
@@ -319,11 +330,16 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
             raise SystemExit("ERROR: called-move fixture branch omitted state/view")
         curled = _has_defense_curl(exact_state)
         by_signature[public_observation_signature(view)].add(curled)
-        if curled and actual is None:
+        if (
+            curled
+            and actual is None
+            and _sandslash_boosts_cleared(exact_state)
+        ):
             actual = branch
         if (
             not curled
             and wrong is None
+            and _sandslash_boosts_cleared(exact_state)
             and _log_contains(exact_state, "|Swords Dance|")
         ):
             wrong = branch
@@ -331,7 +347,8 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
 
     if actual is None or wrong is None or wrong_seed is None:
         raise SystemExit(
-            "ERROR: called-move fixture did not produce Defense Curl and Swords Dance"
+            "ERROR: called-move fixture did not reproduce the Haze-cleared "
+            "Defense Curl/Swords Dance collision"
         )
     collisions = [
         values for values in by_signature.values() if len(values) > 1
