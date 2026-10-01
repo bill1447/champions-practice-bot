@@ -1362,6 +1362,49 @@ function materializeRecoveryOpeningStatProposals(request) {
   };
 }
 
+function recoveryStateDiffPaths(left, right, path = "$", limit = 64) {
+  if (limit <= 0) return [];
+  if (typeof left !== typeof right || left === null || right === null) {
+    return isDeepStrictEqual(left, right) ? [] : [path];
+  }
+  if (Array.isArray(left) || Array.isArray(right)) {
+    if (!Array.isArray(left) || !Array.isArray(right) || left.length !== right.length) {
+      return [path];
+    }
+    const paths = [];
+    for (let index = 0; index < left.length && paths.length < limit; index++) {
+      paths.push(
+        ...recoveryStateDiffPaths(
+          left[index],
+          right[index],
+          `${path}[${index}]`,
+          limit - paths.length,
+        ),
+      );
+    }
+    return paths;
+  }
+  if (typeof left === "object") {
+    const leftKeys = Object.keys(left).sort();
+    const rightKeys = Object.keys(right).sort();
+    if (!isDeepStrictEqual(leftKeys, rightKeys)) return [path];
+    const paths = [];
+    for (const key of leftKeys) {
+      if (paths.length >= limit) break;
+      paths.push(
+        ...recoveryStateDiffPaths(
+          left[key],
+          right[key],
+          `${path}.${key}`,
+          limit - paths.length,
+        ),
+      );
+    }
+    return paths;
+  }
+  return isDeepStrictEqual(left, right) ? [] : [path];
+}
+
 function validateRecoveryOpeningAuthority(request) {
   if (!request.preopening_state || !request.root_state) {
     throw new Error(
@@ -1383,7 +1426,11 @@ function validateRecoveryOpeningAuthority(request) {
     request.p1_preview,
     request.p2_preview,
   );
-  return { valid: isDeepStrictEqual(canonical, request.root_state) };
+  const valid = isDeepStrictEqual(canonical, request.root_state);
+  return {
+    valid,
+    diff_paths: valid ? [] : recoveryStateDiffPaths(canonical, request.root_state),
+  };
 }
 
 function validateRecoveryOpeningStatCandidate(request) {
