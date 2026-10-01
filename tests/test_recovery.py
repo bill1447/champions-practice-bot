@@ -115,15 +115,17 @@ def _second_view() -> dict:
 def _request() -> RecoveryRequest:
     checkpoint = _checkpoint()
     first = _first_view()
+    particle = BeliefParticle(
+        _parent_state(),
+        1.0,
+        world_id="stat-parent",
+        history_id="checkpoint",
+    )
     return RecoveryRequest(
-        checkpoint_particles=(
-            BeliefParticle(
-                _parent_state(),
-                1.0,
-                world_id="stat-parent",
-                history_id="checkpoint",
-            ),
-        ),
+        authority_root_particles=(particle,),
+        authority_root_public_view=checkpoint,
+        authority_observations=(),
+        checkpoint_particles=(particle,),
         checkpoint_public_view=checkpoint,
         observations=(
             RecoveryObservation(
@@ -338,11 +340,12 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
         worker,
         request=request,
         proposals=proposals,
+        authority_rng_seeds_by_observation=(),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
     by_id = {
-        result.candidate.candidate_id: result
+        result.candidate.proposal_id: result
         for result in report.candidate_results
     }
     assert by_id["good"].status is RecoveryCandidateStatus.VALIDATED
@@ -358,10 +361,10 @@ def test_typed_stat_authority_requires_complete_suffix_replay() -> None:
 
     assert (
         by_id["checkpoint-mismatch"].status
-        is RecoveryCandidateStatus.CHECKPOINT_MISMATCH
+        is RecoveryCandidateStatus.AUTHORITY_ROOT_MISMATCH
     )
     assert by_id["checkpoint-mismatch"].generated_branches == 0
-    assert [result.candidate.candidate_id for result in report.validated_candidates] == [
+    assert [result.candidate.proposal_id for result in report.validated_candidates] == [
         "good"
     ]
 
@@ -377,6 +380,7 @@ def test_typed_stat_authority_rejects_non_stat_checkpoint_edits(
         worker,
         request=request,
         proposals=(_proposal("hostile", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
@@ -395,6 +399,7 @@ def test_typed_stat_authority_reports_materialization_rejections() -> None:
         worker,
         request=request,
         proposals=(_proposal("reject", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(),
         rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
     )
 
@@ -421,7 +426,8 @@ def test_recovery_request_detects_parent_mutation_before_authority() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(_proposal("mutated-parent", atk=32, spa=0),),
-            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -451,13 +457,17 @@ def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(proposal,),
-            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
 def test_recovery_rejects_noncontiguous_public_history() -> None:
     request = _request()
     broken = RecoveryRequest(
+        authority_root_particles=request.authority_root_particles,
+        authority_root_public_view=request.authority_root_public_view,
+        authority_observations=request.authority_observations,
         checkpoint_particles=request.checkpoint_particles,
         checkpoint_public_view=request.checkpoint_public_view,
         observations=(
@@ -478,7 +488,8 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
             _TypedRecoveryWorker(),
             request=broken,
             proposals=(),
-            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -491,7 +502,8 @@ def test_stat_proposal_ids_must_be_unique() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(proposal, proposal),
-            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+            authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
         )
 
 
@@ -503,5 +515,6 @@ def test_recovery_requires_rng_coverage_for_every_observation() -> None:
             _TypedRecoveryWorker(),
             request=request,
             proposals=(),
-            rng_seeds_by_observation=(("seed-1",),),
+            authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",),),
         )
