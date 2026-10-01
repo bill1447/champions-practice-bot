@@ -186,6 +186,10 @@ jobs:
         shell: pwsh
         run: .\revival-blessing-smoke.ps1
 
+      - name: Exact forced-wait authority smoke test
+        shell: pwsh
+        run: .\forced-wait-authority-smoke.ps1
+
       - name: Production-like damaging-turn conditioning smoke test
         shell: pwsh
         run: .\damage-conditioning-smoke.ps1
