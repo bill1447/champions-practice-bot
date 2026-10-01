@@ -1,9 +1,9 @@
 """Mechanics-authoritative recovery contracts and replay validation.
 
 This module is intentionally not integrated into the live decision controller yet.
-Candidate generation may propose alternate *checkpoint* belief states, but proposals
-have no authority until the pinned Showdown runtime reproduces the complete retained
-public history from that checkpoint.
+Static hidden dimensions are proposed against trusted post-preview belief roots.
+They have no authority until the pinned Showdown runtime mechanically reproduces
+the retained public prefix through the current checkpoint and the recovery suffix.
 
 The live session's exact hidden state is never an input to this API.
 """
