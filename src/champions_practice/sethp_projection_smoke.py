@@ -68,15 +68,14 @@ TARGET_SWITCH_BACK = "switch 1, move sleeptalk"
 OBSERVER_WAIT = "move sleeptalk, move sleeptalk"
 
 
-def _previews(view: dict) -> dict[str, list[str]]:
-    return {
-        "p1": list(view["opponent"]["preview_species"])
-        if view["player"]["name"] == "Observer"
-        else [pokemon["species"] for pokemon in view["player"]["team"]],
-        "p2": [pokemon["species"] for pokemon in view["player"]["team"]]
-        if view["player"]["name"] == "Observer"
-        else list(view["opponent"]["preview_species"]),
-    }
+def _previews(view: dict, *, viewer_side: str) -> dict[str, list[str]]:
+    own = [pokemon["species"] for pokemon in view["player"]["team"]]
+    opponent = list(view["opponent"]["preview_species"])
+    if viewer_side == "p1":
+        return {"p1": own, "p2": opponent}
+    if viewer_side == "p2":
+        return {"p1": opponent, "p2": own}
+    raise ValueError("viewer_side must be p1 or p2")
 
 
 def _target_slot(viewer_side: str) -> str:
@@ -244,7 +243,7 @@ def _run_orientation(
             active=True,
         )
 
-        previews = _previews(before)
+        previews = _previews(before, viewer_side=viewer_side)
         ai_choice = p1_turn if viewer_side == "p1" else p2_turn
         opponent_choice = p2_turn if viewer_side == "p1" else p1_turn
         update = condition_particles(
