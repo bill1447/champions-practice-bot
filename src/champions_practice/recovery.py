@@ -10,11 +10,11 @@ The live session's exact hidden state is never an input to this API.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from copy import deepcopy
 from dataclasses import dataclass, field
 from enum import Enum
-import hashlib
-import json
 from typing import Any, Literal, Protocol
 
 from champions_practice.observation_beliefs import (
