@@ -357,6 +357,21 @@ class HypotheticalSearchWorker:
             proposals=proposals,
         )
 
+    def validate_recovery_stat_candidate(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        pokemon_index: int,
+        stat_points: dict[str, int],
+    ) -> bool:
+        return self.__worker.validate_recovery_stat_candidate(
+            state=state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
+        )
+
     def abort(self, *, timeout_seconds: float = 0.25) -> None:
         self.__worker.abort(timeout_seconds=timeout_seconds)
 
@@ -957,6 +972,29 @@ class ShowdownSearchWorker:
                 "Showdown worker returned invalid recovery stat proposals"
             )
         return variants
+
+    def validate_recovery_stat_candidate(
+        self,
+        *,
+        state: dict[str, Any],
+        side: str,
+        pokemon_index: int,
+        stat_points: dict[str, int],
+    ) -> bool:
+        """Recompute serialized recovery stat caches inside pinned Showdown."""
+        result = self.request(
+            "validate_recovery_stat_candidate",
+            state=state,
+            side=side,
+            pokemon_index=pokemon_index,
+            stat_points=stat_points,
+        )
+        valid = result.get("valid")
+        if not isinstance(valid, bool):
+            raise RuntimeError(
+                "Showdown worker returned invalid recovery stat validation"
+            )
+        return valid
 
     def session_public_choices(self, session_id: str, *, side: str) -> list[str]:
         """Enumerate choices using only the side's public request information."""
