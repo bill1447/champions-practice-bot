@@ -151,9 +151,13 @@ def _proposal(
     defense: int = 0,
     spa: int,
 ) -> OpponentStatProposal:
-    changed = ["atk", "spa"]
-    if defense:
+    changed = []
+    if atk != 0:
+        changed.append("atk")
+    if defense != 0:
         changed.append("def")
+    if spa != 32:
+        changed.append("spa")
     return OpponentStatProposal(
         proposal_id=proposal_id,
         parent_particle_index=0,
@@ -404,6 +408,51 @@ def test_typed_stat_authority_has_no_public_raw_candidate_input() -> None:
     assert not hasattr(recovery, "validate_recovery_candidates")
     assert not hasattr(recovery, "materialize_stat_proposals")
     assert not hasattr(recovery, "RecoveryCandidate")
+
+
+def test_recovery_request_detects_parent_mutation_before_authority() -> None:
+    request = _request()
+    request.checkpoint_particles[0].state["sides"][0]["pokemon"][0][
+        "timesAttacked"
+    ] = 99
+
+    with pytest.raises(ValueError, match="authority inputs were mutated"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=request,
+            proposals=(_proposal("mutated-parent", atk=32, spa=0),),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
+
+
+def test_typed_stat_proposal_must_match_seen_parent_species() -> None:
+    request = _request()
+    proposal = OpponentStatProposal(
+        proposal_id="wrong-species",
+        parent_particle_index=0,
+        pokemon_index=0,
+        species="Shuckle",
+        stat_points=(
+            ("hp", 2),
+            ("atk", 32),
+            ("def", 0),
+            ("spa", 0),
+            ("spd", 0),
+            ("spe", 32),
+        ),
+        changed_hidden_dimensions=(
+            "opponent.shuckle.stat_points.atk",
+            "opponent.shuckle.stat_points.spa",
+        ),
+    )
+
+    with pytest.raises(ValueError, match="species does not match parent"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=request,
+            proposals=(proposal,),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
 
 
 def test_recovery_rejects_noncontiguous_public_history() -> None:
