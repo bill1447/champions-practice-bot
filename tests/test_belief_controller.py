@@ -62,6 +62,7 @@ class _CoordinatorWorker:
         self.started_with = None
         self.submissions = []
         self.closed = []
+        self.aborted = False
         self.public_view = {
             "turn": 1,
             "ended": False,
@@ -101,6 +102,9 @@ class _CoordinatorWorker:
 
     def close_session(self, session_id):
         self.closed.append(session_id)
+
+    def abort(self, *, timeout_seconds=0.25):
+        self.aborted = True
 
 
 def test_coordinator_keeps_human_preview_out_of_decision_engine(monkeypatch) -> None:
@@ -1537,6 +1541,8 @@ def test_post_preview_observation_failure_requires_restart() -> None:
         )
 
     assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert controller._session_id is None
+    assert worker.aborted is True
     assert controller.human_legal_choices() == []
     assert len(worker.submissions) == 1
 
@@ -1575,6 +1581,8 @@ def test_preview_initialization_failure_requires_restart(monkeypatch) -> None:
         )
 
     assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert controller._session_id is None
+    assert worker.aborted is True
     assert worker.submissions == [
         ("live-1", "team 4321", "team 1234"),
     ]
@@ -1632,6 +1640,8 @@ def test_preview_request_error_without_rollback_proof_requires_restart() -> None
         )
 
     assert controller.turn_state is SealedTurnState.RESTART_REQUIRED
+    assert controller._session_id is None
+    assert worker.aborted is True
     assert controller.human_legal_choices() == []
     assert len(worker.submissions) == 1
 
