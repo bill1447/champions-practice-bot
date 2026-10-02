@@ -26,7 +26,7 @@ from champions_practice.observation_beliefs import public_observation_signature
 from champions_practice.search_worker import ShowdownRequestError
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v2"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v3"
 
 
 class ReachabilityStatus(str, Enum):
@@ -295,11 +295,38 @@ def _string_list(
 _CANONICAL_ID = re.compile(r"^[a-z0-9]+$")
 _CANONICAL_SLOT = re.compile(r"^p[12][ab]$")
 _CANONICAL_SIDE = re.compile(r"^p[12]$")
-_CANONICAL_INTEGER = re.compile(r"^-?[0-9]+$")
+_CANONICAL_INTEGER = re.compile(r"^(?:0|-[1-9][0-9]*|[1-9][0-9]*)$")
 _CANONICAL_EFFECT = re.compile(r"^(?:move|ability|item):[a-z0-9]+$")
-_CANONICAL_TAGGED = re.compile(r"^\[[a-z0-9]+\](?::[^\s]+)?$")
+_CANONICAL_TAGGED = re.compile(r"^\[([a-z0-9]+)\](?::(.+))?$")
+_PUBLIC_CONDITION = re.compile(
+    r"^(?:"
+    r"0 fnt"
+    r"|[0-9]+/[1-9][0-9]*(?: [a-z0-9]+)?"
+    r"|[0-9]+(?:\.[0-9]+)?%?(?: [a-z0-9]+)?"
+    r")$"
+)
+_CANONICAL_DETAILS = re.compile(r"^[a-z0-9\[][a-z0-9 .,'():+\-/\[\]]*$")
 _SUPPORTED_BOOSTS = frozenset(
     {"atk", "def", "spa", "spd", "spe", "accuracy", "evasion"}
+)
+_MOVE_TARGETS = frozenset(
+    {
+        "adjacentAlly",
+        "adjacentAllyOrSelf",
+        "adjacentFoe",
+        "all",
+        "allAdjacent",
+        "allAdjacentFoes",
+        "allies",
+        "allySide",
+        "allyTeam",
+        "any",
+        "foeSide",
+        "normal",
+        "randomNormal",
+        "scripted",
+        "self",
+    }
 )
 _PUBLIC_ACTION_EFFECTS = frozenset(
     {"-fail", "-miss", "-immune", "-notarget", "-block"}
@@ -363,55 +390,6 @@ _PUBLIC_MECHANICS_EVENTS = frozenset(
         "-ohko",
     }
 )
-_EVENT_MIN_PARTS = {
-    "-fail": 2,
-    "-block": 2,
-    "-notarget": 1,
-    "-miss": 2,
-    "-status": 3,
-    "-curestatus": 3,
-    "-cureteam": 2,
-    "-swapboost": 3,
-    "-invertboost": 2,
-    "-clearboost": 2,
-    "-clearallboost": 1,
-    "-clearpositiveboost": 2,
-    "-clearnegativeboost": 2,
-    "-copyboost": 3,
-    "-weather": 2,
-    "-fieldstart": 2,
-    "-fieldend": 2,
-    "-fieldactivate": 2,
-    "-sidestart": 3,
-    "-sideend": 3,
-    "-swapsideconditions": 2,
-    "-start": 3,
-    "-end": 3,
-    "-crit": 2,
-    "-supereffective": 2,
-    "-resisted": 2,
-    "-immune": 2,
-    "-item": 3,
-    "-enditem": 3,
-    "-ability": 3,
-    "-endability": 2,
-    "-transform": 3,
-    "-mega": 3,
-    "-primal": 2,
-    "-burst": 2,
-    "-zpower": 2,
-    "-zbroken": 2,
-    "-terastallize": 3,
-    "-dynamax": 2,
-    "-activate": 2,
-    "-waiting": 2,
-    "-prepare": 3,
-    "-mustrecharge": 2,
-    "-nothing": 1,
-    "-singlemove": 3,
-    "-singleturn": 3,
-    "-ohko": 2,
-}
 
 
 def _canonical_id(value: object) -> bool:
@@ -422,27 +400,85 @@ def _canonical_slot(value: object) -> bool:
     return isinstance(value, str) and bool(_CANONICAL_SLOT.fullmatch(value))
 
 
+def _canonical_side(value: object) -> bool:
+    return isinstance(value, str) and bool(_CANONICAL_SIDE.fullmatch(value))
+
+
+def _canonical_integer_text(value: object) -> bool:
+    return isinstance(value, str) and bool(_CANONICAL_INTEGER.fullmatch(value))
+
+
 def _canonical_protocol_token(value: object) -> bool:
+    """Validate one exact output of the bridge's canonicalProtocolIdentity()."""
+
     if not isinstance(value, str) or not value or value != value.strip():
         return False
-    return bool(
+    if (
         _CANONICAL_ID.fullmatch(value)
         or _CANONICAL_SLOT.fullmatch(value)
         or _CANONICAL_SIDE.fullmatch(value)
         or _CANONICAL_INTEGER.fullmatch(value)
         or _CANONICAL_EFFECT.fullmatch(value)
-        or _CANONICAL_TAGGED.fullmatch(value)
-    )
+    ):
+        return True
+    tagged = _CANONICAL_TAGGED.fullmatch(value)
+    if tagged is None:
+        return False
+    payload = tagged.group(2)
+    return payload is None or _canonical_protocol_token(payload)
+
+
+def _canonical_from_token(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    tagged = _CANONICAL_TAGGED.fullmatch(value)
+    if tagged is None or tagged.group(1) != "from":
+        return False
+    payload = tagged.group(2)
+    return payload is not None and _canonical_protocol_token(payload)
+
+
+def _canonical_actor(value: object, *, allow_side: bool = False) -> bool:
+    return _canonical_slot(value) or (allow_side and _canonical_side(value))
+
+
+def _public_condition(value: object) -> bool:
+    return isinstance(value, str) and bool(_PUBLIC_CONDITION.fullmatch(value))
+
+
+def _canonical_details(value: object) -> bool:
+    return isinstance(value, str) and bool(_CANONICAL_DETAILS.fullmatch(value))
+
+
+def _canonical_modifier_tail(
+    values: list[str],
+    *,
+    path: str,
+) -> str | None:
+    for index, part in enumerate(values):
+        if not _canonical_protocol_token(part):
+            return _schema_error(
+                f"{path}[{index}]",
+                "is not an exact canonicalProtocolIdentity output",
+            )
+    return None
 
 
 def _boosts_schema_issue(value: object, *, path: str) -> str | None:
     if not isinstance(value, dict):
         return _schema_error(path, "must be a dictionary")
-    unknown = sorted(set(value) - _SUPPORTED_BOOSTS)
-    if unknown:
+    if set(value) != _SUPPORTED_BOOSTS:
+        missing = sorted(_SUPPORTED_BOOSTS - set(value))
+        extra = sorted(set(value) - _SUPPORTED_BOOSTS)
+        details = []
+        if missing:
+            details.append(f"missing: {', '.join(missing)}")
+        if extra:
+            details.append(f"unsupported: {', '.join(extra)}")
         return _schema_error(
             path,
-            f"contains unsupported boost dimension(s): {', '.join(unknown)}",
+            "must contain the complete producer boost table"
+            + (f" ({'; '.join(details)})" if details else ""),
         )
     for stat, amount in value.items():
         if (
@@ -457,7 +493,26 @@ def _boosts_schema_issue(value: object, *, path: str) -> str | None:
     return None
 
 
+def _event_actor_and_tail(
+    value: list[str],
+    *,
+    path: str,
+    minimum: int,
+    allow_side: bool = False,
+) -> str | None:
+    if len(value) < minimum:
+        return _schema_error(path, "has an incomplete canonical payload")
+    if not _canonical_actor(value[1], allow_side=allow_side):
+        return _schema_error(
+            f"{path}[1]",
+            "must be a canonical producer Pokémon identity",
+        )
+    return _canonical_modifier_tail(value[2:], path=f"{path}.payload")
+
+
 def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
+    """Validate canonical mechanics arrays emitted by canonicalPublicMechanicsEvent()."""
+
     if not isinstance(value, list) or not value:
         return _schema_error(path, "must be a non-empty list")
     if not all(isinstance(part, str) and part.strip() for part in value):
@@ -470,14 +525,17 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
     if event in {"-damage", "-heal", "-sethp"}:
         if len(value) < 3:
             return _schema_error(path, f"{event} requires actor and condition")
-        if not _canonical_slot(value[1]):
-            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
-        condition = value[2]
-        if not isinstance(condition, str) or not condition.strip():
-            return _schema_error(f"{path}[2]", "must contain a public condition")
-        if any(not _canonical_protocol_token(part) for part in value[3:]):
-            return _schema_error(path, f"{event} contains a noncanonical modifier")
-        return None
+        if not _canonical_actor(value[1], allow_side=True):
+            return _schema_error(
+                f"{path}[1]",
+                "must be an active-slot or side-level producer identity",
+            )
+        if not _public_condition(value[2]):
+            return _schema_error(
+                f"{path}[2]",
+                "must be a canonical public HP/status condition",
+            )
+        return _canonical_modifier_tail(value[3:], path=f"{path}.modifiers")
 
     if event == "-formechange":
         if len(value) < 3:
@@ -486,12 +544,12 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
         if not _canonical_id(value[2]):
             return _schema_error(f"{path}[2]", "must be a canonical species id")
-        if any(
-            not isinstance(part, str) or not part.strip()
-            for part in value[3:]
-        ):
-            return _schema_error(path, "-formechange contains invalid payload")
-        return None
+        if len(value) >= 4 and not _canonical_details(value[3]):
+            return _schema_error(
+                f"{path}[3]",
+                "must be canonical public forme details",
+            )
+        return _canonical_modifier_tail(value[4:], path=f"{path}.modifiers")
 
     if event == "-hitcount":
         if len(value) not in {3, 8}:
@@ -501,8 +559,11 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             )
         if not _canonical_slot(value[1]):
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
-        if not value[2].isdigit() or int(value[2]) < 1:
-            return _schema_error(f"{path}[2]", "must be a positive hit count")
+        if not _canonical_integer_text(value[2]) or int(value[2]) < 1:
+            return _schema_error(
+                f"{path}[2]",
+                "must be the producer's canonical positive integer spelling",
+            )
         if len(value) == 8:
             if value[3] != "[action]":
                 return _schema_error(f"{path}[3]", "must be [action]")
@@ -523,21 +584,134 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
         if value[2] not in _SUPPORTED_BOOSTS:
             return _schema_error(f"{path}[2]", "contains an unsupported boost dimension")
-        if not _CANONICAL_INTEGER.fullmatch(value[3]):
-            return _schema_error(f"{path}[3]", "must be an integer stage/count")
+        if not _canonical_integer_text(value[3]):
+            return _schema_error(
+                f"{path}[3]",
+                "must use the producer's canonical integer spelling",
+            )
         amount = int(value[3])
         if amount < -6 or amount > 6:
             return _schema_error(f"{path}[3]", "must be within supported boost bounds")
-        if any(not _canonical_protocol_token(part) for part in value[4:]):
-            return _schema_error(path, f"{event} contains a noncanonical modifier")
+        return _canonical_modifier_tail(value[4:], path=f"{path}.modifiers")
+
+    if event == "-mega":
+        if len(value) != 4:
+            return _schema_error(
+                path,
+                "-mega requires actor, resulting species, and item",
+            )
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if not _canonical_id(value[2]):
+            return _schema_error(f"{path}[2]", "must be a canonical species id")
+        if not _canonical_id(value[3]):
+            return _schema_error(f"{path}[3]", "must be a canonical item id")
         return None
 
-    minimum = _EVENT_MIN_PARTS.get(event)
-    if minimum is None or len(value) < minimum:
-        return _schema_error(path, f"{event} has an incomplete canonical payload")
-    if any(not _canonical_protocol_token(part) for part in value[1:]):
-        return _schema_error(path, f"{event} contains a noncanonical payload token")
-    return None
+    if event in {"-swapsideconditions", "-ohko", "-nothing", "-notarget"}:
+        if len(value) != 1:
+            return _schema_error(path, f"{event} is a unary canonical event")
+        return None
+
+    if event in {
+        "-crit",
+        "-supereffective",
+        "-resisted",
+        "-mustrecharge",
+        "-primal",
+        "-zpower",
+        "-zbroken",
+        "-dynamax",
+        "-invertboost",
+        "-clearboost",
+    }:
+        return _event_actor_and_tail(value, path=path, minimum=2)
+
+    if event in {"-status", "-curestatus"}:
+        if len(value) < 3:
+            return _schema_error(path, f"{event} requires actor and status")
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if not _canonical_id(value[2]):
+            return _schema_error(f"{path}[2]", "must be a canonical status id")
+        return _canonical_modifier_tail(value[3:], path=f"{path}.modifiers")
+
+    if event == "-cureteam":
+        return _event_actor_and_tail(value, path=path, minimum=2, allow_side=True)
+
+    if event in {"-item", "-enditem", "-ability"}:
+        if len(value) < 3:
+            return _schema_error(path, f"{event} requires actor and identity")
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if not _canonical_id(value[2]):
+            return _schema_error(f"{path}[2]", "must be a canonical identity id")
+        return _canonical_modifier_tail(value[3:], path=f"{path}.modifiers")
+
+    if event == "-endability":
+        return _event_actor_and_tail(value, path=path, minimum=2)
+
+    if event in {"-terastallize"}:
+        if len(value) != 3:
+            return _schema_error(path, f"{event} requires actor and type")
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if not _canonical_id(value[2]):
+            return _schema_error(f"{path}[2]", "must be a canonical type id")
+        return None
+
+    if event in {"-transform", "-waiting"}:
+        if len(value) != 3:
+            return _schema_error(path, f"{event} requires two Pokémon identities")
+        if not _canonical_slot(value[1]) or not _canonical_slot(value[2]):
+            return _schema_error(path, f"{event} requires canonical doubles slots")
+        return None
+
+    if event in {"-swapboost", "-copyboost"}:
+        if len(value) < 3:
+            return _schema_error(path, f"{event} requires source and target")
+        if not _canonical_slot(value[1]) or not _canonical_slot(value[2]):
+            return _schema_error(path, f"{event} requires canonical doubles slots")
+        for index, stat in enumerate(value[3:], start=3):
+            if stat not in _SUPPORTED_BOOSTS:
+                return _schema_error(
+                    f"{path}[{index}]",
+                    "must be a supported boost dimension",
+                )
+        return None
+
+    if event in {"-clearpositiveboost", "-clearnegativeboost"}:
+        return _event_actor_and_tail(value, path=path, minimum=2)
+
+    if event == "-clearallboost":
+        if len(value) != 1:
+            return _schema_error(path, "-clearallboost is a unary canonical event")
+        return None
+
+    if event in {"-weather", "-fieldstart", "-fieldend", "-fieldactivate"}:
+        if len(value) < 2 or not _canonical_protocol_token(value[1]):
+            return _schema_error(path, f"{event} requires a canonical field identity")
+        return _canonical_modifier_tail(value[2:], path=f"{path}.modifiers")
+
+    if event in {"-sidestart", "-sideend"}:
+        if len(value) < 3:
+            return _schema_error(path, f"{event} requires side and condition")
+        if not _canonical_side(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical side")
+        if not _canonical_protocol_token(value[2]):
+            return _schema_error(f"{path}[2]", "must be a canonical side condition")
+        return _canonical_modifier_tail(value[3:], path=f"{path}.modifiers")
+
+    if event in {"-start", "-end", "-activate", "-prepare", "-singlemove", "-singleturn"}:
+        return _event_actor_and_tail(value, path=path, minimum=3)
+
+    if event in {"-block", "-miss"}:
+        return _event_actor_and_tail(value, path=path, minimum=3)
+
+    if event in {"-fail", "-burst"}:
+        return _event_actor_and_tail(value, path=path, minimum=2)
+
+    return _schema_error(path, f"{event} lacks an explicit v3 producer variant")
 
 
 
@@ -675,14 +849,17 @@ def _opponent_action_schema_issue(value: object, *, path: str) -> str | None:
         return issue
     if not _non_bool_int(value["turn"], minimum=1):
         return _schema_error(f"{path}.turn", "must be a positive integer")
-    if value["slot"] not in {1, 2}:
-        return _schema_error(f"{path}.slot", "must be doubles slot 1 or 2")
+    if not _non_bool_int(value["slot"]) or value["slot"] not in {1, 2}:
+        return _schema_error(f"{path}.slot", "must be integer doubles slot 1 or 2")
     if not _canonical_id(value["move"]):
         return _schema_error(f"{path}.move", "must be a canonical move id")
-    if value["target"] not in {None, -2, -1, 1, 2}:
+    target = value["target"]
+    if target is not None and (
+        not _non_bool_int(target) or target not in {-2, -1, 1, 2}
+    ):
         return _schema_error(
             f"{path}.target",
-            "must be a canonical doubles target location or null",
+            "must be an integer doubles target location or null",
         )
     return None
 
@@ -718,8 +895,8 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
         return issue
     if value["side"] not in {"player", "opponent"}:
         return _schema_error(f"{path}.side", "must be player or opponent")
-    if value["slot"] not in {1, 2}:
-        return _schema_error(f"{path}.slot", "must be doubles slot 1 or 2")
+    if not _non_bool_int(value["slot"]) or value["slot"] not in {1, 2}:
+        return _schema_error(f"{path}.slot", "must be integer doubles slot 1 or 2")
     if (
         not isinstance(value["effects"], list)
         or len(set(value["effects"])) != len(value["effects"])
@@ -737,7 +914,7 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
         if (
             not isinstance(value["provenance"], list)
             or any(
-                not _CANONICAL_TAGGED.fullmatch(item)
+                not _canonical_from_token(item)
                 for item in value["provenance"]
                 if isinstance(item, str)
             )
@@ -974,8 +1151,11 @@ def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.maxpp", "must be a positive integer")
     if value["pp"] > value["maxpp"]:
         return _schema_error(f"{path}.pp", "must not exceed maxpp")
-    if not isinstance(value["target"], str) or not value["target"].strip():
-        return _schema_error(f"{path}.target", "must be a non-empty target type")
+    if value["target"] not in _MOVE_TARGETS:
+        return _schema_error(
+            f"{path}.target",
+            "must be a pinned Showdown move target",
+        )
     if not isinstance(value["disabled"], (str, bool)):
         return _schema_error(f"{path}.disabled", "must be a string or boolean")
     return None
@@ -1004,10 +1184,10 @@ def _max_moves_schema_issue(value: object, *, path: str) -> str | None:
                 f"{path}.maxMoves[{index}].move",
                 "must be a non-empty string",
             )
-        if not isinstance(move["target"], str):
+        if move["target"] not in _MOVE_TARGETS:
             return _schema_error(
                 f"{path}.maxMoves[{index}].target",
-                "must be a string",
+                "must be a pinned Showdown move target",
             )
         if "disabled" in move and not isinstance(move["disabled"], bool):
             return _schema_error(
@@ -1032,7 +1212,7 @@ def _z_move_schema_issue(value: object, *, path: str) -> str | None:
             or set(move) != {"move", "target"}
             or not isinstance(move["move"], str)
             or not move["move"].strip()
-            or not isinstance(move["target"], str)
+            or move["target"] not in _MOVE_TARGETS
         ):
             return _schema_error(
                 f"{path}[{index}]",
@@ -1298,6 +1478,22 @@ def public_reachability_observation_issue(
         )
         if issue:
             return issue
+
+    request = view["request"]
+    if isinstance(request, dict):
+        request_side = request.get("side")
+        request_roster = (
+            request_side.get("pokemon")
+            if isinstance(request_side, dict)
+            else None
+        )
+        if isinstance(request_roster, list) and len(player["team"]) != len(
+            request_roster
+        ):
+            return _schema_error(
+                "$.player.team",
+                "must match the producer request roster length",
+            )
 
     opponent = view["opponent"]
     if not isinstance(opponent, dict):
