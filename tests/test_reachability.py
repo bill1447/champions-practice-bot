@@ -202,7 +202,10 @@ def _valid_public_view(spec: dict | None = None) -> dict:
         "ended": False,
         "winner": winner,
         "field": {"weather": None, "terrain": None, "pseudo_weather": []},
-        "request": {"wait": True, "side": {"pokemon": []}},
+        "request": {
+            "wait": True,
+            "side": {"name": "Player", "id": "p1", "pokemon": []},
+        },
         "player": {
             "name": "Player",
             "active": [],
