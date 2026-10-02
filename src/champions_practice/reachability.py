@@ -27,15 +27,23 @@ from champions_practice.search_worker import ShowdownRequestError
 from champions_practice.showdown_public_catalog import (
     ABILITY_IDS,
     CONDITION_IDS,
+    FIELD_ACTIVATE_IDENTITIES,
     ITEM_IDS,
+    MEGA_ITEM_IDS,
     MOVE_CATEGORIES,
     MOVE_DISPLAY_NAMES,
     MOVE_IDS,
+    PRIMAL_ITEM_IDS,
+    PSEUDO_WEATHER_IDS,
+    SIDE_CONDITION_IDS,
+    SPECIES_IDS,
     SPECIAL_EFFECT_IDS,
+    TERRAIN_IDS,
+    WEATHER_IDS,
 )
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v5"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v6"
 
 
 class ReachabilityStatus(str, Enum):
@@ -474,13 +482,18 @@ def _display_move_id(value: object) -> str | None:
         if value == display_name:
             return move_id
 
-    normalized = _to_id(value)
-    if normalized.startswith("hiddenpower") and value.startswith("Hidden Power "):
+    hidden_power = re.fullmatch(
+        r"Hidden Power "
+        r"(Bug|Dark|Dragon|Electric|Fairy|Fighting|Fire|Flying|Ghost|Grass|"
+        r"Ground|Ice|Normal|Poison|Psychic|Rock|Steel|Water)",
+        value,
+    )
+    if hidden_power is not None:
         return "hiddenpower"
-    if normalized.startswith("return") and value.startswith("Return "):
-        return "return"
-    if normalized.startswith("frustration") and value.startswith("Frustration "):
-        return "frustration"
+
+    variable_power = re.fullmatch(r"(Return|Frustration) ([1-9][0-9]?|10[0-2])", value)
+    if variable_power is not None:
+        return variable_power.group(1).lower()
     return None
 
 
@@ -538,6 +551,30 @@ def _known_move_identity(value: object) -> bool:
     if value.startswith("move:"):
         return value[5:] in MOVE_IDS
     return value in MOVE_IDS
+
+
+def _domain_effect_identity(
+    value: object,
+    domain: frozenset[str],
+) -> bool:
+    if not isinstance(value, str):
+        return False
+    if value in domain:
+        return True
+    return value.startswith("move:") and value[5:] in domain
+
+
+def _type_payload(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    if value in _TYPES:
+        return True
+    return any(
+        value == first + second
+        for first in _TYPES
+        for second in _TYPES
+        if first != second
+    )
 
 
 def _canonical_protocol_token(value: object) -> bool:
@@ -811,27 +848,35 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         )
 
     if event == "-formechange":
-        if len(value) < 3:
-            return _schema_error(path, "-formechange requires actor and species")
+        if len(value) < 3 or len(value) > 5:
+            return _schema_error(
+                path,
+                "-formechange requires actor, species, and bounded metadata",
+            )
         if not _canonical_slot(value[1]):
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
-        if not _canonical_id(value[2]):
-            return _schema_error(f"{path}[2]", "must be a canonical species id")
+        if value[2] not in SPECIES_IDS:
+            return _schema_error(f"{path}[2]", "must be a pinned species id")
         tail = value[3:]
-        if tail and not tail[0].startswith("["):
-            if not _canonical_details(tail[0]):
-                return _schema_error(
-                    f"{path}[3]",
-                    "must be canonical public forme details",
-                )
+        if tail and tail[0] in {"[msg]", "[silent]"}:
             tail = tail[1:]
-        return _event_modifier_tail(
-            tail,
-            path=f"{path}.modifiers",
-            allow_from=True,
-            allow_of=True,
-            markers={"msg", "silent"},
-        )
+        if tail:
+            if len(tail) != 1 or not _source_modifier(tail[0]):
+                return _schema_error(
+                    path,
+                    "-formechange metadata must be message and/or typed source",
+                )
+            parts = _tagged_modifier_parts(tail[0])
+            if (
+                parts is None
+                or parts[1] is None
+                or not parts[1].startswith("ability:")
+            ):
+                return _schema_error(
+                    path,
+                    "-formechange source must be an ability",
+                )
+        return None
 
     if event == "-hitcount":
         if len(value) not in {3, 8}:
@@ -894,12 +939,12 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         if (
             len(value) != 4
             or not _canonical_slot(value[1])
-            or not _canonical_id(value[2])
-            or not _known_item_id(value[3])
+            or value[2] not in SPECIES_IDS
+            or value[3] not in MEGA_ITEM_IDS
         ):
             return _schema_error(
                 path,
-                "-mega requires actor, resulting species, and pinned item",
+                "-mega requires actor, pinned species, and Mega item",
             )
         return None
 
@@ -971,11 +1016,11 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         if (
             len(value) != 3
             or not _canonical_slot(value[1])
-            or not _known_item_id(value[2])
+            or value[2] not in PRIMAL_ITEM_IDS
         ):
             return _schema_error(
                 path,
-                "-primal requires an actor and the pinned primal item",
+                "-primal requires actor and a pinned Primal Orb",
             )
         return None
 
@@ -1141,8 +1186,10 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return None
 
     if event == "-weather":
-        if len(value) < 2 or not _known_effect_identity(value[1]):
-            return _schema_error(path, "-weather requires a pinned weather identity")
+        if len(value) < 2 or (
+            value[1] != "none" and value[1] not in WEATHER_IDS
+        ):
+            return _schema_error(path, "-weather requires a pinned weather id")
         return _event_modifier_tail(
             value[2:],
             path=f"{path}.modifiers",
@@ -1151,9 +1198,34 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             markers={"upkeep"},
         )
 
-    if event in {"-fieldstart", "-fieldend", "-fieldactivate"}:
-        if len(value) < 2 or not _known_effect_identity(value[1]):
-            return _schema_error(path, f"{event} requires a pinned field identity")
+    if event in {"-fieldstart", "-fieldend"}:
+        if len(value) < 2 or not _domain_effect_identity(
+            value[1],
+            PSEUDO_WEATHER_IDS | TERRAIN_IDS,
+        ):
+            return _schema_error(
+                path,
+                f"{event} requires a pinned field-condition identity",
+            )
+        return _event_modifier_tail(
+            value[2:],
+            path=f"{path}.modifiers",
+            allow_from=True,
+            allow_of=True,
+        )
+
+    if event == "-fieldactivate":
+        if len(value) < 2 or not (
+            value[1] in FIELD_ACTIVATE_IDENTITIES
+            or _domain_effect_identity(
+                value[1],
+                WEATHER_IDS | PSEUDO_WEATHER_IDS | TERRAIN_IDS,
+            )
+        ):
+            return _schema_error(
+                path,
+                "-fieldactivate requires a pinned field activation identity",
+            )
         return _event_modifier_tail(
             value[2:],
             path=f"{path}.modifiers",
@@ -1165,9 +1237,12 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         if (
             len(value) < 3
             or not _canonical_side(value[1])
-            or not _known_effect_identity(value[2])
+            or not _domain_effect_identity(value[2], SIDE_CONDITION_IDS)
         ):
-            return _schema_error(path, f"{event} requires side and pinned condition")
+            return _schema_error(
+                path,
+                f"{event} requires side and pinned side-condition identity",
+            )
         return _event_modifier_tail(
             value[3:],
             path=f"{path}.modifiers",
@@ -1178,23 +1253,41 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
     if event in {"-start", "-end"}:
         if len(value) < 3 or not _canonical_slot(value[1]):
             return _schema_error(path, f"{event} requires actor and effect")
-        if not _known_effect_identity(value[2]):
-            return _schema_error(f"{path}[2]", "must be a pinned effect identity")
+
+        effect = value[2]
         tail = value[3:]
-        if value[2] == "typechange" and tail and not tail[0].startswith("["):
-            if not _canonical_id(tail[0]) or _canonical_slot(tail[0]):
+
+        if effect in {"typechange", "typeadd"}:
+            if not tail or not _type_payload(tail[0]):
                 return _schema_error(
                     f"{path}[3]",
-                    "must be a canonical public type payload",
+                    "must be an exact one- or two-type producer payload",
                 )
-            tail = tail[1:]
-        elif tail and not tail[0].startswith("["):
-            if not _known_effect_identity(tail[0]):
-                return _schema_error(
-                    f"{path}[3]",
-                    "must be a pinned effect payload",
-                )
-            tail = tail[1:]
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+                markers={"silent"},
+            )
+
+        if event == "-start" and re.fullmatch(r"stockpile[1-3]", effect):
+            if tail:
+                return _schema_error(path, "Stockpile layer event has no tail")
+            return None
+
+        if event == "-start" and re.fullmatch(r"perish[0-3]", effect):
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                markers={"silent"},
+            )
+
+        if not _known_effect_identity(effect):
+            return _schema_error(
+                f"{path}[2]",
+                "must be a pinned effect identity",
+            )
         return _event_modifier_tail(
             tail,
             path=f"{path}.modifiers",
@@ -1284,36 +1377,98 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         )
 
     if event == "-activate":
-        if len(value) < 2:
-            return _schema_error(path, "-activate requires producer evidence")
-        cursor = 1
-        if _canonical_slot(value[cursor]):
-            cursor += 1
-            if cursor >= len(value):
-                return _schema_error(path, "-activate actor requires an effect")
-        if not _known_effect_identity(value[cursor]):
+        if len(value) < 3 or not _canonical_slot(value[1]):
             return _schema_error(
-                f"{path}[{cursor}]",
+                path,
+                "-activate requires actor and activation effect",
+            )
+        effect = value[2]
+        tail = value[3:]
+
+        if effect == "confusion":
+            if tail:
+                return _schema_error(path, "confusion activation has no payload")
+            return None
+
+        if effect == "move:eeriespell":
+            if len(tail) != 2 or not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    path,
+                    "Eerie Spell requires move id and PP deduction",
+                )
+            if (
+                not _canonical_integer_text(tail[1])
+                or int(tail[1]) < 1
+                or int(tail[1]) > 3
+            ):
+                return _schema_error(
+                    f"{path}[4]",
+                    "Eerie Spell PP deduction must be 1 through 3",
+                )
+            return None
+
+        if effect == "move:substitute":
+            if tail not in ([], ["[damage]"], ["[broken]"]):
+                return _schema_error(
+                    path,
+                    "Substitute activation has an unsupported marker",
+                )
+            return None
+
+        if effect == "move:protect" and tail:
+            return _schema_error(
+                path,
+                "Protect activation has no positional payload",
+            )
+
+        if not _known_effect_identity(effect):
+            return _schema_error(
+                f"{path}[2]",
                 "must be a pinned activation effect",
             )
-        cursor += 1
-        for index, part in enumerate(value[cursor:], start=cursor):
-            if (
+
+        positional_count = 0
+        seen_tags: set[str] = set()
+        for index, part in enumerate(tail, start=3):
+            tagged = _tagged_modifier_parts(part)
+            if tagged is not None:
+                tag = tagged[0]
+                if tag in seen_tags:
+                    return _schema_error(
+                        f"{path}[{index}]",
+                        "duplicates an activation modifier tag",
+                    )
+                if (
+                    _ability_modifier(part)
+                    or _source_modifier(part)
+                    or _of_modifier(part)
+                    or _marker_modifier(part, {"silent"})
+                ):
+                    seen_tags.add(tag)
+                    continue
+                return _schema_error(
+                    f"{path}[{index}]",
+                    "contains unsupported activation modifier",
+                )
+
+            if positional_count:
+                return _schema_error(
+                    f"{path}[{index}]",
+                    "contains more than one positional activation payload",
+                )
+            if not (
                 _canonical_actor(part, allow_side=True)
                 or _known_effect_identity(part)
-                or _ability_modifier(part)
-                or _source_modifier(part)
-                or _of_modifier(part)
-                or _marker_modifier(part, {"silent"})
+                or _known_public_move_id(part)
             ):
-                continue
-            return _schema_error(
-                f"{path}[{index}]",
-                "contains unsupported activation payload",
-            )
+                return _schema_error(
+                    f"{path}[{index}]",
+                    "contains unsupported activation payload",
+                )
+            positional_count += 1
         return None
 
-    return _schema_error(path, f"{event} lacks an explicit v5 producer variant")
+    return _schema_error(path, f"{event} lacks an explicit v6 producer variant")
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
@@ -2051,7 +2206,7 @@ def _request_schema_issue(value: object) -> str | None:
     elif kind == "switch":
         if (
             not isinstance(value["forceSwitch"], list)
-            or len(value["forceSwitch"]) > 2
+            or len(value["forceSwitch"]) != 2
             or not all(isinstance(item, bool) for item in value["forceSwitch"])
         ):
             return _schema_error(
@@ -2059,10 +2214,10 @@ def _request_schema_issue(value: object) -> str | None:
                 "must be a list of booleans",
             )
     elif kind == "move":
-        if not isinstance(value["active"], list) or len(value["active"]) > 2:
+        if not isinstance(value["active"], list) or len(value["active"]) != 2:
             return _schema_error(
                 "$.request.active",
-                "must contain at most two doubles slots",
+                "must contain exactly two doubles slots",
             )
         for index, slot in enumerate(value["active"]):
             if slot is None:
@@ -2143,21 +2298,25 @@ def public_reachability_observation_issue(
     )
     if issue:
         return issue
-    for name in ("weather", "terrain"):
-        if field[name] is not None and not _known_plain_effect_id(field[name]):
-            return _schema_error(
-                f"$.field.{name}",
-                "must be a pinned public field id or null",
-            )
+    if field["weather"] is not None and field["weather"] not in WEATHER_IDS:
+        return _schema_error(
+            "$.field.weather",
+            "must be a pinned weather id or null",
+        )
+    if field["terrain"] is not None and field["terrain"] not in TERRAIN_IDS:
+        return _schema_error(
+            "$.field.terrain",
+            "must be a pinned terrain id or null",
+        )
     pseudo_weather = field["pseudo_weather"]
     if (
         not isinstance(pseudo_weather, list)
-        or not all(_known_plain_effect_id(item) for item in pseudo_weather)
-        or pseudo_weather != sorted(pseudo_weather)
+        or pseudo_weather != sorted(set(pseudo_weather))
+        or any(item not in PSEUDO_WEATHER_IDS for item in pseudo_weather)
     ):
         return _schema_error(
             "$.field.pseudo_weather",
-            "must be sorted pinned public field-condition ids",
+            "must be sorted unique pinned pseudo-weather ids",
         )
 
     issue = _request_schema_issue(view["request"])
@@ -2202,11 +2361,8 @@ def public_reachability_observation_issue(
             return issue
     if (
         not isinstance(player["side_conditions"], list)
-        or not all(
-            _known_plain_effect_id(item)
-            for item in player["side_conditions"]
-        )
-        or player["side_conditions"] != sorted(player["side_conditions"])
+        or any(item not in SIDE_CONDITION_IDS for item in player["side_conditions"])
+        or player["side_conditions"] != sorted(set(player["side_conditions"]))
     ):
         return _schema_error(
             "$.player.side_conditions",
@@ -2222,10 +2378,10 @@ def public_reachability_observation_issue(
         if issue:
             return issue
 
-    if len(player["active"]) > 2:
+    if len(player["active"]) != 2:
         return _schema_error(
             "$.player.active",
-            "must contain at most two doubles slots",
+            "must contain exactly two doubles slots",
         )
     for index, (species, details) in enumerate(
         zip(player["active"], player["active_details"], strict=True)
@@ -2311,20 +2467,17 @@ def public_reachability_observation_issue(
         )
     if (
         not isinstance(opponent["side_conditions"], list)
-        or not all(
-            _known_plain_effect_id(item)
-            for item in opponent["side_conditions"]
-        )
-        or opponent["side_conditions"] != sorted(opponent["side_conditions"])
+        or any(item not in SIDE_CONDITION_IDS for item in opponent["side_conditions"])
+        or opponent["side_conditions"] != sorted(set(opponent["side_conditions"]))
     ):
         return _schema_error(
             "$.opponent.side_conditions",
             "must be sorted pinned public side-condition ids",
         )
-    if not isinstance(opponent["active"], list) or len(opponent["active"]) > 2:
+    if not isinstance(opponent["active"], list) or len(opponent["active"]) != 2:
         return _schema_error(
             "$.opponent.active",
-            "must contain at most two doubles slots",
+            "must contain exactly two doubles slots",
         )
     for index, pokemon in enumerate(opponent["active"]):
         issue = _public_active_schema_issue(
