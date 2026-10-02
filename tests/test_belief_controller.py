@@ -311,7 +311,7 @@ def test_sealed_choice_reveals_nothing_before_human_commit(monkeypatch) -> None:
     monkeypatch.setattr(
         controller._engine,
         "observe_public_turn",
-        lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
+        lambda *, decision, view: SimpleNamespace(
             decision=decision,
             public_view=view,
             particles_before=3,
@@ -460,7 +460,6 @@ def test_successful_conditioning_records_static_recovery_authority_history() -> 
 
     engine.observe_public_turn(
         view=current,
-        resolved_opponent_choice="move human",
         decision=BeliefDecision(
             choice="move ai",
             mode="test",
@@ -475,12 +474,11 @@ def test_successful_conditioning_records_static_recovery_authority_history() -> 
     assert len(engine.recovery_authority_history) == 1
     observation = engine.recovery_authority_history[0]
     assert observation.ai_choice == "move ai"
-    assert observation.resolved_opponent_choice == "move human"
     assert observation.previous_public_view == previous
     assert observation.public_view == current
 
 
-def test_missing_resolved_command_invalidates_static_recovery_history() -> None:
+def test_static_recovery_history_requires_only_public_transition_evidence() -> None:
     engine = BeliefDecisionEngine(
         ".",
         battle_format="test",
@@ -507,7 +505,6 @@ def test_missing_resolved_command_invalidates_static_recovery_history() -> None:
 
     engine.observe_public_turn(
         view=current,
-        resolved_opponent_choice=None,
         decision=BeliefDecision(
             choice="move ai",
             mode="test",
@@ -518,8 +515,12 @@ def test_missing_resolved_command_invalidates_static_recovery_history() -> None:
         ),
     )
 
-    assert engine.recovery_authority_history_complete is False
-    assert engine.recovery_authority_history == []
+    assert engine.recovery_authority_history_complete is True
+    assert len(engine.recovery_authority_history) == 1
+    observation = engine.recovery_authority_history[0]
+    assert observation.ai_choice == "move ai"
+    assert observation.previous_public_view == previous
+    assert observation.public_view == current
 
 
 def test_observed_action_rng_multiplier_uses_incremental_chunks(
@@ -625,7 +626,7 @@ def test_incremental_conditioning_returns_before_hard_deadline(
 
 
 
-def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
+def test_pending_rng_retry_uses_public_observation_only() -> None:
     engine = BeliefDecisionEngine(
         ".",
         battle_format="test",
@@ -644,7 +645,6 @@ def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
     engine.pending_observations = [
         (
             "move protect",
-            "switch 3, pass",
             {"turn": 1},
             {"turn": 2},
         )
@@ -652,7 +652,7 @@ def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
     seen = []
 
     def fake_condition(worker, **kwargs):
-        seen.append(kwargs["resolved_opponent_choice"])
+        seen.append(set(kwargs))
         return ParticleUpdate((particle,), 1, 1, 0)
 
     engine._condition_adaptive = fake_condition
@@ -662,13 +662,14 @@ def test_pending_rng_retry_reuses_exact_resolved_human_command() -> None:
     )
 
     assert engine._retry_pending_with_more_rng() is True
-    assert seen == ["switch 3, pass"]
+    assert seen
+    assert all("resolved_opponent_choice" not in keys for keys in seen)
     assert engine.pending_observations == []
     assert engine.degraded is False
     assert len(engine.recovery_authority_history) == 1
-    assert (
-        engine.recovery_authority_history[0].resolved_opponent_choice
-        == "switch 3, pass"
+    assert not hasattr(
+        engine.recovery_authority_history[0],
+        "resolved_opponent_choice",
     )
 
 
@@ -750,7 +751,6 @@ def test_collapse_diagnostic_can_confirm_rng_undersampling_without_mutating_rng(
     diagnostic = engine.diagnose_collapse(
         particles=particles,
         ai_choice="move ai",
-        resolved_opponent_choice="move human",
         previous_view={"turn": 1},
         view={
             "turn": 2,
@@ -795,7 +795,6 @@ def test_collapse_diagnostic_reports_exact_human_choice_illegal_in_particles() -
     diagnostic = engine.diagnose_collapse(
         particles=particles,
         ai_choice="move ai",
-        resolved_opponent_choice="move human",
         previous_view={"turn": 1},
         view={"turn": 2},
     )
@@ -1408,7 +1407,7 @@ def _stub_sealed_engine(
     monkeypatch.setattr(
         controller._engine,
         "observe_public_turn",
-        lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
+        lambda *, decision, view: SimpleNamespace(
             decision=decision,
             public_view=view,
             particles_before=3,
@@ -2363,12 +2362,9 @@ def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> N
     _stub_sealed_engine(controller, monkeypatch)
     ready = controller.lock_ai_action()
     observed = 0
-    observed_human_choices = []
-
-    def count_observation(*, decision, view, resolved_opponent_choice=None):
+    def count_observation(*, decision, view):
         nonlocal observed
         observed += 1
-        observed_human_choices.append(resolved_opponent_choice)
         return SimpleNamespace(
             decision=decision,
             public_view=view,
@@ -2400,7 +2396,7 @@ def test_human_view_failure_does_not_condition_same_turn_twice(monkeypatch) -> N
 
     assert result.decision.choice == "move secret-ai"
     assert observed == 1
-    assert observed_human_choices == ["move human"]
+    assert observed == 1
     assert len(worker.submissions) == 1
     assert controller.turn_state is SealedTurnState.RESOLVED
 

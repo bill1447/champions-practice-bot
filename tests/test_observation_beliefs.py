@@ -203,57 +203,6 @@ class ExactSelectedCommandWorker(FakeWorker):
         return list(candidates)
 
 
-def test_exact_selected_command_still_requires_matching_execution_outcome():
-    base = {
-        "turn": 2,
-        "player": {"active": ["Indeedee-F"]},
-        "opponent": {"active": ["Murkrow"]},
-    }
-    executed = {
-        **base,
-        "public_execution_delta": {
-            "turn": 1,
-            "actions": [
-                {
-                    "slot": 1,
-                    "outcome": "executed",
-                    "move": "haze",
-                    "effects": [],
-                }
-            ],
-        },
-    }
-    prevented = {
-        **base,
-        "public_execution_delta": {
-            "turn": 1,
-            "actions": [
-                {
-                    "slot": 1,
-                    "outcome": "prevented",
-                    "reason": "par",
-                    "effects": [],
-                }
-            ],
-        },
-    }
-    worker = ExactSelectedCommandWorker([executed, prevented])
-
-    update = condition_particles(
-        worker,
-        particles=(BeliefParticle({"id": 1}, 1.0, world_id="w1"),),
-        ai_side="p2",
-        ai_choice="move protect",
-        actual_public_view=executed,
-        resolved_opponent_choice="move haze",
-        rng_seeds=("executed-rng", "prevented-rng"),
-    )
-
-    assert update.generated == 2
-    assert update.matched == 1
-    assert len(update.particles) == 1
-
-
 def test_public_event_delta_distinguishes_substitute_outcomes():
     base = {
         "turn": 2,
@@ -1164,17 +1113,14 @@ def test_public_action_filter_fails_open_when_parser_cannot_match_legal_set() ->
 
 
 
-def test_exact_resolved_command_overrides_incomplete_public_action_reconstruction() -> None:
+def test_incomplete_public_action_never_uses_unrevealed_submitted_command() -> None:
     worker = PublicActionFilterWorker()
     actual = {
         "turn": 2,
-        # Only one move is visible here, but the exact submitted command is known
-        # after resolution and must be authoritative for conditioning.
         "opponent_last_actions": [
             {"slot": 1, "move": "psychic", "target": 1},
         ],
     }
-    resolved = "move psychic +1, move protect"
 
     update = condition_particles(
         worker,
@@ -1182,32 +1128,42 @@ def test_exact_resolved_command_overrides_incomplete_public_action_reconstructio
         ai_side="p2",
         ai_choice="move protect, move protect",
         actual_public_view=actual,
-        resolved_opponent_choice=resolved,
-        rng_seeds=("rng-a", "rng-b"),
+        rng_seeds=("rng",),
     )
 
     assert update.generated == 2
     assert {
         particle.state["response"] for particle in update.particles
-    } == {resolved}
+    } == {
+        "move psychic +1, move protect",
+        "move psychic +1, move closecombat +1",
+    }
 
 
-def test_exact_resolved_command_drops_world_when_command_is_illegal() -> None:
+def test_fully_public_execution_can_condition_the_revealed_command() -> None:
     worker = PublicActionFilterWorker()
+    actual = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"slot": 1, "move": "psychic", "target": 1},
+            {"slot": 2, "move": "protect", "target": None},
+        ],
+    }
 
     update = condition_particles(
         worker,
         particles=(BeliefParticle({"turn": 1}, 1.0, world_id="world"),),
         ai_side="p2",
         ai_choice="move protect, move protect",
-        actual_public_view={"turn": 2},
-        resolved_opponent_choice="switch 99, pass",
+        actual_public_view=actual,
         rng_seeds=("rng",),
     )
 
-    assert update.generated == 0
-    assert update.matched == 0
-    assert update.particles == ()
+    assert update.generated == 1
+    assert len(update.particles) == 1
+    assert update.particles[0].state["response"] == (
+        "move psychic +1, move protect"
+    )
 
 
 def test_observation_mismatch_boundary_separates_stochastic_from_structural() -> None:
@@ -1525,7 +1481,6 @@ def test_conditioning_composes_stable_member_lineage() -> None:
         ai_choice="move ai",
         actual_public_view={"turn": 2},
         previous_public_view={"turn": 1},
-        resolved_opponent_choice="move human",
         rng_seeds=("seed",),
     )
 
@@ -1554,8 +1509,7 @@ def test_tracked_conditioning_rejects_missing_branch_member_lineage() -> None:
             ai_choice="move ai",
             actual_public_view={"turn": 2},
             previous_public_view={"turn": 1},
-            resolved_opponent_choice="move human",
-            rng_seeds=("seed",),
+                rng_seeds=("seed",),
         )
 
 
@@ -1568,20 +1522,7 @@ def test_condition_particles_rejects_raw_empty_ai_choice() -> None:
             ai_side="p2",
             ai_choice="",
             actual_public_view={"turn": 2},
-            resolved_opponent_choice="move human",
-        )
-
-
-def test_condition_particles_rejects_raw_empty_resolved_opponent_choice() -> None:
-    with pytest.raises(ValueError, match="raw empty resolved opponent choice"):
-        condition_particles(
-            object(),
-            particles=(BeliefParticle({"turn": 1}, 1.0),),
-            ai_side="p2",
-            ai_choice="move ai",
-            actual_public_view={"turn": 2},
-            resolved_opponent_choice="",
-        )
+            )
 
 
 def test_forced_wait_token_is_non_empty() -> None:
