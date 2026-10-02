@@ -488,6 +488,21 @@ def _known_move_id(value: object) -> bool:
     return isinstance(value, str) and value in MOVE_IDS
 
 
+def _known_public_move_id(value: object) -> bool:
+    if _known_move_id(value):
+        return True
+    if not isinstance(value, str):
+        return False
+    if re.fullmatch(
+        r"hiddenpower(?:bug|dark|dragon|electric|fairy|fighting|fire|flying|"
+        r"ghost|grass|ground|ice|normal|poison|psychic|rock|steel|water)"
+        r"(?:[1-9][0-9]?)?",
+        value,
+    ):
+        return True
+    return bool(re.fullmatch(r"(?:return|frustration)(?:[1-9][0-9]?|10[0-2])", value))
+
+
 def _known_ability_id(value: object) -> bool:
     return isinstance(value, str) and value in ABILITY_IDS
 
@@ -838,7 +853,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 return _schema_error(f"{path}[4]", "must identify the public role")
             if value[5] not in {"1", "2"}:
                 return _schema_error(f"{path}[5]", "must identify doubles slot 1 or 2")
-            if not _known_move_id(value[6]):
+            if not _known_public_move_id(value[6]):
                 return _schema_error(f"{path}[6]", "must be a pinned move id")
             if value[7] not in {"selected", "called"}:
                 return _schema_error(f"{path}[7]", "must identify move provenance")
@@ -1506,7 +1521,7 @@ def _opponent_action_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.turn", "must be a positive integer")
     if not _non_bool_int(value["slot"]) or value["slot"] not in {1, 2}:
         return _schema_error(f"{path}.slot", "must be integer doubles slot 1 or 2")
-    if not _known_move_id(value["move"]):
+    if not _known_public_move_id(value["move"]):
         return _schema_error(f"{path}.move", "must be a pinned move id")
     target = value["target"]
     if target is not None and (
@@ -1564,7 +1579,7 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
             "must equal the producer's sorted unique public action effects",
         )
     if outcome == "executed":
-        if not _known_move_id(value["move"]):
+        if not _known_public_move_id(value["move"]):
             return _schema_error(f"{path}.move", "must be a pinned move id")
         if value["source"] not in {"selected", "called"}:
             return _schema_error(f"{path}.source", "must be selected or called")
@@ -1591,7 +1606,7 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
             )
         if (
             value["attempted_move"] is not None
-            and not _known_move_id(value["attempted_move"])
+            and not _known_public_move_id(value["attempted_move"])
         ):
             return _schema_error(
                 f"{path}.attempted_move",
@@ -1757,7 +1772,7 @@ def _request_pokemon_schema_issue(
     if (
         not isinstance(value["moves"], list)
         or not value["moves"]
-        or not all(_known_move_id(move) for move in value["moves"])
+        or not all(_known_public_move_id(move) for move in value["moves"])
     ):
         return _schema_error(
             f"{path}.moves",
@@ -2134,10 +2149,15 @@ def public_reachability_observation_issue(
                 f"$.field.{name}",
                 "must be a pinned public field id or null",
             )
-    if not _canonical_id_list(field["pseudo_weather"]):
+    pseudo_weather = field["pseudo_weather"]
+    if (
+        not isinstance(pseudo_weather, list)
+        or not all(_known_plain_effect_id(item) for item in pseudo_weather)
+        or pseudo_weather != sorted(pseudo_weather)
+    ):
         return _schema_error(
             "$.field.pseudo_weather",
-            "must be a list of canonical ids",
+            "must be sorted pinned public field-condition ids",
         )
 
     issue = _request_schema_issue(view["request"])
