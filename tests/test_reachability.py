@@ -2446,6 +2446,25 @@ def test_v7_review_genuine_pinned_variants_are_supported(event):
     assert public_reachability_observation_issue(view) is None
 
 
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-start", "p1a", "charge", "thunderbolt", "[from]:ability:electromorphosis"],
+        ["-start", "p1a", "disable", "thunderbolt"],
+        ["-start", "p1a", "mimic", "thunderbolt"],
+        ["-start", "p1a", "dynamax", "gmax"],
+        ["-start", "p1a", "confusion", "[fatigue]"],
+        ["-start", "p1a", "uproar", "[upkeep]"],
+        ["-start", "p1a", "typechange", "[from]:move:reflecttype", "[of]:p2a"],
+        ["-end", "p1a", "move:firespin", "[partiallytrapped]", "[silent]"],
+    ),
+)
+def test_v7_typed_start_end_variants_remain_supported(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"]["events"] = [event]
+    assert public_reachability_observation_issue(view) is None
+
+
 def test_v7_recharge_prevention_is_supported():
     view = _v5_semantic_valid_view()
     view["public_execution_delta"] = {
