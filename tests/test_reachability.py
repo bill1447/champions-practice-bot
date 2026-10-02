@@ -2449,6 +2449,7 @@ def test_v7_review_genuine_pinned_variants_are_supported(event):
 @pytest.mark.parametrize(
     "event",
     (
+        ["-start", "p1a", "charge"],
         ["-start", "p1a", "charge", "thunderbolt", "[from]:ability:electromorphosis"],
         ["-start", "p1a", "disable", "thunderbolt"],
         ["-start", "p1a", "mimic", "thunderbolt"],
@@ -2457,6 +2458,7 @@ def test_v7_review_genuine_pinned_variants_are_supported(event):
         ["-start", "p1a", "uproar", "[upkeep]"],
         ["-start", "p1a", "typechange", "[from]:move:reflecttype", "[of]:p2a"],
         ["-end", "p1a", "move:firespin", "[partiallytrapped]", "[silent]"],
+        ["-end", "p1a", "typechange", "[silent]"],
     ),
 )
 def test_v7_typed_start_end_variants_remain_supported(event):
