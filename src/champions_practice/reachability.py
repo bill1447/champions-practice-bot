@@ -305,7 +305,7 @@ _PUBLIC_CONDITION = re.compile(
     r"|[0-9]+(?:\.[0-9]+)?%?(?: [a-z0-9]+)?"
     r")$"
 )
-_CANONICAL_DETAILS = re.compile(r"^[a-z0-9][a-z0-9 .,'():+\-/]*$")
+_CANONICAL_DETAILS = re.compile(r"^[a-z0-9\[][a-z0-9 .,'():+\-/\[\]]*$")
 _SUPPORTED_BOOSTS = frozenset(
     {"atk", "def", "spa", "spd", "spe", "accuracy", "evasion"}
 )
@@ -435,7 +435,7 @@ def _canonical_from_token(value: object) -> bool:
     if tagged is None or tagged.group(1) != "from":
         return False
     payload = tagged.group(2)
-    return payload is None or _canonical_protocol_token(payload)
+    return payload is not None and _canonical_protocol_token(payload)
 
 
 def _canonical_actor(value: object, *, allow_side: bool = False) -> bool:
@@ -702,18 +702,13 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             return _schema_error(f"{path}[2]", "must be a canonical side condition")
         return _canonical_modifier_tail(value[3:], path=f"{path}.modifiers")
 
-    if event in {
-        "-fail",
-        "-block",
-        "-miss",
-        "-start",
-        "-end",
-        "-activate",
-        "-prepare",
-        "-singlemove",
-        "-singleturn",
-        "-burst",
-    }:
+    if event in {"-start", "-end", "-activate", "-prepare", "-singlemove", "-singleturn"}:
+        return _event_actor_and_tail(value, path=path, minimum=3)
+
+    if event in {"-block", "-miss"}:
+        return _event_actor_and_tail(value, path=path, minimum=3)
+
+    if event in {"-fail", "-burst"}:
         return _event_actor_and_tail(value, path=path, minimum=2)
 
     return _schema_error(path, f"{event} lacks an explicit v3 producer variant")

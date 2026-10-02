@@ -1029,6 +1029,27 @@ def _v3_invalid_mutators():
             {"turn": 2, "slot": 1, "move": "tackle", "target": True}
         )
 
+    def selected_target_float(view):
+        view["opponent_last_actions"].append(
+            {"turn": 2, "slot": 1, "move": "tackle", "target": 2.0}
+        )
+
+    def executed_slot_true(view):
+        view["public_execution_delta"] = {
+            "turn": 2,
+            "actions": [
+                {
+                    "side": "player",
+                    "slot": True,
+                    "outcome": "executed",
+                    "move": "tackle",
+                    "source": "selected",
+                    "provenance": [],
+                    "effects": [],
+                }
+            ],
+        }
+
     def bad_damage_condition(view):
         view["public_event_delta"]["events"].append(
             ["-damage", "p1a", "garbage"]
@@ -1191,6 +1212,8 @@ def _v3_invalid_mutators():
         selected_slot_true,
         selected_slot_float,
         selected_target_true,
+        selected_target_float,
+        executed_slot_true,
         bad_damage_condition,
         incomplete_mega,
         bad_status_actor,
