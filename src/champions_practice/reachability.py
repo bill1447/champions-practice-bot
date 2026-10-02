@@ -2602,10 +2602,54 @@ def public_reachability_observation_issue(
         )
         if issue:
             return issue
+    if opponent_actions:
+        action_turns = [action["turn"] for action in opponent_actions]
+        action_slots = [action["slot"] for action in opponent_actions]
+        if any(turn > view["turn"] for turn in action_turns):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "cannot contain actions from a future turn",
+            )
+        if len(set(action_turns)) != 1:
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must contain only the producer's latest observed action turn",
+            )
+        if len(set(action_slots)) != len(action_slots):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must contain at most one retained action per doubles slot",
+            )
+        if action_slots != sorted(action_slots):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must preserve producer slot ordering",
+            )
 
     issue = _transition_ledger_schema_issue(view)
     if issue:
         return issue
+
+    execution = view["public_execution_delta"]
+    if (
+        opponent_actions
+        and execution["turn"] == opponent_actions[0]["turn"]
+    ):
+        public_selected = {
+            (action["slot"], action["move"])
+            for action in execution["actions"]
+            if (
+                action["side"] == "opponent"
+                and action["outcome"] == "executed"
+                and action["source"] == "selected"
+            )
+        }
+        for index, action in enumerate(opponent_actions):
+            if (action["slot"], action["move"]) not in public_selected:
+                return _schema_error(
+                    f"$.opponent_last_actions[{index}]",
+                    "must agree with aligned public selected execution evidence",
+                )
 
     field = view["field"]
     if not isinstance(field, dict):
