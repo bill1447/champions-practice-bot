@@ -1424,6 +1424,13 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         effect = value[2]
         tail = value[3:]
 
+        if event == "-end" and effect in {"typechange", "typeadd"}:
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                markers={"silent"},
+            )
+
         if effect == "typechange":
             # Reflect Type is the one pinned form that exposes only provenance;
             # ordinary type changes expose the resulting type payload first.
@@ -1472,7 +1479,9 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             )
 
         if event == "-start" and effect == "charge":
-            if not tail or not _known_public_move_id(tail[0]):
+            if not tail:
+                return None
+            if not _known_public_move_id(tail[0]):
                 return _schema_error(
                     f"{path}[3]",
                     "Charge producer payload must identify the active move",
