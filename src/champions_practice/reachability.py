@@ -511,7 +511,7 @@ _SINGLE_TURN_EFFECT_IDENTITIES = frozenset(
 _SINGLE_MOVE_EFFECT_IDENTITIES = frozenset(
     {"destinybond", "glaiverush", "grudge", "rage"}
 )
-_FORME_CHANGE_ABILITY_IDS = frozenset({"flowergift", "forecast"})
+_FORME_CHANGE_ABILITY_IDS = frozenset({"flowergift", "forecast", "zenmode"})
 _PUBLIC_PREVENTION_IDENTITIES = frozenset(
     {
         "ability:armortail",
