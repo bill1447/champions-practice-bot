@@ -1939,6 +1939,12 @@ def _revealed_pokemon_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.items", "must contain pinned item ids")
     if not _canonical_id_list(value["abilities"], known=ABILITY_IDS):
         return _schema_error(f"{path}.abilities", "must contain pinned ability ids")
+    for field in ("moves", "items", "abilities"):
+        if value[field] != sorted(set(value[field])):
+            return _schema_error(
+                f"{path}.{field}",
+                "must equal the producer's sorted unique knowledge list",
+            )
     if value["hp_percent"] is not None and not _percentage(value["hp_percent"]):
         return _schema_error(
             f"{path}.hp_percent",
@@ -2890,6 +2896,61 @@ def public_reachability_observation_issue(
         )
         if issue:
             return issue
+
+    preview_order: list[str] = []
+    preview_species_by_key: dict[str, str] = {}
+    for index, species in enumerate(opponent["preview_species"]):
+        species_key = _to_id(species)
+        if species_key not in SPECIES_IDS:
+            return _schema_error(
+                f"$.opponent.preview_species[{index}]",
+                "must identify a pinned preview species",
+            )
+        if species_key not in preview_species_by_key:
+            preview_order.append(species_key)
+        # Match JavaScript Map.set(): replacement keeps the original key order
+        # while the latest display value becomes the stored observation species.
+        preview_species_by_key[species_key] = species
+
+    if len(opponent["revealed"]) != len(preview_order):
+        return _schema_error(
+            "$.opponent.revealed",
+            "must contain one knowledge record per normalized preview species",
+        )
+
+    revealed_by_key: dict[str, dict[str, Any]] = {}
+    for index, species_key in enumerate(preview_order):
+        pokemon = opponent["revealed"][index]
+        expected_species = preview_species_by_key[species_key]
+        if pokemon["species"] != expected_species:
+            return _schema_error(
+                f"$.opponent.revealed[{index}].species",
+                "must preserve preview-derived producer key order and display value",
+            )
+        if not pokemon["seen"] and (
+            pokemon["moves"]
+            or pokemon["items"]
+            or pokemon["abilities"]
+            or pokemon["hp_percent"] is not None
+            or pokemon["status"] is not None
+            or pokemon["fainted"]
+        ):
+            return _schema_error(
+                f"$.opponent.revealed[{index}]",
+                "unseen producer knowledge must retain exact default values",
+            )
+        revealed_by_key[species_key] = pokemon
+
+    for index, active in enumerate(opponent["active"]):
+        if active is None:
+            continue
+        base_key = _to_id(active["base_species"])
+        revealed = revealed_by_key.get(base_key)
+        if revealed is None or not revealed["seen"]:
+            return _schema_error(
+                f"$.opponent.active[{index}].base_species",
+                "must resolve to a seen preview-derived knowledge record",
+            )
     return None
 
 
