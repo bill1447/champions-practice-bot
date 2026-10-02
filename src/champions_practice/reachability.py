@@ -29,6 +29,7 @@ from champions_practice.showdown_public_catalog import (
     ACTIVATION_EFFECT_IDENTITIES,
     CONDITION_IDS,
     FIELD_ACTIVATE_IDENTITIES,
+    FORME_CHANGE_SPECIES_IDS,
     ITEM_IDS,
     MEGA_ITEM_IDS,
     MOVE_CATEGORIES,
@@ -40,11 +41,12 @@ from champions_practice.showdown_public_catalog import (
     SPECIES_IDS,
     SPECIAL_EFFECT_IDS,
     TERRAIN_IDS,
+    TRANSFORM_ITEM_SPECIES_IDS,
     WEATHER_IDS,
 )
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v6"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v7"
 
 
 class ReachabilityStatus(str, Enum):
@@ -393,6 +395,154 @@ _MOVE_TARGETS = frozenset(
 _PUBLIC_ACTION_EFFECTS = frozenset(
     {"-fail", "-miss", "-immune", "-notarget", "-block"}
 )
+
+# Producer-role domains derived from the pinned Showdown emitters. These are
+# deliberately narrower than the union of every move/item/ability identifier.
+_START_END_ABILITY_EFFECTS = frozenset(
+    {"ability:flashfire", "ability:neutralizinggas", "ability:slowstart"}
+)
+_START_END_MOVE_EFFECTS = frozenset(
+    {
+        "move:attract",
+        "move:bide",
+        "move:dragoncheer",
+        "move:focusenergy",
+        "move:futuresight",
+        "move:gmaxchistrike",
+        "move:healblock",
+        "move:imprison",
+        "move:ingrain",
+        "move:laserfocus",
+        "move:leechseed",
+        "move:noretreat",
+        "move:octolock",
+        "move:taunt",
+        "move:yawn",
+        "move:bind",
+        "move:clamp",
+        "move:firespin",
+        "move:infestation",
+        "move:magmastorm",
+        "move:sandtomb",
+        "move:snaptrap",
+        "move:thundercage",
+        "move:whirlpool",
+        "move:wrap",
+        "move:gmaxcentiferno",
+        "move:gmaxsandblast",
+    }
+)
+_START_END_PLAIN_EFFECTS = frozenset(
+    {
+        "aquaring",
+        "attract",
+        "autotomize",
+        "charge",
+        "confusion",
+        "curse",
+        "disable",
+        "doomdesire",
+        "dynamax",
+        "embargo",
+        "encore",
+        "foresight",
+        "illusion",
+        "leechseed",
+        "magnetrise",
+        "mimic",
+        "miracleeye",
+        "nightmare",
+        "octolock",
+        "powershift",
+        "powertrick",
+        "protosynthesis",
+        "quarkdrive",
+        "saltcure",
+        "skydrop",
+        "slowstart",
+        "smackdown",
+        "stockpile",
+        "substitute",
+        "syrupbomb",
+        "tarshot",
+        "telekinesis",
+        "throatchop",
+        "torment",
+        "uproar",
+        "bind",
+        "clamp",
+        "firespin",
+        "gmaxcentiferno",
+        "gmaxsandblast",
+        "infestation",
+        "magmastorm",
+        "sandtomb",
+        "snaptrap",
+        "thundercage",
+        "whirlpool",
+        "wrap",
+    }
+)
+_SINGLE_TURN_EFFECT_IDENTITIES = frozenset(
+    {
+        "craftyshield",
+        "helpinghand",
+        "matblock",
+        "maxguard",
+        "move:beakblast",
+        "move:electrify",
+        "move:endure",
+        "move:focuspunch",
+        "move:followme",
+        "move:instruct",
+        "move:magiccoat",
+        "move:protect",
+        "move:ragepowder",
+        "move:roost",
+        "move:shelltrap",
+        "move:spotlight",
+        "powder",
+        "protect",
+        "quickguard",
+        "snatch",
+        "wideguard",
+    }
+)
+_SINGLE_MOVE_EFFECT_IDENTITIES = frozenset(
+    {"destinybond", "glaiverush", "grudge", "rage"}
+)
+_FORME_CHANGE_ABILITY_IDS = frozenset({"flowergift", "forecast", "zenmode"})
+_PUBLIC_PREVENTION_IDENTITIES = frozenset(
+    {
+        "ability:armortail",
+        "ability:damp",
+        "ability:dazzling",
+        "ability:queenlymajesty",
+        "ability:truant",
+        "attract",
+        "disable",
+        "flinch",
+        "focuspunch",
+        "frz",
+        "move:gravity",
+        "move:healblock",
+        "move:imprison",
+        "move:taunt",
+        "move:throatchop",
+        "nopp",
+        "par",
+        "recharge",
+        "shelltrap",
+        "slp",
+    }
+)
+_PP_DEDUCTION_ACTIVATION_LIMITS = {
+    "move:eeriespell": 3,
+    "move:gmaxdepletion": 2,
+    "move:spite": 4,
+}
+_BURST_ITEM_IDS = frozenset({"ultranecroziumz"})
+
 _PUBLIC_MECHANICS_EVENTS = frozenset(
     {
         "-formechange",
@@ -634,6 +784,16 @@ def _ability_modifier(value: object) -> bool:
     )
 
 
+def _move_modifier(value: object) -> bool:
+    parts = _tagged_modifier_parts(value)
+    return (
+        parts is not None
+        and parts[0] == "move"
+        and parts[1] is not None
+        and _known_public_move_id(parts[1])
+    )
+
+
 def _marker_modifier(value: object, allowed: set[str] | frozenset[str]) -> bool:
     parts = _tagged_modifier_parts(value)
     return parts is not None and parts[0] in allowed and parts[1] is None
@@ -856,8 +1016,11 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             )
         if not _canonical_slot(value[1]):
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
-        if value[2] not in SPECIES_IDS:
-            return _schema_error(f"{path}[2]", "must be a pinned species id")
+        if value[2] not in FORME_CHANGE_SPECIES_IDS:
+            return _schema_error(
+                f"{path}[2]",
+                "must be a species emitted by pinned forme-change mechanics",
+            )
         tail = value[3:]
         if tail and tail[0] in {"[msg]", "[silent]"}:
             tail = tail[1:]
@@ -872,10 +1035,11 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 parts is None
                 or parts[1] is None
                 or not parts[1].startswith("ability:")
+                or parts[1][8:] not in _FORME_CHANGE_ABILITY_IDS
             ):
                 return _schema_error(
                     path,
-                    "-formechange source must be an ability",
+                    "-formechange source must be a pinned forme-changing ability",
                 )
         return None
 
@@ -937,15 +1101,21 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         )
 
     if event == "-mega":
+        allowed_species = (
+            TRANSFORM_ITEM_SPECIES_IDS.get(value[3], frozenset())
+            if len(value) == 4 and isinstance(value[3], str)
+            else frozenset()
+        )
         if (
             len(value) != 4
             or not _canonical_slot(value[1])
             or value[2] not in SPECIES_IDS
             or value[3] not in MEGA_ITEM_IDS
+            or value[2] not in allowed_species
         ):
             return _schema_error(
                 path,
-                "-mega requires actor, pinned species, and Mega item",
+                "-mega requires a pinned species/Mega-item producer relationship",
             )
         return None
 
@@ -1258,11 +1428,37 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         effect = value[2]
         tail = value[3:]
 
-        if effect in {"typechange", "typeadd"}:
+        if event == "-end" and effect in {"typechange", "typeadd"}:
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                markers={"silent"},
+            )
+
+        if effect == "typechange":
+            # Reflect Type is the one pinned form that exposes only provenance;
+            # ordinary type changes expose the resulting type payload first.
+            if tail and _source_modifier(tail[0]):
+                parts = _tagged_modifier_parts(tail[0])
+                if (
+                    parts is None
+                    or parts[1] != "move:reflecttype"
+                ):
+                    return _schema_error(
+                        f"{path}[3]",
+                        "typechange provenance-only form must be Reflect Type",
+                    )
+                return _event_modifier_tail(
+                    tail,
+                    path=f"{path}.modifiers",
+                    allow_from=True,
+                    allow_of=True,
+                    markers={"silent"},
+                )
             if not tail or not _type_payload(tail[0]):
                 return _schema_error(
                     f"{path}[3]",
-                    "must be an exact one- or two-type producer payload",
+                    "must expose the pinned resulting type payload",
                 )
             return _event_modifier_tail(
                 tail[1:],
@@ -1270,6 +1466,79 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 allow_from=True,
                 allow_of=True,
                 markers={"silent"},
+            )
+
+        if effect == "typeadd":
+            if not tail or not _type_payload(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "must expose the pinned added-type payload",
+                )
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+                markers={"silent"},
+            )
+
+        if event == "-start" and effect == "charge":
+            if not tail:
+                return None
+            if not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "Charge producer payload must identify the active move",
+                )
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+            )
+
+        if event == "-start" and effect == "disable":
+            if not tail or not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "Disable producer payload must identify the disabled move",
+                )
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+            )
+
+        if event == "-start" and effect == "mimic":
+            if len(tail) != 1 or not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "Mimic producer payload must identify the copied move",
+                )
+            return None
+
+        if event == "-start" and effect == "dynamax":
+            if tail not in ([], ["gmax"]):
+                return _schema_error(
+                    path,
+                    "Dynamax producer payload is empty or exact G-Max marker",
+                )
+            return None
+
+        if effect == "confusion":
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+                markers={"fatigue"},
+            )
+
+        if event == "-start" and effect == "uproar":
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                markers={"upkeep"},
             )
 
         if event == "-start" and re.fullmatch(r"stockpile[1-3]", effect):
@@ -1284,17 +1553,38 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 markers={"silent"},
             )
 
-        if not _known_effect_identity(effect):
+        dynamic_plain = (
+            re.fullmatch(r"fallen[1-5]", effect)
+            or re.fullmatch(
+                r"(?:protosynthesis|quarkdrive)(?:atk|def|spa|spd|spe)",
+                effect,
+            )
+        )
+        if effect.startswith("item:"):
             return _schema_error(
                 f"{path}[2]",
-                "must be a pinned effect identity",
+                "items are not pinned start/end producer effects",
+            )
+        if effect.startswith("ability:"):
+            valid_effect = effect in _START_END_ABILITY_EFFECTS
+        elif effect.startswith("move:"):
+            valid_effect = effect in _START_END_MOVE_EFFECTS
+        else:
+            valid_effect = (
+                effect in _START_END_PLAIN_EFFECTS
+                or dynamic_plain is not None
+            )
+        if not valid_effect:
+            return _schema_error(
+                f"{path}[2]",
+                "must be an effect emitted by a pinned start/end producer",
             )
         return _event_modifier_tail(
             tail,
             path=f"{path}.modifiers",
             allow_from=True,
             allow_of=True,
-            markers={"msg", "partiallytrapped", "silent"},
+            markers={"msg", "partiallytrapped", "silent", "interrupt"},
         )
 
     if event == "-prepare":
@@ -1314,27 +1604,44 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return None
 
     if event in {"-singlemove", "-singleturn"}:
+        domain = (
+            _SINGLE_MOVE_EFFECT_IDENTITIES
+            if event == "-singlemove"
+            else _SINGLE_TURN_EFFECT_IDENTITIES
+        )
         if (
             len(value) < 3
             or not _canonical_slot(value[1])
-            or not _known_move_identity(value[2])
+            or value[2] not in domain
         ):
-            return _schema_error(path, f"{event} requires actor and pinned move")
+            return _schema_error(
+                path,
+                f"{event} requires an effect emitted by its pinned producer",
+            )
         return _event_modifier_tail(
             value[3:],
             path=f"{path}.modifiers",
             allow_of=True,
-            markers={"zeffect"},
+            markers={"silent", "zeffect"},
         )
 
     if event == "-burst":
+        allowed_species = (
+            TRANSFORM_ITEM_SPECIES_IDS.get(value[3], frozenset())
+            if len(value) == 4 and isinstance(value[3], str)
+            else frozenset()
+        )
         if (
             len(value) != 4
             or not _canonical_slot(value[1])
-            or not _canonical_id(value[2])
-            or not _known_item_id(value[3])
+            or value[2] not in SPECIES_IDS
+            or value[3] not in _BURST_ITEM_IDS
+            or value[2] not in allowed_species
         ):
-            return _schema_error(path, "-burst requires actor, species, and item")
+            return _schema_error(
+                path,
+                "-burst requires a pinned species/Ultra-Burst-item relationship",
+            )
         return None
 
     if event == "-fail":
@@ -1391,20 +1698,137 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 return _schema_error(path, "confusion activation has no payload")
             return None
 
-        if effect == "move:eeriespell":
+        pp_limit = _PP_DEDUCTION_ACTIVATION_LIMITS.get(effect)
+        if pp_limit is not None:
             if len(tail) != 2 or not _known_public_move_id(tail[0]):
                 return _schema_error(
                     path,
-                    "Eerie Spell requires move id and PP deduction",
+                    f"{effect} requires move id and PP deduction",
                 )
             if (
                 not _canonical_integer_text(tail[1])
                 or int(tail[1]) < 1
-                or int(tail[1]) > 3
+                or int(tail[1]) > pp_limit
             ):
                 return _schema_error(
                     f"{path}[4]",
-                    "Eerie Spell PP deduction must be 1 through 3",
+                    f"{effect} PP deduction must be 1 through {pp_limit}",
+                )
+            return None
+
+        if effect == "item:leppaberry":
+            if (
+                len(tail) != 2
+                or not _known_public_move_id(tail[0])
+                or tail[1] != "[consumed]"
+            ):
+                return _schema_error(
+                    path,
+                    "Leppa Berry requires restored move and [consumed]",
+                )
+            return None
+
+        if effect == "item:custapberry":
+            if tail != ["[consumed]"]:
+                return _schema_error(path, "Custap Berry requires [consumed]")
+            return None
+
+        if effect in {"item:focusband", "item:quickclaw"}:
+            if tail:
+                return _schema_error(path, f"{effect} activation has no payload")
+            return None
+
+        if effect in {"item:safetygoggles", "item:mysteryberry"}:
+            if len(tail) != 1 or not _known_public_move_id(tail[0]):
+                return _schema_error(path, f"{effect} requires one move payload")
+            return None
+
+        if effect == "ability:forewarn":
+            if (
+                len(tail) != 2
+                or not _known_public_move_id(tail[0])
+                or not _of_modifier(tail[1])
+            ):
+                return _schema_error(
+                    path,
+                    "Forewarn requires warned move and [of] target",
+                )
+            return None
+
+        if effect == "ability:symbiosis":
+            if (
+                len(tail) != 2
+                or not _known_item_id(tail[0])
+                or not _of_modifier(tail[1])
+            ):
+                return _schema_error(
+                    path,
+                    "Symbiosis requires transferred item and [of] target",
+                )
+            return None
+
+        if effect in {"ability:protosynthesis", "ability:quarkdrive"}:
+            if tail not in ([], ["[fromitem]"]):
+                return _schema_error(
+                    path,
+                    f"{effect} accepts only the pinned [fromitem] marker",
+                )
+            return None
+
+        if effect == "orichalcumpulse":
+            if tail not in ([], ["[source]"]):
+                return _schema_error(
+                    path,
+                    "Orichalcum Pulse accepts only the pinned [source] marker",
+                )
+            return None
+
+        if effect == "ability:persistent":
+            if len(tail) != 1 or not _move_modifier(tail[0]):
+                return _schema_error(
+                    path,
+                    "Persistent activation requires one [move] payload",
+                )
+            return None
+
+        if effect == "move:powder":
+            if len(tail) != 1 or not _move_modifier(tail[0]):
+                return _schema_error(path, "Powder activation requires [move]")
+            return None
+
+        if effect == "move:magnitude":
+            if (
+                len(tail) != 1
+                or not _canonical_integer_text(tail[0])
+                or int(tail[0]) not in range(4, 11)
+            ):
+                return _schema_error(path, "Magnitude requires level 4 through 10")
+            return None
+
+        if effect == "move:poltergeist":
+            if len(tail) != 1 or not _known_item_id(tail[0]):
+                return _schema_error(path, "Poltergeist requires a pinned item")
+            return None
+
+        if effect in {
+            "move:grudge",
+            "move:matblock",
+            "move:sketch",
+        }:
+            if len(tail) != 1 or not _known_public_move_id(tail[0]):
+                return _schema_error(path, f"{effect} requires one move payload")
+            return None
+
+        if effect == "skillswap":
+            if (
+                len(tail) != 3
+                or not _known_ability_id(tail[0])
+                or not _known_ability_id(tail[1])
+                or not _of_modifier(tail[2])
+            ):
+                return _schema_error(
+                    path,
+                    "Skill Swap requires two abilities and [of] target",
                 )
             return None
 
@@ -1428,48 +1852,45 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 "must be an effect emitted by a pinned activation producer",
             )
 
-        positional_count = 0
+        # The only generic positional producer form is actor + [ability].
+        # Everything else must be an effect-specific variant above or typed
+        # producer modifiers; catalog membership alone is not positional authority.
+        if (
+            len(tail) == 2
+            and _canonical_actor(tail[0], allow_side=True)
+            and _ability_modifier(tail[1])
+        ):
+            return None
+
         seen_tags: set[str] = set()
         for index, part in enumerate(tail, start=3):
             tagged = _tagged_modifier_parts(part)
-            if tagged is not None:
-                tag = tagged[0]
-                if tag in seen_tags:
-                    return _schema_error(
-                        f"{path}[{index}]",
-                        "duplicates an activation modifier tag",
-                    )
-                if (
-                    _ability_modifier(part)
-                    or _source_modifier(part)
-                    or _of_modifier(part)
-                    or _marker_modifier(part, {"silent"})
-                ):
-                    seen_tags.add(tag)
-                    continue
+            if tagged is None:
                 return _schema_error(
                     f"{path}[{index}]",
-                    "contains unsupported activation modifier",
+                    "contains an unsupported positional activation payload",
                 )
-
-            if positional_count:
+            tag = tagged[0]
+            if tag in seen_tags:
                 return _schema_error(
                     f"{path}[{index}]",
-                    "contains more than one positional activation payload",
+                    "duplicates an activation modifier tag",
                 )
-            if not (
-                _canonical_actor(part, allow_side=True)
-                or _known_effect_identity(part)
-                or _known_public_move_id(part)
+            if (
+                _ability_modifier(part)
+                or _source_modifier(part)
+                or _of_modifier(part)
+                or _marker_modifier(part, {"broken", "silent"})
             ):
-                return _schema_error(
-                    f"{path}[{index}]",
-                    "contains unsupported activation payload",
-                )
-            positional_count += 1
+                seen_tags.add(tag)
+                continue
+            return _schema_error(
+                f"{path}[{index}]",
+                "contains unsupported activation modifier",
+            )
         return None
 
-    return _schema_error(path, f"{event} lacks an explicit v6 producer variant")
+    return _schema_error(path, f"{event} lacks an explicit v7 producer variant")
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
@@ -1634,6 +2055,12 @@ def _revealed_pokemon_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.items", "must contain pinned item ids")
     if not _canonical_id_list(value["abilities"], known=ABILITY_IDS):
         return _schema_error(f"{path}.abilities", "must contain pinned ability ids")
+    for field in ("moves", "items", "abilities"):
+        if value[field] != sorted(set(value[field])):
+            return _schema_error(
+                f"{path}.{field}",
+                "must equal the producer's sorted unique knowledge list",
+            )
     if value["hp_percent"] is not None and not _percentage(value["hp_percent"]):
         return _schema_error(
             f"{path}.hp_percent",
@@ -1755,7 +2182,10 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
                 "must be called iff [from] provenance is present",
             )
     else:
-        if not _known_effect_identity(value["reason"]):
+        if not (
+            _known_effect_identity(value["reason"])
+            or value["reason"] in _PUBLIC_PREVENTION_IDENTITIES
+        ):
             return _schema_error(
                 f"{path}.reason",
                 "must be pinned public prevention evidence",
@@ -2027,7 +2457,10 @@ def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.maxpp", "must be a positive integer")
     if value["pp"] > value["maxpp"]:
         return _schema_error(f"{path}.pp", "must not exceed maxpp")
-    if value["target"] not in _MOVE_TARGETS:
+    if (
+        not isinstance(value["target"], str)
+        or value["target"] not in _MOVE_TARGETS
+    ):
         return _schema_error(
             f"{path}.target",
             "must be a pinned Showdown move target",
@@ -2060,7 +2493,10 @@ def _max_moves_schema_issue(value: object, *, path: str) -> str | None:
                 f"{path}.maxMoves[{index}].move",
                 "must be a non-empty string",
             )
-        if move["target"] not in _MOVE_TARGETS:
+        if (
+            not isinstance(move["target"], str)
+            or move["target"] not in _MOVE_TARGETS
+        ):
             return _schema_error(
                 f"{path}.maxMoves[{index}].target",
                 "must be a pinned Showdown move target",
@@ -2088,6 +2524,7 @@ def _z_move_schema_issue(value: object, *, path: str) -> str | None:
             or set(move) != {"move", "target"}
             or not isinstance(move["move"], str)
             or not move["move"].strip()
+            or not isinstance(move["target"], str)
             or move["target"] not in _MOVE_TARGETS
         ):
             return _schema_error(
@@ -2267,7 +2704,10 @@ def public_reachability_observation_issue(
         return issue
     if not _non_bool_int(view["turn"], minimum=0):
         return _schema_error("$.turn", "must be a non-negative integer")
-    if view["phase"] not in {"", "teampreview", "move", "switch", "ended"}:
+    if (
+        not isinstance(view["phase"], str)
+        or view["phase"] not in {"", "teampreview", "move", "switch", "ended"}
+    ):
         return _schema_error("$.phase", "contains an unknown phase")
     if not isinstance(view["ended"], bool):
         return _schema_error("$.ended", "must be boolean")
@@ -2284,10 +2724,54 @@ def public_reachability_observation_issue(
         )
         if issue:
             return issue
+    if opponent_actions:
+        action_turns = [action["turn"] for action in opponent_actions]
+        action_slots = [action["slot"] for action in opponent_actions]
+        if any(turn > view["turn"] for turn in action_turns):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "cannot contain actions from a future turn",
+            )
+        if len(set(action_turns)) != 1:
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must contain only the producer's latest observed action turn",
+            )
+        if len(set(action_slots)) != len(action_slots):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must contain at most one retained action per doubles slot",
+            )
+        if action_slots != sorted(action_slots):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must preserve producer slot ordering",
+            )
 
     issue = _transition_ledger_schema_issue(view)
     if issue:
         return issue
+
+    execution = view["public_execution_delta"]
+    if (
+        opponent_actions
+        and execution["turn"] == opponent_actions[0]["turn"]
+    ):
+        public_selected = {
+            (action["slot"], action["move"])
+            for action in execution["actions"]
+            if (
+                action["side"] == "opponent"
+                and action["outcome"] == "executed"
+                and action["source"] == "selected"
+            )
+        }
+        for index, action in enumerate(opponent_actions):
+            if (action["slot"], action["move"]) not in public_selected:
+                return _schema_error(
+                    f"$.opponent_last_actions[{index}]",
+                    "must agree with aligned public selected execution evidence",
+                )
 
     field = view["field"]
     if not isinstance(field, dict):
@@ -2299,12 +2783,18 @@ def public_reachability_observation_issue(
     )
     if issue:
         return issue
-    if field["weather"] is not None and field["weather"] not in WEATHER_IDS:
+    if field["weather"] is not None and (
+        not isinstance(field["weather"], str)
+        or field["weather"] not in WEATHER_IDS
+    ):
         return _schema_error(
             "$.field.weather",
             "must be a pinned weather id or null",
         )
-    if field["terrain"] is not None and field["terrain"] not in TERRAIN_IDS:
+    if field["terrain"] is not None and (
+        not isinstance(field["terrain"], str)
+        or field["terrain"] not in TERRAIN_IDS
+    ):
         return _schema_error(
             "$.field.terrain",
             "must be a pinned terrain id or null",
@@ -2312,8 +2802,16 @@ def public_reachability_observation_issue(
     pseudo_weather = field["pseudo_weather"]
     if (
         not isinstance(pseudo_weather, list)
-        or pseudo_weather != sorted(set(pseudo_weather))
-        or any(item not in PSEUDO_WEATHER_IDS for item in pseudo_weather)
+        or any(not isinstance(item, str) for item in pseudo_weather)
+        or (
+            isinstance(pseudo_weather, list)
+            and all(isinstance(item, str) for item in pseudo_weather)
+            and pseudo_weather != sorted(set(pseudo_weather))
+        )
+        or any(
+            isinstance(item, str) and item not in PSEUDO_WEATHER_IDS
+            for item in pseudo_weather
+        )
     ):
         return _schema_error(
             "$.field.pseudo_weather",
@@ -2362,8 +2860,17 @@ def public_reachability_observation_issue(
             return issue
     if (
         not isinstance(player["side_conditions"], list)
-        or any(item not in SIDE_CONDITION_IDS for item in player["side_conditions"])
-        or player["side_conditions"] != sorted(set(player["side_conditions"]))
+        or any(not isinstance(item, str) for item in player["side_conditions"])
+        or (
+            isinstance(player["side_conditions"], list)
+            and all(isinstance(item, str) for item in player["side_conditions"])
+            and player["side_conditions"]
+            != sorted(set(player["side_conditions"]))
+        )
+        or any(
+            isinstance(item, str) and item not in SIDE_CONDITION_IDS
+            for item in player["side_conditions"]
+        )
     ):
         return _schema_error(
             "$.player.side_conditions",
@@ -2468,8 +2975,17 @@ def public_reachability_observation_issue(
         )
     if (
         not isinstance(opponent["side_conditions"], list)
-        or any(item not in SIDE_CONDITION_IDS for item in opponent["side_conditions"])
-        or opponent["side_conditions"] != sorted(set(opponent["side_conditions"]))
+        or any(not isinstance(item, str) for item in opponent["side_conditions"])
+        or (
+            isinstance(opponent["side_conditions"], list)
+            and all(isinstance(item, str) for item in opponent["side_conditions"])
+            and opponent["side_conditions"]
+            != sorted(set(opponent["side_conditions"]))
+        )
+        or any(
+            isinstance(item, str) and item not in SIDE_CONDITION_IDS
+            for item in opponent["side_conditions"]
+        )
     ):
         return _schema_error(
             "$.opponent.side_conditions",
@@ -2496,6 +3012,61 @@ def public_reachability_observation_issue(
         )
         if issue:
             return issue
+
+    preview_order: list[str] = []
+    preview_species_by_key: dict[str, str] = {}
+    for index, species in enumerate(opponent["preview_species"]):
+        species_key = _to_id(species)
+        if species_key not in SPECIES_IDS:
+            return _schema_error(
+                f"$.opponent.preview_species[{index}]",
+                "must identify a pinned preview species",
+            )
+        if species_key not in preview_species_by_key:
+            preview_order.append(species_key)
+        # Match JavaScript Map.set(): replacement keeps the original key order
+        # while the latest display value becomes the stored observation species.
+        preview_species_by_key[species_key] = species
+
+    if len(opponent["revealed"]) != len(preview_order):
+        return _schema_error(
+            "$.opponent.revealed",
+            "must contain one knowledge record per normalized preview species",
+        )
+
+    revealed_by_key: dict[str, dict[str, Any]] = {}
+    for index, species_key in enumerate(preview_order):
+        pokemon = opponent["revealed"][index]
+        expected_species = preview_species_by_key[species_key]
+        if pokemon["species"] != expected_species:
+            return _schema_error(
+                f"$.opponent.revealed[{index}].species",
+                "must preserve preview-derived producer key order and display value",
+            )
+        if not pokemon["seen"] and (
+            pokemon["moves"]
+            or pokemon["items"]
+            or pokemon["abilities"]
+            or pokemon["hp_percent"] is not None
+            or pokemon["status"] is not None
+            or pokemon["fainted"]
+        ):
+            return _schema_error(
+                f"$.opponent.revealed[{index}]",
+                "unseen producer knowledge must retain exact default values",
+            )
+        revealed_by_key[species_key] = pokemon
+
+    for index, active in enumerate(opponent["active"]):
+        if active is None:
+            continue
+        base_key = _to_id(active["base_species"])
+        revealed = revealed_by_key.get(base_key)
+        if revealed is None or not revealed["seen"]:
+            return _schema_error(
+                f"$.opponent.active[{index}].base_species",
+                "must resolve to a seen preview-derived knowledge record",
+            )
     return None
 
 
@@ -2520,6 +3091,14 @@ def _reachability_hash(value: object) -> str:
         ensure_ascii=True,
     ).encode("utf-8")
     return hashlib.sha256(payload).hexdigest()
+
+
+def _reachability_observation_signature(view: dict[str, Any]) -> str:
+    """Return the exact public evidence projection certified by reachability."""
+
+    normalized = json.loads(public_observation_signature(view))
+    normalized["opponent_last_actions"] = view.get("opponent_last_actions")
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
 
 
 def _public_target_unsupported(view: dict[str, Any]) -> tuple[str, ...]:
@@ -2644,7 +3223,7 @@ def witness_public_observation_sequence(
     transitions_covered = 0
 
     for step_index, step in enumerate(steps):
-        wanted = public_observation_signature(step.expected_public_view)
+        wanted = _reachability_observation_signature(step.expected_public_view)
         next_paths: list[
             tuple[dict[str, Any], tuple[str | None, ...]]
         ] = []
@@ -2741,7 +3320,7 @@ def witness_public_observation_sequence(
                             f"{', '.join(worker_unsupported)}"
                         )
                     )
-                if public_observation_signature(public_view) != wanted:
+                if _reachability_observation_signature(public_view) != wanted:
                     continue
 
                 child_seed_path = seed_path + (seed,)
@@ -2909,8 +3488,8 @@ def evaluate_deterministic_public_transition(
             "deterministic reachability worker omitted a valid PRNG draw count"
         )
 
-    wanted = public_observation_signature(step.expected_public_view)
-    observed = public_observation_signature(public_view)
+    wanted = _reachability_observation_signature(step.expected_public_view)
+    observed = _reachability_observation_signature(public_view)
     randomness_domains = () if draw_count == 0 else ("showdown-prng-draw",)
     coverage = ReachabilityCoverage(
         sequential_context_fingerprint=fingerprint,
