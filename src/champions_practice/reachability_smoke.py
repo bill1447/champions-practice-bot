@@ -7,7 +7,7 @@ from champions_practice.reachability import (
     ReachabilityStatus,
     witness_public_observation_sequence,
 )
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
 
@@ -39,7 +39,7 @@ def _active_hp(view: dict) -> tuple[tuple[float, ...], tuple[float, ...]]:
 
 
 def main() -> None:
-    with ShowdownSearchWorker() as worker:
+    with HypotheticalSearchWorker() as worker:
         state = worker.create_state(
             battle_format=CHAMPIONS_FORMAT,
             p1_team=SMOKE_TEAM,
