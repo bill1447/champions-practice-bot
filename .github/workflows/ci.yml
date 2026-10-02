@@ -162,6 +162,10 @@ jobs:
         run: .\recovery-stat-proposal-smoke.ps1
 
 
+      - name: Mechanics-authoritative reachability witness smoke test
+        shell: pwsh
+        run: .\reachability-smoke.ps1
+
       - name: Quantitative public transition authority smoke test
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1
