@@ -26,6 +26,7 @@ from champions_practice.observation_beliefs import public_observation_signature
 from champions_practice.search_worker import ShowdownRequestError
 from champions_practice.showdown_public_catalog import (
     ABILITY_IDS,
+    ACTIVATION_EFFECT_IDENTITIES,
     CONDITION_IDS,
     FIELD_ACTIVATE_IDENTITIES,
     ITEM_IDS,
@@ -1421,10 +1422,10 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 "Protect activation has no positional payload",
             )
 
-        if not _known_effect_identity(effect):
+        if effect not in ACTIVATION_EFFECT_IDENTITIES:
             return _schema_error(
                 f"{path}[2]",
-                "must be a pinned activation effect",
+                "must be an effect emitted by a pinned activation producer",
             )
 
         positional_count = 0
