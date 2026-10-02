@@ -65,7 +65,7 @@ smokes.
 
 Replay reconstruction remains available only for controlled diagnostics and tests.
 
-## Phase 8 — RNG-robust live conditioning — complete
+## Phase 8 — RNG-robust sampled live conditioning — complete baseline
 
 Production conditioning now samples fresh bounded RNG continuations, adaptively expands
 after zero-match batches, preserves surviving hidden-world diversity, retains the last good
@@ -77,6 +77,11 @@ candidate set directly in Showdown instead of enumerating the entire legal respo
 then spend the saved budget on additional RNG futures. Stale move observations are excluded
 from switch-only transitions by comparing the previous and current public views. The
 production damaging-turn smoke now requires public damage on both sides in one turn.
+
+Finite RNG coverage is deliberately not proof of mechanical impossibility. A sampled match
+is positive evidence that a hidden world is reachable; exhausting a finite seed sample is
+only inconclusive. Complete negative authority is reserved for separately proven exhaustive
+mechanics domains.
 
 ## Phase 9 — Strategic reasoning layer — feature baseline complete
 
@@ -133,10 +138,11 @@ Current work:
   is complete or optimal.
 
 Next:
-- build the interactive battle tech demo on the restricted sealed-choice boundary;
-- expose only public battle state and an opaque AI-locked status before human commitment;
-- reveal the AI decision and diagnostics only after both choices are submitted to Showdown;
-- use complete demo games to identify the next strategy/search improvements.
+- keep strategy feature expansion frozen while belief/recovery authority is hardened;
+- use complete demo games and benchmarks to collect difficult positions and concrete failures;
+- preserve exact belief search as final command authority while experimental reachability and
+  recovery remain isolated from live particle admission;
+- resume strategy expansion only when gameplay demonstrates a specific missing capability.
 
 ## Phase 9.5 — Pre-demo authority and isolation hardening — complete
 
@@ -192,10 +198,12 @@ shows a concrete failure.
 Final gate:
 
 - PR #78 passed the full Windows CI workflow and merged to `main`;
-- strategy and architecture feature work are frozen until complete-game evidence exposes a
+- strategy and architecture feature work remain frozen unless complete-game evidence exposes a
   concrete failure;
-- the playable local multi-turn demo is now the active engineering target;
-- post-commit decision traces and complete games are the next source of intelligence work.
+- the playable local multi-turn demo has since been built and exercised;
+- subsequent belief-collapse investigations identified sampled stochastic conditioning, not
+  strategy breadth, as the next correctness bottleneck;
+- post-commit decision traces and complete games remain an important source of hard examples.
 
 ## Phase 10 — Benchmark and playing-strength development — started
 
@@ -213,6 +221,81 @@ Continue adding labeled positions and complete games. Compare bounded belief sea
 exhaustive search where tractable and with perfect-information search only as a diagnostic
 oracle. Track missed KOs, sacrifices, targets, switches, Protects, speed control, field
 control, setup recognition, conservatism, strategic-plan quality, and latency.
+
+Playing-strength expansion is not the current critical path. The benchmark corpus remains a
+regression floor while mechanics-authoritative belief recovery is hardened.
+
+## Phase 10.5 — Mechanics-authoritative reachability and recovery — in progress
+
+The live bot can already play complete games, but sampled exact replay is not sufficient to
+decide whether a hidden-world hypothesis is mechanically impossible. A real collapse showed
+that normal conditioning could sample zero matching branches while a larger RNG search later
+found an exact witness. The recovery target is therefore:
+
+`Could this observed public transition occur under this hidden-world hypothesis?`
+
+rather than:
+
+`Did one bounded set of sampled RNG seeds happen to reproduce it?`
+
+Foundation merged through PR #134:
+
+- static recovery rebuilds hypotheses from authoritative pre-opening inputs rather than
+  mutating already-started states;
+- finite recovery RNG misses are explicitly inconclusive;
+- stable roster-member lineage and exact forced-wait commands are preserved across replay;
+- typed reachability results distinguish `WITNESSED`, `EXHAUSTIVELY_DISPROVED`,
+  `UNRESOLVED`, and `UNSUPPORTED`;
+- sequential Showdown witnesses propagate exact child states;
+- deterministic negative authority is allowed only for proven zero-PRNG transitions with
+  exhaustive response coverage;
+- public observation validation is tied to the pinned Showdown producer contract rather than
+  generic JSON shape alone;
+- submitted human commands have been removed from belief/recovery authority after PR #134:
+  conditioning and recovery reconstruct compatible opponent actions only from public evidence;
+- reachability remains isolated and cannot currently install, supplement, or eliminate live
+  belief particles.
+
+Current observation-authority gate:
+
+A narrow adversarial review of PRs #125-#133 found four remaining P2 correctness gaps and one
+P3 robustness gap. Before finite stochastic-domain enumeration can become authoritative, the
+shared producer contract must close:
+
+- selected-action collection relationships such as turn consistency, unique slots, and
+  producer ordering;
+- event-specific producer semantics where generic catalog membership is still too broad;
+- preview/revealed-opponent knowledge relationships and guaranteed unseen defaults;
+- genuine pinned variants including PP deduction/restoration and recharge prevention;
+- malformed collection-valued fields so invalid JSON types return `UNSUPPORTED` rather than
+  escaping through runtime type errors.
+
+Phase exit criteria:
+
+1. Close the remaining observation-producer contract findings with regression coverage for
+   both expected and returned evidence.
+2. Rerun a bounded hostile review of this surface and clear all P0/P1/P2 authority findings.
+3. Add isolated finite stochastic-domain enumeration without granting it live-admission
+   authority.
+4. Build an independent Showdown differential validator that does not reuse production
+   acceptance logic as its oracle.
+5. Demonstrate that the true hidden world remains reachable, mechanically impossible worlds
+   are rejected only with adequate authority, and private information cannot influence
+   pre-seal decisions.
+6. Only then allow mechanics-authoritative recovery to affect live particle admission or
+   elimination.
+
+Planned stochastic mechanics work after the observation-authority gate:
+
+- enumerate bounded discrete damage rolls where practical;
+- use exact AI-side HP deltas to constrain opponent offensive parameters;
+- map public opponent HP percentages to exact-HP intervals or sets;
+- handle sequential bounded damage and small categorical RNG domains explicitly;
+- merge observationally equivalent histories;
+- retain sampled fallback only for compound or unsupported mechanics;
+- add likelihood weighting only after reachability correctness is independently validated.
+
+This phase is the main correctness dependency for later teacher/data-generation work.
 
 ## Phase 11 — Selective deeper reasoning
 
@@ -243,4 +326,6 @@ battle-log presentation, replay/postgame review, and better team-preview intelli
 Current sequence:
 
 **Simulator → public beliefs → bounded exact search → persistent beliefs → strategy
-→ sealed playable demo → complete games → targeted tuning/selective depth → review tools**
+→ sealed playable demo → complete games → observation/reachability authority
+→ finite stochastic enumeration → validated mechanics-authoritative recovery
+→ targeted tuning/selective depth → review tools**
