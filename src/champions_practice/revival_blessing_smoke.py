@@ -351,7 +351,6 @@ def _run_case(
             ai_choice=ai_choice,
             actual_public_view=actual_view,
             previous_public_view=before_selection,
-            resolved_opponent_choice=resolved_human_choice,
             rng_seeds=(None,),
             previews=previews,
         )

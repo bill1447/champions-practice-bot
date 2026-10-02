@@ -260,7 +260,6 @@ def _run_orientation(
             ai_choice=ai_choice,
             actual_public_view=after,
             previous_public_view=before,
-            resolved_opponent_choice=opponent_choice,
             previews=previews,
         )
         if not update.particles:
