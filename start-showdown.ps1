@@ -15,7 +15,12 @@ if ($null -ne $TrackedPid) {
     if (Test-ChampionsTcpPort) {
         if (-not (Test-ChampionsShowdownLoopbackOnlyBinding)) {
             $Addresses = @(Get-ChampionsListeningAddresses)
-            throw "Tracked Showdown is listening beyond loopback: $($Addresses -join ', ')."
+            & taskkill.exe /PID $TrackedPid /T /F | Out-Null
+            Remove-Item -Force $ChampionShowdownPidFile -ErrorAction SilentlyContinue
+            throw (
+                "Tracked Showdown was listening beyond loopback and was stopped: " +
+                "$($Addresses -join ', ')."
+            )
         }
         Write-Host "Showdown is already running on 127.0.0.1:8000 (PID $TrackedPid)."
         exit 0
