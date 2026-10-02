@@ -205,6 +205,9 @@ def _valid_public_view(spec: dict | None = None) -> dict:
                 }
             )
 
+    while len(opponent_active) < 2:
+        opponent_active.append(None)
+
     view = {
         "turn": turn,
         "phase": "move",
@@ -220,8 +223,8 @@ def _valid_public_view(spec: dict | None = None) -> dict:
         },
         "player": {
             "name": "Player",
-            "active": [],
-            "active_details": [],
+            "active": [None, None],
+            "active_details": [None, None],
             "side_conditions": [],
             "team": [],
         },
@@ -624,7 +627,7 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v5"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v6"
     assert public_reachability_observation_issue(_valid_public_view()) is None
 
 
@@ -981,7 +984,7 @@ def test_nested_invalid_worker_evidence_never_becomes_conclusive(
 def test_pinned_move_request_variants_remain_supported(move):
     view = _valid_public_view()
     view["request"] = {
-        "active": [{"moves": [move]}],
+        "active": [{"moves": [move]}, None],
         "side": {"name": "Player", "id": "p1", "pokemon": []},
     }
 
@@ -1587,6 +1590,12 @@ def test_v5_semantic_invalid_worker_evidence_never_conclusive(
             "[of]:p2b",
         ],
         ["-transform", "p1a", "p2b", "[from]:ability:imposter"],
+        ["-activate", "p2a", "move:eeriespell", "sleeptalk", "3"],
+        ["-start", "p1a", "stockpile1"],
+        ["-start", "p1a", "stockpile3"],
+        ["-start", "p1a", "perish3", "[silent]"],
+        ["-start", "p1a", "perish0"],
+        ["-activate", "p2a", "move:substitute", "[damage]"],
     ),
 )
 def test_v5_genuine_event_variants_are_supported(event):
@@ -1622,6 +1631,27 @@ def test_v5_genuine_event_variants_are_supported(event):
         ["-fieldstart", "p2b"],
         ["-sidestart", "p1", "p2a"],
         ["-primal", "p1a"],
+        ["-weather", "move:protect"],
+        ["-weather", "item:leftovers"],
+        ["-fieldstart", "ability:intimidate"],
+        ["-sidestart", "p1", "item:leftovers"],
+        ["-start", "p1a", "typechange", "banana"],
+        ["-start", "p1a", "confusion", "move:protect"],
+        ["-formechange", "p1a", "banana", "garbage"],
+        ["-mega", "p1a", "banana", "leftovers"],
+        ["-primal", "p1a", "leftovers"],
+        ["-activate", "p1a", "move:protect", "p2a", "p2b"],
+        [
+            "-activate",
+            "p1a",
+            "confusion",
+            "[from]:move:protect",
+            "[from]:move:soak",
+        ],
+        ["-activate", "p2a", "move:eeriespell", "sleeptalk", "4"],
+        ["-start", "p1a", "stockpile4"],
+        ["-start", "p1a", "perish4"],
+        ["-activate", "p2a", "move:substitute", "[future]"],
     ),
 )
 def test_v5_impossible_event_variants_are_rejected(event):
@@ -1765,7 +1795,7 @@ def test_v5_request_pokemon_requires_gen9_fields():
 def test_v5_active_request_rejects_empty_move_choices():
     view = _valid_public_view()
     view["request"] = {
-        "active": [{"moves": []}],
+        "active": [{"moves": []}, None],
         "side": {"name": "Player", "id": "p1", "pokemon": []},
     }
     assert public_reachability_observation_issue(view) is not None
@@ -1929,6 +1959,268 @@ def test_v5_review_invalid_expected_is_preflight_unsupported(mutator, evaluator)
 @pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
 @pytest.mark.parametrize("signature_mode", ("matching", "mismatching"))
 def test_v5_review_invalid_worker_evidence_never_conclusive(
+    mutator,
+    evaluator,
+    signature_mode,
+):
+    expected = _v5_semantic_valid_view()
+    returned = copy.deepcopy(expected)
+    if signature_mode == "mismatching":
+        returned["winner"] = "different-winner"
+    mutator(returned)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", returned)},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
+
+
+@pytest.mark.parametrize(
+    ("move_name", "expected_damaging"),
+    (
+        ("Hidden Power Ice", 1),
+        ("Return 102", 1),
+        ("Frustration 1", 1),
+    ),
+)
+def test_v6_exact_special_move_displays_are_supported(move_name, expected_damaging):
+    view = _v5_semantic_valid_view()
+    view["player"]["team"][0]["moves"] = [move_name]
+    view["player"]["team"][0]["damaging_move_count"] = expected_damaging
+    view["player"]["active_details"][0] = copy.deepcopy(view["player"]["team"][0])
+    assert public_reachability_observation_issue(view) is None
+
+
+@pytest.mark.parametrize(
+    "move_name",
+    (
+        "Hidden Power Banana",
+        "Hidden Power Ice !!!",
+        "Return banana",
+        "Frustration !!!",
+        "Return 103",
+        "Frustration 00",
+    ),
+)
+def test_v6_fabricated_special_move_displays_are_rejected(move_name):
+    view = _v5_semantic_valid_view()
+    view["player"]["team"][0]["moves"] = [move_name]
+    view["player"]["active_details"][0] = copy.deepcopy(view["player"]["team"][0])
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize(
+    ("field_name", "bad_value"),
+    (
+        ("weather", "protect"),
+        ("terrain", "leftovers"),
+    ),
+)
+def test_v6_field_roles_reject_unrelated_catalog_ids(field_name, bad_value):
+    view = _valid_public_view()
+    view["field"][field_name] = bad_value
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v6_pseudo_weather_requires_unique_object_key_projection():
+    view = _valid_public_view()
+    view["field"]["pseudo_weather"] = ["trickroom", "trickroom"]
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v6_side_conditions_reject_unrelated_catalog_ids():
+    view = _valid_public_view()
+    view["player"]["side_conditions"] = ["leftovers"]
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize("active", ([], [None]))
+def test_v6_opponent_active_requires_exact_doubles_cardinality(active):
+    view = _valid_public_view()
+    view["opponent"]["active"] = active
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize(
+    "active",
+    (
+        [],
+        [{"moves": [{"move": "Tackle", "id": "tackle", "pp": 10,
+                      "maxpp": 10, "target": "normal", "disabled": False}]}],
+    ),
+)
+def test_v6_move_request_requires_exact_doubles_cardinality(active):
+    view = _valid_public_view()
+    view["request"] = {
+        "active": active,
+        "side": {"name": "Player", "id": "p1", "pokemon": []},
+    }
+    assert public_reachability_observation_issue(view) is not None
+
+
+def _v6_review_invalid_mutators():
+    def weather_move(view):
+        view["public_event_delta"]["events"].append(
+            ["-weather", "move:protect"]
+        )
+
+    def weather_item(view):
+        view["public_event_delta"]["events"].append(
+            ["-weather", "item:leftovers"]
+        )
+
+    def field_ability(view):
+        view["public_event_delta"]["events"].append(
+            ["-fieldstart", "ability:intimidate"]
+        )
+
+    def side_item(view):
+        view["public_event_delta"]["events"].append(
+            ["-sidestart", "p1", "item:leftovers"]
+        )
+
+    def bogus_typechange(view):
+        view["public_event_delta"]["events"].append(
+            ["-start", "p1a", "typechange", "banana"]
+        )
+
+    def extra_start_payload(view):
+        view["public_event_delta"]["events"].append(
+            ["-start", "p1a", "confusion", "move:protect"]
+        )
+
+    def bad_forme(view):
+        view["public_event_delta"]["events"].append(
+            ["-formechange", "p1a", "banana", "garbage"]
+        )
+
+    def bad_mega(view):
+        view["public_event_delta"]["events"].append(
+            ["-mega", "p1a", "banana", "leftovers"]
+        )
+
+    def bad_primal(view):
+        view["public_event_delta"]["events"].append(
+            ["-primal", "p1a", "leftovers"]
+        )
+
+    def activate_many_actors(view):
+        view["public_event_delta"]["events"].append(
+            ["-activate", "p1a", "move:protect", "p2a", "p2b"]
+        )
+
+    def activate_duplicate_from(view):
+        view["public_event_delta"]["events"].append(
+            [
+                "-activate",
+                "p1a",
+                "confusion",
+                "[from]:move:protect",
+                "[from]:move:soak",
+            ]
+        )
+
+    def bad_special_display(view):
+        mon = view["player"]["team"][0]
+        mon["moves"] = ["Hidden Power Banana"]
+        view["player"]["active_details"][0] = copy.deepcopy(mon)
+
+    def bad_weather_field(view):
+        view["field"]["weather"] = "protect"
+
+    def duplicate_pseudo(view):
+        view["field"]["pseudo_weather"] = ["trickroom", "trickroom"]
+
+    def bad_side_condition(view):
+        view["player"]["side_conditions"] = ["leftovers"]
+
+    def empty_opponent_active(view):
+        view["opponent"]["active"] = []
+
+    return (
+        weather_move,
+        weather_item,
+        field_ability,
+        side_item,
+        bogus_typechange,
+        extra_start_payload,
+        bad_forme,
+        bad_mega,
+        bad_primal,
+        activate_many_actors,
+        activate_duplicate_from,
+        bad_special_display,
+        bad_weather_field,
+        duplicate_pseudo,
+        bad_side_condition,
+        empty_opponent_active,
+    )
+
+
+@pytest.mark.parametrize("mutator", _v6_review_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+def test_v6_review_invalid_expected_stops_before_worker(mutator, evaluator):
+    expected = _v5_semantic_valid_view()
+    mutator(expected)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", _v5_semantic_valid_view())},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+    assert worker.calls == 0
+
+
+@pytest.mark.parametrize("mutator", _v6_review_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+@pytest.mark.parametrize("signature_mode", ("matching", "mismatching"))
+def test_v6_review_invalid_returned_evidence_never_conclusive(
     mutator,
     evaluator,
     signature_mode,
