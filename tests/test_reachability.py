@@ -1,13 +1,17 @@
 from __future__ import annotations
 
+import copy
+
 import pytest
 
 from champions_practice.reachability import (
+    PUBLIC_OBSERVATION_SCHEMA_VERSION,
     PublicReachabilityStep,
     ReachabilityCoverage,
     ReachabilityResult,
     ReachabilityStatus,
     evaluate_deterministic_public_transition,
+    public_reachability_observation_issue,
     witness_public_observation_sequence,
 )
 from champions_practice.search_worker import ShowdownRequestError
@@ -142,6 +146,16 @@ def test_inconclusive_result_cannot_claim_complete_exhaustive_coverage():
         )
 
 
+def test_coverage_rejects_wrong_observation_schema():
+    with pytest.raises(ValueError, match="unsupported observation schema"):
+        ReachabilityCoverage(
+            sequential_context_fingerprint="sha256:context",
+            transitions_covered=1,
+            observation_schema="showdown-player-view-v0",
+            outcomes_examined=1,
+        )
+
+
 def test_coverage_rejects_duplicate_randomness_domains():
     with pytest.raises(ValueError, match="must be unique"):
         ReachabilityCoverage(
@@ -152,6 +166,70 @@ def test_coverage_rejects_duplicate_randomness_domains():
         )
 
 
+def _valid_public_view(spec: dict | None = None) -> dict:
+    spec = spec or {}
+    turn = spec.get("turn", 2)
+    marker = spec.get("marker")
+    winner = spec.get("winner", marker)
+
+    opponent_active = []
+    raw_opponent = spec.get("opponent")
+    if isinstance(raw_opponent, dict) and isinstance(raw_opponent.get("active"), list):
+        for index, pokemon in enumerate(raw_opponent["active"]):
+            if pokemon is None:
+                opponent_active.append(None)
+                continue
+            opponent_active.append(
+                {
+                    "species": pokemon.get("species", f"Species{index + 1}"),
+                    "base_species": pokemon.get(
+                        "base_species",
+                        pokemon.get("species", f"Species{index + 1}"),
+                    ),
+                    "hp_percent": pokemon.get("hp_percent", 100),
+                    "fainted": pokemon.get("fainted", False),
+                    "status": pokemon.get("status"),
+                    "boosts": pokemon.get("boosts", {}),
+                }
+            )
+
+    view = {
+        "turn": turn,
+        "phase": "move",
+        "opponent_last_actions": [],
+        "public_execution_delta": {"turn": None, "actions": []},
+        "public_event_delta": {"turn": None, "events": [], "unsupported": []},
+        "ended": False,
+        "winner": winner,
+        "field": {"weather": None, "terrain": None, "pseudo_weather": []},
+        "request": {
+            "wait": True,
+            "side": {"name": "Player", "id": "p1", "pokemon": []},
+        },
+        "player": {
+            "name": "Player",
+            "active": [],
+            "active_details": [],
+            "side_conditions": [],
+            "team": [],
+        },
+        "opponent": {
+            "name": "Opponent",
+            "preview_species": [],
+            "side_conditions": [],
+            "active": opponent_active,
+            "revealed": [],
+        },
+    }
+    if "public_event_delta" in spec:
+        view["public_event_delta"] = copy.deepcopy(spec["public_event_delta"])
+    if "public_execution_delta" in spec:
+        view["public_execution_delta"] = copy.deepcopy(
+            spec["public_execution_delta"]
+        )
+    return view
+
+
 class _FakeReachabilityWorker:
     def __init__(
         self,
@@ -160,11 +238,13 @@ class _FakeReachabilityWorker:
         timeout=False,
         rejected_nodes=(),
         rng_draw_counts=None,
+        normalize_views=True,
     ):
         self.outcomes = outcomes or {}
         self.timeout = timeout
         self.rejected_nodes = set(rejected_nodes)
         self.rng_draw_counts = rng_draw_counts or {}
+        self.normalize_views = normalize_views
         self.calls = 0
 
     def branch_many(self, *, state, branches):
@@ -183,7 +263,11 @@ class _FakeReachabilityWorker:
             result = {
                 "index": index,
                 "state": {"node": next_node},
-                "view": view,
+                "view": (
+                    _valid_public_view(view)
+                    if self.normalize_views
+                    else copy.deepcopy(view)
+                ),
             }
             if branch.get("include_rng_draw_count") is True:
                 result["rng_draw_count"] = self.rng_draw_counts.get(key, 0)
@@ -195,7 +279,7 @@ def _public_step(view, *, seeds=("seed-a",), p1_choice="move a", p2_choice="move
     return PublicReachabilityStep(
         p1_choice=p1_choice,
         p2_choice=p2_choice,
-        expected_public_view=view,
+        expected_public_view=_valid_public_view(view),
         rng_seeds=seeds,
     )
 
@@ -524,3 +608,172 @@ def test_deterministic_probe_requires_rng_draw_metadata():
             side="p1",
             step=_public_step(target),
         )
+
+
+
+def test_reachability_schema_version_is_explicit_and_stable():
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v1"
+    assert public_reachability_observation_issue(_valid_public_view()) is None
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    (
+        lambda view: view.clear(),
+        lambda view: view.pop("public_event_delta"),
+        lambda view: view.__setitem__("public_event_delta", []),
+        lambda view: view["public_event_delta"].__setitem__(
+            "unsupported",
+            "future-mechanic",
+        ),
+        lambda view: view["public_event_delta"].__setitem__(
+            "unsupported",
+            [""],
+        ),
+        lambda view: view.pop("public_execution_delta"),
+        lambda view: view.__setitem__("unexpected_authority_field", True),
+    ),
+)
+def test_malformed_expected_observation_is_nonconclusive(mutator):
+    expected = _valid_public_view({"marker": "wanted"})
+    mutator(expected)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", {"turn": 2, "marker": "actual"})},
+        rng_draw_counts={("root", "seed-a"): 0},
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=PublicReachabilityStep(
+            p1_choice="move a",
+            p2_choice="move b",
+            expected_public_view=expected,
+            rng_seeds=("seed-a",),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+    assert worker.calls == 0
+
+
+def test_valid_unsupported_expected_mechanics_remain_unsupported():
+    expected = _valid_public_view()
+    expected["public_event_delta"]["unsupported"] = ["future-mechanic"]
+    worker = _FakeReachabilityWorker()
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=PublicReachabilityStep(
+            p1_choice="move a",
+            p2_choice="move b",
+            expected_public_view=expected,
+            rng_seeds=("seed-a",),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert worker.calls == 0
+
+
+def test_malformed_worker_observation_cannot_become_witness_or_disproof():
+    expected = _valid_public_view({"marker": "wanted"})
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", {})},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=PublicReachabilityStep(
+            p1_choice="move a",
+            p2_choice="move b",
+            expected_public_view=expected,
+            rng_seeds=("seed-a",),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
+
+def test_worker_unsupported_mechanics_cannot_become_witness_or_disproof():
+    expected = _valid_public_view({"marker": "wanted"})
+    returned = _valid_public_view({"marker": "actual"})
+    returned["public_event_delta"]["unsupported"] = ["future-mechanic"]
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", returned)},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=PublicReachabilityStep(
+            p1_choice="move a",
+            p2_choice="move b",
+            expected_public_view=expected,
+            rng_seeds=("seed-a",),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
+
+def test_witness_sequence_rejects_malformed_expected_before_worker_call():
+    worker = _FakeReachabilityWorker()
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        steps=(
+            PublicReachabilityStep(
+                p1_choice="move a",
+                p2_choice="move b",
+                expected_public_view={},
+                rng_seeds=("seed-a",),
+            ),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert worker.calls == 0
+
+
+def test_schema_version_changes_authority_context_fingerprint():
+    expected = _valid_public_view({"marker": "wanted"})
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", {"turn": 2, "marker": "wanted"})},
+        rng_draw_counts={("root", "seed-a"): 0},
+    )
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=PublicReachabilityStep(
+            p1_choice="move a",
+            p2_choice="move b",
+            expected_public_view=expected,
+            rng_seeds=("seed-a",),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.WITNESSED
+    assert result.coverage is not None
+    assert result.coverage.observation_schema == PUBLIC_OBSERVATION_SCHEMA_VERSION
+    assert result.coverage.sequential_context_fingerprint.startswith("sha256:")
