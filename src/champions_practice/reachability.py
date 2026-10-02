@@ -16,6 +16,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
+import re
 from dataclasses import dataclass
 from enum import Enum
 from typing import Any, Protocol
@@ -267,10 +269,15 @@ def _non_bool_int(value: object, *, minimum: int | None = None) -> bool:
 
 
 def _number(value: object) -> bool:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-    )
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, int):
+        return True
+    return isinstance(value, float) and math.isfinite(value)
+
+
+def _percentage(value: object) -> bool:
+    return _number(value) and 0 <= value <= 100
 
 
 def _string_list(
@@ -285,15 +292,251 @@ def _string_list(
     )
 
 
+_CANONICAL_ID = re.compile(r"^[a-z0-9]+$")
+_CANONICAL_SLOT = re.compile(r"^p[12][ab]$")
+_CANONICAL_SIDE = re.compile(r"^p[12]$")
+_CANONICAL_INTEGER = re.compile(r"^-?[0-9]+$")
+_CANONICAL_EFFECT = re.compile(r"^(?:move|ability|item):[a-z0-9]+$")
+_CANONICAL_TAGGED = re.compile(r"^\[[a-z0-9]+\](?::[^\s]+)?$")
+_SUPPORTED_BOOSTS = frozenset(
+    {"atk", "def", "spa", "spd", "spe", "accuracy", "evasion"}
+)
+_PUBLIC_ACTION_EFFECTS = frozenset(
+    {"-fail", "-miss", "-immune", "-notarget", "-block"}
+)
+_PUBLIC_MECHANICS_EVENTS = frozenset(
+    {
+        "-formechange",
+        "-fail",
+        "-block",
+        "-notarget",
+        "-miss",
+        "-damage",
+        "-heal",
+        "-sethp",
+        "-status",
+        "-curestatus",
+        "-cureteam",
+        "-boost",
+        "-unboost",
+        "-setboost",
+        "-swapboost",
+        "-invertboost",
+        "-clearboost",
+        "-clearallboost",
+        "-clearpositiveboost",
+        "-clearnegativeboost",
+        "-copyboost",
+        "-weather",
+        "-fieldstart",
+        "-fieldend",
+        "-fieldactivate",
+        "-sidestart",
+        "-sideend",
+        "-swapsideconditions",
+        "-start",
+        "-end",
+        "-crit",
+        "-supereffective",
+        "-resisted",
+        "-immune",
+        "-item",
+        "-enditem",
+        "-ability",
+        "-endability",
+        "-transform",
+        "-mega",
+        "-primal",
+        "-burst",
+        "-zpower",
+        "-zbroken",
+        "-terastallize",
+        "-dynamax",
+        "-activate",
+        "-waiting",
+        "-prepare",
+        "-mustrecharge",
+        "-nothing",
+        "-hitcount",
+        "-singlemove",
+        "-singleturn",
+        "-ohko",
+    }
+)
+_EVENT_MIN_PARTS = {
+    "-fail": 2,
+    "-block": 2,
+    "-notarget": 1,
+    "-miss": 2,
+    "-status": 3,
+    "-curestatus": 3,
+    "-cureteam": 2,
+    "-swapboost": 3,
+    "-invertboost": 2,
+    "-clearboost": 2,
+    "-clearallboost": 1,
+    "-clearpositiveboost": 2,
+    "-clearnegativeboost": 2,
+    "-copyboost": 3,
+    "-weather": 2,
+    "-fieldstart": 2,
+    "-fieldend": 2,
+    "-fieldactivate": 2,
+    "-sidestart": 3,
+    "-sideend": 3,
+    "-swapsideconditions": 2,
+    "-start": 3,
+    "-end": 3,
+    "-crit": 2,
+    "-supereffective": 2,
+    "-resisted": 2,
+    "-immune": 2,
+    "-item": 3,
+    "-enditem": 3,
+    "-ability": 3,
+    "-endability": 2,
+    "-transform": 3,
+    "-mega": 3,
+    "-primal": 2,
+    "-burst": 2,
+    "-zpower": 2,
+    "-zbroken": 2,
+    "-terastallize": 3,
+    "-dynamax": 2,
+    "-activate": 2,
+    "-waiting": 2,
+    "-prepare": 3,
+    "-mustrecharge": 2,
+    "-nothing": 1,
+    "-singlemove": 3,
+    "-singleturn": 3,
+    "-ohko": 2,
+}
+
+
+def _canonical_id(value: object) -> bool:
+    return isinstance(value, str) and bool(_CANONICAL_ID.fullmatch(value))
+
+
+def _canonical_slot(value: object) -> bool:
+    return isinstance(value, str) and bool(_CANONICAL_SLOT.fullmatch(value))
+
+
+def _canonical_protocol_token(value: object) -> bool:
+    if not isinstance(value, str) or not value or value != value.strip():
+        return False
+    return bool(
+        _CANONICAL_ID.fullmatch(value)
+        or _CANONICAL_SLOT.fullmatch(value)
+        or _CANONICAL_SIDE.fullmatch(value)
+        or _CANONICAL_INTEGER.fullmatch(value)
+        or _CANONICAL_EFFECT.fullmatch(value)
+        or _CANONICAL_TAGGED.fullmatch(value)
+    )
+
+
 def _boosts_schema_issue(value: object, *, path: str) -> str | None:
     if not isinstance(value, dict):
         return _schema_error(path, "must be a dictionary")
+    unknown = sorted(set(value) - _SUPPORTED_BOOSTS)
+    if unknown:
+        return _schema_error(
+            path,
+            f"contains unsupported boost dimension(s): {', '.join(unknown)}",
+        )
     for stat, amount in value.items():
-        if not isinstance(stat, str) or not stat.strip():
-            return _schema_error(path, "boost keys must be non-empty strings")
-        if not _non_bool_int(amount):
-            return _schema_error(f"{path}.{stat}", "boost must be an integer")
+        if (
+            not _non_bool_int(amount)
+            or amount < -6
+            or amount > 6
+        ):
+            return _schema_error(
+                f"{path}.{stat}",
+                "boost stage must be an integer from -6 through 6",
+            )
     return None
+
+
+def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, list) or not value:
+        return _schema_error(path, "must be a non-empty list")
+    if not all(isinstance(part, str) and part.strip() for part in value):
+        return _schema_error(path, "entries must be non-empty strings")
+
+    event = value[0]
+    if event not in _PUBLIC_MECHANICS_EVENTS:
+        return _schema_error(f"{path}[0]", "contains an unsupported mechanics event")
+
+    if event in {"-damage", "-heal", "-sethp"}:
+        if len(value) < 3:
+            return _schema_error(path, f"{event} requires actor and condition")
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        condition = value[2]
+        if not isinstance(condition, str) or not condition.strip():
+            return _schema_error(f"{path}[2]", "must contain a public condition")
+        if any(not _canonical_protocol_token(part) for part in value[3:]):
+            return _schema_error(path, f"{event} contains a noncanonical modifier")
+        return None
+
+    if event == "-formechange":
+        if len(value) < 3:
+            return _schema_error(path, "-formechange requires actor and species")
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if not _canonical_id(value[2]):
+            return _schema_error(f"{path}[2]", "must be a canonical species id")
+        if any(
+            not isinstance(part, str) or not part.strip()
+            for part in value[3:]
+        ):
+            return _schema_error(path, "-formechange contains invalid payload")
+        return None
+
+    if event == "-hitcount":
+        if len(value) not in {3, 8}:
+            return _schema_error(
+                path,
+                "-hitcount must be bare or carry one complete action context",
+            )
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if not value[2].isdigit() or int(value[2]) < 1:
+            return _schema_error(f"{path}[2]", "must be a positive hit count")
+        if len(value) == 8:
+            if value[3] != "[action]":
+                return _schema_error(f"{path}[3]", "must be [action]")
+            if value[4] not in {"player", "opponent"}:
+                return _schema_error(f"{path}[4]", "must identify the public role")
+            if value[5] not in {"1", "2"}:
+                return _schema_error(f"{path}[5]", "must identify doubles slot 1 or 2")
+            if not _canonical_id(value[6]):
+                return _schema_error(f"{path}[6]", "must be a canonical move id")
+            if value[7] not in {"selected", "called"}:
+                return _schema_error(f"{path}[7]", "must identify move provenance")
+        return None
+
+    if event in {"-boost", "-unboost", "-setboost"}:
+        if len(value) != 4:
+            return _schema_error(path, f"{event} requires actor, stat, and stage")
+        if not _canonical_slot(value[1]):
+            return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
+        if value[2] not in _SUPPORTED_BOOSTS:
+            return _schema_error(f"{path}[2]", "contains an unsupported boost dimension")
+        if not _CANONICAL_INTEGER.fullmatch(value[3]):
+            return _schema_error(f"{path}[3]", "must be an integer stage/count")
+        amount = int(value[3])
+        if amount < -6 or amount > 6:
+            return _schema_error(f"{path}[3]", "must be within supported boost bounds")
+        return None
+
+    minimum = _EVENT_MIN_PARTS.get(event)
+    if minimum is None or len(value) < minimum:
+        return _schema_error(path, f"{event} has an incomplete canonical payload")
+    if any(not _canonical_protocol_token(part) for part in value[1:]):
+        return _schema_error(path, f"{event} contains a noncanonical payload token")
+    return None
+
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
@@ -325,8 +568,11 @@ def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
     for field in ("hp", "maxhp", "speed", "damaging_move_count"):
         if not _non_bool_int(value[field], minimum=0):
             return _schema_error(f"{path}.{field}", "must be a non-negative integer")
-    if not _number(value["hp_percent"]):
-        return _schema_error(f"{path}.hp_percent", "must be numeric")
+    if not _percentage(value["hp_percent"]):
+        return _schema_error(
+            f"{path}.hp_percent",
+            "must be a finite percentage from 0 through 100",
+        )
     if not isinstance(value["fainted"], bool):
         return _schema_error(f"{path}.fainted", "must be boolean")
     if value["status"] is not None and not isinstance(value["status"], str):
@@ -366,8 +612,11 @@ def _public_active_schema_issue(value: object, *, path: str) -> str | None:
     for field in ("species", "base_species"):
         if not isinstance(value[field], str) or not value[field].strip():
             return _schema_error(f"{path}.{field}", "must be a non-empty string")
-    if not _number(value["hp_percent"]):
-        return _schema_error(f"{path}.hp_percent", "must be numeric")
+    if not _percentage(value["hp_percent"]):
+        return _schema_error(
+            f"{path}.hp_percent",
+            "must be a finite percentage from 0 through 100",
+        )
     if not isinstance(value["fainted"], bool):
         return _schema_error(f"{path}.fainted", "must be boolean")
     if value["status"] is not None and not isinstance(value["status"], str):
@@ -399,8 +648,11 @@ def _revealed_pokemon_schema_issue(value: object, *, path: str) -> str | None:
     for field in ("moves", "items", "abilities"):
         if not _string_list(value[field]):
             return _schema_error(f"{path}.{field}", "must be a list of non-empty strings")
-    if value["hp_percent"] is not None and not _number(value["hp_percent"]):
-        return _schema_error(f"{path}.hp_percent", "must be numeric or null")
+    if value["hp_percent"] is not None and not _percentage(value["hp_percent"]):
+        return _schema_error(
+            f"{path}.hp_percent",
+            "must be a finite percentage from 0 through 100 or null",
+        )
     if value["status"] is not None and not isinstance(value["status"], str):
         return _schema_error(f"{path}.status", "must be a string or null")
     for field in ("fainted", "seen"):
@@ -421,13 +673,17 @@ def _opponent_action_schema_issue(value: object, *, path: str) -> str | None:
         return issue
     if not _non_bool_int(value["turn"], minimum=1):
         return _schema_error(f"{path}.turn", "must be a positive integer")
-    if not _non_bool_int(value["slot"], minimum=1):
-        return _schema_error(f"{path}.slot", "must be a positive integer")
-    if not isinstance(value["move"], str) or not value["move"].strip():
-        return _schema_error(f"{path}.move", "must be a non-empty string")
-    if value["target"] is not None and not _non_bool_int(value["target"]):
-        return _schema_error(f"{path}.target", "must be an integer or null")
+    if value["slot"] not in {1, 2}:
+        return _schema_error(f"{path}.slot", "must be doubles slot 1 or 2")
+    if not _canonical_id(value["move"]):
+        return _schema_error(f"{path}.move", "must be a canonical move id")
+    if value["target"] not in {None, -2, -1, 1, 2}:
+        return _schema_error(
+            f"{path}.target",
+            "must be a canonical doubles target location or null",
+        )
     return None
+
 
 
 def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
@@ -460,28 +716,42 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
         return issue
     if value["side"] not in {"player", "opponent"}:
         return _schema_error(f"{path}.side", "must be player or opponent")
-    if not _non_bool_int(value["slot"], minimum=1):
-        return _schema_error(f"{path}.slot", "must be a positive integer")
-    if not _string_list(value["effects"]):
-        return _schema_error(f"{path}.effects", "must be a list of non-empty strings")
+    if value["slot"] not in {1, 2}:
+        return _schema_error(f"{path}.slot", "must be doubles slot 1 or 2")
+    if (
+        not isinstance(value["effects"], list)
+        or len(set(value["effects"])) != len(value["effects"])
+        or any(effect not in _PUBLIC_ACTION_EFFECTS for effect in value["effects"])
+    ):
+        return _schema_error(
+            f"{path}.effects",
+            "must contain only unique canonical public action effects",
+        )
     if outcome == "executed":
-        if not isinstance(value["move"], str) or not value["move"].strip():
-            return _schema_error(f"{path}.move", "must be a non-empty string")
+        if not _canonical_id(value["move"]):
+            return _schema_error(f"{path}.move", "must be a canonical move id")
         if value["source"] not in {"selected", "called"}:
             return _schema_error(f"{path}.source", "must be selected or called")
-        if not _string_list(value["provenance"]):
+        if (
+            not isinstance(value["provenance"], list)
+            or any(
+                not _CANONICAL_TAGGED.fullmatch(item)
+                for item in value["provenance"]
+                if isinstance(item, str)
+            )
+            or any(not isinstance(item, str) for item in value["provenance"])
+        ):
             return _schema_error(
                 f"{path}.provenance",
-                "must be a list of non-empty strings",
+                "must contain canonical tagged provenance entries",
             )
     else:
-        if not isinstance(value["reason"], str) or not value["reason"].strip():
-            return _schema_error(f"{path}.reason", "must be a non-empty string")
+        if not _canonical_protocol_token(value["reason"]):
+            return _schema_error(f"{path}.reason", "must be canonical public evidence")
         if (
             value["attempted_move"] is not None
             and (
-                not isinstance(value["attempted_move"], str)
-                or not value["attempted_move"].strip()
+                not _canonical_id(value["attempted_move"])
             )
         ):
             return _schema_error(
@@ -542,16 +812,12 @@ def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
     if not isinstance(events, list):
         return _schema_error("$.public_event_delta.events", "must be a list")
     for index, event in enumerate(events):
-        if not isinstance(event, list) or not event:
-            return _schema_error(
-                f"$.public_event_delta.events[{index}]",
-                "must be a non-empty list",
-            )
-        if not all(isinstance(part, str) and part.strip() for part in event):
-            return _schema_error(
-                f"$.public_event_delta.events[{index}]",
-                "entries must be non-empty strings",
-            )
+        issue = _mechanics_event_schema_issue(
+            event,
+            path=f"$.public_event_delta.events[{index}]",
+        )
+        if issue:
+            return issue
     unsupported = mechanics["unsupported"]
     if not isinstance(unsupported, list):
         return _schema_error(
@@ -662,27 +928,56 @@ def _request_side_schema_issue(value: object, *, path: str) -> str | None:
 def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
     if not isinstance(value, dict):
         return _schema_error(path, "must be a dictionary")
-    required = {"move", "id"}
-    allowed = required | {"pp", "maxpp", "target", "disabled", "disabledSource"}
-    missing = sorted(required - set(value))
-    extra = sorted(set(value) - allowed)
-    if missing:
-        return _schema_error(path, f"missing required field(s): {', '.join(missing)}")
-    if extra:
-        return _schema_error(path, f"unexpected field(s): {', '.join(extra)}")
-    for field in ("move", "id"):
-        if not isinstance(value[field], str) or not value[field].strip():
-            return _schema_error(f"{path}.{field}", "must be a non-empty string")
-    for field in ("pp", "maxpp"):
-        if field in value and not _non_bool_int(value[field], minimum=0):
-            return _schema_error(f"{path}.{field}", "must be a non-negative integer")
-    if "target" in value and not isinstance(value["target"], str):
-        return _schema_error(f"{path}.target", "must be a string")
-    if "disabled" in value and not isinstance(value["disabled"], (str, bool)):
+
+    keys = set(value)
+    locked_keys = {"move", "id"}
+    struggle_keys = {"move", "id", "target", "disabled"}
+    ordinary_keys = {"move", "id", "pp", "maxpp", "target", "disabled"}
+
+    if keys == locked_keys:
+        if (
+            not isinstance(value["move"], str)
+            or not value["move"].strip()
+            or not _canonical_id(value["id"])
+        ):
+            return _schema_error(path, "locked move entry has invalid move/id")
+        return None
+
+    if keys == struggle_keys:
+        if (
+            value["move"] != "Struggle"
+            or value["id"] != "struggle"
+            or value["target"] != "randomNormal"
+            or value["disabled"] is not False
+        ):
+            return _schema_error(
+                path,
+                "reduced four-field move entry must be canonical Struggle",
+            )
+        return None
+
+    if keys != ordinary_keys:
+        return _schema_error(
+            path,
+            "move entry must be a pinned locked, Struggle, or ordinary variant",
+        )
+
+    if not isinstance(value["move"], str) or not value["move"].strip():
+        return _schema_error(f"{path}.move", "must be a non-empty string")
+    if not _canonical_id(value["id"]):
+        return _schema_error(f"{path}.id", "must be a canonical move id")
+    if not _non_bool_int(value["pp"], minimum=0):
+        return _schema_error(f"{path}.pp", "must be a non-negative integer")
+    if not _non_bool_int(value["maxpp"], minimum=1):
+        return _schema_error(f"{path}.maxpp", "must be a positive integer")
+    if value["pp"] > value["maxpp"]:
+        return _schema_error(f"{path}.pp", "must not exceed maxpp")
+    if not isinstance(value["target"], str) or not value["target"].strip():
+        return _schema_error(f"{path}.target", "must be a non-empty target type")
+    if not isinstance(value["disabled"], (str, bool)):
         return _schema_error(f"{path}.disabled", "must be a string or boolean")
-    if "disabledSource" in value and not isinstance(value["disabledSource"], str):
-        return _schema_error(f"{path}.disabledSource", "must be a string")
     return None
+
 
 
 def _max_moves_schema_issue(value: object, *, path: str) -> str | None:
