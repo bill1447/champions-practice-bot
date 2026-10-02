@@ -517,7 +517,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return None
 
     if event in {"-boost", "-unboost", "-setboost"}:
-        if len(value) != 4:
+        if len(value) < 4:
             return _schema_error(path, f"{event} requires actor, stat, and stage")
         if not _canonical_slot(value[1]):
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
@@ -528,6 +528,8 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         amount = int(value[3])
         if amount < -6 or amount > 6:
             return _schema_error(f"{path}[3]", "must be within supported boost bounds")
+        if any(not _canonical_protocol_token(part) for part in value[4:]):
+            return _schema_error(path, f"{event} contains a noncanonical modifier")
         return None
 
     minimum = _EVENT_MIN_PARTS.get(event)

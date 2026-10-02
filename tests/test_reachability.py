@@ -974,6 +974,7 @@ def test_pinned_move_request_variants_remain_supported(move):
         ["-damage", "p1a", "100/200"],
         ["-status", "p1a", "par"],
         ["-boost", "p1a", "atk", "1"],
+        ["-boost", "p1a", "atk", "1", "[from]ability:intimidate"],
         ["-hitcount", "p2a", "2"],
         [
             "-hitcount",
