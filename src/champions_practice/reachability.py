@@ -29,6 +29,7 @@ from champions_practice.showdown_public_catalog import (
     ACTIVATION_EFFECT_IDENTITIES,
     CONDITION_IDS,
     FIELD_ACTIVATE_IDENTITIES,
+    FORME_CHANGE_SPECIES_IDS,
     ITEM_IDS,
     MEGA_ITEM_IDS,
     MOVE_CATEGORIES,
@@ -1015,8 +1016,11 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             )
         if not _canonical_slot(value[1]):
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
-        if value[2] not in SPECIES_IDS:
-            return _schema_error(f"{path}[2]", "must be a pinned species id")
+        if value[2] not in FORME_CHANGE_SPECIES_IDS:
+            return _schema_error(
+                f"{path}[2]",
+                "must be a species emitted by pinned forme-change mechanics",
+            )
         tail = value[3:]
         if tail and tail[0] in {"[msg]", "[silent]"}:
             tail = tail[1:]
