@@ -132,6 +132,71 @@ function Test-ChampionsTcpPort {
     }
 }
 
+function Get-ChampionsListeningAddresses {
+    param(
+        [int]$Port = 8000
+    )
+
+    $Addresses = @()
+    $NetTcpCommand = Get-Command Get-NetTCPConnection -ErrorAction SilentlyContinue
+    if ($null -ne $NetTcpCommand) {
+        try {
+            $Connections = @(
+                Get-NetTCPConnection -State Listen -LocalPort $Port -ErrorAction Stop
+            )
+            foreach ($Connection in $Connections) {
+                if (-not [string]::IsNullOrWhiteSpace($Connection.LocalAddress)) {
+                    $Addresses += "$($Connection.LocalAddress)"
+                }
+            }
+        }
+        catch {
+            $Addresses = @()
+        }
+    }
+
+    if ($Addresses.Count -eq 0) {
+        $NetstatLines = @(& netstat.exe -ano -p tcp 2>$null)
+        foreach ($Line in $NetstatLines) {
+            if ($Line -notmatch '^\s*TCP\s+(\S+):(\d+)\s+\S+\s+LISTENING(?:\s+\d+)?\s*$') {
+                continue
+            }
+            if ([int]$Matches[2] -ne $Port) {
+                continue
+            }
+            $Address = $Matches[1]
+            if ($Address.StartsWith("[") -and $Address.EndsWith("]")) {
+                $Address = $Address.Substring(1, $Address.Length - 2)
+            }
+            $Addresses += $Address
+        }
+    }
+
+    return @($Addresses | Sort-Object -Unique)
+}
+
+function Test-ChampionsShowdownLoopbackOnlyBinding {
+    param(
+        [int]$Port = 8000
+    )
+
+    $Addresses = @(Get-ChampionsListeningAddresses -Port $Port)
+    if ($Addresses.Count -eq 0) {
+        return $false
+    }
+
+    foreach ($Address in $Addresses) {
+        $ParsedAddress = $null
+        if (-not [System.Net.IPAddress]::TryParse($Address, [ref]$ParsedAddress)) {
+            return $false
+        }
+        if (-not [System.Net.IPAddress]::IsLoopback($ParsedAddress)) {
+            return $false
+        }
+    }
+    return $true
+}
+
 function Set-ChampionsShowdownLocalConfig {
     $ConfigPath = Join-Path $ChampionShowdownRoot "config\config.js"
     if (-not (Test-Path $ConfigPath)) {

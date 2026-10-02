@@ -73,18 +73,30 @@ elseif (Test-Path $ChampionShowdownVersionFile) {
 
 $TrackedPid = Get-ChampionsTrackedShowdownPid
 $PortOpen = Test-ChampionsTcpPort
+$ListeningAddresses = @(Get-ChampionsListeningAddresses)
+$LoopbackOnly = Test-ChampionsShowdownLoopbackOnlyBinding
 
-if ($null -ne $TrackedPid -and $PortOpen) {
+if ($null -ne $TrackedPid -and $PortOpen -and $LoopbackOnly) {
     Write-Host "Showdown: running, tracked PID $TrackedPid"
+}
+elseif ($null -ne $TrackedPid -and $PortOpen) {
+    Write-Host "Showdown: SECURITY WARNING - tracked server is not loopback-only"
 }
 elseif ($null -ne $TrackedPid) {
     Write-Host "Showdown: tracked PID $TrackedPid, but port 8000 is not listening"
 }
+elseif ($PortOpen -and -not $LoopbackOnly) {
+    Write-Host "Showdown: SECURITY WARNING - untracked non-loopback listener on port 8000"
+}
 elseif ($PortOpen) {
-    Write-Host "Showdown: port 8000 is open, but process is untracked"
+    Write-Host "Showdown: port 8000 is open on loopback, but process is untracked"
 }
 else {
     Write-Host "Showdown: stopped"
+}
+
+if ($ListeningAddresses.Count -gt 0) {
+    Write-Host "Listener:  $($ListeningAddresses -join ', ')"
 }
 
 $ConfigPath = Join-Path $ChampionShowdownRoot "config\config.js"

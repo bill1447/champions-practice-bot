@@ -13,6 +13,10 @@ Set-ChampionsShowdownLocalConfig
 $TrackedPid = Get-ChampionsTrackedShowdownPid
 if ($null -ne $TrackedPid) {
     if (Test-ChampionsTcpPort) {
+        if (-not (Test-ChampionsShowdownLoopbackOnlyBinding)) {
+            $Addresses = @(Get-ChampionsListeningAddresses)
+            throw "Tracked Showdown is listening beyond loopback: $($Addresses -join ', ')."
+        }
         Write-Host "Showdown is already running on 127.0.0.1:8000 (PID $TrackedPid)."
         exit 0
     }
@@ -30,7 +34,8 @@ Write-Host "Starting persistent local Pokemon Showdown server..."
 
 $StartArgs = @{
     FilePath = $Node
-    ArgumentList = @("pokemon-showdown", "start", "--no-security")
+    # Supplying the port explicitly skips Showdown's cloud-env auto-binding path.
+    ArgumentList = @("pokemon-showdown", "start", "--no-security", "8000")
     WorkingDirectory = $ChampionShowdownRoot
     RedirectStandardOutput = $ChampionShowdownStdout
     RedirectStandardError = $ChampionShowdownStderr
@@ -52,6 +57,16 @@ for ($Attempt = 0; $Attempt -lt 30; $Attempt++) {
     }
 
     if (Test-ChampionsTcpPort) {
+        if (-not (Test-ChampionsShowdownLoopbackOnlyBinding)) {
+            $Addresses = @(Get-ChampionsListeningAddresses)
+            Show-ChampionsShowdownLogTail
+            & taskkill.exe /PID $Process.Id /T /F | Out-Null
+            Remove-Item -Force $ChampionShowdownPidFile -ErrorAction SilentlyContinue
+            throw (
+                "Pokemon Showdown opened port 8000 beyond loopback: " +
+                "$($Addresses -join ', '). Refusing to leave --no-security exposed."
+            )
+        }
         $Ready = $true
         break
     }
