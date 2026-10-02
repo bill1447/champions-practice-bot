@@ -2446,6 +2446,13 @@ def test_v7_review_invalid_producer_role_events_are_rejected(event):
             "[msg]",
             "[from]:ability:flowergift",
         ],
+        [
+            "-formechange",
+            "p1a",
+            "darmanitan",
+            "[silent]",
+            "[from]:ability:zenmode",
+        ],
     ),
 )
 def test_v7_review_genuine_pinned_variants_are_supported(event):
