@@ -4447,11 +4447,13 @@ SIDE_CONDITION_IDS = frozenset(
     {
         "auroraveil",
         "craftyshield",
+        "firepledge",
         "gmaxcannonade",
         "gmaxsteelsurge",
         "gmaxvinelash",
         "gmaxvolcalith",
         "gmaxwildfire",
+        "grasspledge",
         "lightscreen",
         "luckychant",
         "matblock",
