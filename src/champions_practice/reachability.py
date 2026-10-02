@@ -574,23 +574,281 @@ def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
     return None
 
 
+def _request_pokemon_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    required = {
+        "ident",
+        "details",
+        "condition",
+        "active",
+        "stats",
+        "moves",
+        "baseAbility",
+        "item",
+        "pokeball",
+    }
+    allowed = required | {
+        "ability",
+        "commanding",
+        "reviving",
+        "teraType",
+        "terastallized",
+    }
+    missing = sorted(required - set(value))
+    extra = sorted(set(value) - allowed)
+    if missing:
+        return _schema_error(path, f"missing required field(s): {', '.join(missing)}")
+    if extra:
+        return _schema_error(path, f"unexpected field(s): {', '.join(extra)}")
+    for field in ("ident", "details", "condition", "baseAbility"):
+        if not isinstance(value[field], str) or not value[field].strip():
+            return _schema_error(f"{path}.{field}", "must be a non-empty string")
+    for field in ("item", "pokeball"):
+        if not isinstance(value[field], str):
+            return _schema_error(f"{path}.{field}", "must be a string")
+    if not isinstance(value["active"], bool):
+        return _schema_error(f"{path}.active", "must be boolean")
+    stats = value["stats"]
+    if not isinstance(stats, dict) or set(stats) != {"atk", "def", "spa", "spd", "spe"}:
+        return _schema_error(
+            f"{path}.stats",
+            "must contain exactly atk, def, spa, spd, spe",
+        )
+    if not all(_non_bool_int(amount, minimum=0) for amount in stats.values()):
+        return _schema_error(f"{path}.stats", "stat values must be non-negative integers")
+    if not _string_list(value["moves"]):
+        return _schema_error(f"{path}.moves", "must be a list of non-empty strings")
+    if "ability" in value and not isinstance(value["ability"], str):
+        return _schema_error(f"{path}.ability", "must be a string")
+    for field in ("commanding", "reviving"):
+        if field in value and not isinstance(value[field], bool):
+            return _schema_error(f"{path}.{field}", "must be boolean")
+    for field in ("teraType", "terastallized"):
+        if field in value and not isinstance(value[field], str):
+            return _schema_error(f"{path}.{field}", "must be a string")
+    return None
+
+
+def _request_side_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    required = {"name", "id", "pokemon"}
+    allowed = required | {"noCancel"}
+    missing = sorted(required - set(value))
+    extra = sorted(set(value) - allowed)
+    if missing:
+        return _schema_error(path, f"missing required field(s): {', '.join(missing)}")
+    if extra:
+        return _schema_error(path, f"unexpected field(s): {', '.join(extra)}")
+    if not isinstance(value["name"], str):
+        return _schema_error(f"{path}.name", "must be a string")
+    if value["id"] not in {"p1", "p2", "p3", "p4"}:
+        return _schema_error(f"{path}.id", "must be a Showdown side id")
+    if "noCancel" in value and not isinstance(value["noCancel"], bool):
+        return _schema_error(f"{path}.noCancel", "must be boolean")
+    if not isinstance(value["pokemon"], list):
+        return _schema_error(f"{path}.pokemon", "must be a list")
+    for index, pokemon in enumerate(value["pokemon"]):
+        issue = _request_pokemon_schema_issue(
+            pokemon,
+            path=f"{path}.pokemon[{index}]",
+        )
+        if issue:
+            return issue
+    return None
+
+
+def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    required = {"move", "id"}
+    allowed = required | {"pp", "maxpp", "target", "disabled", "disabledSource"}
+    missing = sorted(required - set(value))
+    extra = sorted(set(value) - allowed)
+    if missing:
+        return _schema_error(path, f"missing required field(s): {', '.join(missing)}")
+    if extra:
+        return _schema_error(path, f"unexpected field(s): {', '.join(extra)}")
+    for field in ("move", "id"):
+        if not isinstance(value[field], str) or not value[field].strip():
+            return _schema_error(f"{path}.{field}", "must be a non-empty string")
+    for field in ("pp", "maxpp"):
+        if field in value and not _non_bool_int(value[field], minimum=0):
+            return _schema_error(f"{path}.{field}", "must be a non-negative integer")
+    if "target" in value and not isinstance(value["target"], str):
+        return _schema_error(f"{path}.target", "must be a string")
+    if "disabled" in value and not isinstance(value["disabled"], (str, bool)):
+        return _schema_error(f"{path}.disabled", "must be a string or boolean")
+    if "disabledSource" in value and not isinstance(value["disabledSource"], str):
+        return _schema_error(f"{path}.disabledSource", "must be a string")
+    return None
+
+
+def _max_moves_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    if not set(value).issubset({"maxMoves", "gigantamax"}) or "maxMoves" not in value:
+        return _schema_error(path, "contains invalid max-move fields")
+    if not isinstance(value["maxMoves"], list):
+        return _schema_error(f"{path}.maxMoves", "must be a list")
+    for index, move in enumerate(value["maxMoves"]):
+        if not isinstance(move, dict):
+            return _schema_error(f"{path}.maxMoves[{index}]", "must be a dictionary")
+        if not {"move", "target"}.issubset(move) or not set(move).issubset(
+            {"move", "target", "disabled"}
+        ):
+            return _schema_error(
+                f"{path}.maxMoves[{index}]",
+                "contains invalid max-move fields",
+            )
+        if not isinstance(move["move"], str) or not move["move"].strip():
+            return _schema_error(
+                f"{path}.maxMoves[{index}].move",
+                "must be a non-empty string",
+            )
+        if not isinstance(move["target"], str):
+            return _schema_error(
+                f"{path}.maxMoves[{index}].target",
+                "must be a string",
+            )
+        if "disabled" in move and not isinstance(move["disabled"], bool):
+            return _schema_error(
+                f"{path}.maxMoves[{index}].disabled",
+                "must be boolean",
+            )
+    if "gigantamax" in value and not isinstance(value["gigantamax"], str):
+        return _schema_error(f"{path}.gigantamax", "must be a string")
+    return None
+
+
+def _z_move_schema_issue(value: object, *, path: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, list):
+        return _schema_error(path, "must be a list or null")
+    for index, move in enumerate(value):
+        if move is None:
+            continue
+        if (
+            not isinstance(move, dict)
+            or set(move) != {"move", "target"}
+            or not isinstance(move["move"], str)
+            or not move["move"].strip()
+            or not isinstance(move["target"], str)
+        ):
+            return _schema_error(
+                f"{path}[{index}]",
+                "must be null or a move/target dictionary",
+            )
+    return None
+
+
+def _active_request_slot_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    allowed = {
+        "moves",
+        "maybeDisabled",
+        "maybeLocked",
+        "trapped",
+        "maybeTrapped",
+        "canMegaEvo",
+        "canMegaEvoX",
+        "canMegaEvoY",
+        "canUltraBurst",
+        "canZMove",
+        "canDynamax",
+        "maxMoves",
+        "canTerastallize",
+    }
+    if "moves" not in value:
+        return _schema_error(path, "missing required field: moves")
+    extra = sorted(set(value) - allowed)
+    if extra:
+        return _schema_error(path, f"unexpected field(s): {', '.join(extra)}")
+    if not isinstance(value["moves"], list):
+        return _schema_error(f"{path}.moves", "must be a list")
+    for index, move in enumerate(value["moves"]):
+        issue = _move_request_data_schema_issue(
+            move,
+            path=f"{path}.moves[{index}]",
+        )
+        if issue:
+            return issue
+    for field in (
+        "maybeDisabled",
+        "maybeLocked",
+        "trapped",
+        "maybeTrapped",
+        "canMegaEvo",
+        "canMegaEvoX",
+        "canMegaEvoY",
+        "canUltraBurst",
+        "canDynamax",
+    ):
+        if field in value and not isinstance(value[field], bool):
+            return _schema_error(f"{path}.{field}", "must be boolean")
+    if "canZMove" in value:
+        issue = _z_move_schema_issue(value["canZMove"], path=f"{path}.canZMove")
+        if issue:
+            return issue
+    if "maxMoves" in value:
+        issue = _max_moves_schema_issue(value["maxMoves"], path=f"{path}.maxMoves")
+        if issue:
+            return issue
+    if "canTerastallize" in value and not isinstance(value["canTerastallize"], str):
+        return _schema_error(f"{path}.canTerastallize", "must be a string")
+    return None
+
+
 def _request_schema_issue(value: object) -> str | None:
     if value is None:
         return None
     if not isinstance(value, dict):
         return _schema_error("$.request", "must be a dictionary or null")
-    side = value.get("side")
-    if not isinstance(side, dict) or not isinstance(side.get("pokemon"), list):
-        return _schema_error(
-            "$.request.side.pokemon",
-            "must be present as a list",
-        )
-    request_kinds = 0
+
     if value.get("teamPreview") is True:
-        request_kinds += 1
-    if value.get("wait") is True:
-        request_kinds += 1
-    if "forceSwitch" in value:
+        kind = "team"
+        allowed = {"teamPreview", "maxChosenTeamSize", "side", "noCancel"}
+    elif value.get("wait") is True:
+        kind = "wait"
+        allowed = {"wait", "side", "noCancel"}
+    elif "forceSwitch" in value:
+        kind = "switch"
+        allowed = {"forceSwitch", "side", "noCancel", "update"}
+    elif "active" in value:
+        kind = "move"
+        allowed = {"active", "side", "ally", "noCancel", "update"}
+    else:
+        return _schema_error("$.request", "does not identify a known request kind")
+
+    extra = sorted(set(value) - allowed)
+    if extra:
+        return _schema_error(
+            "$.request",
+            f"unexpected field(s) for {kind} request: {', '.join(extra)}",
+        )
+    if "side" not in value:
+        return _schema_error("$.request", "missing required field: side")
+    issue = _request_side_schema_issue(value["side"], path="$.request.side")
+    if issue:
+        return issue
+    if "noCancel" in value and not isinstance(value["noCancel"], bool):
+        return _schema_error("$.request.noCancel", "must be boolean")
+    if "update" in value and not isinstance(value["update"], bool):
+        return _schema_error("$.request.update", "must be boolean")
+
+    if kind == "team":
+        if "maxChosenTeamSize" in value and not _non_bool_int(
+            value["maxChosenTeamSize"],
+            minimum=1,
+        ):
+            return _schema_error(
+                "$.request.maxChosenTeamSize",
+                "must be a positive integer",
+            )
+    elif kind == "switch":
         if not isinstance(value["forceSwitch"], list) or not all(
             isinstance(item, bool) for item in value["forceSwitch"]
         ):
@@ -598,16 +856,23 @@ def _request_schema_issue(value: object) -> str | None:
                 "$.request.forceSwitch",
                 "must be a list of booleans",
             )
-        request_kinds += 1
-    if "active" in value:
+    elif kind == "move":
         if not isinstance(value["active"], list):
             return _schema_error("$.request.active", "must be a list")
-        request_kinds += 1
-    if request_kinds != 1:
-        return _schema_error(
-            "$.request",
-            "must identify exactly one request kind",
-        )
+        for index, slot in enumerate(value["active"]):
+            issue = _active_request_slot_schema_issue(
+                slot,
+                path=f"$.request.active[{index}]",
+            )
+            if issue:
+                return issue
+        if "ally" in value:
+            issue = _request_side_schema_issue(
+                value["ally"],
+                path="$.request.ally",
+            )
+            if issue:
+                return issue
     return None
 
 
