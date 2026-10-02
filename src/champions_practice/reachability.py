@@ -21,6 +21,7 @@ from enum import Enum
 from typing import Any, Protocol
 
 from champions_practice.observation_beliefs import public_observation_signature
+from champions_practice.search_worker import ShowdownRequestError
 
 
 class ReachabilityStatus(str, Enum):
@@ -409,6 +410,10 @@ def witness_public_observation_sequence(
                         sequential_context_complete=False,
                     ),
                 )
+            except ShowdownRequestError as error:
+                if error.choice_rejected:
+                    continue
+                raise
 
             if len(resolved) != len(branches):
                 raise RuntimeError(

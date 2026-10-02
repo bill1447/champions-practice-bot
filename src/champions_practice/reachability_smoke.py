@@ -20,7 +20,7 @@ WITNESS_SEED = (
 )
 ALT_SEEDS = tuple(
     f"sodium,{digit * 64}"
-    for digit in "023456789abcdef"
+    for digit in "23456789abcdef"
 )
 
 

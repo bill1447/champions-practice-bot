@@ -9,6 +9,7 @@ from champions_practice.reachability import (
     ReachabilityStatus,
     witness_public_observation_sequence,
 )
+from champions_practice.search_worker import ShowdownRequestError
 
 
 def _coverage(
@@ -151,15 +152,21 @@ def test_coverage_rejects_duplicate_randomness_domains():
 
 
 class _FakeReachabilityWorker:
-    def __init__(self, outcomes=None, *, timeout=False):
+    def __init__(self, outcomes=None, *, timeout=False, rejected_nodes=()):
         self.outcomes = outcomes or {}
         self.timeout = timeout
+        self.rejected_nodes = set(rejected_nodes)
         self.calls = 0
 
     def branch_many(self, *, state, branches):
         self.calls += 1
         if self.timeout:
             raise TimeoutError("synthetic worker timeout")
+        if state["node"] in self.rejected_nodes:
+            raise ShowdownRequestError(
+                "branch_many",
+                "[Invalid choice] synthetic rejected parent",
+            )
         resolved = []
         for index, branch in enumerate(branches):
             key = (state["node"], branch.get("rng_seed"))
@@ -352,3 +359,30 @@ def test_reachability_step_rejects_raw_empty_commands():
             p2_choice="move b",
             expected_public_view={"turn": 2},
         )
+
+
+def test_rejected_parent_path_does_not_block_a_different_sequential_witness():
+    first = {"turn": 2, "marker": "first"}
+    second = {"turn": 3, "marker": "second"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("bad-parent", first),
+            ("root", "seed-b"): ("good-parent", first),
+            ("good-parent", "seed-c"): ("done", second),
+        },
+        rejected_nodes=("bad-parent",),
+    )
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        steps=(
+            _public_step(first, seeds=("seed-a", "seed-b")),
+            _public_step(second, seeds=("seed-c",)),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.WITNESSED
+    assert result.establishes_reachability
+    assert not result.establishes_impossibility
