@@ -2280,3 +2280,385 @@ def test_v6_review_invalid_returned_evidence_never_conclusive(
     assert result.status is ReachabilityStatus.UNSUPPORTED
     assert not result.conclusive
     assert not result.establishes_impossibility
+
+
+def _v7_opponent_knowledge_view():
+    view = _v5_semantic_valid_view()
+    view["opponent"]["preview_species"] = ["Pikachu", "Raichu"]
+    view["opponent"]["revealed"] = [
+        {
+            "species": "Pikachu",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": None,
+            "fainted": False,
+            "seen": True,
+        },
+        {
+            "species": "Raichu",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": None,
+            "status": None,
+            "fainted": False,
+            "seen": False,
+        },
+    ]
+    view["opponent"]["active"] = [
+        {
+            "species": "Pikachu",
+            "base_species": "Pikachu",
+            "hp_percent": 100,
+            "fainted": False,
+            "status": None,
+            "boosts": _v5_complete_boosts(),
+        },
+        None,
+    ]
+    return view
+
+
+@pytest.mark.parametrize(
+    "actions",
+    (
+        [{"turn": 99, "slot": 1, "move": "thunderbolt", "target": 1}],
+        [
+            {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+            {"turn": 2, "slot": 2, "move": "protect", "target": None},
+        ],
+        [
+            {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+        ],
+        [
+            {"turn": 1, "slot": 2, "move": "protect", "target": None},
+            {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+        ],
+    ),
+)
+def test_v7_selected_action_collection_relationships_are_enforced(actions):
+    view = _v5_semantic_valid_view()
+    view["opponent_last_actions"] = copy.deepcopy(actions)
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v7_older_selected_action_ledger_remains_supported():
+    view = _v5_semantic_valid_view()
+    view["opponent_last_actions"] = [
+        {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+    ]
+    assert public_reachability_observation_issue(view) is None
+
+
+def test_v7_aligned_selected_actions_must_match_public_execution():
+    view = _v5_semantic_valid_view()
+    view["opponent_last_actions"] = [
+        {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+    ]
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "tackle",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            }
+        ],
+    }
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+def test_v7_selected_action_ledger_is_part_of_certified_signature(evaluator):
+    expected = _v5_semantic_valid_view()
+    expected["opponent_last_actions"] = [
+        {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+    ]
+    returned = copy.deepcopy(expected)
+    returned["opponent_last_actions"][0]["move"] = "tackle"
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", returned)},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+        assert result.status is ReachabilityStatus.EXHAUSTIVELY_DISPROVED
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+        assert result.status is ReachabilityStatus.UNRESOLVED
+    assert not result.establishes_reachability
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-start", "p1a", "item:leftovers"],
+        ["-end", "p1a", "ability:hugepower"],
+        ["-singleturn", "p1a", "move:thunderbolt"],
+        ["-activate", "p1a", "item:focusband", "move:thunderbolt"],
+        ["-activate", "p1a", "ability:forewarn", "ability:hugepower"],
+        ["-mega", "p1a", "pikachu", "gardevoirite"],
+        ["-formechange", "p1a", "pikachu", "[from]:ability:hugepower"],
+        ["-burst", "p1a", "banana", "leftovers"],
+    ),
+)
+def test_v7_review_invalid_producer_role_events_are_rejected(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"]["events"] = [event]
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-activate", "p2a", "move:spite", "splash", "4"],
+        ["-activate", "p2a", "item:leppaberry", "splash", "[consumed]"],
+        ["-burst", "p1a", "necrozma", "ultranecroziumz"],
+    ),
+)
+def test_v7_review_genuine_pinned_variants_are_supported(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"]["events"] = [event]
+    assert public_reachability_observation_issue(view) is None
+
+
+def test_v7_recharge_prevention_is_supported():
+    view = _v5_semantic_valid_view()
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "prevented",
+                "reason": "recharge",
+                "attempted_move": None,
+                "effects": [],
+            }
+        ],
+    }
+    assert public_reachability_observation_issue(view) is None
+
+
+def test_v7_opponent_revealed_must_match_preview_projection():
+    view = _v7_opponent_knowledge_view()
+    view["opponent"]["revealed"] = []
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v7_unseen_opponent_knowledge_requires_exact_defaults():
+    view = _v7_opponent_knowledge_view()
+    unseen = view["opponent"]["revealed"][1]
+    unseen["hp_percent"] = 100
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v7_opponent_revealed_preserves_preview_key_order():
+    view = _v7_opponent_knowledge_view()
+    view["opponent"]["revealed"].reverse()
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v7_active_base_species_requires_seen_preview_record():
+    view = _v7_opponent_knowledge_view()
+    view["opponent"]["active"][0]["base_species"] = "Raichu"
+    assert public_reachability_observation_issue(view) is not None
+
+
+def _v7_review_invalid_mutators():
+    def future_action(view):
+        view["opponent_last_actions"] = [
+            {"turn": view["turn"] + 50, "slot": 1, "move": "thunderbolt", "target": 1}
+        ]
+
+    def duplicate_action_slot(view):
+        view["opponent_last_actions"] = [
+            {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+        ]
+
+    def invalid_start_item(view):
+        view["public_event_delta"]["events"] = [
+            ["-start", "p1a", "item:leftovers"]
+        ]
+
+    def invalid_forewarn_payload(view):
+        view["public_event_delta"]["events"] = [
+            ["-activate", "p1a", "ability:forewarn", "ability:hugepower"]
+        ]
+
+    def missing_revealed_projection(view):
+        view["opponent"]["preview_species"] = ["Pikachu"]
+        view["opponent"]["revealed"] = []
+
+    def unseen_with_knowledge(view):
+        view["opponent"]["preview_species"] = ["Pikachu"]
+        view["opponent"]["revealed"] = [
+            {
+                "species": "Pikachu",
+                "moves": [],
+                "items": [],
+                "abilities": [],
+                "hp_percent": 100,
+                "status": None,
+                "fainted": False,
+                "seen": False,
+            }
+        ]
+
+    def phase_list(view):
+        view["phase"] = []
+
+    def weather_list(view):
+        view["field"]["weather"] = []
+
+    def terrain_list(view):
+        view["field"]["terrain"] = []
+
+    def pseudo_weather_dict(view):
+        view["field"]["pseudo_weather"] = [{}]
+
+    def player_side_condition_dict(view):
+        view["player"]["side_conditions"] = [{}]
+
+    def opponent_side_condition_dict(view):
+        view["opponent"]["side_conditions"] = [{}]
+
+    def move_target_list(view):
+        view["request"] = {
+            "active": [
+                {
+                    "moves": [
+                        {
+                            "move": "Tackle",
+                            "id": "tackle",
+                            "pp": 35,
+                            "maxpp": 56,
+                            "target": [],
+                            "disabled": False,
+                        }
+                    ]
+                },
+                None,
+            ],
+            "side": {"name": "Player", "id": "p1", "pokemon": []},
+        }
+
+    return (
+        future_action,
+        duplicate_action_slot,
+        invalid_start_item,
+        invalid_forewarn_payload,
+        missing_revealed_projection,
+        unseen_with_knowledge,
+        phase_list,
+        weather_list,
+        terrain_list,
+        pseudo_weather_dict,
+        player_side_condition_dict,
+        opponent_side_condition_dict,
+        move_target_list,
+    )
+
+
+@pytest.mark.parametrize("mutator", _v7_review_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+def test_v7_review_invalid_expected_is_unsupported_before_worker(mutator, evaluator):
+    expected = _v5_semantic_valid_view()
+    mutator(expected)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", _v5_semantic_valid_view())},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert worker.calls == 0
+
+
+@pytest.mark.parametrize("mutator", _v7_review_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+@pytest.mark.parametrize("signature_mode", ("matching", "mismatching"))
+def test_v7_review_invalid_returned_evidence_is_never_conclusive(
+    mutator,
+    evaluator,
+    signature_mode,
+):
+    expected = _v5_semantic_valid_view()
+    returned = copy.deepcopy(expected)
+    if signature_mode == "mismatching":
+        returned["winner"] = "different-winner"
+    mutator(returned)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", returned)},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
