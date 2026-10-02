@@ -48,8 +48,8 @@ class ReachabilityCoverage:
 
     sequential_context_fingerprint: str
     transitions_covered: int
-    observation_schema: str = PUBLIC_OBSERVATION_SCHEMA_VERSION
     outcomes_examined: int
+    observation_schema: str = PUBLIC_OBSERVATION_SCHEMA_VERSION
     randomness_domains: tuple[str, ...] = ()
     randomness_exhaustive: bool = False
     sequential_context_complete: bool = False
