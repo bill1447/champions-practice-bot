@@ -1582,20 +1582,137 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 return _schema_error(path, "confusion activation has no payload")
             return None
 
-        if effect == "move:eeriespell":
+        pp_limit = _PP_DEDUCTION_ACTIVATION_LIMITS.get(effect)
+        if pp_limit is not None:
             if len(tail) != 2 or not _known_public_move_id(tail[0]):
                 return _schema_error(
                     path,
-                    "Eerie Spell requires move id and PP deduction",
+                    f"{effect} requires move id and PP deduction",
                 )
             if (
                 not _canonical_integer_text(tail[1])
                 or int(tail[1]) < 1
-                or int(tail[1]) > 3
+                or int(tail[1]) > pp_limit
             ):
                 return _schema_error(
                     f"{path}[4]",
-                    "Eerie Spell PP deduction must be 1 through 3",
+                    f"{effect} PP deduction must be 1 through {pp_limit}",
+                )
+            return None
+
+        if effect == "item:leppaberry":
+            if (
+                len(tail) != 2
+                or not _known_public_move_id(tail[0])
+                or tail[1] != "[consumed]"
+            ):
+                return _schema_error(
+                    path,
+                    "Leppa Berry requires restored move and [consumed]",
+                )
+            return None
+
+        if effect == "item:custapberry":
+            if tail != ["[consumed]"]:
+                return _schema_error(path, "Custap Berry requires [consumed]")
+            return None
+
+        if effect in {"item:focusband", "item:quickclaw"}:
+            if tail:
+                return _schema_error(path, f"{effect} activation has no payload")
+            return None
+
+        if effect in {"item:safetygoggles", "item:mysteryberry"}:
+            if len(tail) != 1 or not _known_public_move_id(tail[0]):
+                return _schema_error(path, f"{effect} requires one move payload")
+            return None
+
+        if effect == "ability:forewarn":
+            if (
+                len(tail) != 2
+                or not _known_public_move_id(tail[0])
+                or not _of_modifier(tail[1])
+            ):
+                return _schema_error(
+                    path,
+                    "Forewarn requires warned move and [of] target",
+                )
+            return None
+
+        if effect == "ability:symbiosis":
+            if (
+                len(tail) != 2
+                or not _known_item_id(tail[0])
+                or not _of_modifier(tail[1])
+            ):
+                return _schema_error(
+                    path,
+                    "Symbiosis requires transferred item and [of] target",
+                )
+            return None
+
+        if effect in {"ability:protosynthesis", "ability:quarkdrive"}:
+            if tail not in ([], ["[fromitem]"]):
+                return _schema_error(
+                    path,
+                    f"{effect} accepts only the pinned [fromitem] marker",
+                )
+            return None
+
+        if effect == "orichalcumpulse":
+            if tail not in ([], ["[source]"]):
+                return _schema_error(
+                    path,
+                    "Orichalcum Pulse accepts only the pinned [source] marker",
+                )
+            return None
+
+        if effect == "ability:persistent":
+            if len(tail) != 1 or not _move_modifier(tail[0]):
+                return _schema_error(
+                    path,
+                    "Persistent activation requires one [move] payload",
+                )
+            return None
+
+        if effect == "move:powder":
+            if len(tail) != 1 or not _move_modifier(tail[0]):
+                return _schema_error(path, "Powder activation requires [move]")
+            return None
+
+        if effect == "move:magnitude":
+            if (
+                len(tail) != 1
+                or not _canonical_integer_text(tail[0])
+                or int(tail[0]) not in range(4, 11)
+            ):
+                return _schema_error(path, "Magnitude requires level 4 through 10")
+            return None
+
+        if effect == "move:poltergeist":
+            if len(tail) != 1 or not _known_item_id(tail[0]):
+                return _schema_error(path, "Poltergeist requires a pinned item")
+            return None
+
+        if effect in {
+            "move:grudge",
+            "move:matblock",
+            "move:sketch",
+        }:
+            if len(tail) != 1 or not _known_public_move_id(tail[0]):
+                return _schema_error(path, f"{effect} requires one move payload")
+            return None
+
+        if effect == "skillswap":
+            if (
+                len(tail) != 3
+                or not _known_ability_id(tail[0])
+                or not _known_ability_id(tail[1])
+                or not _of_modifier(tail[2])
+            ):
+                return _schema_error(
+                    path,
+                    "Skill Swap requires two abilities and [of] target",
                 )
             return None
 
@@ -1619,48 +1736,45 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 "must be an effect emitted by a pinned activation producer",
             )
 
-        positional_count = 0
+        # The only generic positional producer form is actor + [ability].
+        # Everything else must be an effect-specific variant above or typed
+        # producer modifiers; catalog membership alone is not positional authority.
+        if (
+            len(tail) == 2
+            and _canonical_actor(tail[0], allow_side=True)
+            and _ability_modifier(tail[1])
+        ):
+            return None
+
         seen_tags: set[str] = set()
         for index, part in enumerate(tail, start=3):
             tagged = _tagged_modifier_parts(part)
-            if tagged is not None:
-                tag = tagged[0]
-                if tag in seen_tags:
-                    return _schema_error(
-                        f"{path}[{index}]",
-                        "duplicates an activation modifier tag",
-                    )
-                if (
-                    _ability_modifier(part)
-                    or _source_modifier(part)
-                    or _of_modifier(part)
-                    or _marker_modifier(part, {"silent"})
-                ):
-                    seen_tags.add(tag)
-                    continue
+            if tagged is None:
                 return _schema_error(
                     f"{path}[{index}]",
-                    "contains unsupported activation modifier",
+                    "contains an unsupported positional activation payload",
                 )
-
-            if positional_count:
+            tag = tagged[0]
+            if tag in seen_tags:
                 return _schema_error(
                     f"{path}[{index}]",
-                    "contains more than one positional activation payload",
+                    "duplicates an activation modifier tag",
                 )
-            if not (
-                _canonical_actor(part, allow_side=True)
-                or _known_effect_identity(part)
-                or _known_public_move_id(part)
+            if (
+                _ability_modifier(part)
+                or _source_modifier(part)
+                or _of_modifier(part)
+                or _marker_modifier(part, {"broken", "silent"})
             ):
-                return _schema_error(
-                    f"{path}[{index}]",
-                    "contains unsupported activation payload",
-                )
-            positional_count += 1
+                seen_tags.add(tag)
+                continue
+            return _schema_error(
+                f"{path}[{index}]",
+                "contains unsupported activation modifier",
+            )
         return None
 
-    return _schema_error(path, f"{event} lacks an explicit v6 producer variant")
+    return _schema_error(path, f"{event} lacks an explicit v7 producer variant")
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
