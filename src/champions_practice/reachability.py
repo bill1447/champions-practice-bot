@@ -753,23 +753,6 @@ def _boosts_schema_issue(value: object, *, path: str) -> str | None:
     return None
 
 
-def _event_actor_and_tail(
-    value: list[str],
-    *,
-    path: str,
-    minimum: int,
-    allow_side: bool = False,
-) -> str | None:
-    if len(value) < minimum:
-        return _schema_error(path, "has an incomplete canonical payload")
-    if not _canonical_actor(value[1], allow_side=allow_side):
-        return _schema_error(
-            f"{path}[1]",
-            "must be a canonical producer Pokémon identity",
-        )
-    return _canonical_modifier_tail(value[2:], path=f"{path}.payload")
-
-
 def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
     """Validate explicit public variants emitted by the pinned Champions runtime."""
 
@@ -1515,8 +1498,8 @@ def _opponent_action_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.turn", "must be a positive integer")
     if not _non_bool_int(value["slot"]) or value["slot"] not in {1, 2}:
         return _schema_error(f"{path}.slot", "must be integer doubles slot 1 or 2")
-    if not _canonical_id(value["move"]):
-        return _schema_error(f"{path}.move", "must be a canonical move id")
+    if not _known_move_id(value["move"]):
+        return _schema_error(f"{path}.move", "must be a pinned move id")
     target = value["target"]
     if target is not None and (
         not _non_bool_int(target) or target not in {-2, -1, 1, 2}
@@ -1573,8 +1556,8 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
             "must equal the producer's sorted unique public action effects",
         )
     if outcome == "executed":
-        if not _canonical_id(value["move"]):
-            return _schema_error(f"{path}.move", "must be a canonical move id")
+        if not _known_move_id(value["move"]):
+            return _schema_error(f"{path}.move", "must be a pinned move id")
         if value["source"] not in {"selected", "called"}:
             return _schema_error(f"{path}.source", "must be selected or called")
         provenance = value["provenance"]
@@ -1593,15 +1576,18 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
                 "must be called iff [from] provenance is present",
             )
     else:
-        if not _canonical_protocol_token(value["reason"]):
-            return _schema_error(f"{path}.reason", "must be canonical public evidence")
+        if not _known_effect_identity(value["reason"]):
+            return _schema_error(
+                f"{path}.reason",
+                "must be pinned public prevention evidence",
+            )
         if (
             value["attempted_move"] is not None
-            and not _canonical_id(value["attempted_move"])
+            and not _known_move_id(value["attempted_move"])
         ):
             return _schema_error(
                 f"{path}.attempted_move",
-                "must be a canonical move id or null",
+                "must be a pinned move id or null",
             )
     return None
 
