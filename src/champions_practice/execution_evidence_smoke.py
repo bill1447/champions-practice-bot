@@ -263,7 +263,6 @@ def main() -> None:
             ai_choice=TURN_TWO_P2,
             actual_public_view=actual_view,
             previous_public_view=after_setup,
-            resolved_opponent_choice=TURN_TWO_P1,
             rng_seeds=seeds,
             previews=previews,
         )

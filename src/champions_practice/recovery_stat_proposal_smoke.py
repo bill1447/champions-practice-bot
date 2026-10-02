@@ -281,7 +281,6 @@ def main() -> None:
             observations=(
                 RecoveryObservation(
                     ai_choice=AI_CHOICE,
-                    resolved_opponent_choice=HUMAN_CHOICE,
                     previous_public_view=checkpoint,
                     public_view=actual_view,
                 ),
