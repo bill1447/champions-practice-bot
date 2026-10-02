@@ -6,7 +6,10 @@ from dataclasses import dataclass
 
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.observation_beliefs import BeliefParticle, condition_particles
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import (
+    FORCED_WAIT_CHOICE,
+    ShowdownSearchWorker,
+)
 
 SEED_HUMAN_REVIVES = "sodium,00000101000001020000010300000104"
 SEED_AI_REVIVES = "sodium,00000201000002020000020300000204"
@@ -195,13 +198,18 @@ def _run_case(
                 f"{reviver_choices}"
             )
         other_side = "p2" if reviver_side == "p1" else "p1"
-        if worker.session_legal_choices(session_id, side=other_side) != [""]:
-            raise SystemExit(f"ERROR: {label} opponent did not wait for replacement")
+        if worker.session_legal_choices(
+            session_id,
+            side=other_side,
+        ) != [FORCED_WAIT_CHOICE]:
+            raise SystemExit(
+                f"ERROR: {label} opponent did not wait for replacement"
+            )
 
         p1_choice, p2_choice = _side_choice(
             reviver_side,
             REPLACEMENT,
-            "",
+            FORCED_WAIT_CHOICE,
         )
         worker.choose_session(
             session_id,
@@ -242,10 +250,20 @@ def _run_case(
                 f"ERROR: {label} exact enumerator omitted Revival Blessing target: "
                 f"{exact_choices}"
             )
-        if worker.session_public_choices(session_id, side=other_side) != [""]:
-            raise SystemExit(f"ERROR: {label} other side did not expose public wait")
-        if worker.session_legal_choices(session_id, side=other_side) != [""]:
-            raise SystemExit(f"ERROR: {label} other side did not expose exact wait")
+        if worker.session_public_choices(
+            session_id,
+            side=other_side,
+        ) != [FORCED_WAIT_CHOICE]:
+            raise SystemExit(
+                f"ERROR: {label} other side did not expose public wait"
+            )
+        if worker.session_legal_choices(
+            session_id,
+            side=other_side,
+        ) != [FORCED_WAIT_CHOICE]:
+            raise SystemExit(
+                f"ERROR: {label} other side did not expose exact wait"
+            )
 
         pre_selection_state = worker.session_snapshot(session_id)["state"]
         before_selection = worker.session_view(session_id, side="p2")["view"]
@@ -253,7 +271,7 @@ def _run_case(
         p1_choice, p2_choice = _side_choice(
             reviver_side,
             REVIVAL_SELECTION,
-            "",
+            FORCED_WAIT_CHOICE,
         )
         worker.choose_session(
             session_id,
@@ -268,11 +286,11 @@ def _run_case(
         _assert_revived(reviver_after, label=label)
 
         if reviver_side == "p1":
-            ai_choice = ""
+            ai_choice = FORCED_WAIT_CHOICE
             resolved_human_choice = REVIVAL_SELECTION
         else:
             ai_choice = REVIVAL_SELECTION
-            resolved_human_choice = ""
+            resolved_human_choice = FORCED_WAIT_CHOICE
 
         update = condition_particles(
             worker,

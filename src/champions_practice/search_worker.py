@@ -19,6 +19,10 @@ _ACTIVE_SHOWDOWN_PROCESSES: dict[int, subprocess.Popen[str]] = {}
 _ACTIVE_SHOWDOWN_PROCESSES_LOCK = Lock()
 _BUILD_STAMP_NAME = "showdown-build.json"
 
+# Canonical whole-side no-action token. Raw "" is Showdown's internal wire
+# representation and must not escape into decision/recovery history.
+FORCED_WAIT_CHOICE = "wait"
+
 
 def _register_showdown_process(process: subprocess.Popen[str]) -> None:
     with _ACTIVE_SHOWDOWN_PROCESSES_LOCK:
@@ -1047,6 +1051,12 @@ class ShowdownSearchWorker:
         branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """Resolve many independent action pairs from one exact snapshot."""
+        for branch in branches:
+            if branch.get("p1_choice") == "" or branch.get("p2_choice") == "":
+                raise ValueError(
+                    "raw empty branch choices are ambiguous; "
+                    "use FORCED_WAIT_CHOICE"
+                )
         result = self.request("branch_many", state=state, branches=branches)
         resolved = result.get("branches")
         if not isinstance(resolved, list):
@@ -1083,6 +1093,11 @@ class ShowdownSearchWorker:
             isinstance(choice, str) for choice in choices
         ):
             raise RuntimeError("Showdown worker returned invalid legal choices")
+        if any(choice == "" for choice in choices):
+            raise RuntimeError(
+                "Showdown worker returned invalid legal choices; "
+                "raw empty choices are forbidden"
+            )
         return choices
 
     def validate_choices(
@@ -1095,6 +1110,11 @@ class ShowdownSearchWorker:
         """Validate a bounded candidate set without enumerating the full action space."""
         if not candidates:
             return []
+        if any(candidate == "" for candidate in candidates):
+            raise ValueError(
+                "raw empty candidate choices are ambiguous; "
+                "use FORCED_WAIT_CHOICE"
+            )
         result = self.request(
             "validate_choices",
             state=state,
@@ -1106,6 +1126,11 @@ class ShowdownSearchWorker:
             isinstance(choice, str) for choice in choices
         ):
             raise RuntimeError("Showdown worker returned invalid validated choices")
+        if any(choice == "" for choice in choices):
+            raise RuntimeError(
+                "Showdown worker returned invalid validated choices; "
+                "raw empty choices are forbidden"
+            )
         return choices
 
     def materialize_recovery_stat_proposals(
@@ -1283,6 +1308,11 @@ class ShowdownSearchWorker:
             isinstance(choice, str) for choice in choices
         ):
             raise RuntimeError("Showdown worker returned invalid public session choices")
+        if any(choice == "" for choice in choices):
+            raise RuntimeError(
+                "Showdown worker returned invalid public session choices; "
+                "raw empty choices are forbidden"
+            )
         return choices
 
     def session_legal_choices(self, session_id: str, *, side: str) -> list[str]:
@@ -1297,6 +1327,11 @@ class ShowdownSearchWorker:
             isinstance(choice, str) for choice in choices
         ):
             raise RuntimeError("Showdown worker returned invalid session choices")
+        if any(choice == "" for choice in choices):
+            raise RuntimeError(
+                "Showdown worker returned invalid session choices; "
+                "raw empty choices are forbidden"
+            )
         return choices
 
     def session_snapshot(self, session_id: str) -> dict[str, Any]:
@@ -1309,6 +1344,10 @@ class ShowdownSearchWorker:
         p1_choice: str,
         p2_choice: str,
     ) -> dict[str, Any]:
+        if p1_choice == "" or p2_choice == "":
+            raise ValueError(
+                "raw empty choices are ambiguous; use FORCED_WAIT_CHOICE"
+            )
         return self.request(
             "session_choose",
             session_id=session_id,

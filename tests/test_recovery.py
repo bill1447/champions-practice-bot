@@ -9,6 +9,7 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     identity_member_lineage,
 )
+from champions_practice.search_worker import FORCED_WAIT_CHOICE
 from champions_practice.recovery import (
     BoundedOpponentStatProposalGenerator,
     OpponentStatProposal,
@@ -709,6 +710,79 @@ class _SeedSensitiveRecoveryWorker(_TypedRecoveryWorker):
             active["hp_percent"] = float(active.get("hp_percent", 0)) + 7
             result["view"] = view
         return results
+
+
+def test_recovery_history_accepts_explicit_forced_wait_command() -> None:
+    base = _request()
+    observations = tuple(
+        RecoveryObservation(
+            ai_choice=(
+                FORCED_WAIT_CHOICE
+                if index == 0
+                else observation.ai_choice
+            ),
+            resolved_opponent_choice=observation.resolved_opponent_choice,
+            previous_public_view=observation.previous_public_view,
+            public_view=observation.public_view,
+        )
+        for index, observation in enumerate(base.observations)
+    )
+    request = RecoveryRequest(
+        authority_root_particles=base.authority_root_particles,
+        opening_authorities=base.opening_authorities,
+        authority_root_public_view=base.authority_root_public_view,
+        authority_observations=base.authority_observations,
+        authority_history_complete=base.authority_history_complete,
+        checkpoint_particles=base.checkpoint_particles,
+        checkpoint_public_view=base.checkpoint_public_view,
+        observations=observations,
+        ai_side=base.ai_side,
+        previews=base.previews,
+    )
+
+    report = validate_stat_recovery_proposals(
+        _TypedRecoveryWorker(),
+        request=request,
+        proposals=(_proposal("wait-history", atk=32, spa=0),),
+        authority_rng_seeds_by_observation=(),
+        rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+    )
+
+    assert report.candidate_results[0].status is RecoveryCandidateStatus.VALIDATED
+
+
+def test_recovery_history_rejects_raw_empty_forced_wait_command() -> None:
+    base = _request()
+    first = base.observations[0]
+    request = RecoveryRequest(
+        authority_root_particles=base.authority_root_particles,
+        opening_authorities=base.opening_authorities,
+        authority_root_public_view=base.authority_root_public_view,
+        authority_observations=base.authority_observations,
+        authority_history_complete=base.authority_history_complete,
+        checkpoint_particles=base.checkpoint_particles,
+        checkpoint_public_view=base.checkpoint_public_view,
+        observations=(
+            RecoveryObservation(
+                ai_choice="",
+                resolved_opponent_choice=first.resolved_opponent_choice,
+                previous_public_view=first.previous_public_view,
+                public_view=first.public_view,
+            ),
+            base.observations[1],
+        ),
+        ai_side=base.ai_side,
+        previews=base.previews,
+    )
+
+    with pytest.raises(ValueError, match="exact AI commands"):
+        validate_stat_recovery_proposals(
+            _TypedRecoveryWorker(),
+            request=request,
+            proposals=(_proposal("empty-wait", atk=32, spa=0),),
+            authority_rng_seeds_by_observation=(),
+            rng_seeds_by_observation=(("seed-1",), ("seed-2",)),
+        )
 
 
 def test_same_candidate_can_be_inconclusive_then_validate_with_witness_seed() -> None:

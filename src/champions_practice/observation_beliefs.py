@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from itertools import product
 from typing import Any, Iterable
 
-from .search_worker import ShowdownSearchWorker
+from .search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
 
 
 @dataclass(frozen=True)
@@ -571,6 +571,16 @@ def condition_particles(
 ) -> ParticleUpdate:
     if ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
+    if ai_choice == "":
+        raise ValueError(
+            "raw empty AI choice is ambiguous; "
+            f"use {FORCED_WAIT_CHOICE!r} for a forced wait"
+        )
+    if resolved_opponent_choice == "":
+        raise ValueError(
+            "raw empty resolved opponent choice is ambiguous; "
+            f"use {FORCED_WAIT_CHOICE!r} for a forced wait"
+        )
     if not particles:
         return ParticleUpdate((), 0, 0, 0)
 

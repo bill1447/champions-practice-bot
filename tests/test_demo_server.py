@@ -15,6 +15,7 @@ from champions_practice.belief_controller import (
     SealedTurnResult,
     SealedTurnState,
 )
+from champions_practice.search_worker import FORCED_WAIT_CHOICE
 from champions_practice.demo_server import (
     DEMO_HTML,
     DemoBattleSession,
@@ -499,23 +500,19 @@ def test_demo_html_prefers_active_details_and_formats_hp_percent() -> None:
     assert "mon.hp_percent" in DEMO_HTML
     assert "% HP" in DEMO_HTML
 
-def test_demo_html_auto_submits_empty_human_wait_choice() -> None:
+def test_demo_html_auto_submits_explicit_human_wait_choice() -> None:
     assert 'next.legal_choices.length === 1' in DEMO_HTML
-    assert 'next.legal_choices[0] === ""' in DEMO_HTML
-    assert 'request("/api/commit", "POST", {choice: ""})' in DEMO_HTML
+    assert 'next.legal_choices[0] === "wait"' in DEMO_HTML
+    assert 'request("/api/commit", "POST", {choice: "wait"})' in DEMO_HTML
 
-def test_demo_commit_parser_accepts_empty_wait_choice_only_when_allowed() -> None:
+
+def test_demo_commit_parser_requires_non_empty_wait_token() -> None:
     assert DemoRequestHandler._choice(
-        {"choice": ""},
-        allow_empty=True,
-    ) == ""
+        {"choice": FORCED_WAIT_CHOICE},
+    ) == FORCED_WAIT_CHOICE
 
-    try:
+    with pytest.raises(ValueError, match="non-empty"):
         DemoRequestHandler._choice({"choice": ""})
-    except ValueError:
-        pass
-    else:
-        raise AssertionError("preview/non-wait choice parser accepted an empty command")
 
 def test_demo_html_queues_human_action_while_ai_is_thinking() -> None:
     assert "let queuedHumanChoice = null;" in DEMO_HTML

@@ -4,7 +4,10 @@ from __future__ import annotations
 
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.exact_search import search_exact_turn
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import (
+    FORCED_WAIT_CHOICE,
+    ShowdownSearchWorker,
+)
 from champions_practice.teams import SMOKE_TEAM
 
 SEED = "sodium,00000001000000020000000300000004"
@@ -30,12 +33,12 @@ def _turn_four_snapshot(worker: ShowdownSearchWorker) -> dict:
             "move psychic 2, move steelroller mega 1",
             "move expandingforce mega 1, move psychic 1",
         ),
-        ("", "switch 3, pass"),
+        (FORCED_WAIT_CHOICE, "switch 3, pass"),
         (
             "move psychic 1, move psychicfangs 1",
             "move closecombat 1, move psychic 2",
         ),
-        ("", "switch 4, pass"),
+        (FORCED_WAIT_CHOICE, "switch 4, pass"),
         (
             "move psychic 1, move steelroller 2",
             "move woodhammer 2, move psychic 1",
