@@ -243,7 +243,6 @@ def _ordered_last_move_regression(worker: ShowdownSearchWorker) -> None:
         ai_choice=ai_choice,
         actual_public_view=actual["view"],
         previous_public_view=before,
-        resolved_opponent_choice=human_choice,
         rng_seeds=SEEDS,
         previews=previews,
     )
@@ -411,7 +410,6 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
         ai_choice=ai_choice,
         actual_public_view=actual["view"],
         previous_public_view=before,
-        resolved_opponent_choice=human_choice,
         rng_seeds=SEEDS,
         previews=previews,
     )
@@ -471,7 +469,6 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
             elapsed_seconds=0.0,
         ),
         view=actual["view"],
-        resolved_opponent_choice=human_choice,
     )
     if observed.matched_branches != 0:
         raise SystemExit(

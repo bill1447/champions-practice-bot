@@ -564,7 +564,6 @@ def condition_particles(
     ai_choice: str,
     actual_public_view: dict[str, Any],
     previous_public_view: dict[str, Any] | None = None,
-    resolved_opponent_choice: str | None = None,
     opponent_choices: dict[str, tuple[str, ...]] | None = None,
     rng_seeds: tuple[str | None, ...] = (None,),
     previews: dict[str, list[str]] | None = None,
@@ -574,11 +573,6 @@ def condition_particles(
     if ai_choice == "":
         raise ValueError(
             "raw empty AI choice is ambiguous; "
-            f"use {FORCED_WAIT_CHOICE!r} for a forced wait"
-        )
-    if resolved_opponent_choice == "":
-        raise ValueError(
-            "raw empty resolved opponent choice is ambiguous; "
             f"use {FORCED_WAIT_CHOICE!r} for a forced wait"
         )
     if not particles:
@@ -615,34 +609,7 @@ def condition_particles(
         responses: tuple[str, ...]
         validator = getattr(worker, "validate_choices", None)
 
-        if resolved_opponent_choice is not None:
-            # The live human command is private until the sealed AI choice resolves.
-            # After resolution it is public history, so use it directly rather than
-            # reconstructing selected moves/switches/targets from protocol observations.
-            # This proves only selection/legality. The resulting branch must still match
-            # public_execution_delta, so a selected move that was visibly prevented or
-            # failed cannot masquerade as a successfully executed action.
-            if callable(validator):
-                responses = tuple(
-                    validator(
-                        state=particle.state,
-                        side=opponent_side,
-                        candidates=[resolved_opponent_choice],
-                    )
-                )
-            else:
-                legal_responses = tuple(
-                    worker.legal_choices(
-                        state=particle.state,
-                        side=opponent_side,
-                    )
-                )
-                responses = (
-                    (resolved_opponent_choice,)
-                    if resolved_opponent_choice in set(legal_responses)
-                    else ()
-                )
-        elif (
+        if (
             opponent_choices is None
             and observed_candidates
             and callable(validator)
@@ -676,12 +643,11 @@ def condition_particles(
                         response for response in requested if response in legal_set
                     )
 
-        if resolved_opponent_choice is None:
-            responses = _filter_responses_by_public_actions(
-                tuple(responses),
-                actual_public_view,
-                previous_public_view=previous_public_view,
-            )
+        responses = _filter_responses_by_public_actions(
+            tuple(responses),
+            actual_public_view,
+            previous_public_view=previous_public_view,
+        )
         if not responses:
             continue
 

@@ -85,6 +85,17 @@ jobs:
         shell: pwsh
         run: .\showdown-runtime-gate.ps1
 
+      - name: Verify Showdown localhost-only binding
+        shell: pwsh
+        run: |
+          .\start-showdown.ps1
+          . .\scripts\showdown-utils.ps1
+          $Addresses = @(Get-ChampionsListeningAddresses)
+          if (-not (Test-ChampionsShowdownLoopbackOnlyBinding)) {
+            throw "Showdown is not loopback-only: $($Addresses -join ', ')"
+          }
+          Write-Host "Verified loopback-only listener: $($Addresses -join ', ')"
+
       - name: Lint
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m ruff check src tests

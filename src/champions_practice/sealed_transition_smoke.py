@@ -109,7 +109,7 @@ def _run_human_forced_switch_ai_wait(worker: ShowdownSearchWorker) -> None:
     try:
         coordinator._engine.initialize_preview = lambda **kwargs: kwargs["view"]
         coordinator._engine.observe_public_turn = (
-            lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
+            lambda *, decision, view: SimpleNamespace(
                 decision=decision,
                 public_view=view,
                 particles_before=1,
@@ -218,7 +218,7 @@ def _run_partial_double_replacement(worker: ShowdownSearchWorker) -> None:
     try:
         coordinator._engine.initialize_preview = lambda **kwargs: kwargs["view"]
         coordinator._engine.observe_public_turn = (
-            lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
+            lambda *, decision, view: SimpleNamespace(
                 decision=decision,
                 public_view=view,
                 particles_before=1,
@@ -386,7 +386,7 @@ def main() -> None:
         try:
             coordinator._engine.initialize_preview = lambda **kwargs: kwargs["view"]
             coordinator._engine.observe_public_turn = (
-                lambda *, decision, view, resolved_opponent_choice=None: SimpleNamespace(
+                lambda *, decision, view: SimpleNamespace(
                     decision=decision,
                     public_view=view,
                     particles_before=1,

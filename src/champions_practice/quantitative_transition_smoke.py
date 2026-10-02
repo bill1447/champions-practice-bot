@@ -468,7 +468,6 @@ def _hitcount_regression(worker: ShowdownSearchWorker) -> tuple[int, int, int, i
         ai_choice=AI_TURN,
         actual_public_view=actual["view"],
         previous_public_view=before,
-        resolved_opponent_choice=HUMAN_TURN,
         rng_seeds=SEEDS,
         previews=previews,
     )
@@ -507,7 +506,6 @@ def _hitcount_regression(worker: ShowdownSearchWorker) -> tuple[int, int, int, i
             elapsed_seconds=0.0,
         ),
         view=actual["view"],
-        resolved_opponent_choice=HUMAN_TURN,
     )
     if observed.matched_branches != 0:
         raise SystemExit(

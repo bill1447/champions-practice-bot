@@ -210,7 +210,6 @@ def main() -> None:
                 ai_choice=FORCED_WAIT_CHOICE,
                 actual_public_view=actual,
                 previous_public_view=before,
-                resolved_opponent_choice=replacement,
                 rng_seeds=(None,),
                 previews=previews,
             )

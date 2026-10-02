@@ -66,7 +66,6 @@ _STATIC_RECOVERY_HISTORY_LIMIT = 512
 @dataclass(frozen=True)
 class _RecoveryAuthorityObservation:
     ai_choice: str
-    resolved_opponent_choice: str
     previous_public_view: dict
     public_view: dict
 
@@ -211,7 +210,7 @@ class _EngineObservationSnapshot:
     last_public_view: dict | None
     particles: tuple[BeliefParticle, ...]
     pending_observations: tuple[
-        tuple[str, str | None, dict[str, object] | None, dict],
+        tuple[str, dict[str, object] | None, dict],
         ...,
     ]
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
@@ -548,7 +547,7 @@ class BeliefDecisionEngine:
         self.preview_mismatch_paths: tuple[str, ...] = ()
         self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
         self.pending_observations: list[
-            tuple[str, str | None, dict[str, object] | None, dict]
+            tuple[str, dict[str, object] | None, dict]
         ] = []
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
@@ -772,7 +771,6 @@ class BeliefDecisionEngine:
         ai_choice: str,
         view: dict,
         previous_view: dict[str, object] | None = None,
-        resolved_opponent_choice: str | None = None,
         batches: tuple[int, ...],
         deadline: float | None = None,
     ) -> ParticleUpdate:
@@ -782,15 +780,9 @@ class BeliefDecisionEngine:
         structural_mismatches = 0
         multiplier = (
             self.observed_action_rng_multiplier
-            if (
-                (
-                    resolved_opponent_choice is not None
-                    and "move " in resolved_opponent_choice
-                )
-                or public_opponent_moves_fully_observed(
-                    view,
-                    previous_public_view=previous_view,
-                )
+            if public_opponent_moves_fully_observed(
+                view,
+                previous_public_view=previous_view,
             )
             else 1
         )
@@ -825,7 +817,6 @@ class BeliefDecisionEngine:
                     ai_choice=ai_choice,
                     actual_public_view=view,
                     previous_public_view=previous_view,
-                    resolved_opponent_choice=resolved_opponent_choice,
                     rng_seeds=seeds,
                     previews=self.previews,
                 )
@@ -855,15 +846,13 @@ class BeliefDecisionEngine:
         self,
         *,
         ai_choice: str,
-        resolved_opponent_choice: str | None,
         previous_view: dict[str, object] | None,
         view: dict,
     ) -> None:
         if not self.recovery_authority_history_complete:
             return
         if (
-            resolved_opponent_choice is None
-            or not isinstance(previous_view, dict)
+            not isinstance(previous_view, dict)
             or self.recovery_authority_root_public_view is None
         ):
             self.recovery_authority_history_complete = False
@@ -876,7 +865,6 @@ class BeliefDecisionEngine:
         self.recovery_authority_history.append(
             _RecoveryAuthorityObservation(
                 ai_choice=ai_choice,
-                resolved_opponent_choice=resolved_opponent_choice,
                 previous_public_view=deepcopy(previous_view),
                 public_view=deepcopy(view),
             )
@@ -885,19 +873,13 @@ class BeliefDecisionEngine:
     def _promote_pending_to_recovery_authority(
         self,
         pending: tuple[
-            tuple[str, str | None, dict[str, object] | None, dict],
+            tuple[str, dict[str, object] | None, dict],
             ...,
         ],
     ) -> None:
-        for (
-            ai_choice,
-            resolved_opponent_choice,
-            previous_view,
-            view,
-        ) in pending:
+        for ai_choice, previous_view, view in pending:
             self._record_recovery_authority_observation(
                 ai_choice=ai_choice,
-                resolved_opponent_choice=resolved_opponent_choice,
                 previous_view=previous_view,
                 view=view,
             )
@@ -919,19 +901,13 @@ class BeliefDecisionEngine:
 
         def recover(worker: HypotheticalSearchWorker):
             particles = starting_particles
-            for (
-                ai_choice,
-                resolved_opponent_choice,
-                previous_view,
-                view,
-            ) in pending:
+            for ai_choice, previous_view, view in pending:
                 update = self._condition_adaptive(
                     worker,
                     particles=particles,
                     ai_choice=ai_choice,
                     view=view,
                     previous_view=previous_view,
-                    resolved_opponent_choice=resolved_opponent_choice,
                     batches=self.recovery_rng_sample_batches,
                     deadline=recovery_deadline,
                 )
@@ -1764,7 +1740,6 @@ class BeliefDecisionEngine:
         *,
         decision: BeliefDecision,
         view: dict,
-        resolved_opponent_choice: str | None = None,
     ) -> BeliefTurnUpdate:
         """Condition the posterior on a sanitized p2 public observation."""
         particles_before = len(self.particles)
@@ -1780,7 +1755,6 @@ class BeliefDecisionEngine:
             self.pending_observations.append(
                 (
                     decision.choice,
-                    resolved_opponent_choice,
                     previous_view,
                     view,
                 )
@@ -1799,7 +1773,6 @@ class BeliefDecisionEngine:
                     ai_choice=decision.choice,
                     view=view,
                     previous_view=previous_view,
-                    resolved_opponent_choice=resolved_opponent_choice,
                     batches=self.rng_sample_batches,
                     deadline=conditioning_deadline,
                 )
@@ -1814,7 +1787,6 @@ class BeliefDecisionEngine:
                 self.pending_observations.append(
                     (
                         decision.choice,
-                        resolved_opponent_choice,
                         previous_view,
                         view,
                     )
@@ -1830,7 +1802,6 @@ class BeliefDecisionEngine:
                 )
                 self._record_recovery_authority_observation(
                     ai_choice=decision.choice,
-                    resolved_opponent_choice=resolved_opponent_choice,
                     previous_view=previous_view,
                     view=view,
                 )
@@ -1841,7 +1812,6 @@ class BeliefDecisionEngine:
                 self.pending_observations.append(
                     (
                         decision.choice,
-                        resolved_opponent_choice,
                         previous_view,
                         view,
                     )
@@ -2284,7 +2254,6 @@ class _BeliefBattleCoordinator:
             update = self._engine.observe_public_turn(
                 decision=decision,
                 view=public_view,
-                resolved_opponent_choice=self._pending_human_choice,
             )
         except Exception:
             self._restore_engine_snapshot(snapshot)

@@ -276,7 +276,6 @@ def main() -> None:
             authority_observations=(
                 RecoveryObservation(
                     ai_choice=AI_QUIET,
-                    resolved_opponent_choice=HUMAN_SWITCH_OUT,
                     previous_public_view=root_view,
                     public_view=view_1,
                 ),
@@ -287,7 +286,6 @@ def main() -> None:
             observations=(
                 RecoveryObservation(
                     ai_choice=AI_QUIET,
-                    resolved_opponent_choice=HUMAN_SWITCH_BACK,
                     previous_public_view=view_1,
                     public_view=view_2,
                 ),
