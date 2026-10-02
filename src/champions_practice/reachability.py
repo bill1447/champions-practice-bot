@@ -2977,6 +2977,14 @@ def _reachability_hash(value: object) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
+def _reachability_observation_signature(view: dict[str, Any]) -> str:
+    """Return the exact public evidence projection certified by reachability."""
+
+    normalized = json.loads(public_observation_signature(view))
+    normalized["opponent_last_actions"] = view.get("opponent_last_actions")
+    return json.dumps(normalized, sort_keys=True, separators=(",", ":"))
+
+
 def _public_target_unsupported(view: dict[str, Any]) -> tuple[str, ...]:
     delta = view.get("public_event_delta")
     if not isinstance(delta, dict):
@@ -3099,7 +3107,7 @@ def witness_public_observation_sequence(
     transitions_covered = 0
 
     for step_index, step in enumerate(steps):
-        wanted = public_observation_signature(step.expected_public_view)
+        wanted = _reachability_observation_signature(step.expected_public_view)
         next_paths: list[
             tuple[dict[str, Any], tuple[str | None, ...]]
         ] = []
@@ -3196,7 +3204,7 @@ def witness_public_observation_sequence(
                             f"{', '.join(worker_unsupported)}"
                         )
                     )
-                if public_observation_signature(public_view) != wanted:
+                if _reachability_observation_signature(public_view) != wanted:
                     continue
 
                 child_seed_path = seed_path + (seed,)
@@ -3364,8 +3372,8 @@ def evaluate_deterministic_public_transition(
             "deterministic reachability worker omitted a valid PRNG draw count"
         )
 
-    wanted = public_observation_signature(step.expected_public_view)
-    observed = public_observation_signature(public_view)
+    wanted = _reachability_observation_signature(step.expected_public_view)
+    observed = _reachability_observation_signature(public_view)
     randomness_domains = () if draw_count == 0 else ("showdown-prng-draw",)
     coverage = ReachabilityCoverage(
         sequential_context_fingerprint=fingerprint,
