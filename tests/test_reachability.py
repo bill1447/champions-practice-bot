@@ -174,22 +174,30 @@ def _valid_public_view(spec: dict | None = None) -> dict:
     winner = spec.get("winner", marker)
 
     opponent_active = []
+    opponent_preview = []
+    opponent_revealed = []
     raw_opponent = spec.get("opponent")
+    default_species = ("Pikachu", "Raichu")
     if isinstance(raw_opponent, dict) and isinstance(raw_opponent.get("active"), list):
         for index, pokemon in enumerate(raw_opponent["active"]):
             if pokemon is None:
                 opponent_active.append(None)
                 continue
+            species = pokemon.get(
+                "species",
+                default_species[min(index, len(default_species) - 1)],
+            )
+            base_species = pokemon.get("base_species", species)
+            hp_percent = pokemon.get("hp_percent", 100)
+            fainted = pokemon.get("fainted", False)
+            status = pokemon.get("status")
             opponent_active.append(
                 {
-                    "species": pokemon.get("species", f"Species{index + 1}"),
-                    "base_species": pokemon.get(
-                        "base_species",
-                        pokemon.get("species", f"Species{index + 1}"),
-                    ),
-                    "hp_percent": pokemon.get("hp_percent", 100),
-                    "fainted": pokemon.get("fainted", False),
-                    "status": pokemon.get("status"),
+                    "species": species,
+                    "base_species": base_species,
+                    "hp_percent": hp_percent,
+                    "fainted": fainted,
+                    "status": status,
                     "boosts": pokemon.get(
                         "boosts",
                         {
@@ -204,6 +212,20 @@ def _valid_public_view(spec: dict | None = None) -> dict:
                     ),
                 }
             )
+            if base_species not in opponent_preview:
+                opponent_preview.append(base_species)
+                opponent_revealed.append(
+                    {
+                        "species": base_species,
+                        "moves": [],
+                        "items": [],
+                        "abilities": [],
+                        "hp_percent": hp_percent,
+                        "status": status,
+                        "fainted": fainted,
+                        "seen": True,
+                    }
+                )
 
     while len(opponent_active) < 2:
         opponent_active.append(None)
@@ -230,10 +252,10 @@ def _valid_public_view(spec: dict | None = None) -> dict:
         },
         "opponent": {
             "name": "Opponent",
-            "preview_species": [],
+            "preview_species": opponent_preview,
             "side_conditions": [],
             "active": opponent_active,
-            "revealed": [],
+            "revealed": opponent_revealed,
         },
     }
     if "public_event_delta" in spec:
