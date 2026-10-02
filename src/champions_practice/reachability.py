@@ -26,7 +26,7 @@ from champions_practice.observation_beliefs import public_observation_signature
 from champions_practice.search_worker import ShowdownRequestError
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v1"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v2"
 
 
 class ReachabilityStatus(str, Enum):
