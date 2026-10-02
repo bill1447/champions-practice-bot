@@ -736,11 +736,24 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             return _schema_error(f"{path}[1]", "must be a canonical doubles slot")
         return None
 
-    if event in {"-crit", "-supereffective", "-resisted"}:
+    if event == "-crit":
         if len(value) != 2 or not _canonical_slot(value[1]):
             return _schema_error(
                 path,
-                f"{event} requires exactly one canonical target slot",
+                "-crit requires exactly one canonical target slot",
+            )
+        return None
+
+    if event in {"-supereffective", "-resisted"}:
+        if len(value) != 3 or not _canonical_slot(value[1]):
+            return _schema_error(
+                path,
+                f"{event} requires target slot and Champions effectiveness level",
+            )
+        if value[2] not in {"1", "2"}:
+            return _schema_error(
+                f"{path}[2]",
+                "must be Champions effectiveness level 1 or 2",
             )
         return None
 

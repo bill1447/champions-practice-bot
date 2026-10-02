@@ -1007,6 +1007,8 @@ def test_pinned_move_request_variants_remain_supported(move):
             "selected",
         ],
         ["-crit", "p2a"],
+        ["-resisted", "p2a", "1"],
+        ["-supereffective", "p2a", "2"],
         ["-weather", "raindance"],
     ),
 )
@@ -1589,6 +1591,10 @@ def test_v4_genuine_event_variants_are_supported(event):
         ["-swapboost", "p1a", "p2a", "atkatk"],
         ["-copyboost", "p1a", "p2a", "atkspa"],
         ["-crit", "p1a", "[from]:move:tackle"],
+        ["-resisted", "p1a"],
+        ["-resisted", "p1a", "3"],
+        ["-supereffective", "p1a", "0"],
+        ["-supereffective", "p1a", "01"],
     ),
 )
 def test_v4_impossible_event_variants_are_rejected(event):
