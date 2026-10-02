@@ -1773,9 +1773,6 @@ function resolveBranch(
   const response = {
     summary: summarize(battle),
   };
-  if (includeRngDrawCount) {
-    response.rng_draw_count = rngDrawCount;
-  }
   if (includeState) {
     response.state = battle.toJSON();
     response.member_lineage = memberLineage;
@@ -1786,6 +1783,9 @@ function resolveBranch(
       p2: battle.p2.pokemon.map((mon) => mon.set.species),
     };
     response.view = playerView(battle, viewSide, effectivePreviews);
+  }
+  if (includeRngDrawCount) {
+    response.rng_draw_count = rngDrawCount;
   }
   battle.destroy();
   return response;

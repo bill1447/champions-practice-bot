@@ -66,6 +66,10 @@ def main() -> None:
                 }
             ],
         )[0]
+        if "rng_draw_count" in target_branch:
+            raise SystemExit(
+                "ERROR: PRNG draw metadata leaked from a non-opt-in branch"
+            )
         target = target_branch.get("view")
         if not isinstance(target, dict):
             raise SystemExit("ERROR: witness fixture produced no public view")
