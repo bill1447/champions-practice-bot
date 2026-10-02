@@ -219,7 +219,6 @@ def main() -> None:
             observations=(
                 RecoveryObservation(
                     ai_choice=QUIET,
-                    resolved_opponent_choice=QUIET,
                     previous_public_view=root_view,
                     public_view=suffix_view,
                 ),
