@@ -8,6 +8,7 @@ from champions_practice.reachability import (
     PublicReachabilityStep,
     ReachabilityStatus,
     evaluate_deterministic_public_transition,
+    public_reachability_observation_issue,
     witness_public_observation_sequence,
 )
 from champions_practice.search_worker import HypotheticalSearchWorker
@@ -25,6 +26,208 @@ ALT_SEEDS = tuple(
     f"sodium,{digit * 64}"
     for digit in "23456789abcdef"
 )
+
+
+PRODUCER_P1_TEAM = """Smeargle
+Ability: Own Tempo
+Level: 50
+- Thunderbolt
+- Power Swap
+- Psych Up
+- Super Fang
+
+Chansey
+Ability: Natural Cure
+Level: 50
+- Protect
+- Soft-Boiled
+- Helping Hand
+- Seismic Toss
+
+Armarouge
+Ability: Flash Fire
+Level: 50
+- Protect
+- Psychic
+- Armor Cannon
+- Wide Guard
+
+Gardevoir
+Ability: Trace
+Level: 50
+- Protect
+- Psychic
+- Hyper Voice
+- Mystical Fire
+"""
+
+PRODUCER_P2_TEAM = """Garchomp
+Ability: Rough Skin
+Level: 50
+EVs: 1 HP
+- Splash
+- Protect
+- Tackle
+- Swords Dance
+
+Chansey
+Ability: Natural Cure
+Level: 50
+- Protect
+- Soft-Boiled
+- Helping Hand
+- Seismic Toss
+
+Armarouge
+Ability: Flash Fire
+Level: 50
+- Protect
+- Psychic
+- Armor Cannon
+- Wide Guard
+
+Gardevoir
+Ability: Trace
+Level: 50
+- Protect
+- Psychic
+- Hyper Voice
+- Mystical Fire
+"""
+
+PRODUCER_PREVIEW = "team 1234"
+PRODUCER_P2_CHOICE = "move splash, move protect"
+PRODUCER_SEEDS = (
+    None,
+    "sodium,1111111111111111111111111111111111111111111111111111111111111111",
+    "sodium,2222222222222222222222222222222222222222222222222222222222222222",
+    "sodium,3333333333333333333333333333333333333333333333333333333333333333",
+)
+
+
+def _contains_event(
+    view: dict,
+    event_name: str,
+    expected_piece: str | None = None,
+) -> bool:
+    events = view.get("public_event_delta", {}).get("events", [])
+    for event in events:
+        if not isinstance(event, list) or not event or event[0] != event_name:
+            continue
+        if expected_piece is None or expected_piece in event:
+            return True
+    return False
+
+
+def _assert_real_producer_variant(
+    worker: HypotheticalSearchWorker,
+    *,
+    p1_choice: str,
+    event_name: str,
+    expected_piece: str | None = None,
+) -> None:
+    state = worker.create_state(
+        battle_format=CHAMPIONS_FORMAT,
+        p1_team=PRODUCER_P1_TEAM,
+        p2_team=PRODUCER_P2_TEAM,
+        p1_preview=PRODUCER_PREVIEW,
+        p2_preview=PRODUCER_PREVIEW,
+        seed="sodium,87654321000000020000000300000004",
+    )
+    candidates = worker.branch_many(
+        state=state,
+        branches=[
+            {
+                "p1_choice": p1_choice,
+                "p2_choice": PRODUCER_P2_CHOICE,
+                "rng_seed": seed,
+                "include_state": True,
+                "view_side": "p1",
+                "include_rng_draw_count": True,
+            }
+            for seed in PRODUCER_SEEDS
+        ],
+    )
+    selected = next(
+        (
+            (seed, branch)
+            for seed, branch in zip(PRODUCER_SEEDS, candidates, strict=True)
+            if isinstance(branch.get("view"), dict)
+            and _contains_event(branch["view"], event_name, expected_piece)
+        ),
+        None,
+    )
+    if selected is None:
+        raise SystemExit(
+            "ERROR: pinned producer-contract smoke did not emit "
+            f"{event_name} / {expected_piece}"
+        )
+
+    seed, branch = selected
+    view = branch["view"]
+    issue = public_reachability_observation_issue(view)
+    if issue is not None:
+        raise SystemExit(
+            "ERROR: genuine pinned producer view failed reachability schema: "
+            f"{event_name}: {issue}"
+        )
+
+    step = PublicReachabilityStep(
+        p1_choice=p1_choice,
+        p2_choice=PRODUCER_P2_CHOICE,
+        expected_public_view=view,
+        rng_seeds=(seed,),
+    )
+    witnessed = witness_public_observation_sequence(
+        worker,
+        state=state,
+        side="p1",
+        steps=(step,),
+    )
+    if witnessed.status is not ReachabilityStatus.WITNESSED:
+        raise SystemExit(
+            "ERROR: genuine pinned producer variant was not witnessed: "
+            f"{event_name}: {witnessed}"
+        )
+
+    if branch.get("rng_draw_count") == 0:
+        deterministic = evaluate_deterministic_public_transition(
+            worker,
+            state=state,
+            side="p1",
+            step=step,
+        )
+        if deterministic.status is not ReachabilityStatus.WITNESSED:
+            raise SystemExit(
+                "ERROR: zero-draw producer variant was not deterministic witness: "
+                f"{event_name}: {deterministic}"
+            )
+
+
+def _assert_real_producer_variants(worker: HypotheticalSearchWorker) -> None:
+    _assert_real_producer_variant(
+        worker,
+        p1_choice="move thunderbolt +1, move protect",
+        event_name="-immune",
+    )
+    _assert_real_producer_variant(
+        worker,
+        p1_choice="move powerswap +1, move protect",
+        event_name="-swapboost",
+        expected_piece="atkspa",
+    )
+    _assert_real_producer_variant(
+        worker,
+        p1_choice="move psychup +1, move protect",
+        event_name="-copyboost",
+        expected_piece="[from]:move:psychup",
+    )
+    _assert_real_producer_variant(
+        worker,
+        p1_choice="move superfang +1, move protect",
+        event_name="-damage",
+        expected_piece="50/100y",
+    )
 
 
 def _active_hp(view: dict) -> tuple[tuple[float, ...], tuple[float, ...]]:
@@ -299,6 +502,49 @@ def main() -> None:
             move_entry.pop("pp")
             malformed_targets.append(("partial-move-variant", partial_move))
 
+        impossible_hp_condition = copy.deepcopy(deterministic_view)
+        impossible_hp_condition["public_event_delta"]["events"].append(
+            ["-damage", "p1a", "101/100"]
+        )
+        malformed_targets.append(
+            ("impossible-hp-condition", impossible_hp_condition)
+        )
+
+        overlong_crit = copy.deepcopy(deterministic_view)
+        overlong_crit["public_event_delta"]["events"].append(
+            ["-crit", "p1a", "extra"]
+        )
+        malformed_targets.append(("overlong-crit-event", overlong_crit))
+
+        called_without_provenance = copy.deepcopy(deterministic_view)
+        called_without_provenance["public_execution_delta"] = {
+            "turn": max(1, deterministic_view["turn"]),
+            "actions": [
+                {
+                    "side": "player",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "tackle",
+                    "source": "called",
+                    "provenance": [],
+                    "effects": [],
+                }
+            ],
+        }
+        malformed_targets.append(
+            ("called-without-provenance", called_without_provenance)
+        )
+
+        bad_request_condition = copy.deepcopy(deterministic_view)
+        bad_request = bad_request_condition.get("request")
+        bad_side = bad_request.get("side") if isinstance(bad_request, dict) else None
+        bad_roster = bad_side.get("pokemon") if isinstance(bad_side, dict) else None
+        if isinstance(bad_roster, list) and bad_roster:
+            bad_roster[0]["condition"] = "garbage"
+            malformed_targets.append(
+                ("malformed-request-condition", bad_request_condition)
+            )
+
         for label, malformed_target in malformed_targets:
             malformed_result = evaluate_deterministic_public_transition(
                 worker,
@@ -395,6 +641,8 @@ def main() -> None:
                 "ERROR: randomized mismatch gained negative authority: "
                 f"{randomized_mismatch}"
             )
+
+        _assert_real_producer_variants(worker)
 
         print("Pinned Showdown reachability authority smoke")
         print(f"Witness status: {witnessed.status.value}")
