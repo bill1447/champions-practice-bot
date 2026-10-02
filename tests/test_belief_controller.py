@@ -751,6 +751,7 @@ def test_collapse_diagnostic_can_confirm_rng_undersampling_without_mutating_rng(
     diagnostic = engine.diagnose_collapse(
         particles=particles,
         ai_choice="move ai",
+        resolved_opponent_choice="move human",
         previous_view={"turn": 1},
         view={
             "turn": 2,
@@ -795,6 +796,7 @@ def test_collapse_diagnostic_reports_exact_human_choice_illegal_in_particles() -
     diagnostic = engine.diagnose_collapse(
         particles=particles,
         ai_choice="move ai",
+        resolved_opponent_choice="move human",
         previous_view={"turn": 1},
         view={"turn": 2},
     )
