@@ -1708,6 +1708,7 @@ function resolveBranch(
   rngSeed = null,
   viewSide = null,
   previews = null,
+  includeRngDrawCount = false,
 ) {
   if (!state) {
     throw new Error("branch requires a serialized battle state");
@@ -1724,6 +1725,20 @@ function resolveBranch(
       throw new Error("rng_seed must be a string");
     }
     battle.resetRNG(rngSeed);
+  }
+
+  // Reachability may request proof that a transition consumed no simulator
+  // randomness. Instrument the lowest-level PRNG draw so random(), randomChance(),
+  // sample(), shuffle(), and direct PRNG users all flow through the same counter.
+  // This is branch-local instrumentation on a restored hypothetical Battle only.
+  let rngDrawCount = 0;
+  if (includeRngDrawCount) {
+    const rng = battle.prng.rng;
+    const originalNext = rng.next.bind(rng);
+    rng.next = () => {
+      rngDrawCount++;
+      return originalNext();
+    };
   }
 
   // Showdown mutates side.pokemon ordering during ordinary switches. Capture the
@@ -1769,6 +1784,9 @@ function resolveBranch(
     };
     response.view = playerView(battle, viewSide, effectivePreviews);
   }
+  if (includeRngDrawCount) {
+    response.rng_draw_count = rngDrawCount;
+  }
   battle.destroy();
   return response;
 }
@@ -1782,6 +1800,7 @@ function branchBattle(request) {
     request.rng_seed ?? null,
     request.view_side ?? null,
     request.previews ?? null,
+    request.include_rng_draw_count === true,
   );
 }
 
@@ -1809,6 +1828,7 @@ function branchMany(request) {
             branch.rng_seed ?? null,
             branch.view_side ?? null,
             branch.previews ?? null,
+            branch.include_rng_draw_count === true,
           ),
         };
       } catch (error) {
