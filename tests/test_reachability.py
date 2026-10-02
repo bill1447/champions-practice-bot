@@ -189,15 +189,18 @@ def _valid_public_view(spec: dict | None = None) -> dict:
                     "hp_percent": pokemon.get("hp_percent", 100),
                     "fainted": pokemon.get("fainted", False),
                     "status": pokemon.get("status"),
-                    "boosts": pokemon.get("boosts", {
-                    "atk": 0,
-                    "def": 0,
-                    "spa": 0,
-                    "spd": 0,
-                    "spe": 0,
-                    "accuracy": 0,
-                    "evasion": 0,
-                }),
+                    "boosts": pokemon.get(
+                        "boosts",
+                        {
+                            "atk": 0,
+                            "def": 0,
+                            "spa": 0,
+                            "spd": 0,
+                            "spe": 0,
+                            "accuracy": 0,
+                            "evasion": 0,
+                        },
+                    ),
                 }
             )
 
