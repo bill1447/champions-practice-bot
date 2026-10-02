@@ -29,6 +29,7 @@ from champions_practice.showdown_public_catalog import (
     CONDITION_IDS,
     ITEM_IDS,
     MOVE_CATEGORIES,
+    MOVE_DISPLAY_NAMES,
     MOVE_IDS,
     SPECIAL_EFFECT_IDS,
 )
@@ -467,12 +468,19 @@ def _to_id(value: object) -> str:
 
 
 def _display_move_id(value: object) -> str | None:
-    move_id = _to_id(value)
-    if move_id in MOVE_IDS:
-        return move_id
-    for special in ("hiddenpower", "return", "frustration"):
-        if move_id.startswith(special) and special in MOVE_IDS:
-            return special
+    if not isinstance(value, str) or not value:
+        return None
+    for move_id, display_name in MOVE_DISPLAY_NAMES.items():
+        if value == display_name:
+            return move_id
+
+    normalized = _to_id(value)
+    if normalized.startswith("hiddenpower") and value.startswith("Hidden Power "):
+        return "hiddenpower"
+    if normalized.startswith("return") and value.startswith("Return "):
+        return "return"
+    if normalized.startswith("frustration") and value.startswith("Frustration "):
+        return "frustration"
     return None
 
 
@@ -1802,15 +1810,18 @@ def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
     ordinary_keys = {"move", "id", "pp", "maxpp", "target", "disabled"}
 
     if keys == locked_keys:
+        if value["id"] == "recharge":
+            if value["move"] != "Recharge":
+                return _schema_error(path, "recharge must use its pinned display name")
+            return None
         if (
-            not isinstance(value["move"], str)
-            or not value["move"].strip()
-            or (
-                value["id"] != "recharge"
-                and not _known_move_id(value["id"])
-            )
+            not _known_move_id(value["id"])
+            or _display_move_id(value["move"]) != value["id"]
         ):
-            return _schema_error(path, "locked move entry has invalid move/id")
+            return _schema_error(
+                path,
+                "locked move display name/id must match pinned metadata",
+            )
         return None
 
     if keys == struggle_keys:
@@ -1832,10 +1843,13 @@ def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
             "move entry must be a pinned locked, Struggle, or ordinary variant",
         )
 
-    if not isinstance(value["move"], str) or not value["move"].strip():
-        return _schema_error(f"{path}.move", "must be a non-empty string")
     if not _known_move_id(value["id"]):
         return _schema_error(f"{path}.id", "must be a pinned move id")
+    if _display_move_id(value["move"]) != value["id"]:
+        return _schema_error(
+            f"{path}.move",
+            "must be the pinned public display name for its move id",
+        )
     if not _non_bool_int(value["pp"], minimum=0):
         return _schema_error(f"{path}.pp", "must be a non-negative integer")
     if not _non_bool_int(value["maxpp"], minimum=1):
