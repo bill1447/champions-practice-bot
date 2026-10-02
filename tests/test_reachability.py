@@ -189,7 +189,15 @@ def _valid_public_view(spec: dict | None = None) -> dict:
                     "hp_percent": pokemon.get("hp_percent", 100),
                     "fainted": pokemon.get("fainted", False),
                     "status": pokemon.get("status"),
-                    "boosts": pokemon.get("boosts", {}),
+                    "boosts": pokemon.get("boosts", {
+                    "atk": 0,
+                    "def": 0,
+                    "spa": 0,
+                    "spd": 0,
+                    "spe": 0,
+                    "accuracy": 0,
+                    "evasion": 0,
+                }),
                 }
             )
 
@@ -612,7 +620,7 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v2"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v3"
     assert public_reachability_observation_issue(_valid_public_view()) is None
 
 
@@ -823,7 +831,15 @@ def _nested_invalid_mutators():
                 "hp_percent": float("nan"),
                 "fainted": False,
                 "status": None,
-                "boosts": {},
+                "boosts": {
+                    "atk": 0,
+                    "def": 0,
+                    "spa": 0,
+                    "spd": 0,
+                    "spe": 0,
+                    "accuracy": 0,
+                    "evasion": 0,
+                },
                 "item": "",
                 "ability": "",
                 "moves": ["Thunderbolt"],
@@ -994,4 +1010,294 @@ def test_supported_canonical_mechanics_event_shapes_remain_valid(event):
     view = _valid_public_view()
     view["public_event_delta"]["events"] = [event]
 
+    assert public_reachability_observation_issue(view) is None
+
+
+def _v3_invalid_mutators():
+    def selected_slot_true(view):
+        view["opponent_last_actions"].append(
+            {"turn": 2, "slot": True, "move": "tackle", "target": 1}
+        )
+
+    def selected_slot_float(view):
+        view["opponent_last_actions"].append(
+            {"turn": 2, "slot": 1.0, "move": "tackle", "target": 1}
+        )
+
+    def selected_target_true(view):
+        view["opponent_last_actions"].append(
+            {"turn": 2, "slot": 1, "move": "tackle", "target": True}
+        )
+
+    def bad_damage_condition(view):
+        view["public_event_delta"]["events"].append(
+            ["-damage", "p1a", "garbage"]
+        )
+
+    def incomplete_mega(view):
+        view["public_event_delta"]["events"].append(
+            ["-mega", "p1a", "gardevoir"]
+        )
+
+    def bad_status_actor(view):
+        view["public_event_delta"]["events"].append(
+            ["-status", "banana", "brn"]
+        )
+
+    def bad_tag_payload(view):
+        view["public_event_delta"]["events"].append(
+            ["-damage", "p1a", "50/100", "[from]:!!!"]
+        )
+
+    def bad_forme_modifier(view):
+        view["public_event_delta"]["events"].append(
+            ["-formechange", "p1a", "eiscue", "not canonical !!!"]
+        )
+
+    def padded_hitcount(view):
+        view["public_event_delta"]["events"].append(
+            ["-hitcount", "p1a", "01"]
+        )
+
+    def bad_execution_provenance(view):
+        view["public_execution_delta"] = {
+            "turn": 2,
+            "actions": [
+                {
+                    "side": "player",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "tackle",
+                    "source": "called",
+                    "provenance": ["[from]:!!!"],
+                    "effects": [],
+                }
+            ],
+        }
+
+    def unknown_request_target(view):
+        view["request"] = {
+            "active": [
+                {
+                    "moves": [
+                        {
+                            "move": "Tackle",
+                            "id": "tackle",
+                            "pp": 35,
+                            "maxpp": 56,
+                            "target": "futureTarget",
+                            "disabled": False,
+                        }
+                    ]
+                }
+            ],
+            "side": {"name": "Player", "id": "p1", "pokemon": []},
+        }
+
+    def incomplete_boost_table(view):
+        boosts = {
+            "atk": 0,
+            "def": 0,
+            "spa": 0,
+            "spd": 0,
+            "spe": 0,
+            "accuracy": 0,
+            "evasion": 0,
+        }
+        boosts.pop("atk")
+        view["player"]["team"] = [
+            {
+                "species": "Pikachu",
+                "hp": 100,
+                "maxhp": 100,
+                "hp_percent": 100,
+                "fainted": False,
+                "status": None,
+                "boosts": boosts,
+                "item": "",
+                "ability": "",
+                "moves": ["Thunderbolt"],
+                "speed": 100,
+                "damaging_move_count": 1,
+                "active": False,
+            }
+        ]
+        view["request"] = {
+            "wait": True,
+            "side": {
+                "name": "Player",
+                "id": "p1",
+                "pokemon": [
+                    {
+                        "ident": "p1: Pikachu",
+                        "details": "Pikachu, L50",
+                        "condition": "100/100",
+                        "active": False,
+                        "stats": {
+                            "atk": 1,
+                            "def": 1,
+                            "spa": 1,
+                            "spd": 1,
+                            "spe": 1,
+                        },
+                        "moves": ["thunderbolt"],
+                        "baseAbility": "static",
+                        "item": "",
+                        "pokeball": "",
+                    }
+                ],
+            },
+        }
+
+    def inconsistent_roster(view):
+        boosts = {
+            "atk": 0,
+            "def": 0,
+            "spa": 0,
+            "spd": 0,
+            "spe": 0,
+            "accuracy": 0,
+            "evasion": 0,
+        }
+        view["request"] = {
+            "wait": True,
+            "side": {
+                "name": "Player",
+                "id": "p1",
+                "pokemon": [
+                    {
+                        "ident": "p1: Pikachu",
+                        "details": "Pikachu, L50",
+                        "condition": "100/100",
+                        "active": False,
+                        "stats": {
+                            "atk": 1,
+                            "def": 1,
+                            "spa": 1,
+                            "spd": 1,
+                            "spe": 1,
+                        },
+                        "moves": ["tackle"],
+                        "baseAbility": "static",
+                        "item": "",
+                        "pokeball": "",
+                    }
+                ],
+            },
+        }
+        view["player"]["team"] = []
+
+    return (
+        selected_slot_true,
+        selected_slot_float,
+        selected_target_true,
+        bad_damage_condition,
+        incomplete_mega,
+        bad_status_actor,
+        bad_tag_payload,
+        bad_forme_modifier,
+        padded_hitcount,
+        bad_execution_provenance,
+        unknown_request_target,
+        incomplete_boost_table,
+        inconsistent_roster,
+    )
+
+
+@pytest.mark.parametrize("mutator", _v3_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+def test_v3_invalid_expected_evidence_is_preflight_unsupported(mutator, evaluator):
+    expected = _valid_public_view({"marker": "wanted"})
+    mutator(expected)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", _valid_public_view({"marker": "wanted"}))},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+    assert worker.calls == 0
+
+
+@pytest.mark.parametrize("mutator", _v3_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+@pytest.mark.parametrize("signature_mode", ("matching", "mismatching"))
+def test_v3_invalid_worker_evidence_never_becomes_conclusive(
+    mutator,
+    evaluator,
+    signature_mode,
+):
+    expected = _valid_public_view({"marker": "wanted"})
+    returned = copy.deepcopy(expected)
+    if signature_mode == "mismatching":
+        returned["winner"] = "different-winner"
+    mutator(returned)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", returned)},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-heal", "p1", "49/100", "[from]:move:revivalblessing"],
+        ["-heal", "p2", "117/235", "[from]:move:revivalblessing"],
+        ["-swapsideconditions"],
+        ["-ohko"],
+        ["-mega", "p1a", "gardevoirmega", "gardevoirite"],
+    ),
+)
+def test_v3_genuine_producer_event_variants_are_supported(event):
+    view = _valid_public_view()
+    view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None

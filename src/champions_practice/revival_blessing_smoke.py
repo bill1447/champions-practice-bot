@@ -6,6 +6,13 @@ from dataclasses import dataclass
 
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.observation_beliefs import BeliefParticle, condition_particles
+from champions_practice.reachability import (
+    PublicReachabilityStep,
+    ReachabilityStatus,
+    evaluate_deterministic_public_transition,
+    public_reachability_observation_issue,
+    witness_public_observation_sequence,
+)
 from champions_practice.search_worker import (
     FORCED_WAIT_CHOICE,
     ShowdownSearchWorker,
@@ -279,6 +286,44 @@ def _run_case(
             p2_choice=p2_choice,
         )
         actual_view = worker.session_view(session_id, side="p2")["view"]
+        issue = public_reachability_observation_issue(actual_view)
+        if issue is not None:
+            raise SystemExit(
+                f"ERROR: {label} genuine revival view failed reachability schema: "
+                f"{issue}"
+            )
+
+        reachability_step = PublicReachabilityStep(
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+            expected_public_view=actual_view,
+            rng_seeds=(None,),
+        )
+        sequential = witness_public_observation_sequence(
+            worker,
+            state=pre_selection_state,
+            side="p2",
+            steps=(reachability_step,),
+            previews=previews,
+        )
+        if sequential.status is not ReachabilityStatus.WITNESSED:
+            raise SystemExit(
+                f"ERROR: {label} genuine revival view was not witnessed: "
+                f"{sequential}"
+            )
+        deterministic = evaluate_deterministic_public_transition(
+            worker,
+            state=pre_selection_state,
+            side="p2",
+            step=reachability_step,
+            previews=previews,
+        )
+        if deterministic.status is not ReachabilityStatus.WITNESSED:
+            raise SystemExit(
+                f"ERROR: {label} genuine zero-draw revival view was not witnessed: "
+                f"{deterministic}"
+            )
+
         reviver_after = worker.session_view(
             session_id,
             side=reviver_side,

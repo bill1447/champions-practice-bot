@@ -226,6 +226,35 @@ def main() -> None:
         )
         malformed_targets.append(("impossible-selected-action", impossible_action))
 
+        boolean_action = copy.deepcopy(deterministic_view)
+        boolean_action["opponent_last_actions"].append(
+            {
+                "turn": max(1, deterministic_view["turn"]),
+                "slot": True,
+                "move": "tackle",
+                "target": 1,
+            }
+        )
+        malformed_targets.append(("boolean-selected-slot", boolean_action))
+
+        malformed_condition = copy.deepcopy(deterministic_view)
+        malformed_condition["public_event_delta"]["events"].append(
+            ["-damage", "p1a", "garbage"]
+        )
+        malformed_targets.append(("malformed-damage-condition", malformed_condition))
+
+        incomplete_mega = copy.deepcopy(deterministic_view)
+        incomplete_mega["public_event_delta"]["events"].append(
+            ["-mega", "p1a", "gardevoir"]
+        )
+        malformed_targets.append(("incomplete-mega-event", incomplete_mega))
+
+        padded_hitcount = copy.deepcopy(deterministic_view)
+        padded_hitcount["public_event_delta"]["events"].append(
+            ["-hitcount", "p1a", "01"]
+        )
+        malformed_targets.append(("padded-hitcount", padded_hitcount))
+
         nonfinite_hp = copy.deepcopy(deterministic_view)
         nonfinite_hp["player"]["team"][0]["hp_percent"] = float("nan")
         malformed_targets.append(("nonfinite-hp", nonfinite_hp))
