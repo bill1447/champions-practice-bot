@@ -427,6 +427,8 @@ _START_END_MOVE_EFFECTS = frozenset(
         "move:thundercage",
         "move:whirlpool",
         "move:wrap",
+        "move:gmaxcentiferno",
+        "move:gmaxsandblast",
     }
 )
 _START_END_PLAIN_EFFECTS = frozenset(
@@ -466,6 +468,18 @@ _START_END_PLAIN_EFFECTS = frozenset(
         "throatchop",
         "torment",
         "uproar",
+        "bind",
+        "clamp",
+        "firespin",
+        "gmaxcentiferno",
+        "gmaxsandblast",
+        "infestation",
+        "magmastorm",
+        "sandtomb",
+        "snaptrap",
+        "thundercage",
+        "whirlpool",
+        "wrap",
     }
 )
 _SINGLE_TURN_EFFECT_IDENTITIES = frozenset(
@@ -1410,11 +1424,30 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         effect = value[2]
         tail = value[3:]
 
-        if effect in {"typechange", "typeadd"}:
+        if effect == "typechange":
+            # Reflect Type is the one pinned form that exposes only provenance;
+            # ordinary type changes expose the resulting type payload first.
+            if tail and _source_modifier(tail[0]):
+                parts = _tagged_modifier_parts(tail[0])
+                if (
+                    parts is None
+                    or parts[1] != "move:reflecttype"
+                ):
+                    return _schema_error(
+                        f"{path}[3]",
+                        "typechange provenance-only form must be Reflect Type",
+                    )
+                return _event_modifier_tail(
+                    tail,
+                    path=f"{path}.modifiers",
+                    allow_from=True,
+                    allow_of=True,
+                    markers={"silent"},
+                )
             if not tail or not _type_payload(tail[0]):
                 return _schema_error(
                     f"{path}[3]",
-                    "must be an exact one- or two-type producer payload",
+                    "must expose the pinned resulting type payload",
                 )
             return _event_modifier_tail(
                 tail[1:],
@@ -1422,6 +1455,77 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 allow_from=True,
                 allow_of=True,
                 markers={"silent"},
+            )
+
+        if effect == "typeadd":
+            if not tail or not _type_payload(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "must expose the pinned added-type payload",
+                )
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+                markers={"silent"},
+            )
+
+        if event == "-start" and effect == "charge":
+            if not tail or not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "Charge producer payload must identify the active move",
+                )
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+            )
+
+        if event == "-start" and effect == "disable":
+            if not tail or not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "Disable producer payload must identify the disabled move",
+                )
+            return _event_modifier_tail(
+                tail[1:],
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+            )
+
+        if event == "-start" and effect == "mimic":
+            if len(tail) != 1 or not _known_public_move_id(tail[0]):
+                return _schema_error(
+                    f"{path}[3]",
+                    "Mimic producer payload must identify the copied move",
+                )
+            return None
+
+        if event == "-start" and effect == "dynamax":
+            if tail not in ([], ["gmax"]):
+                return _schema_error(
+                    path,
+                    "Dynamax producer payload is empty or exact G-Max marker",
+                )
+            return None
+
+        if effect == "confusion":
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                allow_from=True,
+                allow_of=True,
+                markers={"fatigue"},
+            )
+
+        if event == "-start" and effect == "uproar":
+            return _event_modifier_tail(
+                tail,
+                path=f"{path}.modifiers",
+                markers={"upkeep"},
             )
 
         if event == "-start" and re.fullmatch(r"stockpile[1-3]", effect):
