@@ -7,6 +7,7 @@ from champions_practice.reachability import (
     ReachabilityCoverage,
     ReachabilityResult,
     ReachabilityStatus,
+    evaluate_deterministic_public_transition,
     witness_public_observation_sequence,
 )
 from champions_practice.search_worker import ShowdownRequestError
@@ -152,10 +153,18 @@ def test_coverage_rejects_duplicate_randomness_domains():
 
 
 class _FakeReachabilityWorker:
-    def __init__(self, outcomes=None, *, timeout=False, rejected_nodes=()):
+    def __init__(
+        self,
+        outcomes=None,
+        *,
+        timeout=False,
+        rejected_nodes=(),
+        rng_draw_counts=None,
+    ):
         self.outcomes = outcomes or {}
         self.timeout = timeout
         self.rejected_nodes = set(rejected_nodes)
+        self.rng_draw_counts = rng_draw_counts or {}
         self.calls = 0
 
     def branch_many(self, *, state, branches):
@@ -171,13 +180,14 @@ class _FakeReachabilityWorker:
         for index, branch in enumerate(branches):
             key = (state["node"], branch.get("rng_seed"))
             next_node, view = self.outcomes[key]
-            resolved.append(
-                {
-                    "index": index,
-                    "state": {"node": next_node},
-                    "view": view,
-                }
-            )
+            result = {
+                "index": index,
+                "state": {"node": next_node},
+                "view": view,
+            }
+            if branch.get("include_rng_draw_count") is True:
+                result["rng_draw_count"] = self.rng_draw_counts.get(key, 0)
+            resolved.append(result)
         return resolved
 
 
@@ -386,3 +396,131 @@ def test_rejected_parent_path_does_not_block_a_different_sequential_witness():
     assert result.status is ReachabilityStatus.WITNESSED
     assert result.establishes_reachability
     assert not result.establishes_impossibility
+
+
+
+def test_zero_draw_mismatch_is_exhaustively_disproved():
+    target = {"turn": 2, "marker": "wanted"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("done", {"turn": 2, "marker": "actual"}),
+        },
+        rng_draw_counts={("root", "seed-a"): 0},
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=_public_step(target),
+    )
+
+    assert result.status is ReachabilityStatus.EXHAUSTIVELY_DISPROVED
+    assert result.establishes_impossibility
+    assert result.coverage is not None
+    assert result.coverage.randomness_domains == ()
+    assert result.coverage.randomness_exhaustive
+    assert result.coverage.sequential_context_complete
+
+
+def test_zero_draw_match_is_still_a_positive_witness():
+    target = {"turn": 2, "marker": "wanted"}
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", target)},
+        rng_draw_counts={("root", "seed-a"): 0},
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        step=_public_step(target),
+    )
+
+    assert result.status is ReachabilityStatus.WITNESSED
+    assert result.establishes_reachability
+    assert not result.establishes_impossibility
+    assert result.coverage is not None
+    assert result.coverage.randomness_exhaustive
+
+
+def test_randomized_mismatch_remains_unresolved():
+    target = {"turn": 2, "marker": "wanted"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("done", {"turn": 2, "marker": "actual"}),
+        },
+        rng_draw_counts={("root", "seed-a"): 3},
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=_public_step(target),
+    )
+
+    assert result.status is ReachabilityStatus.UNRESOLVED
+    assert not result.establishes_impossibility
+    assert result.coverage is not None
+    assert result.coverage.randomness_domains == ("showdown-prng-draw",)
+    assert not result.coverage.randomness_exhaustive
+
+
+def test_randomized_match_remains_a_valid_positive_witness():
+    target = {"turn": 2, "marker": "wanted"}
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", target)},
+        rng_draw_counts={("root", "seed-a"): 2},
+    )
+
+    result = evaluate_deterministic_public_transition(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        step=_public_step(target),
+    )
+
+    assert result.status is ReachabilityStatus.WITNESSED
+    assert result.establishes_reachability
+    assert not result.establishes_impossibility
+    assert result.coverage is not None
+    assert not result.coverage.randomness_exhaustive
+
+
+def test_deterministic_disproof_requires_exactly_one_seed():
+    with pytest.raises(ValueError, match="exactly one"):
+        evaluate_deterministic_public_transition(
+            _FakeReachabilityWorker(),
+            state={"node": "root"},
+            side="p1",
+            step=_public_step(
+                {"turn": 2},
+                seeds=("seed-a", "seed-b"),
+            ),
+        )
+
+
+def test_deterministic_probe_requires_rng_draw_metadata():
+    target = {"turn": 2}
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", target)}
+    )
+
+    original_branch_many = worker.branch_many
+
+    def without_metadata(*, state, branches):
+        result = original_branch_many(state=state, branches=branches)
+        for branch in result:
+            branch.pop("rng_draw_count", None)
+        return result
+
+    worker.branch_many = without_metadata
+
+    with pytest.raises(RuntimeError, match="PRNG draw count"):
+        evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=_public_step(target),
+        )

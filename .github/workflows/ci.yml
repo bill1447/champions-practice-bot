@@ -162,7 +162,7 @@ jobs:
         run: .\recovery-stat-proposal-smoke.ps1
 
 
-      - name: Mechanics-authoritative reachability witness smoke test
+      - name: Mechanics-authoritative reachability authority smoke test
         shell: pwsh
         run: .\reachability-smoke.ps1
 

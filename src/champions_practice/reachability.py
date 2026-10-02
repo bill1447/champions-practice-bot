@@ -493,3 +493,131 @@ def witness_public_observation_sequence(
         paths = next_paths
 
     raise AssertionError("reachability sequence ended without a typed result")
+
+
+
+def evaluate_deterministic_public_transition(
+    worker: ReachabilityWorker,
+    *,
+    state: dict[str, Any],
+    side: str,
+    step: PublicReachabilityStep,
+    previews: dict[str, list[str]] | None = None,
+) -> ReachabilityResult:
+    """Evaluate one public transition with zero-draw negative authority.
+
+    A matching Showdown branch is still a positive witness regardless of how much
+    RNG it consumes. A mismatch becomes EXHAUSTIVELY_DISPROVED only when the
+    pinned Showdown branch reports zero low-level PRNG draws for the complete
+    transition. Any transition that consumes one or more draws remains UNRESOLVED:
+    one sampled seed is not exhaustive randomness coverage.
+    """
+
+    if side not in {"p1", "p2"}:
+        raise ValueError("reachability side must be p1 or p2")
+    if not isinstance(state, dict) or not state:
+        raise ValueError("reachability requires a serialized Showdown state")
+    if len(step.rng_seeds) != 1:
+        raise ValueError(
+            "deterministic reachability requires exactly one configured RNG seed"
+        )
+
+    unsupported = _public_target_unsupported(step.expected_public_view)
+    if unsupported:
+        return ReachabilityResult.unsupported(
+            reason=(
+                "transition contains unsupported public mechanics evidence: "
+                f"{', '.join(unsupported)}"
+            )
+        )
+
+    fingerprint = _probe_context_fingerprint(
+        state=state,
+        side=side,
+        steps=(step,),
+        previews=previews,
+        max_branches=1,
+    )
+    seed = step.rng_seeds[0]
+    branch: dict[str, Any] = {
+        "p1_choice": step.p1_choice,
+        "p2_choice": step.p2_choice,
+        "include_state": True,
+        "view_side": side,
+        "rng_seed": seed,
+        "include_rng_draw_count": True,
+    }
+    if previews is not None:
+        branch["previews"] = previews
+
+    try:
+        resolved = worker.branch_many(
+            state=state,
+            branches=[branch],
+        )
+    except TimeoutError:
+        return ReachabilityResult.unresolved(
+            reason="Showdown deterministic reachability probe timed out"
+        )
+    except ShowdownRequestError as error:
+        if error.choice_rejected:
+            return ReachabilityResult.unresolved(
+                reason="exact transition command was rejected by Showdown"
+            )
+        raise
+
+    if len(resolved) != 1 or resolved[0].get("index") != 0:
+        raise RuntimeError(
+            "deterministic reachability worker returned an invalid branch batch"
+        )
+    branch_result = resolved[0]
+    public_view = branch_result.get("view")
+    child_state = branch_result.get("state")
+    draw_count = branch_result.get("rng_draw_count")
+    if not isinstance(public_view, dict) or not isinstance(child_state, dict):
+        raise RuntimeError(
+            "deterministic reachability worker omitted exact state or public view"
+        )
+    if not isinstance(draw_count, int) or isinstance(draw_count, bool) or draw_count < 0:
+        raise RuntimeError(
+            "deterministic reachability worker omitted a valid PRNG draw count"
+        )
+
+    wanted = public_observation_signature(step.expected_public_view)
+    observed = public_observation_signature(public_view)
+    randomness_domains = () if draw_count == 0 else ("showdown-prng-draw",)
+    coverage = ReachabilityCoverage(
+        sequential_context_fingerprint=fingerprint,
+        transitions_covered=1,
+        outcomes_examined=1,
+        randomness_domains=randomness_domains,
+        randomness_exhaustive=draw_count == 0,
+        sequential_context_complete=True,
+    )
+
+    if observed == wanted:
+        witness_id = "sha256:" + _reachability_hash(
+            {
+                "context": fingerprint,
+                "rng_seed": seed,
+                "rng_draw_count": draw_count,
+                "observed_public_signature": observed,
+            }
+        )
+        return ReachabilityResult.witnessed(
+            coverage=coverage,
+            witness_ids=(witness_id,),
+        )
+
+    if draw_count == 0:
+        return ReachabilityResult.exhaustively_disproved(
+            coverage=coverage,
+        )
+
+    return ReachabilityResult.unresolved(
+        reason=(
+            "Showdown branch mismatched after consuming "
+            f"{draw_count} PRNG draw(s); one sampled seed is not exhaustive"
+        ),
+        coverage=coverage,
+    )
