@@ -4573,3 +4573,13 @@ PRIMAL_ITEM_IDS = frozenset(
         "redorb",
     }
 )
+
+FIELD_ACTIVATE_IDENTITIES = frozenset(
+    {
+        "deltastream",
+        "move:fairylock",
+        "move:iondeluge",
+        "move:perishsong",
+        "move:teatime",
+    }
+)
