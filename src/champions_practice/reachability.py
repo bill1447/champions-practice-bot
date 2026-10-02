@@ -24,6 +24,9 @@ from champions_practice.observation_beliefs import public_observation_signature
 from champions_practice.search_worker import ShowdownRequestError
 
 
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v1"
+
+
 class ReachabilityStatus(str, Enum):
     """Authority level of one mechanics-reachability query."""
 
@@ -232,6 +235,559 @@ class PublicReachabilityStep:
             raise ValueError("RNG samples must be non-empty strings or None")
 
 
+def _schema_error(path: str, message: str) -> str:
+    return f"{path}: {message}"
+
+
+def _exact_keys(
+    value: dict[str, Any],
+    *,
+    path: str,
+    keys: set[str],
+) -> str | None:
+    actual = set(value)
+    missing = sorted(keys - actual)
+    extra = sorted(actual - keys)
+    if missing:
+        return _schema_error(path, f"missing required field(s): {', '.join(missing)}")
+    if extra:
+        return _schema_error(path, f"unexpected field(s): {', '.join(extra)}")
+    return None
+
+
+def _non_bool_int(value: object, *, minimum: int | None = None) -> bool:
+    if not isinstance(value, int) or isinstance(value, bool):
+        return False
+    return minimum is None or value >= minimum
+
+
+def _number(value: object) -> bool:
+    return (
+        isinstance(value, (int, float))
+        and not isinstance(value, bool)
+    )
+
+
+def _string_list(
+    value: object,
+    *,
+    allow_empty_strings: bool = False,
+) -> bool:
+    return isinstance(value, list) and all(
+        isinstance(item, str)
+        and (allow_empty_strings or bool(item.strip()))
+        for item in value
+    )
+
+
+def _boosts_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    for stat, amount in value.items():
+        if not isinstance(stat, str) or not stat.strip():
+            return _schema_error(path, "boost keys must be non-empty strings")
+        if not _non_bool_int(amount):
+            return _schema_error(f"{path}.{stat}", "boost must be an integer")
+    return None
+
+
+def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    issue = _exact_keys(
+        value,
+        path=path,
+        keys={
+            "species",
+            "hp",
+            "maxhp",
+            "hp_percent",
+            "fainted",
+            "status",
+            "boosts",
+            "item",
+            "ability",
+            "moves",
+            "speed",
+            "damaging_move_count",
+            "active",
+        },
+    )
+    if issue:
+        return issue
+    if not isinstance(value["species"], str) or not value["species"].strip():
+        return _schema_error(f"{path}.species", "must be a non-empty string")
+    for field in ("hp", "maxhp", "speed", "damaging_move_count"):
+        if not _non_bool_int(value[field], minimum=0):
+            return _schema_error(f"{path}.{field}", "must be a non-negative integer")
+    if not _number(value["hp_percent"]):
+        return _schema_error(f"{path}.hp_percent", "must be numeric")
+    if not isinstance(value["fainted"], bool):
+        return _schema_error(f"{path}.fainted", "must be boolean")
+    if value["status"] is not None and not isinstance(value["status"], str):
+        return _schema_error(f"{path}.status", "must be a string or null")
+    issue = _boosts_schema_issue(value["boosts"], path=f"{path}.boosts")
+    if issue:
+        return issue
+    for field in ("item", "ability"):
+        if value[field] is not None and not isinstance(value[field], str):
+            return _schema_error(f"{path}.{field}", "must be a string or null")
+    if not _string_list(value["moves"]):
+        return _schema_error(f"{path}.moves", "must be a list of non-empty strings")
+    if not isinstance(value["active"], bool):
+        return _schema_error(f"{path}.active", "must be boolean")
+    return None
+
+
+def _public_active_schema_issue(value: object, *, path: str) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary or null")
+    issue = _exact_keys(
+        value,
+        path=path,
+        keys={
+            "species",
+            "base_species",
+            "hp_percent",
+            "fainted",
+            "status",
+            "boosts",
+        },
+    )
+    if issue:
+        return issue
+    for field in ("species", "base_species"):
+        if not isinstance(value[field], str) or not value[field].strip():
+            return _schema_error(f"{path}.{field}", "must be a non-empty string")
+    if not _number(value["hp_percent"]):
+        return _schema_error(f"{path}.hp_percent", "must be numeric")
+    if not isinstance(value["fainted"], bool):
+        return _schema_error(f"{path}.fainted", "must be boolean")
+    if value["status"] is not None and not isinstance(value["status"], str):
+        return _schema_error(f"{path}.status", "must be a string or null")
+    return _boosts_schema_issue(value["boosts"], path=f"{path}.boosts")
+
+
+def _revealed_pokemon_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    issue = _exact_keys(
+        value,
+        path=path,
+        keys={
+            "species",
+            "moves",
+            "items",
+            "abilities",
+            "hp_percent",
+            "status",
+            "fainted",
+            "seen",
+        },
+    )
+    if issue:
+        return issue
+    if not isinstance(value["species"], str) or not value["species"].strip():
+        return _schema_error(f"{path}.species", "must be a non-empty string")
+    for field in ("moves", "items", "abilities"):
+        if not _string_list(value[field]):
+            return _schema_error(f"{path}.{field}", "must be a list of non-empty strings")
+    if value["hp_percent"] is not None and not _number(value["hp_percent"]):
+        return _schema_error(f"{path}.hp_percent", "must be numeric or null")
+    if value["status"] is not None and not isinstance(value["status"], str):
+        return _schema_error(f"{path}.status", "must be a string or null")
+    for field in ("fainted", "seen"):
+        if not isinstance(value[field], bool):
+            return _schema_error(f"{path}.{field}", "must be boolean")
+    return None
+
+
+def _opponent_action_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    issue = _exact_keys(
+        value,
+        path=path,
+        keys={"turn", "slot", "move", "target"},
+    )
+    if issue:
+        return issue
+    if not _non_bool_int(value["turn"], minimum=1):
+        return _schema_error(f"{path}.turn", "must be a positive integer")
+    if not _non_bool_int(value["slot"], minimum=1):
+        return _schema_error(f"{path}.slot", "must be a positive integer")
+    if not isinstance(value["move"], str) or not value["move"].strip():
+        return _schema_error(f"{path}.move", "must be a non-empty string")
+    if value["target"] is not None and not _non_bool_int(value["target"]):
+        return _schema_error(f"{path}.target", "must be an integer or null")
+    return None
+
+
+def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
+    if not isinstance(value, dict):
+        return _schema_error(path, "must be a dictionary")
+    outcome = value.get("outcome")
+    if outcome == "executed":
+        keys = {
+            "side",
+            "slot",
+            "outcome",
+            "move",
+            "source",
+            "provenance",
+            "effects",
+        }
+    elif outcome == "prevented":
+        keys = {
+            "side",
+            "slot",
+            "outcome",
+            "reason",
+            "attempted_move",
+            "effects",
+        }
+    else:
+        return _schema_error(f"{path}.outcome", "must be executed or prevented")
+    issue = _exact_keys(value, path=path, keys=keys)
+    if issue:
+        return issue
+    if value["side"] not in {"player", "opponent"}:
+        return _schema_error(f"{path}.side", "must be player or opponent")
+    if not _non_bool_int(value["slot"], minimum=1):
+        return _schema_error(f"{path}.slot", "must be a positive integer")
+    if not _string_list(value["effects"]):
+        return _schema_error(f"{path}.effects", "must be a list of non-empty strings")
+    if outcome == "executed":
+        if not isinstance(value["move"], str) or not value["move"].strip():
+            return _schema_error(f"{path}.move", "must be a non-empty string")
+        if value["source"] not in {"selected", "called"}:
+            return _schema_error(f"{path}.source", "must be selected or called")
+        if not _string_list(value["provenance"]):
+            return _schema_error(
+                f"{path}.provenance",
+                "must be a list of non-empty strings",
+            )
+    else:
+        if not isinstance(value["reason"], str) or not value["reason"].strip():
+            return _schema_error(f"{path}.reason", "must be a non-empty string")
+        if (
+            value["attempted_move"] is not None
+            and (
+                not isinstance(value["attempted_move"], str)
+                or not value["attempted_move"].strip()
+            )
+        ):
+            return _schema_error(
+                f"{path}.attempted_move",
+                "must be a non-empty string or null",
+            )
+    return None
+
+
+def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
+    execution = view.get("public_execution_delta")
+    if not isinstance(execution, dict):
+        return _schema_error("$.public_execution_delta", "must be a dictionary")
+    issue = _exact_keys(
+        execution,
+        path="$.public_execution_delta",
+        keys={"turn", "actions"},
+    )
+    if issue:
+        return issue
+    if execution["turn"] is not None and not _non_bool_int(
+        execution["turn"],
+        minimum=1,
+    ):
+        return _schema_error(
+            "$.public_execution_delta.turn",
+            "must be a positive integer or null",
+        )
+    if not isinstance(execution["actions"], list):
+        return _schema_error("$.public_execution_delta.actions", "must be a list")
+    for index, action in enumerate(execution["actions"]):
+        issue = _execution_action_schema_issue(
+            action,
+            path=f"$.public_execution_delta.actions[{index}]",
+        )
+        if issue:
+            return issue
+
+    mechanics = view.get("public_event_delta")
+    if not isinstance(mechanics, dict):
+        return _schema_error("$.public_event_delta", "must be a dictionary")
+    issue = _exact_keys(
+        mechanics,
+        path="$.public_event_delta",
+        keys={"turn", "events", "unsupported"},
+    )
+    if issue:
+        return issue
+    if mechanics["turn"] is not None and not _non_bool_int(
+        mechanics["turn"],
+        minimum=1,
+    ):
+        return _schema_error(
+            "$.public_event_delta.turn",
+            "must be a positive integer or null",
+        )
+    events = mechanics["events"]
+    if not isinstance(events, list):
+        return _schema_error("$.public_event_delta.events", "must be a list")
+    for index, event in enumerate(events):
+        if not isinstance(event, list) or not event:
+            return _schema_error(
+                f"$.public_event_delta.events[{index}]",
+                "must be a non-empty list",
+            )
+        if not all(isinstance(part, str) and part.strip() for part in event):
+            return _schema_error(
+                f"$.public_event_delta.events[{index}]",
+                "entries must be non-empty strings",
+            )
+    unsupported = mechanics["unsupported"]
+    if not isinstance(unsupported, list):
+        return _schema_error(
+            "$.public_event_delta.unsupported",
+            "must be a list",
+        )
+    if not all(
+        isinstance(item, str) and item.strip()
+        for item in unsupported
+    ):
+        return _schema_error(
+            "$.public_event_delta.unsupported",
+            "entries must be non-empty strings",
+        )
+    if len(set(unsupported)) != len(unsupported):
+        return _schema_error(
+            "$.public_event_delta.unsupported",
+            "entries must be unique",
+        )
+    return None
+
+
+def _request_schema_issue(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, dict):
+        return _schema_error("$.request", "must be a dictionary or null")
+    side = value.get("side")
+    if not isinstance(side, dict) or not isinstance(side.get("pokemon"), list):
+        return _schema_error(
+            "$.request.side.pokemon",
+            "must be present as a list",
+        )
+    request_kinds = 0
+    if value.get("teamPreview") is True:
+        request_kinds += 1
+    if value.get("wait") is True:
+        request_kinds += 1
+    if "forceSwitch" in value:
+        if not isinstance(value["forceSwitch"], list) or not all(
+            isinstance(item, bool) for item in value["forceSwitch"]
+        ):
+            return _schema_error(
+                "$.request.forceSwitch",
+                "must be a list of booleans",
+            )
+        request_kinds += 1
+    if "active" in value:
+        if not isinstance(value["active"], list):
+            return _schema_error("$.request.active", "must be a list")
+        request_kinds += 1
+    if request_kinds != 1:
+        return _schema_error(
+            "$.request",
+            "must identify exactly one request kind",
+        )
+    return None
+
+
+def public_reachability_observation_issue(
+    view: object,
+) -> str | None:
+    """Return the first authority-schema failure for a public reachability view."""
+
+    if not isinstance(view, dict):
+        return _schema_error("$", "public observation must be a dictionary")
+    issue = _exact_keys(
+        view,
+        path="$",
+        keys={
+            "turn",
+            "phase",
+            "opponent_last_actions",
+            "public_execution_delta",
+            "public_event_delta",
+            "ended",
+            "winner",
+            "field",
+            "request",
+            "player",
+            "opponent",
+        },
+    )
+    if issue:
+        return issue
+    if not _non_bool_int(view["turn"], minimum=0):
+        return _schema_error("$.turn", "must be a non-negative integer")
+    if view["phase"] not in {"", "teampreview", "move", "switch", "ended"}:
+        return _schema_error("$.phase", "contains an unknown phase")
+    if not isinstance(view["ended"], bool):
+        return _schema_error("$.ended", "must be boolean")
+    if view["winner"] is not None and not isinstance(view["winner"], str):
+        return _schema_error("$.winner", "must be a string or null")
+
+    opponent_actions = view["opponent_last_actions"]
+    if not isinstance(opponent_actions, list):
+        return _schema_error("$.opponent_last_actions", "must be a list")
+    for index, action in enumerate(opponent_actions):
+        issue = _opponent_action_schema_issue(
+            action,
+            path=f"$.opponent_last_actions[{index}]",
+        )
+        if issue:
+            return issue
+
+    issue = _transition_ledger_schema_issue(view)
+    if issue:
+        return issue
+
+    field = view["field"]
+    if not isinstance(field, dict):
+        return _schema_error("$.field", "must be a dictionary")
+    issue = _exact_keys(
+        field,
+        path="$.field",
+        keys={"weather", "terrain", "pseudo_weather"},
+    )
+    if issue:
+        return issue
+    for name in ("weather", "terrain"):
+        if field[name] is not None and not isinstance(field[name], str):
+            return _schema_error(f"$.field.{name}", "must be a string or null")
+    if not _string_list(field["pseudo_weather"]):
+        return _schema_error(
+            "$.field.pseudo_weather",
+            "must be a list of non-empty strings",
+        )
+
+    issue = _request_schema_issue(view["request"])
+    if issue:
+        return issue
+
+    player = view["player"]
+    if not isinstance(player, dict):
+        return _schema_error("$.player", "must be a dictionary")
+    issue = _exact_keys(
+        player,
+        path="$.player",
+        keys={"name", "active", "active_details", "side_conditions", "team"},
+    )
+    if issue:
+        return issue
+    if not isinstance(player["name"], str):
+        return _schema_error("$.player.name", "must be a string")
+    if not isinstance(player["active"], list) or not all(
+        item is None or isinstance(item, str)
+        for item in player["active"]
+    ):
+        return _schema_error(
+            "$.player.active",
+            "must be a list of strings or nulls",
+        )
+    if not isinstance(player["active_details"], list):
+        return _schema_error("$.player.active_details", "must be a list")
+    if len(player["active"]) != len(player["active_details"]):
+        return _schema_error(
+            "$.player.active_details",
+            "must align with player.active",
+        )
+    for index, pokemon in enumerate(player["active_details"]):
+        if pokemon is None:
+            continue
+        issue = _own_pokemon_schema_issue(
+            pokemon,
+            path=f"$.player.active_details[{index}]",
+        )
+        if issue:
+            return issue
+    if not _string_list(player["side_conditions"]):
+        return _schema_error(
+            "$.player.side_conditions",
+            "must be a list of non-empty strings",
+        )
+    if not isinstance(player["team"], list):
+        return _schema_error("$.player.team", "must be a list")
+    for index, pokemon in enumerate(player["team"]):
+        issue = _own_pokemon_schema_issue(
+            pokemon,
+            path=f"$.player.team[{index}]",
+        )
+        if issue:
+            return issue
+
+    opponent = view["opponent"]
+    if not isinstance(opponent, dict):
+        return _schema_error("$.opponent", "must be a dictionary")
+    issue = _exact_keys(
+        opponent,
+        path="$.opponent",
+        keys={
+            "name",
+            "preview_species",
+            "side_conditions",
+            "active",
+            "revealed",
+        },
+    )
+    if issue:
+        return issue
+    if not isinstance(opponent["name"], str):
+        return _schema_error("$.opponent.name", "must be a string")
+    for name in ("preview_species", "side_conditions"):
+        if not _string_list(opponent[name]):
+            return _schema_error(
+                f"$.opponent.{name}",
+                "must be a list of non-empty strings",
+            )
+    if not isinstance(opponent["active"], list):
+        return _schema_error("$.opponent.active", "must be a list")
+    for index, pokemon in enumerate(opponent["active"]):
+        issue = _public_active_schema_issue(
+            pokemon,
+            path=f"$.opponent.active[{index}]",
+        )
+        if issue:
+            return issue
+    if not isinstance(opponent["revealed"], list):
+        return _schema_error("$.opponent.revealed", "must be a list")
+    for index, pokemon in enumerate(opponent["revealed"]):
+        issue = _revealed_pokemon_schema_issue(
+            pokemon,
+            path=f"$.opponent.revealed[{index}]",
+        )
+        if issue:
+            return issue
+    return None
+
+
+def _observation_unsupported_result(
+    *,
+    role: str,
+    issue: str,
+) -> ReachabilityResult:
+    return ReachabilityResult.unsupported(
+        reason=(
+            f"{role} public observation does not satisfy "
+            f"{PUBLIC_OBSERVATION_SCHEMA_VERSION}: {issue}"
+        )
+    )
+
+
 def _reachability_hash(value: object) -> str:
     payload = json.dumps(
         value,
@@ -266,6 +822,7 @@ def _probe_context_fingerprint(
 ) -> str:
     return "sha256:" + _reachability_hash(
         {
+            "observation_schema": PUBLIC_OBSERVATION_SCHEMA_VERSION,
             "state": state,
             "side": side,
             "previews": previews,
@@ -332,6 +889,14 @@ def witness_public_observation_sequence(
         raise ValueError("max_branches must be positive")
 
     for index, step in enumerate(steps):
+        schema_issue = public_reachability_observation_issue(
+            step.expected_public_view
+        )
+        if schema_issue:
+            return _observation_unsupported_result(
+                role=f"expected transition {index + 1}",
+                issue=schema_issue,
+            )
         unsupported = _public_target_unsupported(step.expected_public_view)
         if unsupported:
             return ReachabilityResult.unsupported(
@@ -432,12 +997,25 @@ def witness_public_observation_sequence(
                     )
                 child_state = branch_result.get("state")
                 public_view = branch_result.get("view")
-                if not isinstance(child_state, dict) or not isinstance(
-                    public_view,
-                    dict,
-                ):
+                if not isinstance(child_state, dict):
                     raise RuntimeError(
-                        "reachability worker omitted exact state or public view"
+                        "reachability worker omitted exact child state"
+                    )
+                schema_issue = public_reachability_observation_issue(public_view)
+                if schema_issue:
+                    return _observation_unsupported_result(
+                        role="worker-returned",
+                        issue=schema_issue,
+                    )
+                assert isinstance(public_view, dict)
+                worker_unsupported = _public_target_unsupported(public_view)
+                if worker_unsupported:
+                    return ReachabilityResult.unsupported(
+                        reason=(
+                            "worker-returned transition contains unsupported "
+                            "public mechanics evidence: "
+                            f"{', '.join(worker_unsupported)}"
+                        )
                     )
                 if public_observation_signature(public_view) != wanted:
                     continue
@@ -522,6 +1100,15 @@ def evaluate_deterministic_public_transition(
             "deterministic reachability requires exactly one configured RNG seed"
         )
 
+    schema_issue = public_reachability_observation_issue(
+        step.expected_public_view
+    )
+    if schema_issue:
+        return _observation_unsupported_result(
+            role="expected",
+            issue=schema_issue,
+        )
+
     unsupported = _public_target_unsupported(step.expected_public_view)
     if unsupported:
         return ReachabilityResult.unsupported(
@@ -574,9 +1161,24 @@ def evaluate_deterministic_public_transition(
     public_view = branch_result.get("view")
     child_state = branch_result.get("state")
     draw_count = branch_result.get("rng_draw_count")
-    if not isinstance(public_view, dict) or not isinstance(child_state, dict):
+    if not isinstance(child_state, dict):
         raise RuntimeError(
-            "deterministic reachability worker omitted exact state or public view"
+            "deterministic reachability worker omitted exact child state"
+        )
+    schema_issue = public_reachability_observation_issue(public_view)
+    if schema_issue:
+        return _observation_unsupported_result(
+            role="worker-returned",
+            issue=schema_issue,
+        )
+    assert isinstance(public_view, dict)
+    worker_unsupported = _public_target_unsupported(public_view)
+    if worker_unsupported:
+        return ReachabilityResult.unsupported(
+            reason=(
+                "worker-returned transition contains unsupported public "
+                f"mechanics evidence: {', '.join(worker_unsupported)}"
+            )
         )
     if not isinstance(draw_count, int) or isinstance(draw_count, bool) or draw_count < 0:
         raise RuntimeError(

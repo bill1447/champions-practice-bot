@@ -192,6 +192,59 @@ def main() -> None:
             )
 
         deterministic_p1, deterministic_p2, deterministic_view = deterministic
+
+        malformed_targets = []
+        empty_target = {}
+        malformed_targets.append(("empty", empty_target))
+        missing_event_delta = copy.deepcopy(deterministic_view)
+        missing_event_delta.pop("public_event_delta")
+        malformed_targets.append(("missing-event-ledger", missing_event_delta))
+        malformed_unsupported = copy.deepcopy(deterministic_view)
+        malformed_unsupported["public_event_delta"]["unsupported"] = (
+            "future-mechanic"
+        )
+        malformed_targets.append(("malformed-unsupported", malformed_unsupported))
+        for label, malformed_target in malformed_targets:
+            malformed_result = evaluate_deterministic_public_transition(
+                worker,
+                state=state,
+                side="p2",
+                step=PublicReachabilityStep(
+                    p1_choice=deterministic_p1,
+                    p2_choice=deterministic_p2,
+                    expected_public_view=malformed_target,
+                ),
+            )
+            if malformed_result.status is not ReachabilityStatus.UNSUPPORTED:
+                raise SystemExit(
+                    "ERROR: malformed reachability evidence became authoritative "
+                    f"({label}): {malformed_result}"
+                )
+            if malformed_result.conclusive:
+                raise SystemExit(
+                    "ERROR: malformed reachability evidence became conclusive "
+                    f"({label})"
+                )
+
+        supported_shape_unsupported = copy.deepcopy(deterministic_view)
+        supported_shape_unsupported["public_event_delta"]["unsupported"] = [
+            "future-mechanic"
+        ]
+        unsupported_result = evaluate_deterministic_public_transition(
+            worker,
+            state=state,
+            side="p2",
+            step=PublicReachabilityStep(
+                p1_choice=deterministic_p1,
+                p2_choice=deterministic_p2,
+                expected_public_view=supported_shape_unsupported,
+            ),
+        )
+        if unsupported_result.status is not ReachabilityStatus.UNSUPPORTED:
+            raise SystemExit(
+                "ERROR: valid unsupported evidence did not fail closed: "
+                f"{unsupported_result}"
+            )
         deterministic_witness = evaluate_deterministic_public_transition(
             worker,
             state=state,
