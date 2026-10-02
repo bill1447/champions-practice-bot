@@ -807,7 +807,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             allow_from=True,
             allow_of=True,
             allow_wisher=True,
-            markers={"silent", "zeffect"},
+            markers={"partiallytrapped", "silent", "zeffect"},
         )
 
     if event == "-formechange":
@@ -830,7 +830,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             path=f"{path}.modifiers",
             allow_from=True,
             allow_of=True,
-            markers={"silent"},
+            markers={"msg", "silent"},
         )
 
     if event == "-hitcount":
@@ -991,7 +991,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             path=f"{path}.modifiers",
             allow_from=True,
             allow_of=True,
-            markers={"silent"},
+            markers={"msg", "silent"},
         )
 
     if event == "-cureteam":
@@ -1200,7 +1200,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             path=f"{path}.modifiers",
             allow_from=True,
             allow_of=True,
-            markers={"silent"},
+            markers={"msg", "partiallytrapped", "silent"},
         )
 
     if event == "-prepare":
