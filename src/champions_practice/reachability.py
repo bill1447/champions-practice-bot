@@ -48,6 +48,7 @@ class ReachabilityCoverage:
 
     sequential_context_fingerprint: str
     transitions_covered: int
+    observation_schema: str = PUBLIC_OBSERVATION_SCHEMA_VERSION
     outcomes_examined: int
     randomness_domains: tuple[str, ...] = ()
     randomness_exhaustive: bool = False
@@ -59,6 +60,10 @@ class ReachabilityCoverage:
             or not self.sequential_context_fingerprint.strip()
         ):
             raise ValueError("reachability coverage requires a context fingerprint")
+        if self.observation_schema != PUBLIC_OBSERVATION_SCHEMA_VERSION:
+            raise ValueError(
+                "reachability coverage uses an unsupported observation schema"
+            )
         if self.transitions_covered <= 0:
             raise ValueError("reachability coverage must include at least one transition")
         if self.outcomes_examined < 0:

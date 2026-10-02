@@ -146,6 +146,16 @@ def test_inconclusive_result_cannot_claim_complete_exhaustive_coverage():
         )
 
 
+def test_coverage_rejects_wrong_observation_schema():
+    with pytest.raises(ValueError, match="unsupported observation schema"):
+        ReachabilityCoverage(
+            sequential_context_fingerprint="sha256:context",
+            transitions_covered=1,
+            observation_schema="showdown-player-view-v0",
+            outcomes_examined=1,
+        )
+
+
 def test_coverage_rejects_duplicate_randomness_domains():
     with pytest.raises(ValueError, match="must be unique"):
         ReachabilityCoverage(
@@ -762,4 +772,5 @@ def test_schema_version_changes_authority_context_fingerprint():
 
     assert result.status is ReachabilityStatus.WITNESSED
     assert result.coverage is not None
+    assert result.coverage.observation_schema == PUBLIC_OBSERVATION_SCHEMA_VERSION
     assert result.coverage.sequential_context_fingerprint.startswith("sha256:")
