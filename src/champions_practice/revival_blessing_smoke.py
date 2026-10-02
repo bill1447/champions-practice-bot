@@ -330,12 +330,11 @@ def _run_case(
         )["view"]
         _assert_revived(reviver_after, label=label)
 
-        if reviver_side == "p1":
-            ai_choice = FORCED_WAIT_CHOICE
-            resolved_human_choice = REVIVAL_SELECTION
-        else:
-            ai_choice = REVIVAL_SELECTION
-            resolved_human_choice = FORCED_WAIT_CHOICE
+        ai_choice = (
+            FORCED_WAIT_CHOICE
+            if reviver_side == "p1"
+            else REVIVAL_SELECTION
+        )
 
         update = condition_particles(
             worker,

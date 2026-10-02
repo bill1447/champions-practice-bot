@@ -245,7 +245,6 @@ def _run_orientation(
 
         previews = _previews(before, viewer_side=viewer_side)
         ai_choice = p1_turn if viewer_side == "p1" else p2_turn
-        opponent_choice = p2_turn if viewer_side == "p1" else p1_turn
         update = condition_particles(
             worker,
             particles=(
