@@ -64,7 +64,7 @@ Level: 50
 PRODUCER_P2_TEAM = """Garchomp
 Ability: Rough Skin
 Level: 50
-EVs: 4 HP
+EVs: 1 HP
 - Splash
 - Protect
 - Tackle
