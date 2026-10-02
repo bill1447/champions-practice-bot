@@ -1339,7 +1339,7 @@ def test_v5_prior_invalid_worker_evidence_never_becomes_conclusive(
         ["-heal", "p2", "117/235", "[from]:move:revivalblessing"],
         ["-swapsideconditions"],
         ["-ohko"],
-        ["-mega", "p1a", "gardevoirmega", "gardevoirite"],
+        ["-mega", "p1a", "gardevoir", "gardevoirite"],
     ),
 )
 def test_v5_prior_genuine_producer_event_variants_are_supported(event):
