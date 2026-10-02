@@ -860,6 +860,8 @@ def _request_schema_issue(value: object) -> str | None:
         if not isinstance(value["active"], list):
             return _schema_error("$.request.active", "must be a list")
         for index, slot in enumerate(value["active"]):
+            if slot is None:
+                continue
             issue = _active_request_slot_schema_issue(
                 slot,
                 path=f"$.request.active[{index}]",
