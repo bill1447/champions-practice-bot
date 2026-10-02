@@ -297,13 +297,13 @@ _CANONICAL_SLOT = re.compile(r"^p[12][ab]$")
 _CANONICAL_SIDE = re.compile(r"^p[12]$")
 _CANONICAL_INTEGER = re.compile(r"^(?:0|-[1-9][0-9]*|[1-9][0-9]*)$")
 _CANONICAL_EFFECT = re.compile(r"^(?:move|ability|item):[a-z0-9]+$")
-_CANONICAL_TAGGED = re.compile(r"^\\[([a-z0-9]+)\\](?::(.+))?$")
+_CANONICAL_TAGGED = re.compile(r"^\[([a-z0-9]+)\](?::(.+))?$")
 _PUBLIC_CONDITION = re.compile(
     r"^(0|[1-9][0-9]*)/([1-9][0-9]*)([ryg]?)"
     r"(?: (brn|frz|par|psn|slp|tox))?$"
 )
 _REQUEST_IDENT = re.compile(r"^p[12]: .+$")
-_CANONICAL_DETAILS = re.compile(r"^[a-z0-9\\[][a-z0-9 .,'():+\\-/\\[\\]]*$")
+_CANONICAL_DETAILS = re.compile(r"^[a-z0-9\[][a-z0-9 .,'():+\-/\[\]]*$")
 _MAJOR_STATUSES = frozenset({"brn", "frz", "par", "psn", "slp", "tox"})
 _SUPPORTED_BOOSTS = frozenset(
     {"atk", "def", "spa", "spd", "spe", "accuracy", "evasion"}
