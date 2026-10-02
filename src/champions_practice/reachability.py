@@ -1017,10 +1017,11 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 parts is None
                 or parts[1] is None
                 or not parts[1].startswith("ability:")
+                or parts[1][8:] not in _FORME_CHANGE_ABILITY_IDS
             ):
                 return _schema_error(
                     path,
-                    "-formechange source must be an ability",
+                    "-formechange source must be a pinned forme-changing ability",
                 )
         return None
 
@@ -1082,15 +1083,21 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         )
 
     if event == "-mega":
+        allowed_species = (
+            TRANSFORM_ITEM_SPECIES_IDS.get(value[3], frozenset())
+            if len(value) == 4 and isinstance(value[3], str)
+            else frozenset()
+        )
         if (
             len(value) != 4
             or not _canonical_slot(value[1])
             or value[2] not in SPECIES_IDS
             or value[3] not in MEGA_ITEM_IDS
+            or value[2] not in allowed_species
         ):
             return _schema_error(
                 path,
-                "-mega requires actor, pinned species, and Mega item",
+                "-mega requires a pinned species/Mega-item producer relationship",
             )
         return None
 
@@ -1429,17 +1436,39 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 markers={"silent"},
             )
 
-        if not _known_effect_identity(effect):
+        dynamic_plain = (
+            re.fullmatch(r"fallen[1-5]", effect)
+            or re.fullmatch(
+                r"(?:protosynthesis|quarkdrive)(?:atk|def|spa|spd|spe)",
+                effect,
+            )
+        )
+        if effect.startswith("item:"):
             return _schema_error(
                 f"{path}[2]",
-                "must be a pinned effect identity",
+                "items are not pinned start/end producer effects",
+            )
+        if effect.startswith("ability:"):
+            valid_effect = effect in _START_END_ABILITY_EFFECTS
+        elif effect.startswith("move:"):
+            valid_effect = effect in _START_END_MOVE_EFFECTS
+        else:
+            valid_effect = (
+                effect in CONDITION_IDS
+                or effect in _START_END_PLAIN_EFFECTS
+                or dynamic_plain is not None
+            )
+        if not valid_effect:
+            return _schema_error(
+                f"{path}[2]",
+                "must be an effect emitted by a pinned start/end producer",
             )
         return _event_modifier_tail(
             tail,
             path=f"{path}.modifiers",
             allow_from=True,
             allow_of=True,
-            markers={"msg", "partiallytrapped", "silent"},
+            markers={"msg", "partiallytrapped", "silent", "interrupt"},
         )
 
     if event == "-prepare":
@@ -1459,27 +1488,44 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return None
 
     if event in {"-singlemove", "-singleturn"}:
+        domain = (
+            _SINGLE_MOVE_EFFECT_IDENTITIES
+            if event == "-singlemove"
+            else _SINGLE_TURN_EFFECT_IDENTITIES
+        )
         if (
             len(value) < 3
             or not _canonical_slot(value[1])
-            or not _known_move_identity(value[2])
+            or value[2] not in domain
         ):
-            return _schema_error(path, f"{event} requires actor and pinned move")
+            return _schema_error(
+                path,
+                f"{event} requires an effect emitted by its pinned producer",
+            )
         return _event_modifier_tail(
             value[3:],
             path=f"{path}.modifiers",
             allow_of=True,
-            markers={"zeffect"},
+            markers={"silent", "zeffect"},
         )
 
     if event == "-burst":
+        allowed_species = (
+            TRANSFORM_ITEM_SPECIES_IDS.get(value[3], frozenset())
+            if len(value) == 4 and isinstance(value[3], str)
+            else frozenset()
+        )
         if (
             len(value) != 4
             or not _canonical_slot(value[1])
-            or not _canonical_id(value[2])
-            or not _known_item_id(value[3])
+            or value[2] not in SPECIES_IDS
+            or value[3] not in _BURST_ITEM_IDS
+            or value[2] not in allowed_species
         ):
-            return _schema_error(path, "-burst requires actor, species, and item")
+            return _schema_error(
+                path,
+                "-burst requires a pinned species/Ultra-Burst-item relationship",
+            )
         return None
 
     if event == "-fail":
@@ -1900,7 +1946,10 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
                 "must be called iff [from] provenance is present",
             )
     else:
-        if not _known_effect_identity(value["reason"]):
+        if not (
+            _known_effect_identity(value["reason"])
+            or value["reason"] in _PUBLIC_PREVENTION_IDENTITIES
+        ):
             return _schema_error(
                 f"{path}.reason",
                 "must be pinned public prevention evidence",
