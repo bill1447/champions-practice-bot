@@ -2335,7 +2335,10 @@ def _move_request_data_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(f"{path}.maxpp", "must be a positive integer")
     if value["pp"] > value["maxpp"]:
         return _schema_error(f"{path}.pp", "must not exceed maxpp")
-    if value["target"] not in _MOVE_TARGETS:
+    if (
+        not isinstance(value["target"], str)
+        or value["target"] not in _MOVE_TARGETS
+    ):
         return _schema_error(
             f"{path}.target",
             "must be a pinned Showdown move target",
@@ -2368,7 +2371,10 @@ def _max_moves_schema_issue(value: object, *, path: str) -> str | None:
                 f"{path}.maxMoves[{index}].move",
                 "must be a non-empty string",
             )
-        if move["target"] not in _MOVE_TARGETS:
+        if (
+            not isinstance(move["target"], str)
+            or move["target"] not in _MOVE_TARGETS
+        ):
             return _schema_error(
                 f"{path}.maxMoves[{index}].target",
                 "must be a pinned Showdown move target",
@@ -2396,6 +2402,7 @@ def _z_move_schema_issue(value: object, *, path: str) -> str | None:
             or set(move) != {"move", "target"}
             or not isinstance(move["move"], str)
             or not move["move"].strip()
+            or not isinstance(move["target"], str)
             or move["target"] not in _MOVE_TARGETS
         ):
             return _schema_error(
@@ -2575,7 +2582,10 @@ def public_reachability_observation_issue(
         return issue
     if not _non_bool_int(view["turn"], minimum=0):
         return _schema_error("$.turn", "must be a non-negative integer")
-    if view["phase"] not in {"", "teampreview", "move", "switch", "ended"}:
+    if (
+        not isinstance(view["phase"], str)
+        or view["phase"] not in {"", "teampreview", "move", "switch", "ended"}
+    ):
         return _schema_error("$.phase", "contains an unknown phase")
     if not isinstance(view["ended"], bool):
         return _schema_error("$.ended", "must be boolean")
@@ -2607,12 +2617,18 @@ def public_reachability_observation_issue(
     )
     if issue:
         return issue
-    if field["weather"] is not None and field["weather"] not in WEATHER_IDS:
+    if field["weather"] is not None and (
+        not isinstance(field["weather"], str)
+        or field["weather"] not in WEATHER_IDS
+    ):
         return _schema_error(
             "$.field.weather",
             "must be a pinned weather id or null",
         )
-    if field["terrain"] is not None and field["terrain"] not in TERRAIN_IDS:
+    if field["terrain"] is not None and (
+        not isinstance(field["terrain"], str)
+        or field["terrain"] not in TERRAIN_IDS
+    ):
         return _schema_error(
             "$.field.terrain",
             "must be a pinned terrain id or null",
@@ -2620,8 +2636,16 @@ def public_reachability_observation_issue(
     pseudo_weather = field["pseudo_weather"]
     if (
         not isinstance(pseudo_weather, list)
-        or pseudo_weather != sorted(set(pseudo_weather))
-        or any(item not in PSEUDO_WEATHER_IDS for item in pseudo_weather)
+        or any(not isinstance(item, str) for item in pseudo_weather)
+        or (
+            isinstance(pseudo_weather, list)
+            and all(isinstance(item, str) for item in pseudo_weather)
+            and pseudo_weather != sorted(set(pseudo_weather))
+        )
+        or any(
+            isinstance(item, str) and item not in PSEUDO_WEATHER_IDS
+            for item in pseudo_weather
+        )
     ):
         return _schema_error(
             "$.field.pseudo_weather",
@@ -2670,8 +2694,17 @@ def public_reachability_observation_issue(
             return issue
     if (
         not isinstance(player["side_conditions"], list)
-        or any(item not in SIDE_CONDITION_IDS for item in player["side_conditions"])
-        or player["side_conditions"] != sorted(set(player["side_conditions"]))
+        or any(not isinstance(item, str) for item in player["side_conditions"])
+        or (
+            isinstance(player["side_conditions"], list)
+            and all(isinstance(item, str) for item in player["side_conditions"])
+            and player["side_conditions"]
+            != sorted(set(player["side_conditions"]))
+        )
+        or any(
+            isinstance(item, str) and item not in SIDE_CONDITION_IDS
+            for item in player["side_conditions"]
+        )
     ):
         return _schema_error(
             "$.player.side_conditions",
@@ -2776,8 +2809,17 @@ def public_reachability_observation_issue(
         )
     if (
         not isinstance(opponent["side_conditions"], list)
-        or any(item not in SIDE_CONDITION_IDS for item in opponent["side_conditions"])
-        or opponent["side_conditions"] != sorted(set(opponent["side_conditions"]))
+        or any(not isinstance(item, str) for item in opponent["side_conditions"])
+        or (
+            isinstance(opponent["side_conditions"], list)
+            and all(isinstance(item, str) for item in opponent["side_conditions"])
+            and opponent["side_conditions"]
+            != sorted(set(opponent["side_conditions"]))
+        )
+        or any(
+            isinstance(item, str) and item not in SIDE_CONDITION_IDS
+            for item in opponent["side_conditions"]
+        )
     ):
         return _schema_error(
             "$.opponent.side_conditions",
