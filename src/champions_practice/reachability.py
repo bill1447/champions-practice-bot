@@ -1567,8 +1567,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             valid_effect = effect in _START_END_MOVE_EFFECTS
         else:
             valid_effect = (
-                effect in CONDITION_IDS
-                or effect in _START_END_PLAIN_EFFECTS
+                effect in _START_END_PLAIN_EFFECTS
                 or dynamic_plain is not None
             )
         if not valid_effect:
