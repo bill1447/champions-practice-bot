@@ -2422,6 +2422,7 @@ def test_v7_selected_action_ledger_is_part_of_certified_signature(evaluator):
         ["-activate", "p1a", "item:focusband", "move:thunderbolt"],
         ["-activate", "p1a", "ability:forewarn", "ability:hugepower"],
         ["-mega", "p1a", "pikachu", "gardevoirite"],
+        ["-formechange", "p1a", "pikachu"],
         ["-formechange", "p1a", "pikachu", "[from]:ability:hugepower"],
         ["-burst", "p1a", "banana", "leftovers"],
     ),
@@ -2438,6 +2439,13 @@ def test_v7_review_invalid_producer_role_events_are_rejected(event):
         ["-activate", "p2a", "move:spite", "splash", "4"],
         ["-activate", "p2a", "item:leppaberry", "splash", "[consumed]"],
         ["-burst", "p1a", "necrozma", "ultranecroziumz"],
+        [
+            "-formechange",
+            "p1a",
+            "cherrimsunshine",
+            "[msg]",
+            "[from]:ability:flowergift",
+        ],
     ),
 )
 def test_v7_review_genuine_pinned_variants_are_supported(event):
