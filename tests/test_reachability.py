@@ -3,10 +3,13 @@ from __future__ import annotations
 import pytest
 
 from champions_practice.reachability import (
+    PublicReachabilityStep,
     ReachabilityCoverage,
     ReachabilityResult,
     ReachabilityStatus,
+    witness_public_observation_sequence,
 )
+from champions_practice.search_worker import ShowdownRequestError
 
 
 def _coverage(
@@ -146,3 +149,240 @@ def test_coverage_rejects_duplicate_randomness_domains():
             outcomes_examined=1,
             randomness_domains=("damage-roll", "damage-roll"),
         )
+
+
+class _FakeReachabilityWorker:
+    def __init__(self, outcomes=None, *, timeout=False, rejected_nodes=()):
+        self.outcomes = outcomes or {}
+        self.timeout = timeout
+        self.rejected_nodes = set(rejected_nodes)
+        self.calls = 0
+
+    def branch_many(self, *, state, branches):
+        self.calls += 1
+        if self.timeout:
+            raise TimeoutError("synthetic worker timeout")
+        if state["node"] in self.rejected_nodes:
+            raise ShowdownRequestError(
+                "branch_many",
+                "[Invalid choice] synthetic rejected parent",
+            )
+        resolved = []
+        for index, branch in enumerate(branches):
+            key = (state["node"], branch.get("rng_seed"))
+            next_node, view = self.outcomes[key]
+            resolved.append(
+                {
+                    "index": index,
+                    "state": {"node": next_node},
+                    "view": view,
+                }
+            )
+        return resolved
+
+
+def _public_step(view, *, seeds=("seed-a",), p1_choice="move a", p2_choice="move b"):
+    return PublicReachabilityStep(
+        p1_choice=p1_choice,
+        p2_choice=p2_choice,
+        expected_public_view=view,
+        rng_seeds=seeds,
+    )
+
+
+def test_showdown_witness_probe_preserves_sequential_parentage():
+    first = {"turn": 2, "marker": "first"}
+    second = {"turn": 3, "marker": "second"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("dead", {"turn": 2, "marker": "wrong"}),
+            ("root", "seed-b"): ("path", first),
+            ("path", "seed-c"): ("done", second),
+        }
+    )
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        steps=(
+            _public_step(first, seeds=("seed-a", "seed-b")),
+            _public_step(second, seeds=("seed-c",)),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.WITNESSED
+    assert result.establishes_reachability
+    assert not result.establishes_impossibility
+    assert result.coverage is not None
+    assert result.coverage.transitions_covered == 2
+    assert result.coverage.outcomes_examined == 3
+    assert result.coverage.sequential_context_complete
+    assert not result.coverage.randomness_exhaustive
+    assert worker.calls == 2
+
+
+def test_showdown_witness_probe_never_cartesian_combines_incompatible_outcomes():
+    first = {"turn": 2, "marker": "first"}
+    combined = {
+        "turn": 3,
+        "opponent": {"active": [{"hp_percent": 50, "status": "par"}]},
+    }
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("path-a", first),
+            ("root", "seed-b"): ("path-b", first),
+            (
+                "path-a",
+                "seed-c",
+            ): (
+                "done-a",
+                {
+                    "turn": 3,
+                    "opponent": {
+                        "active": [{"hp_percent": 50, "status": None}]
+                    },
+                },
+            ),
+            (
+                "path-b",
+                "seed-c",
+            ): (
+                "done-b",
+                {
+                    "turn": 3,
+                    "opponent": {
+                        "active": [{"hp_percent": 80, "status": "par"}]
+                    },
+                },
+            ),
+        }
+    )
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        steps=(
+            _public_step(first, seeds=("seed-a", "seed-b")),
+            _public_step(combined, seeds=("seed-c",)),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.UNRESOLVED
+    assert not result.establishes_reachability
+    assert not result.establishes_impossibility
+    assert result.coverage is not None
+    assert result.coverage.outcomes_examined == 4
+
+
+def test_bounded_showdown_miss_is_unresolved_not_impossible():
+    target = {"turn": 2, "marker": "wanted"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("done", {"turn": 2, "marker": "other"}),
+        }
+    )
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        steps=(_public_step(target),),
+    )
+
+    assert result.status is ReachabilityStatus.UNRESOLVED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
+
+def test_reachability_timeout_is_unresolved_not_negative_evidence():
+    worker = _FakeReachabilityWorker(timeout=True)
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        steps=(_public_step({"turn": 2}),),
+    )
+
+    assert result.status is ReachabilityStatus.UNRESOLVED
+    assert not result.establishes_impossibility
+    assert worker.calls == 1
+
+
+def test_unsupported_public_mechanics_fail_without_worker_authority():
+    worker = _FakeReachabilityWorker()
+    target = {
+        "turn": 2,
+        "public_event_delta": {"unsupported": ["future-mechanic"]},
+    }
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        steps=(_public_step(target),),
+    )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.establishes_impossibility
+    assert worker.calls == 0
+
+
+def test_branch_budget_exhaustion_cannot_become_exclusion_evidence():
+    target = {"turn": 2, "marker": "wanted"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("miss", {"turn": 2, "marker": "other"}),
+            ("root", "seed-b"): ("hit", target),
+        }
+    )
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p1",
+        steps=(_public_step(target, seeds=("seed-a", "seed-b")),),
+        max_branches=1,
+    )
+
+    assert result.status is ReachabilityStatus.UNRESOLVED
+    assert not result.establishes_impossibility
+    assert worker.calls == 1
+
+
+def test_reachability_step_rejects_raw_empty_commands():
+    with pytest.raises(ValueError, match="non-empty exact command"):
+        PublicReachabilityStep(
+            p1_choice="",
+            p2_choice="move b",
+            expected_public_view={"turn": 2},
+        )
+
+
+def test_rejected_parent_path_does_not_block_a_different_sequential_witness():
+    first = {"turn": 2, "marker": "first"}
+    second = {"turn": 3, "marker": "second"}
+    worker = _FakeReachabilityWorker(
+        {
+            ("root", "seed-a"): ("bad-parent", first),
+            ("root", "seed-b"): ("good-parent", first),
+            ("good-parent", "seed-c"): ("done", second),
+        },
+        rejected_nodes=("bad-parent",),
+    )
+
+    result = witness_public_observation_sequence(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        steps=(
+            _public_step(first, seeds=("seed-a", "seed-b")),
+            _public_step(second, seeds=("seed-c",)),
+        ),
+    )
+
+    assert result.status is ReachabilityStatus.WITNESSED
+    assert result.establishes_reachability
+    assert not result.establishes_impossibility
