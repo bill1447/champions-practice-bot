@@ -40,7 +40,6 @@ class RecoveryObservation:
     """One already-resolved public transition that a candidate must replay."""
 
     ai_choice: str
-    resolved_opponent_choice: str | None
     previous_public_view: dict[str, Any] | None
     public_view: dict[str, Any]
 
@@ -140,7 +139,6 @@ def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
         "authority_observations": [
             {
                 "ai_choice": observation.ai_choice,
-                "resolved_opponent_choice": observation.resolved_opponent_choice,
                 "previous_public_view": observation.previous_public_view,
                 "public_view": observation.public_view,
             }
@@ -161,7 +159,6 @@ def _recovery_request_fingerprint(request: "RecoveryRequest") -> str:
         "observations": [
             {
                 "ai_choice": observation.ai_choice,
-                "resolved_opponent_choice": observation.resolved_opponent_choice,
                 "previous_public_view": observation.previous_public_view,
                 "public_view": observation.public_view,
             }
@@ -1068,15 +1065,6 @@ def _validate_request(
         for observation in all_observations
     ):
         raise ValueError("recovery history requires exact AI commands")
-    if any(
-        not isinstance(observation.resolved_opponent_choice, str)
-        or not observation.resolved_opponent_choice.strip()
-        for observation in all_observations
-    ):
-        raise ValueError(
-            "recovery history requires exact resolved opponent commands"
-        )
-
     prefix_end = _validate_observation_chain(
         start_view=request.authority_root_public_view,
         observations=request.authority_observations,
@@ -1117,7 +1105,7 @@ def _replay_observations(
     The supplied RNG seed sets are bounded samples, not exhaustive mechanics
     enumeration. A matching branch is positive evidence of reachability. Failure to
     produce one is only sampling exhaustion, even when every sampled mismatch looks
-    structural or every sampled state rejects the next resolved command.
+    structural or sampled states cannot reproduce the public action evidence.
     """
     current = particles
     generated = 0
@@ -1128,10 +1116,6 @@ def _replay_observations(
         rng_seeds_by_observation,
         strict=True,
     ):
-        resolved_choice = observation.resolved_opponent_choice
-        if resolved_choice is None:
-            raise ValueError("recovery replay requires resolved opponent command")
-
         update = condition_particles(
             worker,
             particles=current,
@@ -1139,7 +1123,6 @@ def _replay_observations(
             ai_choice=observation.ai_choice,
             actual_public_view=observation.public_view,
             previous_public_view=observation.previous_public_view,
-            resolved_opponent_choice=resolved_choice,
             rng_seeds=rng_seeds,
             previews=request.previews,
         )

@@ -183,13 +183,11 @@ def _request() -> RecoveryRequest:
         observations=(
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=checkpoint,
                 public_view=first,
             ),
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=first,
                 public_view=_second_view(),
             ),
@@ -550,7 +548,6 @@ def test_stat_generator_uses_stable_root_member_after_checkpoint_reorder() -> No
         observations=(
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=_checkpoint(),
                 public_view=_first_view(),
             ),
@@ -656,7 +653,6 @@ def test_static_stat_recovery_does_not_turn_sampled_prefix_miss_into_proof() -> 
         authority_observations=(
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=root_view,
                 public_view=checkpoint_view,
             ),
@@ -674,7 +670,6 @@ def test_static_stat_recovery_does_not_turn_sampled_prefix_miss_into_proof() -> 
         observations=(
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=checkpoint_view,
                 public_view=suffix_view,
             ),
@@ -721,7 +716,6 @@ def test_recovery_history_accepts_explicit_forced_wait_command() -> None:
                 if index == 0
                 else observation.ai_choice
             ),
-            resolved_opponent_choice=observation.resolved_opponent_choice,
             previous_public_view=observation.previous_public_view,
             public_view=observation.public_view,
         )
@@ -765,7 +759,6 @@ def test_recovery_history_rejects_raw_empty_forced_wait_command() -> None:
         observations=(
             RecoveryObservation(
                 ai_choice="",
-                resolved_opponent_choice=first.resolved_opponent_choice,
                 previous_public_view=first.previous_public_view,
                 public_view=first.public_view,
             ),
@@ -860,7 +853,6 @@ def test_sampled_checkpoint_hidden_state_miss_is_inconclusive() -> None:
         authority_observations=(
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=root_view,
                 public_view=checkpoint_view,
             ),
@@ -878,7 +870,6 @@ def test_sampled_checkpoint_hidden_state_miss_is_inconclusive() -> None:
         observations=(
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view=checkpoint_view,
                 public_view=suffix_view,
             ),
@@ -1046,7 +1037,6 @@ def test_recovery_rejects_noncontiguous_public_history() -> None:
             request.observations[0],
             RecoveryObservation(
                 ai_choice="move ai",
-                resolved_opponent_choice="move human",
                 previous_public_view={"turn": 999},
                 public_view=request.observations[1].public_view,
             ),
@@ -1090,3 +1080,14 @@ def test_recovery_requires_rng_coverage_for_every_observation() -> None:
             authority_rng_seeds_by_observation=(),
             rng_seeds_by_observation=(("seed-1",),),
         )
+
+
+
+def test_recovery_observation_contains_only_public_transition_authority() -> None:
+    observation = RecoveryObservation(
+        ai_choice="move protect",
+        previous_public_view={"turn": 1},
+        public_view={"turn": 2},
+    )
+
+    assert not hasattr(observation, "resolved_opponent_choice")
