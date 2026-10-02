@@ -1174,15 +1174,6 @@ def _v3_invalid_mutators():
         }
 
     def inconsistent_roster(view):
-        boosts = {
-            "atk": 0,
-            "def": 0,
-            "spa": 0,
-            "spd": 0,
-            "spe": 0,
-            "accuracy": 0,
-            "evasion": 0,
-        }
         view["request"] = {
             "wait": True,
             "side": {
