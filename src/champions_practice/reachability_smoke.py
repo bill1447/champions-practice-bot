@@ -204,6 +204,72 @@ def main() -> None:
             "future-mechanic"
         )
         malformed_targets.append(("malformed-unsupported", malformed_unsupported))
+
+        truncated_damage = copy.deepcopy(deterministic_view)
+        truncated_damage["public_event_delta"]["events"].append(["-damage"])
+        malformed_targets.append(("truncated-damage-event", truncated_damage))
+
+        unknown_event = copy.deepcopy(deterministic_view)
+        unknown_event["public_event_delta"]["events"].append(
+            ["-future-event", "p1a"]
+        )
+        malformed_targets.append(("unknown-mechanics-event", unknown_event))
+
+        impossible_action = copy.deepcopy(deterministic_view)
+        impossible_action["opponent_last_actions"].append(
+            {
+                "turn": max(1, deterministic_view["turn"]),
+                "slot": 999,
+                "move": "definitelynotamove",
+                "target": 999,
+            }
+        )
+        malformed_targets.append(("impossible-selected-action", impossible_action))
+
+        nonfinite_hp = copy.deepcopy(deterministic_view)
+        nonfinite_hp["player"]["team"][0]["hp_percent"] = float("nan")
+        malformed_targets.append(("nonfinite-hp", nonfinite_hp))
+
+        unknown_boost = copy.deepcopy(deterministic_view)
+        active_detail = next(
+            (
+                pokemon
+                for pokemon in unknown_boost["player"]["active_details"]
+                if isinstance(pokemon, dict)
+            ),
+            None,
+        )
+        if active_detail is None:
+            raise SystemExit(
+                "ERROR: reachability smoke has no active detail for boost validation"
+            )
+        active_detail["boosts"]["future-stat"] = 900
+        malformed_targets.append(("unknown-boost-dimension", unknown_boost))
+
+        partial_move = copy.deepcopy(deterministic_view)
+        active_request = partial_move.get("request")
+        if (
+            not isinstance(active_request, dict)
+            or not isinstance(active_request.get("active"), list)
+        ):
+            raise SystemExit(
+                "ERROR: reachability smoke expected a move request after zero-draw turn"
+            )
+        move_entry = next(
+            (
+                move
+                for slot in active_request["active"]
+                if isinstance(slot, dict)
+                for move in slot.get("moves", [])
+                if isinstance(move, dict)
+                and {"pp", "maxpp", "target", "disabled"}.issubset(move)
+            ),
+            None,
+        )
+        if move_entry is not None:
+            move_entry.pop("pp")
+            malformed_targets.append(("partial-move-variant", partial_move))
+
         for label, malformed_target in malformed_targets:
             malformed_result = evaluate_deterministic_public_transition(
                 worker,

@@ -612,7 +612,7 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v1"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v2"
     assert public_reachability_observation_issue(_valid_public_view()) is None
 
 
@@ -777,3 +777,221 @@ def test_schema_version_changes_authority_context_fingerprint():
     assert result.coverage is not None
     assert result.coverage.observation_schema == PUBLIC_OBSERVATION_SCHEMA_VERSION
     assert result.coverage.sequential_context_fingerprint.startswith("sha256:")
+
+
+def _nested_invalid_mutators():
+    def truncated_damage(view):
+        view["public_event_delta"]["events"].append(["-damage"])
+
+    def unknown_mechanics_event(view):
+        view["public_event_delta"]["events"].append(["-future-event", "p1a"])
+
+    def impossible_selected_action(view):
+        view["opponent_last_actions"].append(
+            {
+                "turn": 2,
+                "slot": 999,
+                "move": "definitelynotamove",
+                "target": 999,
+            }
+        )
+
+    def partial_move_variant(view):
+        view["request"] = {
+            "active": [
+                {
+                    "moves": [
+                        {
+                            "move": "Tackle",
+                            "id": "tackle",
+                            "maxpp": 56,
+                            "target": "normal",
+                            "disabled": False,
+                        }
+                    ]
+                }
+            ],
+            "side": {"name": "Player", "id": "p1", "pokemon": []},
+        }
+
+    def nonfinite_hp(view):
+        view["player"]["team"] = [
+            {
+                "species": "Pikachu",
+                "hp": 100,
+                "maxhp": 100,
+                "hp_percent": float("nan"),
+                "fainted": False,
+                "status": None,
+                "boosts": {},
+                "item": "",
+                "ability": "",
+                "moves": ["Thunderbolt"],
+                "speed": 100,
+                "damaging_move_count": 1,
+                "active": False,
+            }
+        ]
+
+    def unknown_boost_dimension(view):
+        view["opponent"]["active"] = [
+            {
+                "species": "Pikachu",
+                "base_species": "Pikachu",
+                "hp_percent": 100,
+                "fainted": False,
+                "status": None,
+                "boosts": {"future-stat": 900},
+            }
+        ]
+
+    return (
+        truncated_damage,
+        unknown_mechanics_event,
+        impossible_selected_action,
+        partial_move_variant,
+        nonfinite_hp,
+        unknown_boost_dimension,
+    )
+
+
+@pytest.mark.parametrize("mutator", _nested_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+def test_nested_invalid_expected_evidence_fails_before_worker(mutator, evaluator):
+    expected = _valid_public_view({"marker": "wanted"})
+    mutator(expected)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", {"turn": 2, "marker": "wanted"})},
+        rng_draw_counts={("root", "seed-a"): 0},
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+    assert worker.calls == 0
+
+
+@pytest.mark.parametrize("mutator", _nested_invalid_mutators())
+@pytest.mark.parametrize("evaluator", ("deterministic", "sequential"))
+@pytest.mark.parametrize("signature_mode", ("matching", "mismatching"))
+def test_nested_invalid_worker_evidence_never_becomes_conclusive(
+    mutator,
+    evaluator,
+    signature_mode,
+):
+    expected = _valid_public_view({"marker": "wanted"})
+    returned = copy.deepcopy(expected)
+    if signature_mode == "mismatching":
+        returned["winner"] = "different-winner"
+    mutator(returned)
+    worker = _FakeReachabilityWorker(
+        {("root", "seed-a"): ("done", returned)},
+        rng_draw_counts={("root", "seed-a"): 0},
+        normalize_views=False,
+    )
+    step = PublicReachabilityStep(
+        p1_choice="move a",
+        p2_choice="move b",
+        expected_public_view=expected,
+        rng_seeds=("seed-a",),
+    )
+
+    if evaluator == "deterministic":
+        result = evaluate_deterministic_public_transition(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            step=step,
+        )
+    else:
+        result = witness_public_observation_sequence(
+            worker,
+            state={"node": "root"},
+            side="p1",
+            steps=(step,),
+        )
+
+    assert result.status is ReachabilityStatus.UNSUPPORTED
+    assert not result.conclusive
+    assert not result.establishes_impossibility
+
+
+@pytest.mark.parametrize(
+    "move",
+    (
+        {"move": "Recharge", "id": "recharge"},
+        {"move": "Outrage", "id": "outrage"},
+        {
+            "move": "Struggle",
+            "id": "struggle",
+            "target": "randomNormal",
+            "disabled": False,
+        },
+        {
+            "move": "Tackle",
+            "id": "tackle",
+            "pp": 35,
+            "maxpp": 56,
+            "target": "normal",
+            "disabled": False,
+        },
+    ),
+)
+def test_pinned_move_request_variants_remain_supported(move):
+    view = _valid_public_view()
+    view["request"] = {
+        "active": [{"moves": [move]}],
+        "side": {"name": "Player", "id": "p1", "pokemon": []},
+    }
+
+    assert public_reachability_observation_issue(view) is None
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-damage", "p1a", "100/200"],
+        ["-status", "p1a", "par"],
+        ["-boost", "p1a", "atk", "1"],
+        ["-boost", "p1a", "atk", "1", "[from]:ability:intimidate"],
+        ["-hitcount", "p2a", "2"],
+        [
+            "-hitcount",
+            "p2a",
+            "2",
+            "[action]",
+            "opponent",
+            "1",
+            "doublekick",
+            "selected",
+        ],
+        ["-crit", "p2a"],
+        ["-weather", "raindance"],
+    ),
+)
+def test_supported_canonical_mechanics_event_shapes_remain_valid(event):
+    view = _valid_public_view()
+    view["public_event_delta"]["events"] = [event]
+
+    assert public_reachability_observation_issue(view) is None
