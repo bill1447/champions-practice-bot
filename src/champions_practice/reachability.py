@@ -40,11 +40,12 @@ from champions_practice.showdown_public_catalog import (
     SPECIES_IDS,
     SPECIAL_EFFECT_IDS,
     TERRAIN_IDS,
+    TRANSFORM_ITEM_SPECIES_IDS,
     WEATHER_IDS,
 )
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v6"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v7"
 
 
 class ReachabilityStatus(str, Enum):
@@ -393,6 +394,140 @@ _MOVE_TARGETS = frozenset(
 _PUBLIC_ACTION_EFFECTS = frozenset(
     {"-fail", "-miss", "-immune", "-notarget", "-block"}
 )
+
+# Producer-role domains derived from the pinned Showdown emitters. These are
+# deliberately narrower than the union of every move/item/ability identifier.
+_START_END_ABILITY_EFFECTS = frozenset(
+    {"ability:flashfire", "ability:neutralizinggas", "ability:slowstart"}
+)
+_START_END_MOVE_EFFECTS = frozenset(
+    {
+        "move:attract",
+        "move:bide",
+        "move:dragoncheer",
+        "move:focusenergy",
+        "move:futuresight",
+        "move:gmaxchistrike",
+        "move:healblock",
+        "move:imprison",
+        "move:ingrain",
+        "move:laserfocus",
+        "move:leechseed",
+        "move:noretreat",
+        "move:octolock",
+        "move:taunt",
+        "move:yawn",
+        "move:bind",
+        "move:clamp",
+        "move:firespin",
+        "move:infestation",
+        "move:magmastorm",
+        "move:sandtomb",
+        "move:snaptrap",
+        "move:thundercage",
+        "move:whirlpool",
+        "move:wrap",
+    }
+)
+_START_END_PLAIN_EFFECTS = frozenset(
+    {
+        "aquaring",
+        "attract",
+        "autotomize",
+        "charge",
+        "confusion",
+        "curse",
+        "disable",
+        "doomdesire",
+        "dynamax",
+        "embargo",
+        "encore",
+        "foresight",
+        "illusion",
+        "leechseed",
+        "magnetrise",
+        "mimic",
+        "miracleeye",
+        "nightmare",
+        "octolock",
+        "powershift",
+        "powertrick",
+        "protosynthesis",
+        "quarkdrive",
+        "saltcure",
+        "skydrop",
+        "slowstart",
+        "smackdown",
+        "stockpile",
+        "substitute",
+        "syrupbomb",
+        "tarshot",
+        "telekinesis",
+        "throatchop",
+        "torment",
+        "uproar",
+    }
+)
+_SINGLE_TURN_EFFECT_IDENTITIES = frozenset(
+    {
+        "craftyshield",
+        "helpinghand",
+        "matblock",
+        "maxguard",
+        "move:beakblast",
+        "move:electrify",
+        "move:endure",
+        "move:focuspunch",
+        "move:followme",
+        "move:instruct",
+        "move:magiccoat",
+        "move:protect",
+        "move:ragepowder",
+        "move:roost",
+        "move:shelltrap",
+        "move:spotlight",
+        "powder",
+        "protect",
+        "quickguard",
+        "snatch",
+        "wideguard",
+    }
+)
+_SINGLE_MOVE_EFFECT_IDENTITIES = frozenset(
+    {"destinybond", "glaiverush", "grudge", "rage"}
+)
+_FORME_CHANGE_ABILITY_IDS = frozenset({"flowergift", "forecast"})
+_PUBLIC_PREVENTION_IDENTITIES = frozenset(
+    {
+        "ability:armortail",
+        "ability:damp",
+        "ability:dazzling",
+        "ability:queenlymajesty",
+        "ability:truant",
+        "attract",
+        "disable",
+        "flinch",
+        "focuspunch",
+        "frz",
+        "move:gravity",
+        "move:healblock",
+        "move:imprison",
+        "move:taunt",
+        "move:throatchop",
+        "nopp",
+        "par",
+        "recharge",
+        "shelltrap",
+        "slp",
+    }
+)
+_PP_DEDUCTION_ACTIVATION_LIMITS = {
+    "move:eeriespell": 3,
+    "move:gmaxdepletion": 2,
+    "move:spite": 4,
+}
+_BURST_ITEM_IDS = frozenset({"ultranecroziumz"})
+
 _PUBLIC_MECHANICS_EVENTS = frozenset(
     {
         "-formechange",
@@ -631,6 +766,16 @@ def _ability_modifier(value: object) -> bool:
         and parts[0] == "ability"
         and parts[1] is not None
         and _known_ability_id(parts[1])
+    )
+
+
+def _move_modifier(value: object) -> bool:
+    parts = _tagged_modifier_parts(value)
+    return (
+        parts is not None
+        and parts[0] == "move"
+        and parts[1] is not None
+        and _known_public_move_id(parts[1])
     )
 
 
