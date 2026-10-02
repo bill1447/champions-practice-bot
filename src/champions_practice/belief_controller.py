@@ -1787,7 +1787,6 @@ class BeliefDecisionEngine:
                 self.pending_observations.append(
                     (
                         decision.choice,
-                        resolved_opponent_choice,
                         previous_view,
                         view,
                     )
@@ -1813,7 +1812,6 @@ class BeliefDecisionEngine:
                 self.pending_observations.append(
                     (
                         decision.choice,
-                        resolved_opponent_choice,
                         previous_view,
                         view,
                     )
