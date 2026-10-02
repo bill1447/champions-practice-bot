@@ -1167,7 +1167,7 @@ def _v4_prior_invalid_mutators():
                         },
                         "moves": ["thunderbolt"],
                         "baseAbility": "static",
-                        "item": None,
+                        "item": "",
                         "pokeball": "",
                     }
                 ],
@@ -1195,7 +1195,7 @@ def _v4_prior_invalid_mutators():
                         },
                         "moves": ["tackle"],
                         "baseAbility": "static",
-                        "item": None,
+                        "item": "",
                         "pokeball": "",
                     }
                 ],
