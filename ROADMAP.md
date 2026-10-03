@@ -322,27 +322,43 @@ judgment that allocates search toward plausible and strategically meaningful joi
 
 ### Human replay corpus
 
-Build a resumable corpus pipeline for public Pokémon Showdown Champions replays:
+The resumable public Showdown replay archive is now implemented. Raw replay JSON is kept
+outside Git with hashes, provenance, retry/checkpoint state, measured throughput, and
+per-format separation. Collection currently prioritizes Regulation M-C; older regulations can
+be added as separate corpora rather than silently mixed.
 
-- archive untouched raw replay JSON/logs as source-of-truth records;
-- prioritize the current Regulation M-C format while retaining older Champions data for
-  general VGC behavior;
-- record replay id, format, time, player metadata/rating when available, result, and provenance;
-- deduplicate and checkpoint downloads so collection can run continuously;
-- keep bulk corpus data outside Git and version only manifests, schemas, and deterministic
-  extraction code;
-- never fabricate hidden selections from a replay. If a chosen action was not made public,
-  omit or partially label that decision.
+Next replay work is deterministic trajectory extraction:
+
+- reconstruct the player's public decision-time state;
+- retain only observable/reconstructible joint-action labels;
+- never fabricate a selected action that the replay did not reveal;
+- preserve replay/game boundaries for leakage-safe training/evaluation splits.
 
 ### Team corpus and generalization
 
-Arbitrary-team ingestion is now a training prerequisite rather than only a demo feature.
+Complete published teams are simulator-side ground truth. Closed-sheet secrecy belongs at the
+observation boundary, not inside the offline corpus.
 
-- ingest a broad pool of public Regulation M-C team pastes;
-- canonicalize complete builds and preserve source/provenance;
-- maintain separate training and evaluation pools spanning major archetypes;
-- avoid training or evaluating primarily on the current fixed six or mirror games;
-- reserve fixed diverse evaluation pools so improvements can be compared across revisions.
+The first curated source is the public VGCPastes Repository across Champions M-C, M-B, and
+M-A. The importer:
+
+- preserves content-addressed source-sheet snapshots and untouched Pokepaste raw text outside
+  Git;
+- retains regulation, team ID, owner/player, event, placement, source links, EV completeness,
+  six displayed species, and other provenance;
+- parses and validates every paste through the exact pinned Showdown runtime for its regulation;
+- stores structured sets, packed teams, and canonical Showdown exports as derived artifacts;
+- marks a team exact-truth-ready only when Showdown accepts a six-Pokemon team and the source
+  explicitly reports EV information;
+- retains incomplete or invalid teams with diagnostics instead of inventing missing fields;
+- revalidates archived raw teams automatically when the pinned Showdown revision changes.
+
+M-C remains the primary current-meta pool. M-B and M-A provide additional exact team diversity
+for priors, self-play, and general VGC structure while remaining separately tagged by
+regulation.
+
+Next team work is to define fixed training/evaluation pools and wire arbitrary-team battle
+instantiation through the existing closed-sheet observation boundary.
 
 ### First learned model: joint-action behavior cloning
 
@@ -428,10 +444,11 @@ primitive → [parallel tracks: recovery soundness + human replay/team corpus]
 
 Near-term implementation order:
 
-1. replay downloader/raw corpus archive;
-2. offline true-world-survival recovery harness;
-3. arbitrary-team/team-corpus ingestion;
-4. replay-to-public-state/joint-action trajectory extractor;
-5. first behavior-cloned joint-action policy;
-6. bounded CFR/Bayesian matrix-game prototype;
-7. additional stochastic mechanics only when soundness failures require them.
+1. **Complete:** replay downloader/raw corpus archive with throughput measurement;
+2. **Current:** curated M-A/M-B/M-C VGCPastes ground-truth team corpus;
+3. offline true-world-survival recovery harness;
+4. fixed team training/evaluation pools plus arbitrary-team battle instantiation;
+5. replay-to-public-state/joint-action trajectory extractor;
+6. first behavior-cloned joint-action policy;
+7. bounded CFR/Bayesian matrix-game prototype;
+8. additional stochastic mechanics only when soundness failures require them.
