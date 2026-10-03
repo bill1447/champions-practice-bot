@@ -642,6 +642,13 @@ def download_replay_corpus(
     layout = initialize_layout(config.data_root, project_root=project_root)
     connection = _connect_manifest(layout.database)
     try:
+        existing_replay_count = connection.execute(
+            "SELECT COUNT(*) FROM replays WHERE format_id = ?",
+            (config.format_id,),
+        ).fetchone()[0]
+        refreshing_known_archive = (
+            config.restart_search and int(existing_replay_count) > 0
+        )
         if config.restart_search:
             _reset_checkpoint(connection, format_id=config.format_id)
         saved = _checkpoint(connection, format_id=config.format_id)
@@ -740,6 +747,7 @@ def download_replay_corpus(
                 break
 
             page_complete = True
+            page_all_preexisting = True
             for row in rows:
                 if config.max_replays and run_downloaded >= config.max_replays:
                     page_complete = False
@@ -771,8 +779,10 @@ def download_replay_corpus(
                 ):
                     run_present += 1
                     replay_total += 1
+                    page_all_preexisting = False
                     continue
 
+                page_all_preexisting = False
                 try:
                     raw = source.fetch_replay(replay_id)
                     detail = _validated_detail(raw, replay_id=replay_id)
@@ -819,6 +829,20 @@ def download_replay_corpus(
                 break
 
             pages_completed += 1
+            if refreshing_known_archive and page_all_preexisting:
+                exhausted = True
+                before = None
+                _write_checkpoint(
+                    connection,
+                    format_id=config.format_id,
+                    before_uploadtime=None,
+                    exhausted=True,
+                    pages_completed=pages_completed,
+                    search_rows_seen=search_rows_seen,
+                    replays_downloaded=replay_total,
+                )
+                break
+
             has_more = len(rows) == SEARCH_PAGE_LIMIT
             if has_more:
                 next_before = min(int(row["uploadtime"]) for row in rows)
