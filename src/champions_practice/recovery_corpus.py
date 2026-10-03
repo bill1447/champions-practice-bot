@@ -520,6 +520,14 @@ def load_team_pool_manifest(
     overlap = {record.key for record in training} & {record.key for record in evaluation}
     if overlap:
         raise RecoveryCorpusError(f"training/evaluation pools overlap: {sorted(overlap)!r}")
+    truth_overlap = (
+        {record.canonical_sha256 for record in training}
+        & {record.canonical_sha256 for record in evaluation}
+    )
+    if truth_overlap:
+        raise RecoveryCorpusError(
+            "training/evaluation pools contain the same canonical hidden truth"
+        )
     return TeamPools(
         training=training,
         evaluation=evaluation,
