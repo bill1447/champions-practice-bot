@@ -12,6 +12,9 @@ from champions_practice.replay_corpus import (
     DownloadConfig,
     ReplayCorpusError,
     ShowdownReplaySource,
+    _format_duration,
+    _progress_message,
+    _timing_snapshot,
     corpus_status,
     download_replay_corpus,
     ensure_external_data_root,
@@ -102,6 +105,59 @@ def _external_root(tmp_path: Path) -> tuple[Path, Path]:
     project_root.mkdir()
     data_root = tmp_path / "external-data"
     return project_root, data_root
+
+
+def test_download_timing_snapshot_reports_rate_and_eta():
+    elapsed, rate, eta = _timing_snapshot(
+        started_at=100.0,
+        now=160.0,
+        downloaded=120,
+        target=600,
+    )
+
+    assert elapsed == 60.0
+    assert rate == 120.0
+    assert eta == 240.0
+
+
+def test_download_timing_snapshot_handles_unlimited_run():
+    elapsed, rate, eta = _timing_snapshot(
+        started_at=10.0,
+        now=40.0,
+        downloaded=60,
+        target=0,
+    )
+
+    assert elapsed == 30.0
+    assert rate == 120.0
+    assert eta is None
+
+
+def test_progress_message_includes_elapsed_rate_and_eta():
+    message = _progress_message(
+        downloaded=100,
+        replay_total=250,
+        target=5000,
+        started_at=0.0,
+        now=50.0,
+    )
+
+    assert message == (
+        "Downloaded 100/5000 this run (250 total indexed) | "
+        "elapsed 00:00:50 | 120.0 replays/min | ETA 00:40:50"
+    )
+
+
+@pytest.mark.parametrize(
+    ("seconds", "expected"),
+    (
+        (0, "00:00:00"),
+        (59.6, "00:01:00"),
+        (3661, "01:01:01"),
+    ),
+)
+def test_format_duration(seconds: float, expected: str):
+    assert _format_duration(seconds) == expected
 
 
 def test_showdown_source_uses_documented_search_and_replay_json_urls():
