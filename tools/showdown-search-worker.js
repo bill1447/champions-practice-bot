@@ -1880,8 +1880,9 @@ function enumerateDamageRolls(request) {
         return bucket * DAMAGE_ROLL_BUCKET_WIDTH;
       };
       battle.random = (from, to) => {
-        randomCalls.push([from ?? null, to ?? null]);
-        return originalRandom(from, to);
+        const result = originalRandom(from, to);
+        randomCalls.push([from ?? null, to ?? null, result]);
+        return result;
       };
 
       const damage = battle.randomizer(request.base_damage);
@@ -1892,6 +1893,11 @@ function enumerateDamageRolls(request) {
       ) {
         throw new Error(
           "Pinned Battle#randomizer no longer uses exactly one random(16) call",
+        );
+      }
+      if (randomCalls[0][2] !== bucket) {
+        throw new Error(
+          "Injected PRNG representative did not map to the intended random(16) bucket",
         );
       }
       if (rngDrawCount !== 1) {
