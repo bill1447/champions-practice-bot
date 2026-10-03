@@ -12,6 +12,7 @@ from champions_practice.recovery_corpus import (
     CorpusRunConfig,
     ExactTeamRecord,
     RecoveryCorpusError,
+    _conditioning_batches,
     fixed_team_pools,
     load_exact_team_records,
     load_team_pool_manifest,
@@ -135,6 +136,52 @@ def test_fixed_pool_manifest_refuses_seed_change_without_refresh(tmp_path: Path)
             evaluation_per_regulation=2,
             refresh=False,
         )
+
+
+
+
+def test_team_pool_split_never_leaks_canonical_duplicate_truth():
+    duplicate_hash = "a" * 64
+    records = (
+        _record("alias-1", digest=duplicate_hash),
+        _record("alias-2", digest=duplicate_hash),
+        _record("other-1"),
+        _record("other-2"),
+    )
+
+    pools = select_team_pools(
+        records,
+        pool_seed=145,
+        evaluation_per_regulation=1,
+    )
+
+    training_hashes = {
+        record.canonical_sha256
+        for record in pools.training
+    }
+    evaluation_hashes = {
+        record.canonical_sha256
+        for record in pools.evaluation
+    }
+    assert training_hashes.isdisjoint(evaluation_hashes)
+
+
+def test_conditioning_batches_preserve_production_adaptive_shape():
+    config = CorpusRunConfig(conditioning_batch_sizes=(2, 4))
+
+    batches = _conditioning_batches(
+        config,
+        battle_index=3,
+        turn_number=2,
+    )
+
+    assert [len(batch) for batch in batches] == [2, 4]
+    assert len(set(batches[0] + batches[1])) == 6
+
+
+def test_config_rejects_invalid_conditioning_batch_shape():
+    with pytest.raises(ValueError, match="conditioning_batch_sizes"):
+        CorpusRunConfig(conditioning_batch_sizes=(2, 0))
 
 
 def test_translate_preview_preserves_selected_species_across_set_order():
