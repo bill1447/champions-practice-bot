@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Offline Pokemon Champions doubles practice opponent"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+    "numpy>=1.26,<3",
     "poke-env>=0.15",
 ]
 
@@ -19,6 +20,7 @@ champions-demo = "champions_practice.demo_server:main"
 champions-replays = "champions_practice.replay_corpus:main"
 champions-trajectories = "champions_practice.replay_trajectories:main"
 champions-replay-audit = "champions_practice.replay_semantic_audit:main"
+champions-policy-train = "champions_practice.semantic_policy_train:main"
 champions-teams = "champions_practice.team_corpus:main"
 champions-recovery-corpus = "champions_practice.recovery_corpus:main"
 
