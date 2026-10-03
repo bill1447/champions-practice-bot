@@ -1039,6 +1039,7 @@ def test_pinned_move_request_variants_remain_supported(move):
 )
 def test_supported_canonical_mechanics_event_shapes_remain_valid(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
 
     assert public_reachability_observation_issue(view) is None
@@ -1344,6 +1345,7 @@ def test_v5_prior_invalid_worker_evidence_never_becomes_conclusive(
 )
 def test_v5_prior_genuine_producer_event_variants_are_supported(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -1622,6 +1624,7 @@ def test_v5_semantic_invalid_worker_evidence_never_conclusive(
 )
 def test_v5_genuine_event_variants_are_supported(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -1678,6 +1681,7 @@ def test_v5_genuine_event_variants_are_supported(event):
 )
 def test_v5_impossible_event_variants_are_rejected(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is not None
 
@@ -2429,6 +2433,7 @@ def test_v7_selected_action_ledger_is_part_of_certified_signature(evaluator):
 )
 def test_v7_review_invalid_producer_role_events_are_rejected(event):
     view = _v5_semantic_valid_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is not None
 
@@ -2457,6 +2462,7 @@ def test_v7_review_invalid_producer_role_events_are_rejected(event):
 )
 def test_v7_review_genuine_pinned_variants_are_supported(event):
     view = _v5_semantic_valid_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -2478,6 +2484,7 @@ def test_v7_review_genuine_pinned_variants_are_supported(event):
 )
 def test_v7_typed_start_end_variants_remain_supported(event):
     view = _v5_semantic_valid_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
