@@ -17,9 +17,12 @@ from champions_practice.search_worker import (
 from champions_practice.teams import SMOKE_TEAM
 
 
+# Keep the opening public state mechanically identical while changing hidden
+# set truth.  A move difference cannot activate or reveal itself during team
+# preview/opening, unlike items/abilities that may have switch-in effects.
 VARIANT_TEAM = SMOKE_TEAM.replace(
-    "Indeedee-F @ Colbur Berry",
-    "Indeedee-F @ Mental Herb",
+    "- Rock Slide",
+    "- Feint",
     1,
 )
 
