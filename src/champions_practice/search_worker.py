@@ -324,22 +324,6 @@ class HypotheticalSearchWorker:
             request_timeout_seconds=request_timeout_seconds,
         )
 
-    @property
-    def showdown_revision(self) -> str:
-        return self.__worker.showdown_revision
-
-    def validate_team(
-        self,
-        *,
-        battle_format: str,
-        team_text: str,
-    ) -> dict[str, Any]:
-        """Validate an offline hypothetical team through the pinned runtime."""
-        return self.__worker.validate_team(
-            battle_format=battle_format,
-            team_text=team_text,
-        )
-
     def create_state(
         self,
         *,
