@@ -11,6 +11,7 @@ from champions_practice.replay_corpus import (
     DEFAULT_FORMAT,
     DownloadConfig,
     ReplayCorpusError,
+    ShowdownReplaySource,
     corpus_status,
     download_replay_corpus,
     ensure_external_data_root,
@@ -53,6 +54,20 @@ def _detail_bytes(
     return json.dumps(detail, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
 
 
+class _FakeHttpResponse:
+    def __init__(self, payload: bytes):
+        self.payload = payload
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        return None
+
+    def read(self) -> bytes:
+        return self.payload
+
+
 class FakeReplaySource:
     def __init__(
         self,
@@ -87,6 +102,43 @@ def _external_root(tmp_path: Path) -> tuple[Path, Path]:
     project_root.mkdir()
     data_root = tmp_path / "external-data"
     return project_root, data_root
+
+
+def test_showdown_source_uses_documented_search_and_replay_json_urls():
+    replay_id = f"{DEFAULT_FORMAT}-42"
+    row = _search_row(replay_id, uploadtime=42)
+    raw_detail = _detail_bytes(replay_id, uploadtime=42)
+    calls: list[tuple[str, float]] = []
+
+    def opener(request, *, timeout):
+        calls.append((request.full_url, timeout))
+        if "search.json" in request.full_url:
+            return _FakeHttpResponse(json.dumps([row]).encode("utf-8"))
+        return _FakeHttpResponse(raw_detail)
+
+    source = ShowdownReplaySource(
+        request_delay_seconds=0,
+        timeout_seconds=7.5,
+        retries=1,
+        opener=opener,
+    )
+
+    rows = source.search(format_id=DEFAULT_FORMAT, before=123456)
+    detail = source.fetch_replay(replay_id)
+
+    assert rows == [row]
+    assert detail == raw_detail
+    assert calls == [
+        (
+            "https://replay.pokemonshowdown.com/search.json?"
+            f"format={DEFAULT_FORMAT}&before=123456",
+            7.5,
+        ),
+        (
+            f"https://replay.pokemonshowdown.com/{replay_id}.json",
+            7.5,
+        ),
+    ]
 
 
 def test_replay_corpus_rejects_data_inside_repository(tmp_path: Path):
