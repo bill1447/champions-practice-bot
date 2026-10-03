@@ -356,6 +356,47 @@ def test_failed_replay_is_recorded_and_non_strict_run_continues(tmp_path: Path):
     )["failures"] == 1
 
 
+def test_failed_replay_is_retried_before_completed_checkpoint_short_circuit(
+    tmp_path: Path,
+):
+    project_root, data_root = _external_root(tmp_path)
+    bad_id = f"{DEFAULT_FORMAT}-650"
+    first_source = FakeReplaySource(
+        pages={None: [_search_row(bad_id, uploadtime=650)]},
+        details={bad_id: ReplayCorpusError("temporary")},
+    )
+    first = download_replay_corpus(
+        first_source,
+        config=DownloadConfig(data_root=data_root),
+        project_root=project_root,
+        progress=None,
+    )
+    assert first.exhausted
+    assert first.failed == 1
+
+    recovered = _detail_bytes(bad_id, uploadtime=650)
+    second_source = FakeReplaySource(
+        pages={},
+        details={bad_id: recovered},
+    )
+    second = download_replay_corpus(
+        second_source,
+        config=DownloadConfig(data_root=data_root),
+        project_root=project_root,
+        progress=None,
+    )
+
+    assert second_source.fetch_calls == [bad_id]
+    assert second_source.search_calls == []
+    assert second.downloaded == 1
+    status = corpus_status(
+        data_root,
+        project_root=project_root,
+    )
+    assert status["replays"] == 1
+    assert status["failures"] == 0
+
+
 def test_strict_failure_stops_without_advancing_page_checkpoint(tmp_path: Path):
     project_root, data_root = _external_root(tmp_path)
     bad_id = f"{DEFAULT_FORMAT}-700"
