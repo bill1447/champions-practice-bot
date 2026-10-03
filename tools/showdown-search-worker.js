@@ -28,6 +28,39 @@ function importTeam(text) {
   return team;
 }
 
+function moveMetadata(request) {
+  if (typeof request.format !== "string" || !request.format) {
+    throw new Error("move_metadata requires a format");
+  }
+  if (
+    !Array.isArray(request.moves) ||
+    request.moves.length === 0 ||
+    request.moves.length > 4096 ||
+    !request.moves.every((move) => typeof move === "string" && move)
+  ) {
+    throw new Error("move_metadata requires 1-4096 move ids");
+  }
+
+  const dex = TeamValidator.get(request.format).dex;
+  const seen = new Set();
+  const moves = [];
+  for (const requested of request.moves) {
+    const id = toId(requested);
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    const move = dex.moves.get(id);
+    moves.push({
+      requested: id,
+      exists: !!move.exists,
+      id: move.exists ? move.id : id,
+      name: move.exists ? move.name : null,
+      target: move.exists ? move.target : null,
+      category: move.exists ? move.category : null,
+    });
+  }
+  return { moves };
+}
+
 function validateTeamText(request) {
   if (typeof request.format !== "string" || !request.format) {
     throw new Error("validate_team requires a format");
@@ -2105,6 +2138,8 @@ function handle(request) {
       return { pong: true };
     case "validate_team":
       return validateTeamText(request);
+    case "move_metadata":
+      return moveMetadata(request);
     case "create":
       return createBattle(request);
     case "branch":

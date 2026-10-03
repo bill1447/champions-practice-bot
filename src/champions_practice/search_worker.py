@@ -262,6 +262,47 @@ def active_showdown_worker_pids() -> tuple[int, ...]:
         return tuple(sorted(_ACTIVE_SHOWDOWN_PROCESSES))
 
 
+class MoveMetadataWorker:
+    """Restricted pinned-Showdown surface for offline static move metadata."""
+
+    def __init__(
+        self,
+        project_root: str | Path | None = None,
+        *,
+        startup_deadline: float | None = None,
+        request_timeout_seconds: float = 30.0,
+    ):
+        self.__worker = ShowdownSearchWorker(
+            project_root,
+            startup_deadline=startup_deadline,
+            request_timeout_seconds=request_timeout_seconds,
+        )
+
+    @property
+    def showdown_revision(self) -> str:
+        return self.__worker.showdown_revision
+
+    def move_metadata(
+        self,
+        *,
+        battle_format: str,
+        move_ids: list[str],
+    ) -> dict[str, dict[str, Any]]:
+        return self.__worker.move_metadata(
+            battle_format=battle_format,
+            move_ids=move_ids,
+        )
+
+    def close(self) -> None:
+        self.__worker.close()
+
+    def __enter__(self) -> "MoveMetadataWorker":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
 class TeamValidationWorker:
     """Restricted pinned-Showdown surface for offline team-corpus validation."""
 
@@ -1188,6 +1229,35 @@ class ShowdownSearchWorker:
                 "Showdown worker returned invalid damage-roll enumeration"
             )
         return result
+
+    def move_metadata(
+        self,
+        *,
+        battle_format: str,
+        move_ids: list[str],
+    ) -> dict[str, dict[str, Any]]:
+        """Return pinned-format static metadata for a bounded move-id set."""
+        if not move_ids:
+            return {}
+        if len(move_ids) > 4096:
+            raise ValueError("move_metadata accepts at most 4096 move ids")
+        if not all(isinstance(move_id, str) and move_id for move_id in move_ids):
+            raise ValueError("move_ids must contain non-empty strings")
+        result = self.request(
+            "move_metadata",
+            format=battle_format,
+            moves=move_ids,
+        )
+        rows = result.get("moves")
+        if not isinstance(rows, list) or not all(isinstance(row, dict) for row in rows):
+            raise RuntimeError("Showdown worker returned invalid move metadata")
+        metadata: dict[str, dict[str, Any]] = {}
+        for row in rows:
+            requested = row.get("requested")
+            if not isinstance(requested, str) or not requested:
+                raise RuntimeError("Showdown worker returned move metadata without id")
+            metadata[requested] = row
+        return metadata
 
     def state_view(
         self,

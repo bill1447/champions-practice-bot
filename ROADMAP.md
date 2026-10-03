@@ -371,11 +371,25 @@ menu. The adapter therefore accepts only an externally supplied menu tagged as
 `pinned-showdown-legal-choices` and does not infer missing moves, party-slot ordering, trapping,
 or transformation options from later replay evidence.
 
-Before behavior-cloning training is finalized, choose the policy-data strategy for this gap:
-either enrich a subset with genuinely known player-side request/team context, or train a
-semantic action prior from the broader replay corpus and apply the exact legal menu only at
-inference/evaluation time. In either design, opponent private truth remains outside the replay
-label authority.
+A semantic-policy corpus audit/sharding baseline now measures that gap directly:
+
+- complete public action identities become replay-disjoint semantic joint-action rows;
+- incomplete labels remain explicit audit evidence rather than training rows;
+- pinned Showdown static move metadata identifies move target types;
+- public doubles slot geometry measures when move identity leaves multiple selected targets
+  possible, without using the replay's resolved target as selected intent;
+- switch rows are tagged as requiring player-side party-slot-order context;
+- generic Mega evidence, missing-label reasons, rating bands, turn distribution, action
+  families, split coverage, and usable rows per replay are reported;
+- generated semantic rows are grouped by replay into deterministic 90/5/5
+  train/validation/test splits and compressed external shards.
+
+Run that audit over the growing real trajectory corpus before choosing the first behavior
+cloning target. The measured semantic-label coverage and exact-menu-context burden should
+decide whether authoritative player-side request enrichment is worth the cost or whether the
+first model should be a semantic action prior whose scores are projected onto the exact legal
+menu at inference/evaluation time. In either design, opponent private truth remains outside
+the replay label authority.
 
 ### Team corpus and generalization
 
@@ -505,7 +519,9 @@ Near-term implementation order:
    replay-disjoint grouping and explicit label authority;
 6. **Complete baseline:** exact legal-menu matching adapter with strict abstention when public
    replay evidence cannot identify one submitted command;
-7. **Next:** choose/implement the player-side menu-context strategy, then train the first
-   behavior-cloned joint-action/semantic-action policy;
-8. bounded CFR/Bayesian matrix-game prototype;
-9. additional stochastic mechanics only when measured soundness failures require them.
+7. **Complete infrastructure / local measurement next:** replay-disjoint semantic-policy
+   corpus audit and compressed dataset shards with pinned target-type analysis;
+8. **Next:** use the measured corpus to choose the player-side menu-context strategy and train
+   the first behavior-cloned joint-action/semantic-action policy;
+9. bounded CFR/Bayesian matrix-game prototype;
+10. additional stochastic mechanics only when measured soundness failures require them.
