@@ -17,6 +17,7 @@ dev = [
 champions-practice = "champions_practice.cli:main"
 champions-demo = "champions_practice.demo_server:main"
 champions-replays = "champions_practice.replay_corpus:main"
+champions-teams = "champions_practice.team_corpus:main"
 
 [build-system]
 requires = ["hatchling"]
