@@ -104,9 +104,10 @@ If a raw file exists but its SQLite row is missing (for example, interruption be
 write and metadata commit), the next pass validates and re-indexes that existing file instead
 of downloading it again.
 
-Individual replay failures are recorded in the local manifest. By default they do not discard
-the successfully archived remainder of the page; `--strict` makes the first such failure stop
-the run for debugging.
+Individual replay failures are recorded in a persistent retry queue in the local manifest. The
+next invocation retries those IDs before continuing pagination, including after the historical
+checkpoint is exhausted. By default a failed ID does not discard the successfully archived
+remainder of the page; `--strict` makes the first such failure stop the run for debugging.
 
 `--restart-search` resets only the pagination cursor. It never deletes archived replay files
 or replay rows, so it is safe for checking newer public uploads after a backfill.
