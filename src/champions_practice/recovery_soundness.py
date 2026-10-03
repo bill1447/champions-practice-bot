@@ -138,7 +138,7 @@ class TrueWorldConditioningCase:
     transition: TrueWorldTransition
     particles: tuple[BeliefParticle, ...]
     true_world_id: str
-    rng_seeds: tuple[str | None, ...]
+    rng_batches: tuple[tuple[str | None, ...], ...]
     max_particles: int
     resample_seed: int
 
@@ -154,8 +154,21 @@ class TrueWorldConditioningCase:
             raise ValueError(
                 "conditioning case does not contain the declared true world"
             )
-        if not self.rng_seeds:
-            raise ValueError("conditioning case requires at least one RNG seed")
+        if not self.rng_batches or any(
+            not batch for batch in self.rng_batches
+        ):
+            raise ValueError(
+                "conditioning case requires non-empty RNG batches"
+            )
+        if any(
+            seed is not None
+            and (not isinstance(seed, str) or not seed.strip())
+            for batch in self.rng_batches
+            for seed in batch
+        ):
+            raise ValueError(
+                "conditioning RNG seeds must be None or non-empty strings"
+            )
         if self.max_particles <= 0:
             raise ValueError("conditioning max_particles must be positive")
 
@@ -443,19 +456,51 @@ def evaluate_true_world_conditioning(
         if transition.side == "p1"
         else transition.p2_choice
     )
-    update = condition_particles(
-        worker,
-        particles=case.particles,
-        ai_side=transition.side,
-        ai_choice=ai_choice,
-        actual_public_view=transition.actual_public_view,
-        previous_public_view=transition.previous_public_view,
-        rng_seeds=case.rng_seeds,
-        previews=transition.previews,
-    )
-    if update.particles:
+    generated = 0
+    deduplicated = 0
+    stochastic_only_mismatches = 0
+    structural_mismatches = 0
+    selected_update: ParticleUpdate | None = None
+
+    for rng_seeds in case.rng_batches:
+        update = condition_particles(
+            worker,
+            particles=case.particles,
+            ai_side=transition.side,
+            ai_choice=ai_choice,
+            actual_public_view=transition.actual_public_view,
+            previous_public_view=transition.previous_public_view,
+            rng_seeds=rng_seeds,
+            previews=transition.previews,
+        )
+        generated += update.generated
+        deduplicated += update.deduplicated
+        stochastic_only_mismatches += update.stochastic_only_mismatches
+        structural_mismatches += update.structural_mismatches
+        if update.particles:
+            selected_update = ParticleUpdate(
+                particles=update.particles,
+                generated=generated,
+                matched=update.matched,
+                deduplicated=deduplicated,
+                stochastic_only_mismatches=stochastic_only_mismatches,
+                structural_mismatches=structural_mismatches,
+            )
+            break
+
+    if selected_update is None:
+        selected_update = ParticleUpdate(
+            particles=(),
+            generated=generated,
+            matched=0,
+            deduplicated=deduplicated,
+            stochastic_only_mismatches=stochastic_only_mismatches,
+            structural_mismatches=structural_mismatches,
+        )
+
+    if selected_update.particles:
         posterior = resample_particles_by_world(
-            update.particles,
+            selected_update.particles,
             limit=case.max_particles,
             seed=case.resample_seed,
         )
@@ -466,7 +511,7 @@ def evaluate_true_world_conditioning(
 
     return TrueWorldConditioningOutcome(
         case=case,
-        update=update,
+        update=selected_update,
         posterior=posterior,
         degraded_retention=degraded,
     )
@@ -508,7 +553,9 @@ def conditioning_false_exclusion_payload(
         "previous_public_view": transition.previous_public_view,
         "actual_rng_seed": transition.actual_rng_seed,
         "actual_rng_draw_count": transition.actual_rng_draw_count,
-        "conditioning_rng_seeds": list(case.rng_seeds),
+        "conditioning_rng_batches": [
+            list(batch) for batch in case.rng_batches
+        ],
         "previews": transition.previews,
         "max_particles": case.max_particles,
         "resample_seed": case.resample_seed,
@@ -627,9 +674,11 @@ def write_false_exclusion_regressions(
         if not outcome.false_exclusion:
             continue
         payload = false_exclusion_payload(outcome)
-        safe_id = hashlib.sha256(
-            outcome.transition.case_id.encode("utf-8")
-        ).hexdigest()[:12]
+        key = (
+            f"{outcome.transition.source}:"
+            f"{outcome.transition.case_id}:authority"
+        )
+        safe_id = hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
         path = root / f"{safe_id}.json"
         temporary = path.with_suffix(".json.part")
         temporary.write_text(
