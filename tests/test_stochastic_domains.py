@@ -125,11 +125,11 @@ def test_extra_worker_damage_roll_metadata_fails_closed():
 
 @pytest.mark.parametrize(
     "base_damage",
-    (True, False, 0, -1, 1.5, "137", 2**53),
+    (True, False, 0, -1, 1.5, "137", (2**53 - 1) // 100 + 1),
 )
 def test_damage_roll_request_rejects_invalid_base_damage(base_damage):
     worker = _FakeDamageRollWorker(_raw_domain())
-    with pytest.raises(ValueError, match="positive safe integer"):
+    with pytest.raises(ValueError, match="exact Battle#randomizer integer precision"):
         enumerate_showdown_damage_rolls(
             worker,
             state={"serialized": True},
