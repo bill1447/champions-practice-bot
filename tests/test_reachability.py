@@ -649,7 +649,7 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v8"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v9"
     assert public_reachability_observation_issue(_valid_public_view()) is None
 
 
@@ -2683,6 +2683,135 @@ def test_v8_pinned_role_relationship_controls_remain_supported(event):
     assert public_reachability_observation_issue(view) is None
 
 
+
+def _v9_selected_opponent_projection_view():
+    view = _v5_semantic_valid_view()
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "thunderbolt",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            },
+            {
+                "side": "opponent",
+                "slot": 2,
+                "outcome": "executed",
+                "move": "protect",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            },
+        ],
+    }
+    view["opponent_last_actions"] = [
+        {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1},
+        {"turn": 1, "slot": 2, "move": "protect", "target": None},
+    ]
+    return view
+
+
+def test_v9_selected_opponent_projection_requires_reverse_correspondence():
+    view = _v9_selected_opponent_projection_view()
+    view["opponent_last_actions"] = []
+    issue = public_reachability_observation_issue(view)
+    assert issue is not None
+    assert "retain each unambiguous selected opponent move" in issue
+
+
+def test_v9_selected_opponent_projection_rejects_stale_retained_turn():
+    view = _v9_selected_opponent_projection_view()
+    for action in view["opponent_last_actions"]:
+        action["turn"] = 0
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v9_multiple_selected_moves_from_one_slot_remain_ambiguous():
+    view = _v5_semantic_valid_view()
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "thunderbolt",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            },
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "protect",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            },
+        ],
+    }
+    view["opponent_last_actions"] = []
+    assert public_reachability_observation_issue(view) is None
+
+
+def test_v9_ambiguous_selected_slot_must_not_be_fabricated_as_retained_action():
+    view = _v5_semantic_valid_view()
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "thunderbolt",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            },
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "protect",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            },
+        ],
+    }
+    view["opponent_last_actions"] = [
+        {"turn": 1, "slot": 1, "move": "thunderbolt", "target": 1}
+    ]
+    issue = public_reachability_observation_issue(view)
+    assert issue is not None
+    assert "must omit slots with multiple selected opponent move events" in issue
+
+
+def test_v9_switch_and_prevented_actions_do_not_require_move_projection():
+    view = _v5_semantic_valid_view()
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "prevented",
+                "reason": "recharge",
+                "attempted_move": None,
+                "effects": [],
+            }
+        ],
+    }
+    view["opponent_last_actions"] = []
+    assert public_reachability_observation_issue(view) is None
+
+
 def _v7_review_invalid_mutators():
     def future_action(view):
         view["opponent_last_actions"] = [
@@ -2864,6 +2993,33 @@ def _v7_review_invalid_mutators():
             ],
         }
 
+    def missing_selected_opponent_action_projection(view):
+        view["public_execution_delta"] = {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "opponent",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "thunderbolt",
+                    "source": "selected",
+                    "provenance": [],
+                    "effects": [],
+                },
+                {
+                    "side": "opponent",
+                    "slot": 2,
+                    "outcome": "executed",
+                    "move": "protect",
+                    "source": "selected",
+                    "provenance": [],
+                    "effects": [],
+                },
+            ],
+        }
+        view["opponent_last_actions"] = []
+
+
     return (
         future_action,
         duplicate_action_slot,
@@ -2888,6 +3044,7 @@ def _v7_review_invalid_mutators():
         execution_side_list,
         execution_source_list,
         execution_reason_list,
+        missing_selected_opponent_action_projection,
     )
 
 
