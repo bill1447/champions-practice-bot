@@ -51,8 +51,7 @@ DEFAULT_EVALUATION_PER_REGULATION = 48
 DEFAULT_BATTLES = 64
 DEFAULT_TURNS = 8
 DEFAULT_MAX_DECOYS = 7
-DEFAULT_CONDITIONING_BATCHES = 4
-DEFAULT_CONDITIONING_BATCH_SIZE = 8
+DEFAULT_CONDITIONING_BATCH_SIZES = (2, 4)
 DEFAULT_POOL_SEED = 145
 DEFAULT_BATTLE_SEED = 14501
 DEFAULT_ACTION_SEED = 14502
@@ -150,8 +149,7 @@ class CorpusRunConfig:
     battles: int = DEFAULT_BATTLES
     turns: int = DEFAULT_TURNS
     max_decoys: int = DEFAULT_MAX_DECOYS
-    conditioning_batches: int = DEFAULT_CONDITIONING_BATCHES
-    conditioning_batch_size: int = DEFAULT_CONDITIONING_BATCH_SIZE
+    conditioning_batch_sizes: tuple[int, ...] = DEFAULT_CONDITIONING_BATCH_SIZES
     pool_seed: int = DEFAULT_POOL_SEED
     evaluation_per_regulation: int = DEFAULT_EVALUATION_PER_REGULATION
     battle_seed: int = DEFAULT_BATTLE_SEED
@@ -169,12 +167,22 @@ class CorpusRunConfig:
         for label, value in (
             ("battles", self.battles),
             ("turns", self.turns),
-            ("conditioning_batches", self.conditioning_batches),
-            ("conditioning_batch_size", self.conditioning_batch_size),
             ("evaluation_per_regulation", self.evaluation_per_regulation),
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
                 raise ValueError(f"{label} must be a positive integer")
+        if (
+            not self.conditioning_batch_sizes
+            or any(
+                isinstance(value, bool)
+                or not isinstance(value, int)
+                or value <= 0
+                for value in self.conditioning_batch_sizes
+            )
+        ):
+            raise ValueError(
+                "conditioning_batch_sizes must contain positive integers"
+            )
         if (
             isinstance(self.max_decoys, bool)
             or not isinstance(self.max_decoys, int)
@@ -735,9 +743,9 @@ def _conditioning_batches(
                 batch,
                 slot,
             )
-            for slot in range(config.conditioning_batch_size)
+            for slot in range(size)
         )
-        for batch in range(config.conditioning_batches)
+        for batch, size in enumerate(config.conditioning_batch_sizes)
     )
 
 
@@ -771,6 +779,7 @@ def _same_species_decoys(
         for record in records
         if record.regulation == true_record.regulation
         and record.key != true_record.key
+        and record.canonical_sha256 != true_record.canonical_sha256
         and record.species_signature == true_record.species_signature
     ]
     candidates.sort(
@@ -998,7 +1007,7 @@ def run_recovery_corpus(
                     config.pool_seed,
                     regulation,
                     local_battle,
-                    p2.key,
+                    p1.key,
                 ),
             )
             decoys = _instantiate_decoy_worlds(
@@ -1320,13 +1329,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--conditioning-batches",
+        nargs="+",
         type=int,
-        default=DEFAULT_CONDITIONING_BATCHES,
-    )
-    parser.add_argument(
-        "--conditioning-batch-size",
-        type=int,
-        default=DEFAULT_CONDITIONING_BATCH_SIZE,
+        default=list(DEFAULT_CONDITIONING_BATCH_SIZES),
+        help="Adaptive conditioning batch sizes; production defaults to 2 then 4.",
     )
     parser.add_argument(
         "--refresh-pools",
@@ -1353,8 +1359,7 @@ def main(argv: list[str] | None = None) -> None:
             battles=args.battles,
             turns=args.turns,
             max_decoys=args.max_decoys,
-            conditioning_batches=args.conditioning_batches,
-            conditioning_batch_size=args.conditioning_batch_size,
+            conditioning_batch_sizes=tuple(args.conditioning_batches),
             pool_seed=args.pool_seed,
             evaluation_per_regulation=(
                 args.evaluation_per_regulation
