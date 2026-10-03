@@ -376,6 +376,52 @@ def test_restart_search_rechecks_newest_without_redownloading_existing(tmp_path:
     assert source.fetch_calls == [new_id]
 
 
+def test_restart_search_stops_at_first_all_known_page(tmp_path: Path):
+    project_root, data_root = _external_root(tmp_path)
+    first_page = [
+        _search_row(f"{DEFAULT_FORMAT}-{900 - index}", uploadtime=900 - index)
+        for index in range(51)
+    ]
+    next_before = first_page[-1]["uploadtime"]
+    tail_id = f"{DEFAULT_FORMAT}-800"
+    tail_page = [_search_row(tail_id, uploadtime=800)]
+    details = {
+        row["id"]: _detail_bytes(row["id"], uploadtime=row["uploadtime"])
+        for row in first_page + tail_page
+    }
+    initial = FakeReplaySource(
+        pages={None: first_page, next_before: tail_page},
+        details=details,
+    )
+    download_replay_corpus(
+        initial,
+        config=DownloadConfig(data_root=data_root, max_replays=0),
+        project_root=project_root,
+        progress=None,
+    )
+
+    refresh = FakeReplaySource(
+        pages={None: first_page},
+        details={},
+    )
+    stats = download_replay_corpus(
+        refresh,
+        config=DownloadConfig(
+            data_root=data_root,
+            restart_search=True,
+            max_replays=0,
+        ),
+        project_root=project_root,
+        progress=None,
+    )
+
+    assert refresh.search_calls == [(DEFAULT_FORMAT, None)]
+    assert refresh.fetch_calls == []
+    assert stats.downloaded == 0
+    assert stats.already_present == 51
+    assert stats.exhausted
+
+
 def test_failed_replay_is_recorded_and_non_strict_run_continues(tmp_path: Path):
     project_root, data_root = _external_root(tmp_path)
     bad_id = f"{DEFAULT_FORMAT}-600"
