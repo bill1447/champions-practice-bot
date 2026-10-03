@@ -188,11 +188,12 @@ def _collect_source(
     *,
     root: Path,
     config: SemanticAuditConfig,
-) -> tuple[str, set[str], int, Counter[str]]:
+) -> tuple[str, set[str], int, Counter[str], list[dict[str, str]]]:
     digest = hashlib.sha256()
     move_ids: set[str] = set()
     valid = 0
     failures: Counter[str] = Counter()
+    failure_examples: list[dict[str, str]] = []
     for replay_id, relative, trajectory_sha in _trajectory_rows(
         connection,
         format_id=config.format_id,
@@ -202,6 +203,14 @@ def _collect_source(
             trajectory = _load_trajectory(root, replay_id, relative, trajectory_sha)
         except Exception as error:
             failures[type(error).__name__] += 1
+            if len(failure_examples) < 5:
+                failure_examples.append(
+                    {
+                        "replay_id": str(replay_id),
+                        "error_type": type(error).__name__,
+                        "detail": str(error),
+                    }
+                )
             if config.strict:
                 raise
             continue
@@ -215,7 +224,7 @@ def _collect_source(
                 move = _to_id(action.get("move"))
                 if move:
                     move_ids.add(move)
-    return digest.hexdigest(), move_ids, valid, failures
+    return digest.hexdigest(), move_ids, valid, failures, failure_examples
 
 
 def _metadata_batches(
@@ -556,7 +565,13 @@ def build_semantic_policy_corpus(
                 (config.format_id, TRAJECTORY_SCHEMA),
             ).fetchone()[0]
         )
-        source_fingerprint, move_ids, usable_source_replays, source_failures = _collect_source(
+        (
+            source_fingerprint,
+            move_ids,
+            usable_source_replays,
+            source_failures,
+            source_failure_examples,
+        ) = _collect_source(
             connection,
             root=layout.root,
             config=config,
@@ -629,6 +644,7 @@ def build_semantic_policy_corpus(
         unknown_move_metadata_rows = 0
         usable_per_replay: list[int] = []
         processing_failures: Counter[str] = Counter()
+        processing_failure_examples: list[dict[str, str]] = []
         processed_replays = 0
 
         try:
@@ -757,6 +773,14 @@ def build_semantic_policy_corpus(
                     processed_replays += 1
                 except Exception as error:
                     processing_failures[type(error).__name__] += 1
+                    if len(processing_failure_examples) < 5:
+                        processing_failure_examples.append(
+                            {
+                                "replay_id": str(replay_id),
+                                "error_type": type(error).__name__,
+                                "detail": str(error),
+                            }
+                        )
                     if config.strict:
                         raise
                     continue
@@ -786,7 +810,9 @@ def build_semantic_policy_corpus(
             "trajectory_replays_processed": processed_replays,
             "trajectory_coverage_of_raw_archive": trajectory_coverage,
             "source_failures": _counter_dict(source_failures),
+            "source_failure_examples": source_failure_examples,
             "processing_failures": _counter_dict(processing_failures),
+            "processing_failure_examples": processing_failure_examples,
             "side_turn_rows": side_turns,
             "semantic_trainable_rows": complete_rows,
             "incomplete_rows": incomplete_rows,
