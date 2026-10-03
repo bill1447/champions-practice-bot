@@ -488,7 +488,8 @@ Current sequence:
 **Simulator → public beliefs → bounded exact search → persistent beliefs → strategy
 → sealed playable demo → observation/reachability authority → first finite stochastic
 primitive → [parallel tracks: recovery soundness + human replay/team corpus]
-→ joint-action trajectory extraction → behavior-cloned policy prior
+→ joint-action trajectory extraction → legal-menu adapter
+→ player-side menu-context strategy → behavior-cloned policy prior
 → bounded equilibrium/CFR prototype → independently validated recovery
 → learned value/teacher loop → targeted selective depth and review tools**
 
@@ -507,4 +508,4 @@ Near-term implementation order:
 7. **Next:** choose/implement the player-side menu-context strategy, then train the first
    behavior-cloned joint-action/semantic-action policy;
 8. bounded CFR/Bayesian matrix-game prototype;
-8. additional stochastic mechanics only when measured soundness failures require them.
+9. additional stochastic mechanics only when measured soundness failures require them.
