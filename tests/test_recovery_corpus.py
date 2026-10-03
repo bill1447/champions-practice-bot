@@ -267,6 +267,16 @@ def test_translate_preview_preserves_selected_species_across_set_order():
     assert translated == "team 3541"
 
 
+def test_translate_preview_accepts_showdown_comma_separated_choice():
+    translated = translate_preview(
+        "team 2, 1, 3, 6",
+        source_species=("A", "B", "C", "D", "E", "F"),
+        target_species=("F", "C", "A", "E", "B", "D"),
+    )
+
+    assert translated == "team 5321"
+
+
 def test_translate_preview_rejects_nonmatching_team():
     with pytest.raises(RecoveryCorpusError, match="not present"):
         translate_preview(

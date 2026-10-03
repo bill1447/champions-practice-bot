@@ -618,13 +618,24 @@ def choose_preview(
 
 
 def _preview_indices(choice: str) -> tuple[int, ...]:
-    match = re.fullmatch(r"team ([1-9][0-9]*)", choice)
+    match = re.fullmatch(r"team\s+(.+)", choice)
     if match is None:
         raise RecoveryCorpusError(f"unsupported team-preview command: {choice!r}")
-    digits = tuple(int(character) for character in match.group(1))
-    if any(index < 1 or index > 6 for index in digits):
+
+    payload = match.group(1).strip()
+    if re.fullmatch(r"[1-6]+", payload):
+        indices = tuple(int(character) for character in payload)
+    elif re.fullmatch(r"[1-6](?:\s*,\s*[1-6])+", payload):
+        indices = tuple(
+            int(component.strip())
+            for component in payload.split(",")
+        )
+    else:
+        raise RecoveryCorpusError(f"unsupported team-preview command: {choice!r}")
+
+    if len(indices) != len(set(indices)):
         raise RecoveryCorpusError(f"invalid team-preview command: {choice!r}")
-    return digits
+    return indices
 
 
 def translate_preview(
