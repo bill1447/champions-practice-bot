@@ -9,6 +9,7 @@ param(
     [int]$Battles = 64,
     [int]$Turns = 8,
     [int]$MaxDecoys = 7,
+    [int[]]$ConditioningBatches = @(2, 4),
     [switch]$RefreshPools,
     [switch]$AllowNonauthoritativeRegulation
 )
@@ -33,8 +34,10 @@ $CorpusArgs = @(
     "$Turns",
     "--max-decoys",
     "$MaxDecoys",
-    "--regulations"
+    "--conditioning-batches"
 )
+$CorpusArgs += $ConditioningBatches
+$CorpusArgs += "--regulations"
 $CorpusArgs += $Regulations
 
 if ($RefreshPools) {
@@ -49,6 +52,7 @@ Write-Host "Regulations:       $($Regulations -join ', ')"
 Write-Host "Battles/reg:       $Battles"
 Write-Host "Turns/battle:      $Turns"
 Write-Host "Max decoys:        $MaxDecoys"
+Write-Host "Conditioning RNG:  $($ConditioningBatches -join ', ')"
 
 & $Python @CorpusArgs
 if ($LASTEXITCODE -ne 0) {
