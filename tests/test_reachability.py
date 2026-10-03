@@ -649,7 +649,7 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v7"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v8"
     assert public_reachability_observation_issue(_valid_public_view()) is None
 
 
