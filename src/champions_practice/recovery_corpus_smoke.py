@@ -126,6 +126,11 @@ def main() -> None:
             finally:
                 connection.close()
 
+            # Keep the smoke topology production-shaped: one frozen evaluation
+            # truth and one disjoint same-species training truth available only
+            # as a hidden-world decoy.  Using both fixtures as evaluation teams
+            # makes the only decoy also the AI's exact team, which is not the
+            # train/evaluation boundary this smoke is intended to exercise.
             result = run_recovery_corpus(
                 worker,
                 validator,
@@ -136,7 +141,7 @@ def main() -> None:
                     turns=2,
                     max_decoys=1,
                     conditioning_batch_sizes=(2, 4),
-                    evaluation_per_regulation=2,
+                    evaluation_per_regulation=1,
                 ),
                 refresh_pools=True,
             )
