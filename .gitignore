@@ -18,3 +18,20 @@ runs/
 # IDE/editor
 .vscode/
 .idea/
+
+# Bulk replay/training corpora and generated ML artifacts
+# The real corpus belongs outside this repository (for example F:\Showdown replay data).
+data/replays/
+data/teams/
+data/models/
+replay-data/
+battle_logs/
+trajs/
+*.parquet
+*.sqlite
+*.sqlite3
+*.db
+*.ckpt
+*.pt
+*.pth
+*.safetensors
