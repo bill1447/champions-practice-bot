@@ -151,7 +151,11 @@ def main() -> None:
             raise SystemExit(
                 "ERROR: recovery corpus smoke conditioning excluded true world"
             )
-        if not result.summary_path.is_file() or not result.cases_path.is_file():
+        if (
+            not result.summary_path.is_file()
+            or not result.cases_path.is_file()
+            or not result.pool_path.is_file()
+        ):
             raise SystemExit(
                 "ERROR: recovery corpus smoke did not persist external reports"
             )
