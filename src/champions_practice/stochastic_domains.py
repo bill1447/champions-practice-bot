@@ -14,6 +14,7 @@ from typing import Any, Protocol
 DAMAGE_ROLL_DOMAIN = "showdown-battle-randomizer-v1"
 DAMAGE_ROLL_SOURCE = "Battle#randomizer"
 DAMAGE_ROLL_BUCKETS = 16
+JS_MAX_SAFE_INTEGER = 2**53 - 1
 
 
 class DamageRollWorker(Protocol):
@@ -46,7 +47,11 @@ class DamageRollOutcome:
             or self.damage < 0
         ):
             raise ValueError("damage-roll damage must be a non-negative integer")
-        if self.rng_draw_count != 1:
+        if (
+            isinstance(self.rng_draw_count, bool)
+            or not isinstance(self.rng_draw_count, int)
+            or self.rng_draw_count != 1
+        ):
             raise ValueError(
                 "each damage-roll bucket must consume exactly one PRNG draw"
             )
@@ -72,8 +77,9 @@ class DamageRollDomain:
             isinstance(self.base_damage, bool)
             or not isinstance(self.base_damage, int)
             or self.base_damage < 1
+            or self.base_damage > JS_MAX_SAFE_INTEGER
         ):
-            raise ValueError("base_damage must be a positive integer")
+            raise ValueError("base_damage must be a positive safe integer")
         if self.domain != DAMAGE_ROLL_DOMAIN:
             raise ValueError("unexpected damage-roll domain identifier")
         if self.source != DAMAGE_ROLL_SOURCE:
@@ -118,9 +124,17 @@ def _parse_damage_roll_domain(
         raise RuntimeError("Showdown returned an unknown damage-roll domain")
     if raw["source"] != DAMAGE_ROLL_SOURCE:
         raise RuntimeError("Showdown returned an unknown damage-roll source")
-    if raw["base_damage"] != requested_base_damage:
+    if (
+        isinstance(raw["base_damage"], bool)
+        or not isinstance(raw["base_damage"], int)
+        or raw["base_damage"] != requested_base_damage
+    ):
         raise RuntimeError("Showdown damage-roll response changed base_damage")
-    if raw["domain_size"] != DAMAGE_ROLL_BUCKETS:
+    if (
+        isinstance(raw["domain_size"], bool)
+        or not isinstance(raw["domain_size"], int)
+        or raw["domain_size"] != DAMAGE_ROLL_BUCKETS
+    ):
         raise RuntimeError("Showdown damage-roll domain is not exactly 16 buckets")
     if raw["exhaustive"] is not True:
         raise RuntimeError("Showdown did not mark the damage-roll domain exhaustive")
@@ -182,8 +196,9 @@ def enumerate_showdown_damage_rolls(
         isinstance(base_damage, bool)
         or not isinstance(base_damage, int)
         or base_damage < 1
+        or base_damage > JS_MAX_SAFE_INTEGER
     ):
-        raise ValueError("base_damage must be a positive integer")
+        raise ValueError("base_damage must be a positive safe integer")
 
     raw = worker.enumerate_damage_rolls(
         state=state,
