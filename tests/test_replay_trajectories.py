@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -227,7 +228,7 @@ def _install_raw_replay(
     raw_path.write_bytes(raw)
     digest = hashlib.sha256(raw).hexdigest()
 
-    with sqlite3.connect(layout.database) as connection:
+    with closing(sqlite3.connect(layout.database)) as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS replays (
