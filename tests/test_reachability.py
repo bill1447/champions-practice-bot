@@ -2727,8 +2727,10 @@ def test_v9_selected_opponent_projection_requires_reverse_correspondence():
 def test_v9_selected_opponent_projection_rejects_stale_retained_turn():
     view = _v9_selected_opponent_projection_view()
     for action in view["opponent_last_actions"]:
-        action["turn"] = 0
-    assert public_reachability_observation_issue(view) is not None
+        action["turn"] = 2
+    issue = public_reachability_observation_issue(view)
+    assert issue is not None
+    assert "must use the selected opponent execution turn" in issue
 
 
 def test_v9_multiple_selected_moves_from_one_slot_remain_ambiguous():
