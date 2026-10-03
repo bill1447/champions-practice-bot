@@ -110,7 +110,8 @@ checkpoint is exhausted. By default a failed ID does not discard the successfull
 remainder of the page; `--strict` makes the first such failure stop the run for debugging.
 
 `--restart-search` resets only the pagination cursor. It never deletes archived replay files
-or replay rows, so it is safe for checking newer public uploads after a backfill.
+or replay rows. During a refresh, pagination stops at the first complete page made entirely of
+already indexed replay IDs, so checking newer uploads does not re-walk the historical archive.
 
 ## Scope
 
