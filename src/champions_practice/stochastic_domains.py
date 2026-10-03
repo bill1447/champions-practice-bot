@@ -15,6 +15,7 @@ DAMAGE_ROLL_DOMAIN = "showdown-battle-randomizer-v1"
 DAMAGE_ROLL_SOURCE = "Battle#randomizer"
 DAMAGE_ROLL_BUCKETS = 16
 JS_MAX_SAFE_INTEGER = 2**53 - 1
+MAX_EXACT_DAMAGE_RANDOMIZER_INPUT = JS_MAX_SAFE_INTEGER // 100
 
 
 class DamageRollWorker(Protocol):
@@ -77,9 +78,11 @@ class DamageRollDomain:
             isinstance(self.base_damage, bool)
             or not isinstance(self.base_damage, int)
             or self.base_damage < 1
-            or self.base_damage > JS_MAX_SAFE_INTEGER
+            or self.base_damage > MAX_EXACT_DAMAGE_RANDOMIZER_INPUT
         ):
-            raise ValueError("base_damage must be a positive safe integer")
+            raise ValueError(
+                "base_damage must preserve exact Battle#randomizer integer precision"
+            )
         if self.domain != DAMAGE_ROLL_DOMAIN:
             raise ValueError("unexpected damage-roll domain identifier")
         if self.source != DAMAGE_ROLL_SOURCE:
@@ -196,9 +199,11 @@ def enumerate_showdown_damage_rolls(
         isinstance(base_damage, bool)
         or not isinstance(base_damage, int)
         or base_damage < 1
-        or base_damage > JS_MAX_SAFE_INTEGER
+        or base_damage > MAX_EXACT_DAMAGE_RANDOMIZER_INPUT
     ):
-        raise ValueError("base_damage must be a positive safe integer")
+        raise ValueError(
+            "base_damage must preserve exact Battle#randomizer integer precision"
+        )
 
     raw = worker.enumerate_damage_rolls(
         state=state,
