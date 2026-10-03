@@ -83,7 +83,9 @@ def test_damage_roll_domain_allows_observationally_equivalent_damage_buckets():
         lambda raw: raw.update(domain="future-domain"),
         lambda raw: raw.update(source="PythonFormula"),
         lambda raw: raw.update(base_damage=999),
+        lambda raw: raw.update(base_damage=True),
         lambda raw: raw.update(domain_size=15),
+        lambda raw: raw.update(domain_size=True),
         lambda raw: raw.update(exhaustive=False),
         lambda raw: raw["outcomes"].pop(),
         lambda raw: raw["outcomes"].__setitem__(
@@ -95,6 +97,7 @@ def test_damage_roll_domain_allows_observationally_equivalent_damage_buckets():
             },
         ),
         lambda raw: raw["outcomes"][0].update(rng_draw_count=2),
+        lambda raw: raw["outcomes"][0].update(rng_draw_count=True),
         lambda raw: raw["outcomes"][0].update(damage=-1),
     ),
 )
@@ -120,10 +123,13 @@ def test_extra_worker_damage_roll_metadata_fails_closed():
         )
 
 
-@pytest.mark.parametrize("base_damage", (True, False, 0, -1, 1.5, "137"))
+@pytest.mark.parametrize(
+    "base_damage",
+    (True, False, 0, -1, 1.5, "137", 2**53),
+)
 def test_damage_roll_request_rejects_invalid_base_damage(base_damage):
     worker = _FakeDamageRollWorker(_raw_domain())
-    with pytest.raises(ValueError, match="positive integer"):
+    with pytest.raises(ValueError, match="positive safe integer"):
         enumerate_showdown_damage_rolls(
             worker,
             state={"serialized": True},
