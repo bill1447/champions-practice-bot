@@ -797,7 +797,7 @@ def _instantiate_decoy_worlds(
                 seed=battle_seed,
             )
             view = worker.state_view(state=state, side="p1")
-        except (RecoveryCorpusError, ShowdownWorkerError, ValueError):
+        except (RecoveryCorpusError, ValueError):
             continue
         if public_observation_signature(view) != wanted:
             continue
