@@ -104,6 +104,10 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m pytest
 
+      - name: Public replay trajectory extraction smoke test
+        shell: pwsh
+        run: .\replay-trajectory-smoke.ps1
+
       - name: Validate Champions team
         shell: pwsh
         run: .\validate-team.ps1
