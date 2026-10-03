@@ -35,3 +35,7 @@ trajs/
 *.pt
 *.pth
 *.safetensors
+
+# Generated recovery soundness hard cases (bulk/local runs)
+recovery-hard-cases/
+data/recovery-hard-cases/
