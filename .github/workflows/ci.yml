@@ -112,6 +112,10 @@ jobs:
         shell: pwsh
         run: .\replay-policy-menu-smoke.ps1
 
+      - name: Pinned Showdown replay semantic audit smoke test
+        shell: pwsh
+        run: .\replay-semantic-audit-smoke.ps1
+
       - name: Validate Champions team
         shell: pwsh
         run: .\validate-team.ps1
