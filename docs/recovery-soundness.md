@@ -144,9 +144,10 @@ The default run uses current Regulation M-C truth teams. The runner:
    adaptive conditioning batches `(2, 4)`, and resampling remain independently deterministic;
 5. runs the measurement from the production bot's `p2` perspective and supplies the complete
    six-species public preview while retaining exact sets only as offline hidden truth;
-6. when available, adds other published teams with the same six species as opening-boundary
-   hidden-world decoys and translates team-preview selections by species. Later turn cases do
-   not advance decoys with the known human command, because that hidden command is not public
+6. when available, adds other published teams from the frozen pool with the same six species
+   as opening-boundary hidden-world decoys and translates team-preview selections by species.
+   Newly downloaded teams cannot silently alter an existing pool/run. Later turn cases do not
+   advance decoys with the known human command, because that hidden command is not public
    conditioning authority;
 7. measures reachability-authority survival and production-shaped sampled-conditioning
    survival separately.
@@ -171,8 +172,9 @@ Generated bulk data stays outside Git under:
         └── conditioning\
 ```
 
-Each run snapshots the exact pool IDs and canonical hashes it used, so a later explicit refresh
-of the shared pool cannot rewrite the provenance of an older run.
+Each run snapshots the exact pool IDs and canonical hashes it used. The deterministic run ID
+also binds the full frozen pool and pinned Showdown revision, so newly downloaded teams, a
+pool refresh, or a mechanics-pin change cannot silently overwrite an older run's provenance.
 
 The summary includes survival and false-exclusion counts plus breakdowns by regulation, turn,
 complete-action family, and whether the real transition consumed simulator RNG. A large local
