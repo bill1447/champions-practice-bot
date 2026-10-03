@@ -12,6 +12,7 @@ from champions_practice.recovery_corpus import (
     CorpusRunConfig,
     ExactTeamRecord,
     RecoveryCorpusError,
+    TeamPools,
     _conditioning_batches,
     fixed_team_pools,
     load_exact_team_records,
@@ -114,6 +115,23 @@ def test_pool_manifest_round_trip_and_hash_drift_detection(tmp_path: Path):
     )
     with pytest.raises(RecoveryCorpusError, match="canonical hash changed"):
         load_team_pool_manifest(path, changed)
+
+
+def test_pool_manifest_rejects_canonical_truth_overlap(tmp_path: Path):
+    digest = "b" * 64
+    training = _record("training-alias", digest=digest)
+    evaluation = _record("evaluation-alias", digest=digest)
+    pools = TeamPools(
+        training=(training,),
+        evaluation=(evaluation,),
+        pool_seed=145,
+        evaluation_per_regulation=1,
+    )
+    path = tmp_path / "pools.json"
+    write_team_pool_manifest(pools, path)
+
+    with pytest.raises(RecoveryCorpusError, match="canonical hidden truth"):
+        load_team_pool_manifest(path, (training, evaluation))
 
 
 def test_fixed_pool_manifest_refuses_seed_change_without_refresh(tmp_path: Path):
