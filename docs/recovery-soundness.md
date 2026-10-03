@@ -162,10 +162,14 @@ Generated bulk data stays outside Git under:
 └── runs\<deterministic-run-id>\
     ├── summary.json
     ├── cases.jsonl
+    ├── team-pool.json
     └── hard-cases\
         ├── reachability\
         └── conditioning\
 ```
+
+Each run snapshots the exact pool IDs and canonical hashes it used, so a later explicit refresh
+of the shared pool cannot rewrite the provenance of an older run.
 
 The summary includes survival and false-exclusion counts plus breakdowns by regulation, turn,
 complete-action family, and whether the real transition consumed simulator RNG. A large local
