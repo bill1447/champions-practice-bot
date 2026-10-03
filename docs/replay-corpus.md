@@ -87,6 +87,31 @@ champions-replays --data-root "F:\Showdown replay data"
 `CHAMPIONS_REPLAY_DATA_ROOT` may supply the root for callers that should not embed a machine
 path.
 
+## Throughput and ETA
+
+During a download, progress is reported after the first new replay and every 100 new replays.
+Each line includes:
+
+- newly downloaded replays versus the current run cap;
+- cumulative indexed replay count;
+- elapsed wall-clock time;
+- effective new replays per minute;
+- ETA to the current capped target.
+
+For example:
+
+```text
+Downloaded 100/5000 this run (250 total indexed) | elapsed 00:00:50 |
+120.0 replays/min | ETA 00:40:50
+```
+
+The final JSON summary also records `elapsed_seconds` and
+`replay_rate_per_minute`. Unlimited historical backfills report ETA as unavailable because
+the downloader does not assume the total number of public replays in advance.
+
+Measure actual throughput before changing the default request delay or adding concurrency.
+The current client is intentionally sequential and polite to the public replay service.
+
 ## Resume and integrity behavior
 
 Each format has a pagination checkpoint in SQLite. A completed page advances the timestamp
