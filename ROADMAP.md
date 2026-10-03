@@ -217,13 +217,18 @@ public view -> StrategicAssessment -> generated plans -> one-turn support filter
 exact plan probes -> supported-plan selection -> labeled scoring. CI also runs a dedicated
 real-Showdown benchmark smoke for neutral Trick Room versus resource preservation.
 
-Continue adding labeled positions and complete games. Compare bounded belief search with
-exhaustive search where tractable and with perfect-information search only as a diagnostic
-oracle. Track missed KOs, sacrifices, targets, switches, Protects, speed control, field
-control, setup recognition, conservatism, strategic-plan quality, and latency.
+The next benchmark expansion should be measurement-driven rather than another hand-built
+strategy pass. In particular:
 
-Playing-strength expansion is not the current critical path. The benchmark corpus remains a
-regression floor while mechanics-authoritative belief recovery is hardened.
+- add complete-game hard cases such as repeated Protect, poor switching, and bad target
+  allocation as reproducible search/evaluation regressions;
+- add an offline true-world-survival metric for belief/recovery soundness;
+- later add joint-action policy top-k recall and teacher-vs-live-bot win-rate gates;
+- preserve the current strategic corpus as a regression floor, not as evidence that strategy
+  is complete or that the current evaluator is a strong teacher.
+
+Playing-strength work now proceeds in parallel with the human-data pipeline below. Further
+hand-authored strategy expansion remains frozen unless gameplay exposes a concrete failure.
 
 ## Phase 10.5 — Mechanics-authoritative reachability and recovery — in progress
 
@@ -267,13 +272,27 @@ stochastic-domain work. The certification is scoped to the reviewed public-obser
 reachability-authority boundary at the pinned Showdown revision; it is not a certification of
 the broader bot or future Showdown revisions.
 
-Current stochastic work:
+Current stochastic and recovery work:
 
-- add finite mechanics primitives only through pinned Showdown;
-- keep primitive exhaustiveness distinct from complete-transition exhaustiveness;
-- do not convert primitive enumeration into live admission/elimination authority yet;
-- begin with the 16-bucket `Battle#randomizer` damage-roll domain, then compose additional
-  stochastic dimensions only with explicit coverage accounting.
+- PR #139 established the first isolated finite stochastic primitive: the exact 16-bucket
+  pinned-Showdown `Battle#randomizer` damage-roll domain;
+- primitive exhaustiveness remains distinct from complete-transition exhaustiveness;
+- no stochastic primitive may install, supplement, or eliminate live belief particles yet;
+- stop expanding stochastic mechanics speculatively. The next mechanics work is driven by an
+  offline recovery-soundness harness that knows the true hidden world and records any false
+  exclusion as a reproducible hard case;
+- ambiguous evidence should widen or retain support rather than forcing false precision;
+- add accuracy, crit, multihit, secondary-effect, speed-tie, HP-interval, or other stochastic
+  machinery only when measured soundness failures show that the missing dimension matters.
+
+Primary recovery metric:
+
+`true-world survival rate = fraction of decision boundaries where the actual generated hidden
+world remains represented after public conditioning/recovery`
+
+The first target is effectively zero false exclusions on the covered offline corpus. Coverage
+and precision are secondary: an inconclusive/wider belief is acceptable where exclusion is
+not authoritative.
 
 Phase exit criteria:
 
@@ -281,27 +300,96 @@ Phase exit criteria:
    both expected and returned evidence.
 2. **Complete:** rerun bounded hostile reviews of this surface and clear all P0/P1/P2
    authority findings through the v9 review after PR #138.
-3. **In progress:** add isolated finite stochastic-domain enumeration without granting it
-   live-admission authority.
-4. Build an independent Showdown differential validator that does not reuse production
+3. **Complete baseline:** add isolated finite stochastic-domain enumeration without granting it
+   live-admission authority; PR #139 provides the first exact damage-roll primitive.
+4. Build the offline true-world-survival harness and save every false exclusion as a
+   deterministic regression.
+5. Build an independent Showdown differential validator that does not reuse production
    acceptance logic as its oracle.
-5. Demonstrate that the true hidden world remains reachable, mechanically impossible worlds
-   are rejected only with adequate authority, and private information cannot influence
-   pre-seal decisions.
-6. Only then allow mechanics-authoritative recovery to affect live particle admission or
+6. Demonstrate sound recovery on a diverse team/game corpus, with private information unable
+   to influence pre-seal decisions.
+7. Only then allow mechanics-authoritative recovery to affect live particle admission or
    elimination.
 
-Planned stochastic mechanics work after the observation-authority gate:
+This phase is no longer a blocker on beginning human-data collection and policy learning.
+Those tracks should proceed in parallel.
 
-- enumerate bounded discrete damage rolls where practical;
-- use exact AI-side HP deltas to constrain opponent offensive parameters;
-- map public opponent HP percentages to exact-HP intervals or sets;
-- handle sequential bounded damage and small categorical RNG domains explicitly;
-- merge observationally equivalent histories;
-- retain sampled fallback only for compound or unsupported mechanics;
-- add likelihood weighting only after reachability correctness is independently validated.
+## Phase 10.6 — Human data, learned priors, and equilibrium search — next
 
-This phase is the main correctness dependency for later teacher/data-generation work.
+The next intelligence phase begins before recovery is mechanically complete. The goal is not
+to replace exact search with a neural policy. The learned model should provide fast VGC
+judgment that allocates search toward plausible and strategically meaningful joint actions.
+
+### Human replay corpus
+
+Build a resumable corpus pipeline for public Pokémon Showdown Champions replays:
+
+- archive untouched raw replay JSON/logs as source-of-truth records;
+- prioritize the current Regulation M-C format while retaining older Champions data for
+  general VGC behavior;
+- record replay id, format, time, player metadata/rating when available, result, and provenance;
+- deduplicate and checkpoint downloads so collection can run continuously;
+- keep bulk corpus data outside Git and version only manifests, schemas, and deterministic
+  extraction code;
+- never fabricate hidden selections from a replay. If a chosen action was not made public,
+  omit or partially label that decision.
+
+### Team corpus and generalization
+
+Arbitrary-team ingestion is now a training prerequisite rather than only a demo feature.
+
+- ingest a broad pool of public Regulation M-C team pastes;
+- canonicalize complete builds and preserve source/provenance;
+- maintain separate training and evaluation pools spanning major archetypes;
+- avoid training or evaluating primarily on the current fixed six or mirror games;
+- reserve fixed diverse evaluation pools so improvements can be compared across revisions.
+
+### First learned model: joint-action behavior cloning
+
+Before a large teacher/value network, train a small policy model from human replay decisions.
+
+Input should represent the decision-time public state and stable belief summaries rather than
+raw particle identities. Output should score complete two-slot joint actions from the same legal
+menu the search uses.
+
+Initial success metrics:
+
+- top-1, top-4, top-8, and top-16 recall of the observed human joint action;
+- recall split by rating band, team archetype, turn phase, and action family;
+- explicit coverage for Protect, switches, targeting, gimmick use, and mixed move/switch joints.
+
+The raw policy is not expected to be a strong standalone player. Its first job is to improve
+candidate shortlisting and search-budget allocation.
+
+### Equilibrium-search prototype
+
+VGC turns are simultaneous decisions, so pure worst-case response ranking is not the long-term
+target. Prototype a bounded CFR/Bayesian matrix-game layer after a usable joint-action prior
+exists.
+
+Requirements:
+
+- operate on public belief worlds;
+- solve over complete joint actions, not independent per-slot move rankings;
+- reserve explicit coverage so learned priors cannot starve protected tactical baseline actions;
+- preserve exact Showdown branch resolution as mechanics authority;
+- run in shadow/diagnostic mode before it can influence the live selector;
+- log disagreement against the current exact-search selector and strategic benchmark cases.
+
+### Later learned value / teacher loop
+
+Only after the policy-plus-search loop is measurable should a learned leaf value and expensive
+teacher pipeline become the main training system. Teacher labels must carry search budget,
+belief/world coverage, opponent-response coverage, stochastic coverage, value margin,
+stability, and abstention reason. Unstable or under-covered positions should abstain rather
+than manufacture ground truth.
+
+The expected long-term loop is:
+
+`human replay BC -> policy-guided equilibrium search -> self-play/search rows -> retraining
+-> stronger search -> targeted hard-example augmentation`
+
+Search remains the player; learned models provide priors and leaf judgment.
 
 ## Phase 11 — Selective deeper reasoning
 
@@ -332,6 +420,18 @@ battle-log presentation, replay/postgame review, and better team-preview intelli
 Current sequence:
 
 **Simulator → public beliefs → bounded exact search → persistent beliefs → strategy
-→ sealed playable demo → complete games → observation/reachability authority
-→ finite stochastic enumeration → validated mechanics-authoritative recovery
-→ targeted tuning/selective depth → review tools**
+→ sealed playable demo → observation/reachability authority → first finite stochastic
+primitive → [parallel tracks: recovery soundness + human replay/team corpus]
+→ joint-action trajectory extraction → behavior-cloned policy prior
+→ bounded equilibrium/CFR prototype → independently validated recovery
+→ learned value/teacher loop → targeted selective depth and review tools**
+
+Near-term implementation order:
+
+1. replay downloader/raw corpus archive;
+2. offline true-world-survival recovery harness;
+3. arbitrary-team/team-corpus ingestion;
+4. replay-to-public-state/joint-action trajectory extractor;
+5. first behavior-cloned joint-action policy;
+6. bounded CFR/Bayesian matrix-game prototype;
+7. additional stochastic mechanics only when soundness failures require them.
