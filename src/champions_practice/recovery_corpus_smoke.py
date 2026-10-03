@@ -151,8 +151,13 @@ def main() -> None:
                 "ERROR: recovery corpus smoke generated no transitions"
             )
         if result.summary["decoy_worlds_created"] < 1:
+            diagnostics = json.dumps(
+                result.summary.get("decoy_diagnostics", {}),
+                sort_keys=True,
+            )
             raise SystemExit(
-                "ERROR: recovery corpus smoke did not instantiate a decoy world"
+                "ERROR: recovery corpus smoke did not instantiate a decoy world; "
+                f"diagnostics={diagnostics}"
             )
         if result.reachability.false_exclusions:
             raise SystemExit(
