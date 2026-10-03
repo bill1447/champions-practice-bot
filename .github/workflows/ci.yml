@@ -181,6 +181,10 @@ jobs:
         shell: pwsh
         run: .\reachability-smoke.ps1
 
+      - name: Offline true-world recovery soundness smoke test
+        shell: pwsh
+        run: .\recovery-soundness-smoke.ps1
+
       - name: Finite Showdown damage-roll domain smoke test
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
