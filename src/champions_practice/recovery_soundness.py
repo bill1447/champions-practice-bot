@@ -550,7 +550,6 @@ def conditioning_false_exclusion_payload(
         "p2_choice": transition.p2_choice,
         "previous_public_view": transition.previous_public_view,
         "actual_public_view": transition.actual_public_view,
-        "previous_public_view": transition.previous_public_view,
         "actual_rng_seed": transition.actual_rng_seed,
         "actual_rng_draw_count": transition.actual_rng_draw_count,
         "conditioning_rng_batches": [
