@@ -262,6 +262,47 @@ def active_showdown_worker_pids() -> tuple[int, ...]:
         return tuple(sorted(_ACTIVE_SHOWDOWN_PROCESSES))
 
 
+class TeamValidationWorker:
+    """Restricted pinned-Showdown surface for offline team-corpus validation."""
+
+    def __init__(
+        self,
+        project_root: str | Path | None = None,
+        *,
+        startup_deadline: float | None = None,
+        request_timeout_seconds: float = 30.0,
+    ):
+        self.__worker = ShowdownSearchWorker(
+            project_root,
+            startup_deadline=startup_deadline,
+            request_timeout_seconds=request_timeout_seconds,
+        )
+
+    @property
+    def showdown_revision(self) -> str:
+        return self.__worker.showdown_revision
+
+    def validate_team(
+        self,
+        *,
+        battle_format: str,
+        team_text: str,
+    ) -> dict[str, Any]:
+        return self.__worker.validate_team(
+            battle_format=battle_format,
+            team_text=team_text,
+        )
+
+    def close(self) -> None:
+        self.__worker.close()
+
+    def __enter__(self) -> "TeamValidationWorker":
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.close()
+
+
 class HypotheticalSearchWorker:
     """Restricted worker surface for exact hypothetical states only.
 
@@ -942,6 +983,51 @@ class ShowdownSearchWorker:
 
     def ping(self) -> bool:
         return bool(self.request("ping").get("pong"))
+
+    def validate_team(
+        self,
+        *,
+        battle_format: str,
+        team_text: str,
+    ) -> dict[str, Any]:
+        """Parse and validate one team through the pinned Showdown runtime."""
+        if not isinstance(battle_format, str) or not battle_format:
+            raise ValueError("battle_format must be non-empty")
+        if not isinstance(team_text, str) or not team_text.strip():
+            raise ValueError("team_text must be non-empty")
+        result = self.request(
+            "validate_team",
+            format=battle_format,
+            team_text=team_text,
+        )
+        valid = result.get("valid")
+        problems = result.get("problems")
+        team_size = result.get("team_size")
+        packed = result.get("packed_team")
+        canonical = result.get("canonical_text")
+        sets = result.get("sets")
+        if not isinstance(valid, bool):
+            raise RuntimeError("Showdown worker returned invalid team validity")
+        if not isinstance(problems, list) or not all(
+            isinstance(problem, str) for problem in problems
+        ):
+            raise RuntimeError("Showdown worker returned invalid team problems")
+        if isinstance(team_size, bool) or not isinstance(team_size, int):
+            raise RuntimeError("Showdown worker returned invalid team size")
+        if not isinstance(packed, str) or not isinstance(canonical, str):
+            raise RuntimeError("Showdown worker returned invalid normalized team")
+        if not isinstance(sets, list) or not all(
+            isinstance(team_set, dict) for team_set in sets
+        ):
+            raise RuntimeError("Showdown worker returned invalid team sets")
+        return {
+            "valid": valid,
+            "problems": problems,
+            "team_size": team_size,
+            "packed_team": packed,
+            "canonical_text": canonical,
+            "sets": sets,
+        }
 
     def create_state(
         self,

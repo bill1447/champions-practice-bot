@@ -110,6 +110,24 @@ files, and common dataset/database formats are additionally covered by `.gitigno
 
 See `docs/replay-corpus.md` for layout, resume behavior, and CLI details.
 
+## Full-team corpus
+
+The first ground-truth team source is the public VGCPastes Repository. The importer covers
+Champions M-C, M-B, and M-A, preserves raw Pokepastes outside Git, and asks the exact pinned
+Showdown runtime to parse and normalize each team. The current pin can validate M-C and M-B
+against their exact regulation formats; historical M-A is normalized through Champions
+Doubles Custom Game and is not falsely labeled as exact-regulation-validated.
+
+On the primary Windows development machine:
+
+```powershell
+.\download-teams.ps1
+```
+
+uses the same external `F:\Showdown replay data` root as the replay corpus. See
+`docs/team-corpus.md` for provenance, exact-team readiness, regulation authority, and
+resume behavior.
+
 ## Playable local demo
 
 After setup or an `update-local.ps1 -UpdateShowdown` that produced a verified Showdown build:
