@@ -11,6 +11,9 @@ const {
   extractChannelMessages,
 } = require(path.join(showdownRoot, "dist", "sim", "battle"));
 const { Teams } = require(path.join(showdownRoot, "dist", "sim", "teams"));
+const { TeamValidator } = require(
+  path.join(showdownRoot, "dist", "sim", "team-validator"),
+);
 const { State } = require(path.join(showdownRoot, "dist", "sim", "state"));
 
 const sessions = new Map();
@@ -23,6 +26,25 @@ function importTeam(text) {
     throw new Error("Could not import Showdown team text");
   }
   return team;
+}
+
+function validateTeamText(request) {
+  if (typeof request.format !== "string" || !request.format) {
+    throw new Error("validate_team requires a format");
+  }
+  if (typeof request.team_text !== "string" || !request.team_text.trim()) {
+    throw new Error("validate_team requires non-empty team_text");
+  }
+  const team = importTeam(request.team_text);
+  const problems = TeamValidator.get(request.format).validateTeam(team);
+  return {
+    valid: !problems || problems.length === 0,
+    problems: problems ? [...problems] : [],
+    team_size: team.length,
+    packed_team: Teams.pack(team),
+    canonical_text: Teams.export(team, { useStatPoints: true }),
+    sets: cloneJson(team),
+  };
 }
 
 function cloneJson(value) {
@@ -2081,6 +2103,8 @@ function handle(request) {
   switch (request.op) {
     case "ping":
       return { pong: true };
+    case "validate_team":
+      return validateTeamText(request);
     case "create":
       return createBattle(request);
     case "branch":
