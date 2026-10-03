@@ -644,6 +644,7 @@ def false_exclusion_payload(
         "pre_state": transition.pre_state,
         "p1_choice": transition.p1_choice,
         "p2_choice": transition.p2_choice,
+        "previous_public_view": transition.previous_public_view,
         "actual_public_view": transition.actual_public_view,
         "actual_rng_seed": transition.actual_rng_seed,
         "probe_rng_seed": transition.probe_rng_seed,
