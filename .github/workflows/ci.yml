@@ -185,6 +185,10 @@ jobs:
         shell: pwsh
         run: .\recovery-soundness-smoke.ps1
 
+      - name: Deterministic exact-team recovery corpus smoke test
+        shell: pwsh
+        run: .\recovery-corpus-smoke.ps1
+
       - name: Finite Showdown damage-roll domain smoke test
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1

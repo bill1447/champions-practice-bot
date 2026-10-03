@@ -118,9 +118,72 @@ The smoke:
    miss;
 8. requires the true world to survive every tested boundary.
 
-This fixed smoke is only the baseline. The next step is to generate many cases from the
-external exact-team corpus and track survival by team, turn, mechanic family, and observation
-shape.
+This fixed smoke is only the baseline. The exact-team corpus runner below scales the same
+measurement across deterministic arbitrary-team battles.
+
+## Exact-team corpus runner
+
+PR #145 scales the fixed harness into a deterministic local corpus measurement without giving
+recovery any new live authority.
+
+```powershell
+.\recovery-corpus.ps1
+```
+
+The default run uses current Regulation M-C truth teams. The runner:
+
+1. reads only `exact_team_ready` teams from the external team manifest and verifies each
+   canonical file against its recorded SHA-256;
+2. creates a fixed external train/evaluation split with deterministic species and species-pair
+   diversity, keeps identical canonical team bytes from crossing the split under different
+   provenance rows, then reuses that exact pool until `-RefreshPools` is requested;
+3. revalidates every selected team through pinned Showdown against the concrete battle format
+   before instantiating it;
+4. deterministically seeds battle initialization and legal action selection, then lets the
+   real battle continue through native serialized Showdown RNG; probe RNG, the production
+   adaptive conditioning batches `(2, 4)`, and resampling remain independently deterministic;
+5. runs the measurement from the production bot's `p2` perspective and supplies the complete
+   six-species public preview while retaining exact sets only as offline hidden truth;
+6. when available, adds other published teams from the frozen pool with the same six species
+   as opening-boundary hidden-world decoys and translates team-preview selections by species.
+   Newly downloaded teams cannot silently alter an existing pool/run. Later turn cases do not
+   advance decoys with the known human command, because that hidden command is not public
+   conditioning authority;
+7. measures reachability-authority survival and production-shaped sampled-conditioning
+   survival separately.
+
+M-C and M-B use their exact pinned regulation validators. Historical M-A has no exact format
+entry in the current pin, so corpus battles refuse M-A by default. The explicit
+`-AllowNonauthoritativeRegulation` diagnostic mode uses Champions Doubles Custom Game and
+marks those rows non-authoritative; it is not evidence of historical M-A legality.
+
+Generated bulk data stays outside Git under:
+
+```text
+<external root>\recovery-soundness\
+├── team-pools-v1.json
+├── latest-summary.json
+└── runs\<deterministic-run-id>\
+    ├── summary.json
+    ├── cases.jsonl
+    ├── team-pool.json
+    └── hard-cases\
+        ├── reachability\
+        └── conditioning\
+```
+
+Each run snapshots the exact pool IDs and canonical hashes it used. The deterministic run ID
+also binds the full frozen pool and pinned Showdown revision, so newly downloaded teams, a
+pool refresh, or a mechanics-pin change cannot silently overwrite an older run's provenance.
+
+The summary includes survival and false-exclusion counts plus breakdowns by regulation, turn,
+complete-action family, and whether the real transition consumed simulator RNG. A large local
+run is a measuring instrument: discovered false exclusions are serialized rather than hidden
+or converted into mechanic-specific patches. Classify the missing stochastic/evidence domain
+first, then add structural support and a minimized regression.
+
+CI runs only a tiny deterministic external fixture. The bulk corpus and generated reports are
+never required in GitHub Actions.
 
 ## Scope
 
