@@ -135,16 +135,19 @@ The default run uses current Regulation M-C truth teams. The runner:
 1. reads only `exact_team_ready` teams from the external team manifest and verifies each
    canonical file against its recorded SHA-256;
 2. creates a fixed external train/evaluation split with deterministic species and species-pair
-   diversity, then reuses that exact pool until `-RefreshPools` is requested;
+   diversity, keeps identical canonical team bytes from crossing the split under different
+   provenance rows, then reuses that exact pool until `-RefreshPools` is requested;
 3. revalidates every selected team through pinned Showdown against the concrete battle format
    before instantiating it;
-4. chooses team preview, complete legal joint actions, battle RNG, conditioning RNG batches,
-   and resample seeds deterministically;
-5. retains the exact hidden team only offline while the evaluated boundary receives the
-   acting player's sanitized public view;
-6. when available, adds other published teams with the same six species as hidden-world
-   decoys, translates team-preview selections by species, and keeps only decoys whose public
-   history remains compatible;
+4. deterministically seeds battle initialization and legal action selection, then lets the
+   real battle continue through native serialized Showdown RNG; probe RNG, the production
+   adaptive conditioning batches `(2, 4)`, and resampling remain independently deterministic;
+5. runs the measurement from the production bot's `p2` perspective and supplies the complete
+   six-species public preview while retaining exact sets only as offline hidden truth;
+6. when available, adds other published teams with the same six species as opening-boundary
+   hidden-world decoys and translates team-preview selections by species. Later turn cases do
+   not advance decoys with the known human command, because that hidden command is not public
+   conditioning authority;
 7. measures reachability-authority survival and production-shaped sampled-conditioning
    survival separately.
 
