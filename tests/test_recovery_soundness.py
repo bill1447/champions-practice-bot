@@ -535,6 +535,7 @@ def test_transition_rejects_invalid_draw_count():
             p1_choice="move tackle +1",
             p2_choice="move protect",
             actual_public_view={},
+            previous_public_view=None,
             actual_rng_seed=None,
             probe_rng_seed=None,
             actual_rng_draw_count=True,
