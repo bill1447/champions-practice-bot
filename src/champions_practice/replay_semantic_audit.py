@@ -575,7 +575,11 @@ def build_semantic_policy_corpus(
         identity = hashlib.sha256()
         identity.update(SEMANTIC_POLICY_SCHEMA.encode("ascii"))
         identity.update(b"\0")
+        identity.update(SEMANTIC_AUDIT_SCHEMA.encode("ascii"))
+        identity.update(b"\0")
         identity.update(SPLIT_SCHEMA.encode("ascii"))
+        identity.update(b"\0")
+        identity.update(str(config.shard_rows).encode("ascii"))
         identity.update(b"\0")
         identity.update(config.format_id.encode("ascii"))
         identity.update(b"\0")
@@ -779,6 +783,7 @@ def build_semantic_policy_corpus(
             "source_archive_replays": raw_replays,
             "trajectory_replays_available": trajectory_replays,
             "trajectory_replays_scanned": usable_source_replays,
+            "trajectory_replays_processed": processed_replays,
             "trajectory_coverage_of_raw_archive": trajectory_coverage,
             "source_failures": _counter_dict(source_failures),
             "processing_failures": _counter_dict(processing_failures),
