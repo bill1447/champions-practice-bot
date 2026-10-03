@@ -52,6 +52,8 @@ class RegulationSource:
     sheet_name: str
     sheet_gid: int
     format_id: str
+    validator_format_id: str
+    regulation_validation_authoritative: bool
 
 
 REGULATION_SOURCES = (
@@ -61,6 +63,8 @@ REGULATION_SOURCES = (
         sheet_name="Champions M-C",
         sheet_gid=2001945654,
         format_id="gen9championsvgc2026regmc",
+        validator_format_id="gen9championsvgc2026regmc",
+        regulation_validation_authoritative=True,
     ),
     RegulationSource(
         key="mb",
@@ -68,6 +72,8 @@ REGULATION_SOURCES = (
         sheet_name="Champions M-B",
         sheet_gid=1458357160,
         format_id="gen9championsvgc2026regmb",
+        validator_format_id="gen9championsvgc2026regmb",
+        regulation_validation_authoritative=True,
     ),
     RegulationSource(
         key="ma",
@@ -75,6 +81,8 @@ REGULATION_SOURCES = (
         sheet_name="Champions M-A",
         sheet_gid=791705272,
         format_id="gen9championsvgc2026regma",
+        validator_format_id="gen9championsdoublescustomgame",
+        regulation_validation_authoritative=False,
     ),
 )
 REGULATION_BY_KEY = {source.key: source for source in REGULATION_SOURCES}
@@ -84,6 +92,8 @@ REGULATION_BY_KEY = {source.key: source for source in REGULATION_SOURCES}
 class TeamIndexEntry:
     regulation: str
     format_id: str
+    validator_format_id: str
+    regulation_validation_authoritative: bool
     sheet_name: str
     sheet_gid: int
     team_id: str
@@ -128,7 +138,8 @@ class TeamSyncStats:
     valid: int
     invalid: int
     failed: int
-    exact_truth_ready: int
+    exact_team_ready: int
+    regulation_validated: int
     elapsed_seconds: float
     teams_per_minute: float
 
@@ -288,6 +299,10 @@ def parse_vgcpastes_csv(
             TeamIndexEntry(
                 regulation=source.key,
                 format_id=source.format_id,
+                validator_format_id=source.validator_format_id,
+                regulation_validation_authoritative=(
+                    source.regulation_validation_authoritative
+                ),
                 sheet_name=source.sheet_name,
                 sheet_gid=source.sheet_gid,
                 team_id=team_id,
@@ -360,6 +375,8 @@ def _connect_manifest(path: Path) -> sqlite3.Connection:
             regulation TEXT NOT NULL,
             team_id TEXT NOT NULL,
             format_id TEXT NOT NULL,
+            validator_format_id TEXT NOT NULL,
+            regulation_validation_authoritative INTEGER NOT NULL,
             sheet_name TEXT NOT NULL,
             sheet_gid INTEGER NOT NULL,
             description TEXT NOT NULL,
@@ -391,13 +408,14 @@ def _connect_manifest(path: Path) -> sqlite3.Connection:
             validation_problems_json TEXT NOT NULL,
             team_size INTEGER,
             validator_revision TEXT,
-            exact_truth_ready INTEGER NOT NULL,
+            exact_team_ready INTEGER NOT NULL,
+            regulation_validated INTEGER NOT NULL,
             updated_at TEXT NOT NULL,
             PRIMARY KEY (regulation, team_id)
         );
 
         CREATE INDEX IF NOT EXISTS idx_teams_format_ready
-            ON teams(format_id, exact_truth_ready);
+            ON teams(format_id, exact_team_ready, regulation_validated);
 
         CREATE TABLE IF NOT EXISTS fetch_failures (
             regulation TEXT NOT NULL,
@@ -486,6 +504,8 @@ def _write_source_snapshot(
 def _metadata_values(entry: TeamIndexEntry) -> tuple[Any, ...]:
     return (
         entry.format_id,
+        entry.validator_format_id,
+        int(entry.regulation_validation_authoritative),
         entry.sheet_name,
         entry.sheet_gid,
         entry.description,
@@ -528,12 +548,15 @@ def _update_existing_metadata(
     connection: sqlite3.Connection,
     *,
     entry: TeamIndexEntry,
-    exact_truth_ready: bool,
+    exact_team_ready: bool,
+    regulation_validated: bool,
 ) -> None:
     connection.execute(
         """
         UPDATE teams SET
             format_id = ?,
+            validator_format_id = ?,
+            regulation_validation_authoritative = ?,
             sheet_name = ?,
             sheet_gid = ?,
             description = ?,
@@ -553,13 +576,15 @@ def _update_existing_metadata(
             species_json = ?,
             items_json = ?,
             source_index_sha256 = ?,
-            exact_truth_ready = ?,
+            exact_team_ready = ?,
+            regulation_validated = ?,
             updated_at = ?
         WHERE regulation = ? AND team_id = ?
         """,
         (
             *_metadata_values(entry),
-            int(exact_truth_ready),
+            int(exact_team_ready),
+            int(regulation_validated),
             _utc_now(),
             entry.regulation,
             entry.team_id,
@@ -576,18 +601,22 @@ def _store_missing_paste(
     connection.execute(
         """
         INSERT INTO teams (
-            regulation, team_id, format_id, sheet_name, sheet_gid,
+            regulation, team_id, format_id, validator_format_id,
+            regulation_validation_authoritative, sheet_name, sheet_gid,
             description, full_name, pokepaste_url, source_has_evs,
             extracted_paste, replica_status, replica_code, date_shared,
             tournament_event, rank, source_url, report_url, other_links,
             owner, species_json, items_json, source_index_sha256,
             validation_state, validation_problems_json,
-            exact_truth_ready, updated_at
+            exact_team_ready, regulation_validated, updated_at
         )
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, 'missing_paste', ?, 0, ?)
+                ?, ?, ?, 'missing_paste', ?, 0, 0, ?)
         ON CONFLICT(regulation, team_id) DO UPDATE SET
             format_id = excluded.format_id,
+            validator_format_id = excluded.validator_format_id,
+            regulation_validation_authoritative =
+                excluded.regulation_validation_authoritative,
             sheet_name = excluded.sheet_name,
             sheet_gid = excluded.sheet_gid,
             description = excluded.description,
@@ -609,7 +638,8 @@ def _store_missing_paste(
             source_index_sha256 = excluded.source_index_sha256,
             validation_state = excluded.validation_state,
             validation_problems_json = excluded.validation_problems_json,
-            exact_truth_ready = 0,
+            exact_team_ready = 0,
+            regulation_validated = 0,
             updated_at = excluded.updated_at
         """,
         (
@@ -633,7 +663,7 @@ def _store_validation(
     validation: dict[str, Any] | None,
     validator_revision: str,
     validation_error: str | None = None,
-) -> tuple[str, bool]:
+) -> tuple[str, bool, bool]:
     raw_hash = hashlib.sha256(raw).hexdigest()
     raw_relative = _relative(raw_path, root=layout.root)
 
@@ -668,17 +698,22 @@ def _store_validation(
         canonical_hash = hashlib.sha256(canonical).hexdigest()
         canonical_bytes = len(canonical)
 
-    exact_truth_ready = (
+    exact_team_ready = (
         state == "valid"
         and entry.source_has_evs
         and team_size == 6
         and len(entry.species) == 6
     )
+    regulation_validated = (
+        state == "valid"
+        and entry.regulation_validation_authoritative
+    )
 
     connection.execute(
         """
         INSERT INTO teams (
-            regulation, team_id, format_id, sheet_name, sheet_gid,
+            regulation, team_id, format_id, validator_format_id,
+            regulation_validation_authoritative, sheet_name, sheet_gid,
             description, full_name, pokepaste_url, source_has_evs,
             extracted_paste, replica_status, replica_code, date_shared,
             tournament_event, rank, source_url, report_url, other_links,
@@ -687,12 +722,15 @@ def _store_validation(
             canonical_relative_path, canonical_sha256, canonical_bytes,
             packed_team, sets_json, validation_state,
             validation_problems_json, team_size, validator_revision,
-            exact_truth_ready, updated_at
+            exact_team_ready, regulation_validated, updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(regulation, team_id) DO UPDATE SET
             format_id = excluded.format_id,
+            validator_format_id = excluded.validator_format_id,
+            regulation_validation_authoritative =
+                excluded.regulation_validation_authoritative,
             sheet_name = excluded.sheet_name,
             sheet_gid = excluded.sheet_gid,
             description = excluded.description,
@@ -724,7 +762,8 @@ def _store_validation(
             validation_problems_json = excluded.validation_problems_json,
             team_size = excluded.team_size,
             validator_revision = excluded.validator_revision,
-            exact_truth_ready = excluded.exact_truth_ready,
+            exact_team_ready = excluded.exact_team_ready,
+            regulation_validated = excluded.regulation_validated,
             updated_at = excluded.updated_at
         """,
         (
@@ -743,7 +782,8 @@ def _store_validation(
             json.dumps(problems, ensure_ascii=False),
             team_size,
             validator_revision,
-            int(exact_truth_ready),
+            int(exact_team_ready),
+            int(regulation_validated),
             _utc_now(),
         ),
     )
@@ -752,7 +792,7 @@ def _store_validation(
         (entry.regulation, entry.team_id),
     )
     connection.commit()
-    return state, exact_truth_ready
+    return state, exact_team_ready, regulation_validated
 
 
 def _record_fetch_failure(
@@ -869,6 +909,8 @@ def _needs_processing(
         return True
     if existing["pokepaste_url"] != entry.pokepaste_url:
         return True
+    if existing["validator_format_id"] != entry.validator_format_id:
+        return True
     if existing["validator_revision"] != validator_revision:
         return True
     if existing["validation_state"] not in {"valid", "invalid"}:
@@ -947,7 +989,11 @@ def sync_team_corpus(
             _update_existing_metadata(
                 connection,
                 entry=entry,
-                exact_truth_ready=ready,
+                exact_team_ready=ready,
+                regulation_validated=(
+                    bool(existing["validation_state"] == "valid")
+                    and entry.regulation_validation_authoritative
+                ),
             )
 
         for entry in missing_entries:
@@ -963,7 +1009,8 @@ def sync_team_corpus(
         valid = 0
         invalid = 0
         failed = 0
-        exact_truth_ready = 0
+        exact_team_ready = 0
+        regulation_validated = 0
 
         for entry in pending:
             if max_teams and processed >= max_teams:
@@ -998,10 +1045,10 @@ def sync_team_corpus(
             try:
                 team_text = raw.decode("utf-8")
                 validation = validator.validate_team(
-                    battle_format=entry.format_id,
+                    battle_format=entry.validator_format_id,
                     team_text=team_text,
                 )
-                state, ready = _store_validation(
+                state, ready, exact_regulation = _store_validation(
                     connection,
                     layout=layout,
                     entry=entry,
@@ -1011,7 +1058,7 @@ def sync_team_corpus(
                     validator_revision=validator.showdown_revision,
                 )
             except Exception as error:
-                state, ready = _store_validation(
+                state, ready, exact_regulation = _store_validation(
                     connection,
                     layout=layout,
                     entry=entry,
@@ -1029,7 +1076,9 @@ def sync_team_corpus(
             else:
                 failed += 1
             if ready:
-                exact_truth_ready += 1
+                exact_team_ready += 1
+            if exact_regulation:
+                regulation_validated += 1
             processed += 1
 
             if progress is not None and (
@@ -1054,7 +1103,8 @@ def sync_team_corpus(
             valid=valid,
             invalid=invalid,
             failed=failed,
-            exact_truth_ready=exact_truth_ready,
+            exact_team_ready=exact_team_ready,
+            regulation_validated=regulation_validated,
             elapsed_seconds=round(elapsed, 3),
             teams_per_minute=round(_rate(count=processed, elapsed=elapsed), 3),
         )
@@ -1074,7 +1124,8 @@ def team_corpus_status(
             """
             SELECT regulation, COUNT(*),
                    SUM(CASE WHEN validation_state = 'valid' THEN 1 ELSE 0 END),
-                   SUM(exact_truth_ready)
+                   SUM(exact_team_ready),
+                   SUM(regulation_validated)
             FROM teams
             GROUP BY regulation
             ORDER BY regulation
@@ -1089,9 +1140,10 @@ def team_corpus_status(
                 regulation: {
                     "indexed": int(indexed),
                     "valid": int(valid or 0),
-                    "exact_truth_ready": int(ready or 0),
+                    "exact_team_ready": int(ready or 0),
+                    "regulation_validated": int(reg_validated or 0),
                 }
-                for regulation, indexed, valid, ready in rows
+                for regulation, indexed, valid, ready, reg_validated in rows
             },
             "fetch_failures": int(failures),
         }
