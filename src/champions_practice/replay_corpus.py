@@ -32,6 +32,7 @@ DEFAULT_MAX_REPLAYS = 5000
 DEFAULT_REQUEST_DELAY_SECONDS = 0.25
 DEFAULT_TIMEOUT_SECONDS = 20.0
 DEFAULT_RETRIES = 4
+PROGRESS_EVERY_DOWNLOADS = 100
 _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
@@ -73,6 +74,8 @@ class DownloadStats:
     failed: int
     exhausted: bool
     next_before: int | None
+    elapsed_seconds: float
+    replay_rate_per_minute: float
 
 
 @dataclass(frozen=True)
@@ -91,6 +94,92 @@ class DownloadConfig:
             or self.max_replays < 0
         ):
             raise ValueError("max_replays must be a non-negative integer")
+
+
+def _format_duration(seconds: float) -> str:
+    total_seconds = max(0, int(round(seconds)))
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, secs = divmod(remainder, 60)
+    return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+
+
+def _timing_snapshot(
+    *,
+    started_at: float,
+    now: float,
+    downloaded: int,
+    target: int,
+) -> tuple[float, float, float | None]:
+    elapsed = max(0.0, now - started_at)
+    rate_per_minute = 0.0
+    eta_seconds: float | None = None
+    if downloaded > 0 and elapsed > 0:
+        rate_per_minute = downloaded * 60.0 / elapsed
+        if target > 0:
+            remaining = max(0, target - downloaded)
+            eta_seconds = remaining * elapsed / downloaded
+    return elapsed, rate_per_minute, eta_seconds
+
+
+def _progress_message(
+    *,
+    downloaded: int,
+    replay_total: int,
+    target: int,
+    started_at: float,
+    now: float,
+) -> str:
+    elapsed, rate_per_minute, eta_seconds = _timing_snapshot(
+        started_at=started_at,
+        now=now,
+        downloaded=downloaded,
+        target=target,
+    )
+    target_text = f"/{target}" if target > 0 else ""
+    eta_text = (
+        _format_duration(eta_seconds)
+        if eta_seconds is not None
+        else "n/a (unlimited)" if target == 0 else "calculating"
+    )
+    return (
+        f"Downloaded {downloaded}{target_text} this run "
+        f"({replay_total} total indexed) | "
+        f"elapsed {_format_duration(elapsed)} | "
+        f"{rate_per_minute:.1f} replays/min | ETA {eta_text}"
+    )
+
+
+def _download_stats(
+    *,
+    format_id: str,
+    pages_completed: int,
+    search_rows_seen: int,
+    downloaded: int,
+    already_present: int,
+    failed: int,
+    exhausted: bool,
+    next_before: int | None,
+    started_at: float,
+    now: float,
+) -> DownloadStats:
+    elapsed, rate_per_minute, _ = _timing_snapshot(
+        started_at=started_at,
+        now=now,
+        downloaded=downloaded,
+        target=0,
+    )
+    return DownloadStats(
+        format_id=format_id,
+        pages_completed=pages_completed,
+        search_rows_seen=search_rows_seen,
+        downloaded=downloaded,
+        already_present=already_present,
+        failed=failed,
+        exhausted=exhausted,
+        next_before=next_before,
+        elapsed_seconds=round(elapsed, 3),
+        replay_rate_per_minute=round(rate_per_minute, 3),
+    )
 
 
 def _validate_public_id(value: str, *, label: str) -> str:
@@ -636,9 +725,11 @@ def download_replay_corpus(
     config: DownloadConfig,
     project_root: str | Path | None = None,
     progress: Callable[[str], None] | None = print,
+    clock: Callable[[], float] = time.monotonic,
 ) -> DownloadStats:
     """Download/resume a public-format replay archive."""
 
+    started_at = clock()
     layout = initialize_layout(config.data_root, project_root=project_root)
     connection = _connect_manifest(layout.database)
     try:
@@ -719,7 +810,7 @@ def download_replay_corpus(
             )
 
         if exhausted and not config.restart_search:
-            return DownloadStats(
+            return _download_stats(
                 format_id=config.format_id,
                 pages_completed=pages_completed,
                 search_rows_seen=search_rows_seen,
@@ -728,6 +819,8 @@ def download_replay_corpus(
                 failed=run_failed,
                 exhausted=True,
                 next_before=None,
+                started_at=started_at,
+                now=clock(),
             )
 
         while config.max_replays == 0 or run_downloaded < config.max_replays:
@@ -815,11 +908,17 @@ def download_replay_corpus(
                 run_downloaded += 1
                 replay_total += 1
                 if progress is not None and (
-                    run_downloaded == 1 or run_downloaded % 100 == 0
+                    run_downloaded == 1
+                    or run_downloaded % PROGRESS_EVERY_DOWNLOADS == 0
                 ):
                     progress(
-                        f"Downloaded {run_downloaded} this run "
-                        f"({replay_total} total indexed)"
+                        _progress_message(
+                            downloaded=run_downloaded,
+                            replay_total=replay_total,
+                            target=config.max_replays,
+                            started_at=started_at,
+                            now=clock(),
+                        )
                     )
 
             if not page_complete:
@@ -886,7 +985,7 @@ def download_replay_corpus(
                 replays_downloaded=replay_total,
             )
 
-        return DownloadStats(
+        return _download_stats(
             format_id=config.format_id,
             pages_completed=pages_completed,
             search_rows_seen=search_rows_seen,
@@ -895,6 +994,8 @@ def download_replay_corpus(
             failed=run_failed,
             exhausted=exhausted,
             next_before=before,
+            started_at=started_at,
+            now=clock(),
         )
     finally:
         connection.close()
