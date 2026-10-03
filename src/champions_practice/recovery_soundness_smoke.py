@@ -6,11 +6,18 @@ from dataclasses import replace
 from pathlib import Path
 
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.observation_beliefs import public_observation_signature
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    identity_member_lineage,
+    public_observation_signature,
+)
 from champions_practice.reachability import ReachabilityStatus
 from champions_practice.recovery_soundness import (
+    TrueWorldConditioningCase,
+    evaluate_true_world_conditioning_suite,
     evaluate_true_world_suite,
     generate_true_world_transition,
+    write_conditioning_false_exclusion_regressions,
     write_false_exclusion_regressions,
 )
 from champions_practice.search_worker import HypotheticalSearchWorker
@@ -91,6 +98,7 @@ def main() -> None:
             seed=INITIAL_SEED,
         )
 
+        before_view = worker.state_view(state=state, side="p2")
         first, child = generate_true_world_transition(
             worker,
             case_id="smoke-turn-1-witness",
@@ -101,6 +109,7 @@ def main() -> None:
             p2_choice=P2_CHOICE,
             actual_rng_seed=ACTUAL_SEED,
             probe_rng_seed=ACTUAL_SEED,
+            previous_public_view=before_view,
         )
         miss_seed = _find_mismatch_seed(
             worker,
@@ -115,6 +124,7 @@ def main() -> None:
 
         transitions = [first, sampled_miss]
         current = child
+        previous_view = first.actual_public_view
         for index, seed in enumerate(SEQUENCE_SEEDS, start=2):
             p1_choice = _first_legal_choice(
                 worker,
@@ -138,10 +148,42 @@ def main() -> None:
                 p2_choice=p2_choice,
                 actual_rng_seed=seed,
                 probe_rng_seed=seed,
+                previous_public_view=previous_view,
             )
             transitions.append(transition)
+            previous_view = transition.actual_public_view
 
         report = evaluate_true_world_suite(worker, transitions)
+
+        true_particle = BeliefParticle(
+            state=state,
+            weight=1.0,
+            world_id="known-true-world",
+            history_id="known-true-history",
+            p1_member_lineage=identity_member_lineage(state, "p1"),
+            p2_member_lineage=identity_member_lineage(state, "p2"),
+        )
+        conditioning = evaluate_true_world_conditioning_suite(
+            worker,
+            (
+                TrueWorldConditioningCase(
+                    transition=first,
+                    particles=(true_particle,),
+                    true_world_id="known-true-world",
+                    rng_seeds=(ACTUAL_SEED,),
+                    max_particles=1,
+                    resample_seed=144,
+                ),
+                TrueWorldConditioningCase(
+                    transition=sampled_miss,
+                    particles=(true_particle,),
+                    true_world_id="known-true-world",
+                    rng_seeds=(miss_seed,),
+                    max_particles=1,
+                    resample_seed=145,
+                ),
+            ),
+        )
 
     if report.false_exclusions:
         paths = write_false_exclusion_regressions(
@@ -150,6 +192,16 @@ def main() -> None:
         )
         raise SystemExit(
             "ERROR: known-real hidden world was exhaustively disproved; "
+            f"saved {len(paths)} hard case(s) under {runtime_dir}"
+        )
+
+    if conditioning.false_exclusions:
+        paths = write_conditioning_false_exclusion_regressions(
+            conditioning,
+            output_dir=runtime_dir,
+        )
+        raise SystemExit(
+            "ERROR: sampled conditioning dropped the known true world; "
             f"saved {len(paths)} hard case(s) under {runtime_dir}"
         )
 
@@ -181,6 +233,14 @@ def main() -> None:
         f"{report.true_world_survival_rate:.6f}"
     )
     print(f"Sampled miss seed:     {miss_seed}")
+    print(
+        "Conditioning survival:"
+        f" {conditioning.true_world_survival_rate:.6f}"
+    )
+    print(
+        "Degraded retentions:  "
+        f"{conditioning.degraded_retentions}"
+    )
     print("RESULT: known true world survived every tested boundary")
 
 
