@@ -11,10 +11,19 @@ from champions_practice.reachability import (
     ReachabilityResult,
     ReachabilityStatus,
 )
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    ParticleUpdate,
+)
 from champions_practice.recovery_soundness import (
+    ConditioningSoundnessReport,
     RecoverySoundnessError,
     RecoverySoundnessReport,
+    TrueWorldConditioningCase,
+    TrueWorldConditioningOutcome,
     TrueWorldTransition,
+    conditioning_false_exclusion_payload,
+    evaluate_true_world_conditioning_suite,
     evaluate_true_world_suite,
     false_exclusion_payload,
     generate_true_world_transition,
@@ -42,6 +51,7 @@ def _transition(case_id: str) -> TrueWorldTransition:
         p1_choice="move tackle +1",
         p2_choice="move protect",
         actual_public_view={"case": case_id},
+        previous_public_view={"case": "before"},
         actual_rng_seed="sodium," + "1" * 64,
         probe_rng_seed="sodium," + "2" * 64,
         actual_rng_draw_count=1,
@@ -142,6 +152,7 @@ def test_false_exclusion_payload_is_self_contained():
     assert payload["p1_choice"] == "move tackle +1"
     assert payload["p2_choice"] == "move protect"
     assert payload["actual_public_view"] == {"case": "false-exclusion"}
+    assert payload["previous_public_view"] == {"case": "before"}
     assert payload["actual_rng_seed"] == "sodium," + "1" * 64
     assert payload["probe_rng_seed"] == "sodium," + "2" * 64
     assert payload["actual_rng_draw_count"] == 1
@@ -185,6 +196,117 @@ def test_false_exclusion_writer_writes_only_failures(tmp_path: Path):
     payload = json.loads(paths[0].read_text(encoding="utf-8"))
     assert payload["case_id"] == "false-exclusion"
     assert list((tmp_path / "hard-cases").glob("*.part")) == []
+
+
+def _particle(world_id: str) -> BeliefParticle:
+    return BeliefParticle(
+        state={"world": world_id},
+        weight=0.5,
+        world_id=world_id,
+        history_id=f"history-{world_id}",
+    )
+
+
+def test_conditioning_report_detects_true_world_drop(monkeypatch):
+    true_particle = _particle("true")
+    decoy_particle = _particle("decoy")
+    case = TrueWorldConditioningCase(
+        transition=_transition("conditioning-drop"),
+        particles=(true_particle, decoy_particle),
+        true_world_id="true",
+        rng_seeds=("sodium," + "3" * 64,),
+        max_particles=2,
+        resample_seed=7,
+    )
+
+    def fake_condition(*args, **kwargs):
+        del args, kwargs
+        return ParticleUpdate(
+            particles=(decoy_particle,),
+            generated=2,
+            matched=1,
+            deduplicated=0,
+            stochastic_only_mismatches=1,
+            structural_mismatches=0,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.recovery_soundness.condition_particles",
+        fake_condition,
+    )
+
+    report = evaluate_true_world_conditioning_suite(object(), (case,))
+
+    assert report.total == 1
+    assert report.survived == 0
+    assert report.false_exclusions == 1
+    assert report.degraded_retentions == 0
+    assert report.true_world_survival_rate == 0.0
+    assert report.sound is False
+
+    payload = conditioning_false_exclusion_payload(report.outcomes[0])
+    assert payload["schema"] == "conditioning-true-world-regression-v1"
+    assert payload["true_world_id"] == "true"
+    assert payload["conditioning"]["posterior_world_ids"] == ["decoy"]
+    assert payload["conditioning"]["stochastic_only_mismatches"] == 1
+
+
+def test_conditioning_zero_match_retains_last_good_true_world(monkeypatch):
+    true_particle = _particle("true")
+    decoy_particle = _particle("decoy")
+    case = TrueWorldConditioningCase(
+        transition=_transition("conditioning-degraded"),
+        particles=(true_particle, decoy_particle),
+        true_world_id="true",
+        rng_seeds=("sodium," + "4" * 64,),
+        max_particles=2,
+        resample_seed=8,
+    )
+
+    def fake_condition(*args, **kwargs):
+        del args, kwargs
+        return ParticleUpdate(
+            particles=(),
+            generated=2,
+            matched=0,
+            deduplicated=0,
+            stochastic_only_mismatches=2,
+            structural_mismatches=0,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.recovery_soundness.condition_particles",
+        fake_condition,
+    )
+
+    report = evaluate_true_world_conditioning_suite(object(), (case,))
+
+    assert report.total == 1
+    assert report.survived == 1
+    assert report.false_exclusions == 0
+    assert report.degraded_retentions == 1
+    assert report.true_world_survival_rate == 1.0
+    assert report.sound is True
+
+
+def test_conditioning_report_empty_suite_is_vacuously_sound():
+    report = ConditioningSoundnessReport(outcomes=())
+
+    assert report.total == 0
+    assert report.true_world_survival_rate == 1.0
+    assert report.sound is True
+
+
+def test_conditioning_case_requires_true_world_in_starting_particles():
+    with pytest.raises(ValueError, match="does not contain"):
+        TrueWorldConditioningCase(
+            transition=_transition("missing-true-world"),
+            particles=(_particle("decoy"),),
+            true_world_id="true",
+            rng_seeds=(None,),
+            max_particles=1,
+            resample_seed=1,
+        )
 
 
 class _FakeGenerationWorker:
