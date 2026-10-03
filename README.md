@@ -85,6 +85,31 @@ Server controls:
 
 `run.ps1` is a convenience command: it starts Showdown if needed, runs the live connectivity check, and deliberately leaves Showdown running.
 
+## Replay corpus
+
+Human replay collection is intentionally stored outside the Git repository. On the primary
+Windows development machine, the convenience launcher defaults to:
+
+`F:\Showdown replay data`
+
+Start or resume the current Regulation M-C archive with:
+
+```powershell
+.\download-replays.ps1
+```
+
+The default run downloads at most 5,000 new replays so an accidental invocation is bounded.
+Use `-MaxReplays 0` for an unlimited historical backfill, `-RestartSearch` to restart from
+the newest public results without deleting already archived replay IDs, and `-Status` to
+inspect the local manifest without contacting Showdown.
+
+Raw replay responses are preserved byte-for-byte under the external data root. A local SQLite
+manifest stores hashes, source metadata, failures, and pagination checkpoints. The downloader
+also refuses a data root located inside this repository. Bulk replay data, trajectories, model
+files, and common dataset/database formats are additionally covered by `.gitignore`.
+
+See `docs/replay-corpus.md` for layout, resume behavior, and CLI details.
+
 ## Playable local demo
 
 After setup or an `update-local.ps1 -UpdateShowdown` that produced a verified Showdown build:
