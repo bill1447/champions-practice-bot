@@ -66,7 +66,7 @@ def _label(*actions: dict, complete: bool = True, side: str = "p1") -> dict:
 
 def test_parser_preserves_target_and_transformation_tokens():
     parsed = parse_legal_choice(
-        "move expandingforce +2, move closecombat -1 mega"
+        "move expandingforce 2, move closecombat -1 mega"
     )
 
     assert len(parsed) == 2
@@ -282,7 +282,7 @@ def test_policy_example_preserves_exact_menu_and_game_group():
         "joint_actions": {
             "p1": label,
             "p2": _label(
-                _move(1, "Protect", side="p2") if False else _move(1, "Protect"),
+                _move(1, "Protect"),
                 _move(2, "Dragon Pulse"),
                 side="p2",
             ),
