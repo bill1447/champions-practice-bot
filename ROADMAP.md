@@ -346,16 +346,22 @@ M-A. The importer:
   Git;
 - retains regulation, team ID, owner/player, event, placement, source links, EV completeness,
   six displayed species, and other provenance;
-- parses and validates every paste through the exact pinned Showdown runtime for its regulation;
-- stores structured sets, packed teams, and canonical Showdown exports as derived artifacts;
-- marks a team exact-truth-ready only when Showdown accepts a six-Pokemon team and the source
-  explicitly reports EV information;
+- parses and normalizes every paste through the exact pinned Showdown runtime;
+- uses exact M-C/M-B regulation validators where those formats still exist in the pin, while
+  historical M-A is normalized through Champions Doubles Custom Game without claiming exact
+  M-A legality;
+- stores structured sets, packed teams, canonical Showdown exports, validator format, and
+  validator revision as derived evidence;
+- keeps `exact_team_ready` separate from `regulation_validated`: complete published M-A
+  builds can be valid hidden simulator truth even though the current pin cannot certify their
+  historical M-A legality;
 - retains incomplete or invalid teams with diagnostics instead of inventing missing fields;
 - revalidates archived raw teams automatically when the pinned Showdown revision changes.
 
-M-C remains the primary current-meta pool. M-B and M-A provide additional exact team diversity
-for priors, self-play, and general VGC structure while remaining separately tagged by
-regulation.
+M-C remains the primary current-meta pool. M-B and M-A provide additional complete-team
+diversity for priors, self-play, and general VGC structure while remaining separately tagged
+by regulation and validation authority. Any team used in a concrete battle must still pass
+that battle format's validator before instantiation.
 
 Next team work is to define fixed training/evaluation pools and wire arbitrary-team battle
 instantiation through the existing closed-sheet observation boundary.
