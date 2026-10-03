@@ -446,3 +446,28 @@ def test_strict_mode_rejects_tampered_trajectory(tmp_path: Path):
             config=SemanticAuditConfig(data_root=data_root, strict=True),
             worker=FakeMoveMetadataWorker(),
         )
+
+
+def test_nonstrict_audit_reports_bounded_failure_examples(tmp_path: Path):
+    data_root = tmp_path / "external"
+    replay_id = "gen9championsvgc2026regmc-301"
+    _install_trajectory(data_root, replay_id=replay_id, rating=1500)
+    path = (
+        data_root
+        / "trajectories"
+        / DEFAULT_FORMAT
+        / f"{replay_id}.json"
+    )
+    path.write_text("tampered", encoding="utf-8")
+
+    summary = build_semantic_policy_corpus(
+        config=SemanticAuditConfig(data_root=data_root, strict=False),
+        worker=FakeMoveMetadataWorker(),
+    )
+
+    assert summary["source_failures"] == {"SemanticAuditError": 1}
+    assert summary["processing_failures"] == {"SemanticAuditError": 1}
+    assert len(summary["source_failure_examples"]) == 1
+    assert len(summary["processing_failure_examples"]) == 1
+    assert summary["source_failure_examples"][0]["replay_id"] == replay_id
+    assert "hash mismatch" in summary["source_failure_examples"][0]["detail"]
