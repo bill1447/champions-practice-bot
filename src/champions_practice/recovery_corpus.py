@@ -421,7 +421,6 @@ def select_team_pools(
         grouped[record.regulation].append(record)
 
     evaluation: list[ExactTeamRecord] = []
-    training: list[ExactTeamRecord] = []
     for regulation in sorted(grouped):
         group = grouped[regulation]
         by_canonical: dict[str, list[ExactTeamRecord]] = defaultdict(list)
@@ -432,25 +431,28 @@ def select_team_pools(
             min(aliases, key=lambda record: record.key)
             for aliases in by_canonical.values()
         ]
-        chosen = _diverse_evaluation_subset(
-            representatives,
-            count=evaluation_per_regulation,
-            pool_seed=pool_seed,
-            regulation=regulation,
+        evaluation.extend(
+            _diverse_evaluation_subset(
+                representatives,
+                count=evaluation_per_regulation,
+                pool_seed=pool_seed,
+                regulation=regulation,
+            )
         )
-        evaluation_hashes = {
-            record.canonical_sha256
-            for record in chosen
-        }
 
-        # A canonical hidden truth must never appear on both sides of the split
-        # merely because VGCPastes contains multiple provenance rows for it.
-        evaluation.extend(chosen)
-        training.extend(
-            record
-            for record in group
-            if record.canonical_sha256 not in evaluation_hashes
-        )
+    # Canonical bytes identify hidden truth for split purposes. If an evaluation
+    # truth appears under another event or regulation provenance row, none of
+    # those aliases may enter training.
+    evaluation_hashes = {
+        record.canonical_sha256
+        for record in evaluation
+    }
+    training = [
+        record
+        for group in grouped.values()
+        for record in group
+        if record.canonical_sha256 not in evaluation_hashes
+    ]
 
     return TeamPools(
         training=tuple(sorted(training, key=lambda record: record.key)),
