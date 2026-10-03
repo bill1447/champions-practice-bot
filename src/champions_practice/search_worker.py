@@ -278,6 +278,10 @@ class TeamValidationWorker:
             request_timeout_seconds=request_timeout_seconds,
         )
 
+    @property
+    def showdown_revision(self) -> str:
+        return self.__worker.showdown_revision
+
     def validate_team(
         self,
         *,
