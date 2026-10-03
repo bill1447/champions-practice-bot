@@ -14,6 +14,7 @@ from champions_practice.recovery_corpus import (
     RecoveryCorpusError,
     TeamPools,
     _conditioning_batches,
+    _run_id,
     fixed_team_pools,
     load_exact_team_records,
     load_team_pool_manifest,
@@ -209,6 +210,33 @@ def test_team_pool_split_never_leaks_canonical_duplicate_truth():
         for record in pools.evaluation
     }
     assert training_hashes.isdisjoint(evaluation_hashes)
+
+
+def test_run_id_binds_frozen_training_pool():
+    evaluation = (_record("eval"),)
+    first = TeamPools(
+        training=(_record("train-a"),),
+        evaluation=evaluation,
+        pool_seed=145,
+        evaluation_per_regulation=1,
+    )
+    second = TeamPools(
+        training=(_record("train-b"),),
+        evaluation=evaluation,
+        pool_seed=145,
+        evaluation_per_regulation=1,
+    )
+    config = CorpusRunConfig(battles=1, turns=1)
+
+    assert _run_id(
+        config,
+        first,
+        showdown_revision="a" * 40,
+    ) != _run_id(
+        config,
+        second,
+        showdown_revision="a" * 40,
+    )
 
 
 def test_conditioning_batches_preserve_production_adaptive_shape():
