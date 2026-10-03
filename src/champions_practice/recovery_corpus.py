@@ -908,10 +908,10 @@ def run_recovery_corpus(
     if not records:
         raise RecoveryCorpusError("team corpus has no exact-ready teams")
     output_root = root / "recovery-soundness"
-    pool_path = output_root / "team-pools-v1.json"
+    shared_pool_path = output_root / "team-pools-v1.json"
     pools = fixed_team_pools(
         records,
-        path=pool_path,
+        path=shared_pool_path,
         pool_seed=config.pool_seed,
         evaluation_per_regulation=config.evaluation_per_regulation,
         refresh=refresh_pools,
@@ -920,8 +920,10 @@ def run_recovery_corpus(
     run_dir = output_root / "runs" / run_id
     cases_path = run_dir / "cases.jsonl"
     summary_path = run_dir / "summary.json"
+    pool_path = run_dir / "team-pool.json"
     hard_case_root = run_dir / "hard-cases"
     run_dir.mkdir(parents=True, exist_ok=True)
+    write_team_pool_manifest(pools, pool_path)
 
     validation_cache: dict[tuple[str, str], str] = {}
     reachability_outcomes: list[TrueWorldTransitionOutcome] = []
@@ -1241,6 +1243,7 @@ def run_recovery_corpus(
         "run_id": run_id,
         "config": config.__dict__,
         "pool_manifest": str(pool_path),
+        "shared_pool_manifest": str(shared_pool_path),
         "battles_attempted": battles_attempted,
         "battles_completed": battles_completed,
         "transitions": len(case_rows),
