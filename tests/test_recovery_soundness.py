@@ -214,7 +214,7 @@ def test_conditioning_report_detects_true_world_drop(monkeypatch):
         transition=_transition("conditioning-drop"),
         particles=(true_particle, decoy_particle),
         true_world_id="true",
-        rng_seeds=("sodium," + "3" * 64,),
+        rng_batches=(("sodium," + "3" * 64,),),
         max_particles=2,
         resample_seed=7,
     )
@@ -261,7 +261,7 @@ def test_conditioning_false_exclusion_writer_persists_hard_case(
         transition=_transition("conditioning-write"),
         particles=(true_particle, decoy_particle),
         true_world_id="true",
-        rng_seeds=("sodium," + "5" * 64,),
+        rng_batches=(("sodium," + "5" * 64,),),
         max_particles=2,
         resample_seed=9,
     )
@@ -297,6 +297,68 @@ def test_conditioning_false_exclusion_writer_persists_hard_case(
     assert list((tmp_path / "hard-cases").glob("*.part")) == []
 
 
+def test_conditioning_adaptive_batches_stop_at_first_nonempty_update(
+    monkeypatch,
+):
+    true_particle = _particle("true")
+    decoy_particle = _particle("decoy")
+    first_seed = "sodium," + "6" * 64
+    second_seed = "sodium," + "7" * 64
+    third_seed = "sodium," + "8" * 64
+    case = TrueWorldConditioningCase(
+        transition=_transition("conditioning-adaptive"),
+        particles=(true_particle, decoy_particle),
+        true_world_id="true",
+        rng_batches=(
+            (first_seed,),
+            (second_seed,),
+            (third_seed,),
+        ),
+        max_particles=2,
+        resample_seed=10,
+    )
+    seen: list[tuple[str | None, ...]] = []
+
+    def fake_condition(*args, **kwargs):
+        del args
+        seeds = tuple(kwargs["rng_seeds"])
+        seen.append(seeds)
+        if seeds == (first_seed,):
+            return ParticleUpdate(
+                particles=(),
+                generated=2,
+                matched=0,
+                deduplicated=0,
+                stochastic_only_mismatches=2,
+                structural_mismatches=0,
+            )
+        if seeds == (second_seed,):
+            return ParticleUpdate(
+                particles=(true_particle,),
+                generated=2,
+                matched=1,
+                deduplicated=0,
+                stochastic_only_mismatches=1,
+                structural_mismatches=0,
+            )
+        raise AssertionError("conditioning evaluated after first nonempty batch")
+
+    monkeypatch.setattr(
+        "champions_practice.recovery_soundness.condition_particles",
+        fake_condition,
+    )
+
+    report = evaluate_true_world_conditioning_suite(object(), (case,))
+    outcome = report.outcomes[0]
+
+    assert seen == [(first_seed,), (second_seed,)]
+    assert outcome.survived is True
+    assert outcome.degraded_retention is False
+    assert outcome.update.generated == 4
+    assert outcome.update.matched == 1
+    assert outcome.update.stochastic_only_mismatches == 3
+
+
 def test_conditioning_zero_match_retains_last_good_true_world(monkeypatch):
     true_particle = _particle("true")
     decoy_particle = _particle("decoy")
@@ -304,7 +366,7 @@ def test_conditioning_zero_match_retains_last_good_true_world(monkeypatch):
         transition=_transition("conditioning-degraded"),
         particles=(true_particle, decoy_particle),
         true_world_id="true",
-        rng_seeds=("sodium," + "4" * 64,),
+        rng_batches=(("sodium," + "4" * 64,),),
         max_particles=2,
         resample_seed=8,
     )
@@ -349,7 +411,7 @@ def test_conditioning_case_requires_true_world_in_starting_particles():
             transition=_transition("missing-true-world"),
             particles=(_particle("decoy"),),
             true_world_id="true",
-            rng_seeds=(None,),
+            rng_batches=((None,),),
             max_particles=1,
             resample_seed=1,
         )
