@@ -46,7 +46,7 @@ from champions_practice.showdown_public_catalog import (
 )
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v7"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v8"
 
 
 class ReachabilityStatus(str, Enum):
@@ -398,10 +398,33 @@ _PUBLIC_ACTION_EFFECTS = frozenset(
 
 # Producer-role domains derived from the pinned Showdown emitters. These are
 # deliberately narrower than the union of every move/item/ability identifier.
-_START_END_ABILITY_EFFECTS = frozenset(
-    {"ability:flashfire", "ability:neutralizinggas", "ability:slowstart"}
+_PARTIAL_TRAP_MOVE_EFFECTS = frozenset(
+    {
+        "move:bind",
+        "move:clamp",
+        "move:firespin",
+        "move:gmaxcentiferno",
+        "move:gmaxsandblast",
+        "move:infestation",
+        "move:magmastorm",
+        "move:sandtomb",
+        "move:snaptrap",
+        "move:thundercage",
+        "move:whirlpool",
+        "move:wrap",
+    }
 )
-_START_END_MOVE_EFFECTS = frozenset(
+_PARTIAL_TRAP_PLAIN_EFFECTS = frozenset(
+    effect.removeprefix("move:") for effect in _PARTIAL_TRAP_MOVE_EFFECTS
+)
+
+# -start and -end are separate producer roles. A catalog identity being valid in
+# one role is not authority for the other role.
+_START_ABILITY_EFFECTS = frozenset({"ability:flashfire", "ability:slowstart"})
+_END_ABILITY_EFFECTS = frozenset(
+    {"ability:flashfire", "ability:neutralizinggas"}
+)
+_START_MOVE_EFFECTS = frozenset(
     {
         "move:attract",
         "move:bide",
@@ -418,21 +441,19 @@ _START_END_MOVE_EFFECTS = frozenset(
         "move:octolock",
         "move:taunt",
         "move:yawn",
-        "move:bind",
-        "move:clamp",
-        "move:firespin",
-        "move:infestation",
-        "move:magmastorm",
-        "move:sandtomb",
-        "move:snaptrap",
-        "move:thundercage",
-        "move:whirlpool",
-        "move:wrap",
-        "move:gmaxcentiferno",
-        "move:gmaxsandblast",
     }
-)
-_START_END_PLAIN_EFFECTS = frozenset(
+) | _PARTIAL_TRAP_MOVE_EFFECTS
+_END_MOVE_EFFECTS = frozenset(
+    {
+        "move:attract",
+        "move:bide",
+        "move:healblock",
+        "move:laserfocus",
+        "move:taunt",
+        "move:yawn",
+    }
+) | _PARTIAL_TRAP_MOVE_EFFECTS
+_START_PLAIN_EFFECTS = frozenset(
     {
         "aquaring",
         "attract",
@@ -446,20 +467,15 @@ _START_END_PLAIN_EFFECTS = frozenset(
         "embargo",
         "encore",
         "foresight",
-        "illusion",
-        "leechseed",
         "magnetrise",
         "mimic",
         "miracleeye",
         "nightmare",
-        "octolock",
         "powershift",
         "powertrick",
         "protosynthesis",
         "quarkdrive",
         "saltcure",
-        "skydrop",
-        "slowstart",
         "smackdown",
         "stockpile",
         "substitute",
@@ -469,20 +485,38 @@ _START_END_PLAIN_EFFECTS = frozenset(
         "throatchop",
         "torment",
         "uproar",
-        "bind",
-        "clamp",
-        "firespin",
-        "gmaxcentiferno",
-        "gmaxsandblast",
-        "infestation",
-        "magmastorm",
-        "sandtomb",
-        "snaptrap",
-        "thundercage",
-        "whirlpool",
-        "wrap",
     }
-)
+) | _PARTIAL_TRAP_PLAIN_EFFECTS
+_END_PLAIN_EFFECTS = frozenset(
+    {
+        "attract",
+        "charge",
+        "confusion",
+        "disable",
+        "dynamax",
+        "embargo",
+        "encore",
+        "illusion",
+        "leechseed",
+        "magnetrise",
+        "nightmare",
+        "octolock",
+        "powershift",
+        "powertrick",
+        "protosynthesis",
+        "quarkdrive",
+        "saltcure",
+        "skydrop",
+        "slowstart",
+        "stockpile",
+        "substitute",
+        "syrupbomb",
+        "telekinesis",
+        "throatchop",
+        "torment",
+        "uproar",
+    }
+) | _PARTIAL_TRAP_PLAIN_EFFECTS
 _SINGLE_TURN_EFFECT_IDENTITIES = frozenset(
     {
         "craftyshield",
@@ -511,7 +545,35 @@ _SINGLE_TURN_EFFECT_IDENTITIES = frozenset(
 _SINGLE_MOVE_EFFECT_IDENTITIES = frozenset(
     {"destinybond", "glaiverush", "grudge", "rage"}
 )
-_FORME_CHANGE_ABILITY_IDS = frozenset({"flowergift", "forecast", "zenmode"})
+_FORME_CHANGE_ABILITY_SPECIES = {
+    "flowergift": frozenset({"cherrim", "cherrimsunshine"}),
+    "forecast": frozenset(
+        {"castform", "castformrainy", "castformsnowy", "castformsunny"}
+    ),
+    "zenmode": frozenset(
+        {"darmanitan", "darmanitanzen", "darmanitangalar", "darmanitangalarzen"}
+    ),
+}
+_FORME_CHANGE_ABILITY_IDS = frozenset(_FORME_CHANGE_ABILITY_SPECIES)
+
+# Pokemon#setAbility emits this exact actor + [ability] activation shape only
+# for the abilities that copy themselves onto contact.
+_ACTIVATION_ACTOR_ABILITY_EFFECTS = frozenset(
+    {"ability:lingeringaroma", "ability:mummy"}
+)
+_ACTIVATION_OF_EFFECTS = frozenset(
+    {
+        "ability:commander",
+        "move:attract",
+        "move:guardsplit",
+        "move:lockon",
+        "move:mindreader",
+        "move:powersplit",
+        "move:snatch",
+        "move:speedswap",
+        "move:trick",
+    }
+) | _PARTIAL_TRAP_MOVE_EFFECTS
 _PUBLIC_PREVENTION_IDENTITIES = frozenset(
     {
         "ability:armortail",
@@ -1031,15 +1093,24 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                     "-formechange metadata must be message and/or typed source",
                 )
             parts = _tagged_modifier_parts(tail[0])
-            if (
-                parts is None
-                or parts[1] is None
-                or not parts[1].startswith("ability:")
-                or parts[1][8:] not in _FORME_CHANGE_ABILITY_IDS
-            ):
+            ability_id = (
+                parts[1][8:]
+                if (
+                    parts is not None
+                    and parts[1] is not None
+                    and parts[1].startswith("ability:")
+                )
+                else None
+            )
+            allowed_species = (
+                _FORME_CHANGE_ABILITY_SPECIES.get(ability_id)
+                if ability_id is not None
+                else None
+            )
+            if allowed_species is None or value[2] not in allowed_species:
                 return _schema_error(
                     path,
-                    "-formechange source must be a pinned forme-changing ability",
+                    "-formechange species/source must match a pinned ability producer",
                 )
         return None
 
@@ -1553,27 +1624,31 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 markers={"silent"},
             )
 
-        dynamic_plain = (
-            re.fullmatch(r"fallen[1-5]", effect)
-            or re.fullmatch(
+        dynamic_plain = re.fullmatch(r"fallen[1-5]", effect)
+        if event == "-start":
+            dynamic_plain = dynamic_plain or re.fullmatch(
                 r"(?:protosynthesis|quarkdrive)(?:atk|def|spa|spd|spe)",
                 effect,
             )
-        )
         if effect.startswith("item:"):
             return _schema_error(
                 f"{path}[2]",
                 "items are not pinned start/end producer effects",
             )
-        if effect.startswith("ability:"):
-            valid_effect = effect in _START_END_ABILITY_EFFECTS
-        elif effect.startswith("move:"):
-            valid_effect = effect in _START_END_MOVE_EFFECTS
+        if event == "-start":
+            ability_domain = _START_ABILITY_EFFECTS
+            move_domain = _START_MOVE_EFFECTS
+            plain_domain = _START_PLAIN_EFFECTS
         else:
-            valid_effect = (
-                effect in _START_END_PLAIN_EFFECTS
-                or dynamic_plain is not None
-            )
+            ability_domain = _END_ABILITY_EFFECTS
+            move_domain = _END_MOVE_EFFECTS
+            plain_domain = _END_PLAIN_EFFECTS
+        if effect.startswith("ability:"):
+            valid_effect = effect in ability_domain
+        elif effect.startswith("move:"):
+            valid_effect = effect in move_domain
+        else:
+            valid_effect = effect in plain_domain or dynamic_plain is not None
         if not valid_effect:
             return _schema_error(
                 f"{path}[2]",
@@ -1846,51 +1921,42 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 "Protect activation has no positional payload",
             )
 
+        if effect in _ACTIVATION_ACTOR_ABILITY_EFFECTS:
+            if (
+                len(tail) != 2
+                or not _canonical_actor(tail[0], allow_side=True)
+                or not _ability_modifier(tail[1])
+            ):
+                return _schema_error(
+                    path,
+                    f"{effect} requires the pinned actor + [ability] payload",
+                )
+            return None
+
         if effect not in ACTIVATION_EFFECT_IDENTITIES:
             return _schema_error(
                 f"{path}[2]",
                 "must be an effect emitted by a pinned activation producer",
             )
 
-        # The only generic positional producer form is actor + [ability].
-        # Everything else must be an effect-specific variant above or typed
-        # producer modifiers; catalog membership alone is not positional authority.
-        if (
-            len(tail) == 2
-            and _canonical_actor(tail[0], allow_side=True)
-            and _ability_modifier(tail[1])
-        ):
+        # These pinned producers always carry exactly one [of] target.
+        if effect in _ACTIVATION_OF_EFFECTS:
+            if len(tail) != 1 or not _of_modifier(tail[0]):
+                return _schema_error(
+                    path,
+                    f"{effect} requires exactly one [of] target",
+                )
             return None
 
-        seen_tags: set[str] = set()
-        for index, part in enumerate(tail, start=3):
-            tagged = _tagged_modifier_parts(part)
-            if tagged is None:
-                return _schema_error(
-                    f"{path}[{index}]",
-                    "contains an unsupported positional activation payload",
-                )
-            tag = tagged[0]
-            if tag in seen_tags:
-                return _schema_error(
-                    f"{path}[{index}]",
-                    "duplicates an activation modifier tag",
-                )
-            if (
-                _ability_modifier(part)
-                or _source_modifier(part)
-                or _of_modifier(part)
-                or _marker_modifier(part, {"broken", "silent"})
-            ):
-                seen_tags.add(tag)
-                continue
-            return _schema_error(
-                f"{path}[{index}]",
-                "contains unsupported activation modifier",
-            )
-        return None
+        if not tail:
+            return None
 
-    return _schema_error(path, f"{event} lacks an explicit v7 producer variant")
+        return _schema_error(
+            path,
+            "activation payload is not a pinned variant for this effect",
+        )
+
+    return _schema_error(path, f"{event} lacks an explicit v8 producer variant")
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
@@ -2146,7 +2212,10 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
     issue = _exact_keys(value, path=path, keys=keys)
     if issue:
         return issue
-    if value["side"] not in {"player", "opponent"}:
+    if (
+        not isinstance(value["side"], str)
+        or value["side"] not in {"player", "opponent"}
+    ):
         return _schema_error(f"{path}.side", "must be player or opponent")
     if not _non_bool_int(value["slot"]) or value["slot"] not in {1, 2}:
         return _schema_error(f"{path}.slot", "must be integer doubles slot 1 or 2")
@@ -2164,7 +2233,10 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
     if outcome == "executed":
         if not _known_public_move_id(value["move"]):
             return _schema_error(f"{path}.move", "must be a pinned move id")
-        if value["source"] not in {"selected", "called"}:
+        if (
+            not isinstance(value["source"], str)
+            or value["source"] not in {"selected", "called"}
+        ):
             return _schema_error(f"{path}.source", "must be selected or called")
         provenance = value["provenance"]
         if (
@@ -2182,13 +2254,13 @@ def _execution_action_schema_issue(value: object, *, path: str) -> str | None:
                 "must be called iff [from] provenance is present",
             )
     else:
-        if not (
-            _known_effect_identity(value["reason"])
-            or value["reason"] in _PUBLIC_PREVENTION_IDENTITIES
+        if (
+            not isinstance(value["reason"], str)
+            or value["reason"] not in _PUBLIC_PREVENTION_IDENTITIES
         ):
             return _schema_error(
                 f"{path}.reason",
-                "must be pinned public prevention evidence",
+                "must be a pinned public prevention producer identity",
             )
         if (
             value["attempted_move"] is not None
@@ -2212,17 +2284,29 @@ def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
     )
     if issue:
         return issue
-    if execution["turn"] is not None and not _non_bool_int(
-        execution["turn"],
+    execution_turn = execution["turn"]
+    if execution_turn is not None and not _non_bool_int(
+        execution_turn,
         minimum=1,
     ):
         return _schema_error(
             "$.public_execution_delta.turn",
             "must be a positive integer or null",
         )
-    if not isinstance(execution["actions"], list):
+    execution_actions = execution["actions"]
+    if not isinstance(execution_actions, list):
         return _schema_error("$.public_execution_delta.actions", "must be a list")
-    for index, action in enumerate(execution["actions"]):
+    if bool(execution_actions) != (execution_turn is not None):
+        return _schema_error(
+            "$.public_execution_delta",
+            "turn is present iff the producer retained one or more actions",
+        )
+    if execution_turn is not None and execution_turn > view["turn"]:
+        return _schema_error(
+            "$.public_execution_delta.turn",
+            "cannot identify a future turn",
+        )
+    for index, action in enumerate(execution_actions):
         issue = _execution_action_schema_issue(
             action,
             path=f"$.public_execution_delta.actions[{index}]",
@@ -2240,8 +2324,9 @@ def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
     )
     if issue:
         return issue
-    if mechanics["turn"] is not None and not _non_bool_int(
-        mechanics["turn"],
+    mechanics_turn = mechanics["turn"]
+    if mechanics_turn is not None and not _non_bool_int(
+        mechanics_turn,
         minimum=1,
     ):
         return _schema_error(
@@ -2251,13 +2336,6 @@ def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
     events = mechanics["events"]
     if not isinstance(events, list):
         return _schema_error("$.public_event_delta.events", "must be a list")
-    for index, event in enumerate(events):
-        issue = _mechanics_event_schema_issue(
-            event,
-            path=f"$.public_event_delta.events[{index}]",
-        )
-        if issue:
-            return issue
     unsupported = mechanics["unsupported"]
     if not isinstance(unsupported, list):
         return _schema_error(
@@ -2277,8 +2355,25 @@ def _transition_ledger_schema_issue(view: dict[str, Any]) -> str | None:
             "$.public_event_delta.unsupported",
             "entries must be unique",
         )
+    has_mechanics_content = bool(events or unsupported)
+    if has_mechanics_content != (mechanics_turn is not None):
+        return _schema_error(
+            "$.public_event_delta",
+            "turn is present iff the producer retained events or unsupported evidence",
+        )
+    if mechanics_turn is not None and mechanics_turn > view["turn"]:
+        return _schema_error(
+            "$.public_event_delta.turn",
+            "cannot identify a future turn",
+        )
+    for index, event in enumerate(events):
+        issue = _mechanics_event_schema_issue(
+            event,
+            path=f"$.public_event_delta.events[{index}]",
+        )
+        if issue:
+            return issue
     return None
-
 
 def _request_pokemon_schema_issue(
     value: object,

@@ -649,7 +649,7 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v7"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v8"
     assert public_reachability_observation_issue(_valid_public_view()) is None
 
 
@@ -1039,6 +1039,7 @@ def test_pinned_move_request_variants_remain_supported(move):
 )
 def test_supported_canonical_mechanics_event_shapes_remain_valid(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
 
     assert public_reachability_observation_issue(view) is None
@@ -1344,6 +1345,7 @@ def test_v5_prior_invalid_worker_evidence_never_becomes_conclusive(
 )
 def test_v5_prior_genuine_producer_event_variants_are_supported(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -1622,6 +1624,7 @@ def test_v5_semantic_invalid_worker_evidence_never_conclusive(
 )
 def test_v5_genuine_event_variants_are_supported(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -1678,6 +1681,7 @@ def test_v5_genuine_event_variants_are_supported(event):
 )
 def test_v5_impossible_event_variants_are_rejected(event):
     view = _valid_public_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is not None
 
@@ -2429,6 +2433,7 @@ def test_v7_selected_action_ledger_is_part_of_certified_signature(evaluator):
 )
 def test_v7_review_invalid_producer_role_events_are_rejected(event):
     view = _v5_semantic_valid_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is not None
 
@@ -2457,6 +2462,7 @@ def test_v7_review_invalid_producer_role_events_are_rejected(event):
 )
 def test_v7_review_genuine_pinned_variants_are_supported(event):
     view = _v5_semantic_valid_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -2478,6 +2484,7 @@ def test_v7_review_genuine_pinned_variants_are_supported(event):
 )
 def test_v7_typed_start_end_variants_remain_supported(event):
     view = _v5_semantic_valid_view()
+    view["public_event_delta"]["turn"] = 1
     view["public_event_delta"]["events"] = [event]
     assert public_reachability_observation_issue(view) is None
 
@@ -2525,6 +2532,157 @@ def test_v7_active_base_species_requires_seen_preview_record():
     assert public_reachability_observation_issue(view) is not None
 
 
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-activate", "p1a", "move:afteryou", "p2a", "[ability]:hugepower"],
+        ["-start", "p1a", "ability:neutralizinggas"],
+        ["-formechange", "p1a", "castformsunny", "[from]:ability:zenmode"],
+    ),
+)
+def test_v8_targeted_review_rejects_impossible_producer_relationships(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"] = {
+        "turn": 1,
+        "events": [event],
+        "unsupported": [],
+    }
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v8_targeted_review_rejects_catalog_identity_as_prevention_reason():
+    view = _v5_semantic_valid_view()
+    view["public_execution_delta"] = {
+        "turn": 1,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "prevented",
+                "reason": "item:leftovers",
+                "attempted_move": None,
+                "effects": [],
+            }
+        ],
+    }
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize(
+    ("ledger_name", "turn", "content_field", "content"),
+    (
+        ("public_event_delta", 52, "events", [["-crit", "p1a"]]),
+        ("public_event_delta", None, "events", [["-crit", "p1a"]]),
+        ("public_execution_delta", 52, "actions", []),
+    ),
+)
+def test_v8_targeted_review_enforces_ledger_turn_content_relationships(
+    ledger_name,
+    turn,
+    content_field,
+    content,
+):
+    view = _v5_semantic_valid_view()
+    if ledger_name == "public_event_delta":
+        view[ledger_name] = {
+            "turn": turn,
+            "events": content if content_field == "events" else [],
+            "unsupported": [],
+        }
+    else:
+        view[ledger_name] = {"turn": turn, "actions": content}
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize("bad_value", (None, True, 1, [], {}))
+@pytest.mark.parametrize(
+    ("outcome", "field"),
+    (
+        ("executed", "side"),
+        ("executed", "source"),
+        ("prevented", "reason"),
+    ),
+)
+def test_v8_execution_string_discriminators_are_type_guarded(
+    outcome,
+    field,
+    bad_value,
+):
+    view = _v5_semantic_valid_view()
+    if outcome == "executed":
+        action = {
+            "side": "player",
+            "slot": 1,
+            "outcome": "executed",
+            "move": "tackle",
+            "source": "selected",
+            "provenance": [],
+            "effects": [],
+        }
+    else:
+        action = {
+            "side": "player",
+            "slot": 1,
+            "outcome": "prevented",
+            "reason": "recharge",
+            "attempted_move": None,
+            "effects": [],
+        }
+    action[field] = bad_value
+    view["public_execution_delta"] = {"turn": 1, "actions": [action]}
+    assert public_reachability_observation_issue(view) is not None
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-activate", "p1a", "ability:commander"],
+        ["-activate", "p1a", "move:trick"],
+        ["-activate", "p1a", "move:bind"],
+    ),
+)
+def test_v8_targeted_activation_producers_require_of_payload(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"] = {
+        "turn": 1,
+        "events": [event],
+        "unsupported": [],
+    }
+    assert public_reachability_observation_issue(view) is not None
+
+
+def test_v8_pinned_actor_ability_activation_relationship_remains_supported():
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"] = {
+        "turn": 1,
+        "events": [
+            ["-activate", "p1a", "ability:mummy", "p2a", "[ability]:hugepower"]
+        ],
+        "unsupported": [],
+    }
+    assert public_reachability_observation_issue(view) is None
+
+
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-start", "p1a", "ability:slowstart"],
+        ["-end", "p1a", "ability:neutralizinggas"],
+        ["-formechange", "p1a", "castformsunny", "[msg]", "[from]:ability:forecast"],
+        ["-formechange", "p1a", "darmanitangalarzen", "[from]:ability:zenmode"],
+    ),
+)
+def test_v8_pinned_role_relationship_controls_remain_supported(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"] = {
+        "turn": 1,
+        "events": [event],
+        "unsupported": [],
+    }
+    assert public_reachability_observation_issue(view) is None
+
+
 def _v7_review_invalid_mutators():
     def future_action(view):
         view["opponent_last_actions"] = [
@@ -2538,11 +2696,13 @@ def _v7_review_invalid_mutators():
         ]
 
     def invalid_start_item(view):
+        view["public_event_delta"]["turn"] = 1
         view["public_event_delta"]["events"] = [
             ["-start", "p1a", "item:leftovers"]
         ]
 
     def invalid_forewarn_payload(view):
+        view["public_event_delta"]["turn"] = 1
         view["public_event_delta"]["events"] = [
             ["-activate", "p1a", "ability:forewarn", "ability:hugepower"]
         ]
@@ -2604,6 +2764,106 @@ def _v7_review_invalid_mutators():
             "side": {"name": "Player", "id": "p1", "pokemon": []},
         }
 
+    def invalid_prevention_item(view):
+        view["public_execution_delta"] = {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "opponent",
+                    "slot": 1,
+                    "outcome": "prevented",
+                    "reason": "item:leftovers",
+                    "attempted_move": None,
+                    "effects": [],
+                }
+            ],
+        }
+
+    def invalid_after_you_ability_tail(view):
+        view["public_event_delta"]["turn"] = 1
+        view["public_event_delta"]["events"] = [
+            ["-activate", "p1a", "move:afteryou", "p2a", "[ability]:hugepower"]
+        ]
+
+    def invalid_start_neutralizing_gas(view):
+        view["public_event_delta"]["turn"] = 1
+        view["public_event_delta"]["events"] = [
+            ["-start", "p1a", "ability:neutralizinggas"]
+        ]
+
+    def invalid_zenmode_castform(view):
+        view["public_event_delta"]["turn"] = 1
+        view["public_event_delta"]["events"] = [
+            ["-formechange", "p1a", "castformsunny", "[from]:ability:zenmode"]
+        ]
+
+    def future_mechanics_turn(view):
+        view["public_event_delta"] = {
+            "turn": view["turn"] + 50,
+            "events": [["-crit", "p1a"]],
+            "unsupported": [],
+        }
+
+    def null_mechanics_turn_with_content(view):
+        view["public_event_delta"] = {
+            "turn": None,
+            "events": [["-crit", "p1a"]],
+            "unsupported": [],
+        }
+
+    def future_empty_execution_turn(view):
+        view["public_execution_delta"] = {
+            "turn": view["turn"] + 50,
+            "actions": [],
+        }
+
+    def execution_side_list(view):
+        view["public_execution_delta"] = {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": [],
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "tackle",
+                    "source": "selected",
+                    "provenance": [],
+                    "effects": [],
+                }
+            ],
+        }
+
+    def execution_source_list(view):
+        view["public_execution_delta"] = {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "player",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "tackle",
+                    "source": [],
+                    "provenance": [],
+                    "effects": [],
+                }
+            ],
+        }
+
+    def execution_reason_list(view):
+        view["public_execution_delta"] = {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "player",
+                    "slot": 1,
+                    "outcome": "prevented",
+                    "reason": [],
+                    "attempted_move": None,
+                    "effects": [],
+                }
+            ],
+        }
+
     return (
         future_action,
         duplicate_action_slot,
@@ -2618,6 +2878,16 @@ def _v7_review_invalid_mutators():
         player_side_condition_dict,
         opponent_side_condition_dict,
         move_target_list,
+        invalid_prevention_item,
+        invalid_after_you_ability_tail,
+        invalid_start_neutralizing_gas,
+        invalid_zenmode_castform,
+        future_mechanics_turn,
+        null_mechanics_turn_with_content,
+        future_empty_execution_turn,
+        execution_side_list,
+        execution_source_list,
+        execution_reason_list,
     )
 
 
