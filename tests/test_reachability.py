@@ -2683,7 +2683,6 @@ def test_v8_pinned_role_relationship_controls_remain_supported(event):
     assert public_reachability_observation_issue(view) is None
 
 
-
 def _v9_selected_opponent_projection_view():
     view = _v5_semantic_valid_view()
     view["public_execution_delta"] = {
