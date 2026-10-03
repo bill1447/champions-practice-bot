@@ -20,13 +20,13 @@ from champions_practice.recovery_soundness import (
     RecoverySoundnessError,
     RecoverySoundnessReport,
     TrueWorldConditioningCase,
-    TrueWorldConditioningOutcome,
     TrueWorldTransition,
     conditioning_false_exclusion_payload,
     evaluate_true_world_conditioning_suite,
     evaluate_true_world_suite,
     false_exclusion_payload,
     generate_true_world_transition,
+    write_conditioning_false_exclusion_regressions,
     write_false_exclusion_regressions,
 )
 
@@ -249,6 +249,52 @@ def test_conditioning_report_detects_true_world_drop(monkeypatch):
     assert payload["true_world_id"] == "true"
     assert payload["conditioning"]["posterior_world_ids"] == ["decoy"]
     assert payload["conditioning"]["stochastic_only_mismatches"] == 1
+
+
+def test_conditioning_false_exclusion_writer_persists_hard_case(
+    monkeypatch,
+    tmp_path: Path,
+):
+    true_particle = _particle("true")
+    decoy_particle = _particle("decoy")
+    case = TrueWorldConditioningCase(
+        transition=_transition("conditioning-write"),
+        particles=(true_particle, decoy_particle),
+        true_world_id="true",
+        rng_seeds=("sodium," + "5" * 64,),
+        max_particles=2,
+        resample_seed=9,
+    )
+
+    def fake_condition(*args, **kwargs):
+        del args, kwargs
+        return ParticleUpdate(
+            particles=(decoy_particle,),
+            generated=2,
+            matched=1,
+            deduplicated=0,
+            stochastic_only_mismatches=1,
+            structural_mismatches=0,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.recovery_soundness.condition_particles",
+        fake_condition,
+    )
+    report = evaluate_true_world_conditioning_suite(object(), (case,))
+
+    paths = write_conditioning_false_exclusion_regressions(
+        report,
+        output_dir=tmp_path / "hard-cases",
+    )
+
+    assert len(paths) == 1
+    payload = json.loads(paths[0].read_text(encoding="utf-8"))
+    assert payload["case_id"] == "conditioning-write"
+    assert payload["true_world_id"] == "true"
+    assert payload["starting_particles"][0]["world_id"] == "true"
+    assert payload["conditioning"]["posterior_world_ids"] == ["decoy"]
+    assert list((tmp_path / "hard-cases").glob("*.part")) == []
 
 
 def test_conditioning_zero_match_retains_last_good_true_world(monkeypatch):
