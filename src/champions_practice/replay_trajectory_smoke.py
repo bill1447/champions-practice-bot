@@ -6,6 +6,7 @@ import hashlib
 import json
 import sqlite3
 import tempfile
+from contextlib import closing
 from pathlib import Path
 
 from champions_practice.replay_corpus import DEFAULT_FORMAT, initialize_layout
@@ -71,7 +72,7 @@ def main() -> None:
         raw_path.parent.mkdir(parents=True, exist_ok=True)
         raw_path.write_bytes(raw)
 
-        with sqlite3.connect(layout.database) as connection:
+        with closing(sqlite3.connect(layout.database)) as connection:
             connection.execute(
                 """
                 CREATE TABLE replays (
