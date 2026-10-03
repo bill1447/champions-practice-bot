@@ -1846,6 +1846,9 @@ function branchMany(request) {
 const DAMAGE_ROLL_DOMAIN = "showdown-battle-randomizer-v1";
 const DAMAGE_ROLL_BUCKETS = 16;
 const DAMAGE_ROLL_BUCKET_WIDTH = 2 ** 28;
+const MAX_EXACT_DAMAGE_RANDOMIZER_INPUT = Math.floor(
+  Number.MAX_SAFE_INTEGER / 100,
+);
 
 function enumerateDamageRolls(request) {
   if (!request.state) {
@@ -1853,9 +1856,12 @@ function enumerateDamageRolls(request) {
   }
   if (
     !Number.isSafeInteger(request.base_damage) ||
-    request.base_damage < 1
+    request.base_damage < 1 ||
+    request.base_damage > MAX_EXACT_DAMAGE_RANDOMIZER_INPUT
   ) {
-    throw new Error("base_damage must be a positive safe integer");
+    throw new Error(
+      "base_damage exceeds exact Battle#randomizer integer precision",
+    );
   }
 
   const battle = Battle.fromJSON(JSON.stringify(request.state));
