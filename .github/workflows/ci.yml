@@ -108,6 +108,10 @@ jobs:
         shell: pwsh
         run: .\replay-trajectory-smoke.ps1
 
+      - name: Pinned Showdown replay legal-menu adapter smoke test
+        shell: pwsh
+        run: .\replay-policy-menu-smoke.ps1
+
       - name: Validate Champions team
         shell: pwsh
         run: .\validate-team.ps1

@@ -354,9 +354,28 @@ The deterministic trajectory-extraction baseline is now implemented:
   training/evaluation splits;
 - bind every generated trajectory to the archived raw replay hash and an explicit schema.
 
-The next policy-data boundary is mapping these authority-safe semantic labels onto the live
-legal-action menu. That adapter must not turn resolved targets, move-slot indices, or other
-unavailable replay details into fabricated selected commands.
+The legal-menu matching baseline is now implemented:
+
+- parse the exact pinned-Showdown joint-action strings already consumed by live search;
+- map replay move/switch/pass identity only when exactly one legal menu entry is supported;
+- resolve switch commands only with an explicit choosing-side party-slot species mapping;
+- never use a resolved replay target to manufacture the originally selected target;
+- abstain on incomplete labels, target ambiguity, switch-slot ambiguity, Mega-form ambiguity,
+  or any replay action absent from the supplied exact menu;
+- preserve exact legal-menu membership, menu index, Showdown revision, replay group, and
+  abstention reason in the policy-example schema.
+
+This exposed an important data-source boundary: a normal public replay does not contain the
+choosing player's complete Showdown request, so it cannot by itself prove the complete legal
+menu. The adapter therefore accepts only an externally supplied menu tagged as
+`pinned-showdown-legal-choices` and does not infer missing moves, party-slot ordering, trapping,
+or transformation options from later replay evidence.
+
+Before behavior-cloning training is finalized, choose the policy-data strategy for this gap:
+either enrich a subset with genuinely known player-side request/team context, or train a
+semantic action prior from the broader replay corpus and apply the exact legal menu only at
+inference/evaluation time. In either design, opponent private truth remains outside the replay
+label authority.
 
 ### Team corpus and generalization
 
@@ -469,7 +488,8 @@ Current sequence:
 **Simulator → public beliefs → bounded exact search → persistent beliefs → strategy
 → sealed playable demo → observation/reachability authority → first finite stochastic
 primitive → [parallel tracks: recovery soundness + human replay/team corpus]
-→ joint-action trajectory extraction → behavior-cloned policy prior
+→ joint-action trajectory extraction → legal-menu adapter
+→ player-side menu-context strategy → behavior-cloned policy prior
 → bounded equilibrium/CFR prototype → independently validated recovery
 → learned value/teacher loop → targeted selective depth and review tools**
 
@@ -483,6 +503,9 @@ Near-term implementation order:
    64 battles / 469 transitions with zero observed true-world false exclusions;
 5. **Complete baseline:** replay-to-public-state/action-identity trajectory extractor with
    replay-disjoint grouping and explicit label authority;
-6. **Next:** legal-menu dataset adapter and first behavior-cloned joint-action policy;
-7. bounded CFR/Bayesian matrix-game prototype;
-8. additional stochastic mechanics only when measured soundness failures require them.
+6. **Complete baseline:** exact legal-menu matching adapter with strict abstention when public
+   replay evidence cannot identify one submitted command;
+7. **Next:** choose/implement the player-side menu-context strategy, then train the first
+   behavior-cloned joint-action/semantic-action policy;
+8. bounded CFR/Bayesian matrix-game prototype;
+9. additional stochastic mechanics only when measured soundness failures require them.
