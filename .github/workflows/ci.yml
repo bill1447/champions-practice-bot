@@ -177,6 +177,10 @@ jobs:
         shell: pwsh
         run: .\reachability-smoke.ps1
 
+      - name: Finite Showdown damage-roll domain smoke test
+        shell: pwsh
+        run: .\damage-roll-domain-smoke.ps1
+
       - name: Quantitative public transition authority smoke test
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1

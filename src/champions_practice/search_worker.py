@@ -337,6 +337,17 @@ class HypotheticalSearchWorker:
     ) -> list[dict[str, Any]]:
         return self.__worker.branch_many(state=state, branches=branches)
 
+    def enumerate_damage_rolls(
+        self,
+        *,
+        state: dict[str, Any],
+        base_damage: int,
+    ) -> dict[str, Any]:
+        return self.__worker.enumerate_damage_rolls(
+            state=state,
+            base_damage=base_damage,
+        )
+
     def state_view(
         self,
         *,
@@ -1062,6 +1073,35 @@ class ShowdownSearchWorker:
         if not isinstance(resolved, list):
             raise RuntimeError("Showdown worker returned invalid branch_many results")
         return resolved
+
+    def enumerate_damage_rolls(
+        self,
+        *,
+        state: dict[str, Any],
+        base_damage: int,
+    ) -> dict[str, Any]:
+        """Return the pinned Showdown Battle#randomizer finite domain."""
+        if not isinstance(state, dict) or not state:
+            raise ValueError("damage-roll enumeration requires a serialized state")
+        if (
+            isinstance(base_damage, bool)
+            or not isinstance(base_damage, int)
+            or base_damage < 1
+            or base_damage > (2**53 - 1) // 100
+        ):
+            raise ValueError(
+                "base_damage must preserve exact Battle#randomizer integer precision"
+            )
+        result = self.request(
+            "enumerate_damage_rolls",
+            state=state,
+            base_damage=base_damage,
+        )
+        if not isinstance(result, dict):
+            raise RuntimeError(
+                "Showdown worker returned invalid damage-roll enumeration"
+            )
+        return result
 
     def state_view(
         self,

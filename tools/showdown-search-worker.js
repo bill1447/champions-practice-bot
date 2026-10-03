@@ -1842,6 +1842,100 @@ function branchMany(request) {
   };
 }
 
+
+const DAMAGE_ROLL_DOMAIN = "showdown-battle-randomizer-v1";
+const DAMAGE_ROLL_BUCKETS = 16;
+const DAMAGE_ROLL_BUCKET_WIDTH = 2 ** 28;
+const MAX_EXACT_DAMAGE_RANDOMIZER_INPUT = Math.floor(
+  Number.MAX_SAFE_INTEGER / 100,
+);
+
+function enumerateDamageRolls(request) {
+  if (!request.state) {
+    throw new Error("enumerate_damage_rolls requires a serialized battle state");
+  }
+  if (
+    !Number.isSafeInteger(request.base_damage) ||
+    request.base_damage < 1 ||
+    request.base_damage > MAX_EXACT_DAMAGE_RANDOMIZER_INPUT
+  ) {
+    throw new Error(
+      "base_damage exceeds exact Battle#randomizer integer precision",
+    );
+  }
+
+  const battle = Battle.fromJSON(JSON.stringify(request.state));
+  battle.restart(() => {});
+
+  const rng = battle.prng.rng;
+  const originalNext = rng.next.bind(rng);
+  const originalRandom = battle.random.bind(battle);
+  const outcomes = [];
+
+  try {
+    for (let bucket = 0; bucket < DAMAGE_ROLL_BUCKETS; bucket++) {
+      let rngDrawCount = 0;
+      const randomCalls = [];
+      rng.next = () => {
+        rngDrawCount++;
+        if (rngDrawCount > 1) {
+          throw new Error(
+            "Battle#randomizer consumed more than one low-level PRNG draw",
+          );
+        }
+        return bucket * DAMAGE_ROLL_BUCKET_WIDTH;
+      };
+      battle.random = (from, to) => {
+        const result = originalRandom(from, to);
+        randomCalls.push([from ?? null, to ?? null, result]);
+        return result;
+      };
+
+      const damage = battle.randomizer(request.base_damage);
+      if (
+        randomCalls.length !== 1 ||
+        randomCalls[0][0] !== DAMAGE_ROLL_BUCKETS ||
+        randomCalls[0][1] !== null
+      ) {
+        throw new Error(
+          "Pinned Battle#randomizer no longer uses exactly one random(16) call",
+        );
+      }
+      if (randomCalls[0][2] !== bucket) {
+        throw new Error(
+          "Injected PRNG representative did not map to the intended random(16) bucket",
+        );
+      }
+      if (rngDrawCount !== 1) {
+        throw new Error(
+          "Pinned Battle#randomizer did not consume exactly one PRNG draw",
+        );
+      }
+      if (!Number.isSafeInteger(damage) || damage < 0) {
+        throw new Error("Pinned Battle#randomizer returned invalid damage");
+      }
+      outcomes.push({
+        bucket,
+        damage,
+        rng_draw_count: rngDrawCount,
+      });
+    }
+  } finally {
+    rng.next = originalNext;
+    battle.random = originalRandom;
+    battle.destroy();
+  }
+
+  return {
+    domain: DAMAGE_ROLL_DOMAIN,
+    source: "Battle#randomizer",
+    base_damage: request.base_damage,
+    domain_size: DAMAGE_ROLL_BUCKETS,
+    exhaustive: true,
+    outcomes,
+  };
+}
+
 function markSafeRetry(error) {
   if (error instanceof Error) {
     error.safeRetry = true;
@@ -1993,6 +2087,8 @@ function handle(request) {
       return branchBattle(request);
     case "branch_many":
       return branchMany(request);
+    case "enumerate_damage_rolls":
+      return enumerateDamageRolls(request);
     case "legal_choices":
       return legalChoices(request);
     case "validate_choices":
