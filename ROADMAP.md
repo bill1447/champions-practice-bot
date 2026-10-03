@@ -238,7 +238,7 @@ rather than:
 
 `Did one bounded set of sampled RNG seeds happen to reproduce it?`
 
-Foundation merged through PR #134:
+Foundation merged through PR #138:
 
 - static recovery rebuilds hypotheses from authoritative pre-opening inputs rather than
   mutating already-started states;
@@ -249,34 +249,40 @@ Foundation merged through PR #134:
 - sequential Showdown witnesses propagate exact child states;
 - deterministic negative authority is allowed only for proven zero-PRNG transitions with
   exhaustive response coverage;
-- public observation validation is tied to the pinned Showdown producer contract rather than
-  generic JSON shape alone;
 - submitted human commands have been removed from belief/recovery authority after PR #134:
   conditioning and recovery reconstruct compatible opponent actions only from public evidence;
+- observation validation through schema `showdown-player-view-v9` is bound to the pinned
+  producer contract, including bidirectional consistency between selected opponent execution
+  evidence and the retained opponent move ledger;
+- the bounded hostile v9 review after PR #138 found no P0/P1/P2 findings in the reviewed
+  public-observation validity and reachability-authority surface;
 - reachability remains isolated and cannot currently install, supplement, or eliminate live
   belief particles.
 
-Current observation-authority gate:
+Observation-authority gate — closed for the reviewed v9 surface:
 
-A narrow adversarial review of PRs #125-#133 found four remaining P2 correctness gaps and one
-P3 robustness gap. Before finite stochastic-domain enumeration can become authoritative, the
-shared producer contract must close:
+The producer-contract findings discovered across reviews of PRs #125-#137 are closed with
+expected/returned-evidence regressions. This clears the prerequisite for isolated finite
+stochastic-domain work. The certification is scoped to the reviewed public-observation and
+reachability-authority boundary at the pinned Showdown revision; it is not a certification of
+the broader bot or future Showdown revisions.
 
-- selected-action collection relationships such as turn consistency, unique slots, and
-  producer ordering;
-- event-specific producer semantics where generic catalog membership is still too broad;
-- preview/revealed-opponent knowledge relationships and guaranteed unseen defaults;
-- genuine pinned variants including PP deduction/restoration and recharge prevention;
-- malformed collection-valued fields so invalid JSON types return `UNSUPPORTED` rather than
-  escaping through runtime type errors.
+Current stochastic work:
+
+- add finite mechanics primitives only through pinned Showdown;
+- keep primitive exhaustiveness distinct from complete-transition exhaustiveness;
+- do not convert primitive enumeration into live admission/elimination authority yet;
+- begin with the 16-bucket `Battle#randomizer` damage-roll domain, then compose additional
+  stochastic dimensions only with explicit coverage accounting.
 
 Phase exit criteria:
 
-1. Close the remaining observation-producer contract findings with regression coverage for
+1. **Complete:** close the observation-producer contract findings with regression coverage for
    both expected and returned evidence.
-2. Rerun a bounded hostile review of this surface and clear all P0/P1/P2 authority findings.
-3. Add isolated finite stochastic-domain enumeration without granting it live-admission
-   authority.
+2. **Complete:** rerun bounded hostile reviews of this surface and clear all P0/P1/P2
+   authority findings through the v9 review after PR #138.
+3. **In progress:** add isolated finite stochastic-domain enumeration without granting it
+   live-admission authority.
 4. Build an independent Showdown differential validator that does not reuse production
    acceptance logic as its oracle.
 5. Demonstrate that the true hidden world remains reachable, mechanically impossible worlds
