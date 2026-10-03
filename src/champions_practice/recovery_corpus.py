@@ -23,6 +23,7 @@ from typing import Any, Iterable, Protocol
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     identity_member_lineage,
+    public_observation_mismatch_paths,
     public_observation_signature,
 )
 from champions_practice.recovery_soundness import (
@@ -820,10 +821,14 @@ def _instantiate_decoy_worlds(
     previews: dict[str, list[str]],
     cache: dict[tuple[str, str], str],
     battle_index: int,
+    diagnostics: dict[str, Any] | None = None,
 ) -> list[_BattleWorld]:
     wanted = public_observation_signature(expected_public_view)
     worlds: list[_BattleWorld] = []
-    for record in candidates:
+    candidate_list = list(candidates)
+    if diagnostics is not None:
+        diagnostics["candidates"] = diagnostics.get("candidates", 0) + len(candidate_list)
+    for record in candidate_list:
         try:
             p1_text = validate_team_for_battle(
                 validator,
@@ -849,10 +854,39 @@ def _instantiate_decoy_worlds(
                 side="p2",
                 previews=previews,
             )
-        except (RecoveryCorpusError, ValueError):
+        except (RecoveryCorpusError, ValueError) as error:
+            if diagnostics is not None:
+                diagnostics["errors"] = diagnostics.get("errors", 0) + 1
+                diagnostics.setdefault("examples", []).append(
+                    {
+                        "team": record.key,
+                        "kind": "error",
+                        "detail": str(error),
+                    }
+                )
+                diagnostics["examples"] = diagnostics["examples"][:8]
             continue
         if public_observation_signature(view) != wanted:
+            if diagnostics is not None:
+                diagnostics["public_mismatches"] = (
+                    diagnostics.get("public_mismatches", 0) + 1
+                )
+                diagnostics.setdefault("examples", []).append(
+                    {
+                        "team": record.key,
+                        "kind": "public-mismatch",
+                        "paths": list(
+                            public_observation_mismatch_paths(
+                                expected_public_view,
+                                view,
+                            )
+                        ),
+                    }
+                )
+                diagnostics["examples"] = diagnostics["examples"][:8]
             continue
+        if diagnostics is not None:
+            diagnostics["admitted"] = diagnostics.get("admitted", 0) + 1
         worlds.append(
             _BattleWorld(
                 record=record,
@@ -962,6 +996,13 @@ def run_recovery_corpus(
     battles_attempted = 0
     battles_completed = 0
     decoy_worlds_created = 0
+    decoy_diagnostics: dict[str, Any] = {
+        "candidates": 0,
+        "admitted": 0,
+        "public_mismatches": 0,
+        "errors": 0,
+        "examples": [],
+    }
 
     all_records = pools.all
     for regulation in config.regulations:
@@ -1051,6 +1092,7 @@ def run_recovery_corpus(
                 previews=previews,
                 cache=validation_cache,
                 battle_index=battle_index,
+                diagnostics=decoy_diagnostics,
             )
             decoy_worlds_created += len(decoys)
             true_world = _BattleWorld(
@@ -1256,6 +1298,7 @@ def run_recovery_corpus(
         "battles_completed": battles_completed,
         "transitions": len(case_rows),
         "decoy_worlds_created": decoy_worlds_created,
+        "decoy_diagnostics": decoy_diagnostics,
         "reachability": reachability_report.summary(),
         "conditioning": conditioning_report.summary(),
         "breakdown": {
