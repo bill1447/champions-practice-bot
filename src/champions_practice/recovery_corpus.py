@@ -40,7 +40,7 @@ from champions_practice.recovery_soundness import (
 from champions_practice.replay_corpus import DATA_ROOT_ENV, ensure_external_data_root
 from champions_practice.search_worker import (
     HypotheticalSearchWorker,
-    ShowdownWorkerError,
+    ShowdownRequestError,
     TeamValidationWorker,
 )
 from champions_practice.team_corpus import REGULATION_BY_KEY
@@ -837,7 +837,7 @@ def _advance_compatible_world(
                 }
             ],
         )
-    except ShowdownWorkerError as error:
+    except ShowdownRequestError as error:
         if error.choice_rejected:
             return None
         raise
