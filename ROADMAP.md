@@ -384,11 +384,31 @@ A semantic-policy corpus audit/sharding baseline now measures that gap directly:
 - generated semantic rows are grouped by replay into deterministic 90/5/5
   train/validation/test splits and compressed external shards.
 
-Run that audit over the growing real trajectory corpus before choosing the first behavior
-cloning target. The measured semantic-label coverage and exact-menu-context burden should
-decide whether authoritative player-side request enrichment is worth the cost or whether the
-first model should be a semantic action prior whose scores are projected onto the exact legal
-menu at inference/evaluation time. In either design, opponent private truth remains outside
+The first 50,000-replay M-C audit processed all 50,000 trajectories with zero source or
+processing failures and produced 455,802 complete semantic labels from 678,286 side-turns
+(67.2% coverage). The measured command-context gap is large: 353,487 semantic rows leave
+selected target ambiguous, 86,258 require switch party-slot context, and 65,177 contain
+generic Mega context. That measurement selects the broad semantic-action prior as the first
+learned model rather than discarding most data or manufacturing exact commands.
+
+The first offline semantic-policy trainer is now implemented. It:
+
+- freezes an explicit audit run and records SHA-256 for every consumed shard;
+- uses actor-relative replay-public state only, excluding names, results, rating, future events,
+  and hidden particle identities from model features;
+- scores complete two-slot semantic actions with separate hashed state/action embedding towers;
+- uses same-action-family sampled negatives without claiming those alternatives are exact legal
+  menu entries;
+- applies explicit rating-aware loss weights so the large low-rated corpus does not define the
+  objective solely by row count;
+- reports sampled recall at 1/4/8/16 by rating band, action family, and turn phase;
+- stores model, action vocabulary, configuration, dataset fingerprint, and evaluation report
+  outside Git;
+- remains offline only: exact Showdown legality and the protected exact-search baseline retain
+  all live decision authority.
+
+The next gate is to train the frozen 50k corpus, inspect validation/test behavior, and only then
+build the authority-safe live feature/menu projection. Opponent private truth remains outside
 the replay label authority.
 
 ### Team corpus and generalization
@@ -424,22 +444,29 @@ Fixed external training/evaluation pools and arbitrary-team battle instantiation
 the recovery corpus runner. The next team-data use is replay-policy training/self-play while
 preserving the same closed-sheet observation boundary.
 
-### First learned model: joint-action behavior cloning
+### First learned model: semantic joint-action prior — implementation complete
 
 Before a large teacher/value network, train a small policy model from human replay decisions.
 
-Input should represent the decision-time public state and stable belief summaries rather than
-raw particle identities. Output should score complete two-slot joint actions from the same legal
-menu the search uses.
+The measured public-replay authority gap means v1 is a semantic two-slot action scorer rather
+than an exact-command classifier. The action itself supplies move/switch identity while the
+state tower consumes only actor-relative public decision state. Exact target, switch index, and
+other command distinctions remain outside v1 unless they are later supplied by an authoritative
+player-side request.
 
-Initial success metrics:
+The implemented baseline uses deterministic hashed features, separate state/action embedding
+towers, sampled same-family contrastive alternatives, sparse AdaGrad, and explicit rating-aware
+loss weights. Validation/test report sampled semantic recall at 1, 4, 8, and 16 by rating band,
+turn phase, and action family.
 
-- top-1, top-4, top-8, and top-16 recall of the observed human joint action;
-- recall split by rating band, team archetype, turn phase, and action family;
-- explicit coverage for Protect, switches, targeting, gimmick use, and mixed move/switch joints.
+Those sampled metrics are representation/training diagnostics, not legal-menu recall. Exact-menu
+evaluation requires simulator-generated or player-authoritative positions where the complete
+menu is genuinely known. Team-archetype breakdown is likewise deferred until an authority-safe
+definition exists rather than inferring hidden published teams from replay evidence.
 
-The raw policy is not expected to be a strong standalone player. Its first job is to improve
-candidate shortlisting and search-budget allocation.
+The raw policy is not expected to be a strong standalone player. Its first job is to become a
+measured prior that can later improve candidate shortlisting and search-budget allocation without
+starving the protected tactical baseline.
 
 ### Equilibrium-search prototype
 
@@ -519,9 +546,11 @@ Near-term implementation order:
    replay-disjoint grouping and explicit label authority;
 6. **Complete baseline:** exact legal-menu matching adapter with strict abstention when public
    replay evidence cannot identify one submitted command;
-7. **Complete infrastructure / local measurement next:** replay-disjoint semantic-policy
-   corpus audit and compressed dataset shards with pinned target-type analysis;
-8. **Next:** use the measured corpus to choose the player-side menu-context strategy and train
-   the first behavior-cloned joint-action/semantic-action policy;
-9. bounded CFR/Bayesian matrix-game prototype;
-10. additional stochastic mechanics only when measured soundness failures require them.
+7. **Complete infrastructure + measured:** replay-disjoint semantic-policy corpus audit and
+   compressed dataset shards; the 50k M-C snapshot yields 455,802 complete semantic labels;
+8. **Complete implementation / local training next:** rating-aware semantic two-tower policy
+   trainer with frozen-dataset provenance and sampled recall diagnostics;
+9. **Next after measured training:** authority-safe live feature/menu projection and shadow
+   policy-prior evaluation against the protected exact-search selector;
+10. bounded CFR/Bayesian matrix-game prototype;
+11. additional stochastic mechanics only when measured soundness failures require them.
