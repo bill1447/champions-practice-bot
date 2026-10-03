@@ -287,6 +287,9 @@ Current stochastic and recovery work:
   unsound if only wrong worlds happened to sample matching RNG outcomes;
 - both false-exclusion channels can serialize exact pre-state, commands, observations, RNG,
   particle lineage, and coverage into deterministic hard-case JSON;
+- the deterministic exact-team corpus runner now freezes external train/evaluation pools,
+  revalidates arbitrary selected teams against the concrete battle format, preserves the
+  closed-sheet public boundary, and emits external per-run survival reports and hard cases;
 - ambiguous evidence should widen or retain support rather than forcing false precision;
 - stop expanding stochastic mechanics speculatively. Scale the soundness harness over diverse
   exact teams and add accuracy, crit, multihit, secondary-effect, speed-tie, HP-interval, or
@@ -313,8 +316,9 @@ Phase exit criteria:
 4. **Complete baseline:** build the offline true-world-survival harness, cover both
    reachability authority and production-shaped sampled conditioning, and serialize detected
    false exclusions as deterministic regressions.
-5. Scale the harness across a diverse exact-team/game corpus and drive new stochastic support
-   from measured false exclusions and inconclusive-coverage hotspots.
+5. **Infrastructure complete; measurement campaign pending:** use the deterministic exact-team
+   corpus runner across a diverse game corpus and drive new stochastic support from measured
+   false exclusions and inconclusive-coverage hotspots.
 6. Build an independent Showdown differential validator that does not reuse production
    acceptance logic as its oracle.
 7. Demonstrate sound recovery on that diverse corpus, with private information unable to
@@ -374,8 +378,9 @@ diversity for priors, self-play, and general VGC structure while remaining separ
 by regulation and validation authority. Any team used in a concrete battle must still pass
 that battle format's validator before instantiation.
 
-Next team work is to define fixed training/evaluation pools and wire arbitrary-team battle
-instantiation through the existing closed-sheet observation boundary.
+Fixed external training/evaluation pools and arbitrary-team battle instantiation now exist for
+the recovery corpus runner. The next team-data use is replay-policy training/self-play while
+preserving the same closed-sheet observation boundary.
 
 ### First learned model: joint-action behavior cloning
 
@@ -464,9 +469,9 @@ Near-term implementation order:
 1. **Complete:** replay downloader/raw corpus archive with throughput measurement;
 2. **Complete baseline:** curated M-A/M-B/M-C VGCPastes ground-truth team corpus;
 3. **Complete baseline:** offline true-world-survival recovery harness;
-4. **Next:** scale soundness cases over exact teams while defining fixed team
-   training/evaluation pools and arbitrary-team battle instantiation;
-5. replay-to-public-state/joint-action trajectory extractor;
+4. **Complete infrastructure / local measurement next:** deterministic exact-team soundness
+   runner with fixed external pools and arbitrary-team battle instantiation;
+5. **Next:** replay-to-public-state/joint-action trajectory extractor;
 6. first behavior-cloned joint-action policy;
 7. bounded CFR/Bayesian matrix-game prototype;
 8. additional stochastic mechanics only when measured soundness failures require them.
