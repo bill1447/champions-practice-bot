@@ -46,7 +46,7 @@ from champions_practice.showdown_public_catalog import (
 )
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v8"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v9"
 
 
 class ReachabilityStatus(str, Enum):
@@ -1956,7 +1956,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             "activation payload is not a pinned variant for this effect",
         )
 
-    return _schema_error(path, f"{event} lacks an explicit v8 producer variant")
+    return _schema_error(path, f"{event} lacks an explicit v9 producer variant")
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
@@ -2848,21 +2848,63 @@ def public_reachability_observation_issue(
         return issue
 
     execution = view["public_execution_delta"]
-    if (
-        opponent_actions
-        and execution["turn"] == opponent_actions[0]["turn"]
-    ):
-        public_selected = {
-            (action["slot"], action["move"])
-            for action in execution["actions"]
-            if (
-                action["side"] == "opponent"
-                and action["outcome"] == "executed"
-                and action["source"] == "selected"
+    selected_opponent_actions = [
+        action
+        for action in execution["actions"]
+        if (
+            action["side"] == "opponent"
+            and action["outcome"] == "executed"
+            and action["source"] == "selected"
+        )
+    ]
+    public_selected = {
+        (action["slot"], action["move"])
+        for action in selected_opponent_actions
+    }
+
+    # Both projections come from the same channel-visible move log. When the
+    # latest execution ledger contains selected opponent moves, the retained
+    # opponent-action projection must describe that same turn. A slot with
+    # multiple selected move events is deliberately omitted by the producer
+    # because it cannot be mapped back to one chosen command.
+    if selected_opponent_actions:
+        execution_turn = execution["turn"]
+        if opponent_actions and any(
+            action["turn"] != execution_turn
+            for action in opponent_actions
+        ):
+            return _schema_error(
+                "$.opponent_last_actions",
+                "must use the selected opponent execution turn",
             )
+
+        selected_by_slot: dict[int, list[str]] = {}
+        for action in selected_opponent_actions:
+            selected_by_slot.setdefault(action["slot"], []).append(action["move"])
+        retained_by_slot = {
+            action["slot"]: action["move"]
+            for action in opponent_actions
         }
+
+        for slot, moves in selected_by_slot.items():
+            if len(moves) == 1:
+                if retained_by_slot.get(slot) != moves[0]:
+                    return _schema_error(
+                        "$.opponent_last_actions",
+                        "must retain each unambiguous selected opponent move",
+                    )
+            elif slot in retained_by_slot:
+                return _schema_error(
+                    "$.opponent_last_actions",
+                    "must omit slots with multiple selected opponent move events",
+                )
+
+    if opponent_actions:
         for index, action in enumerate(opponent_actions):
-            if (action["slot"], action["move"]) not in public_selected:
+            if (
+                execution["turn"] == action["turn"]
+                and (action["slot"], action["move"]) not in public_selected
+            ):
                 return _schema_error(
                     f"$.opponent_last_actions[{index}]",
                     "must agree with aligned public selected execution evidence",
