@@ -1087,8 +1087,9 @@ class ShowdownSearchWorker:
             isinstance(base_damage, bool)
             or not isinstance(base_damage, int)
             or base_damage < 1
+            or base_damage > 2**53 - 1
         ):
-            raise ValueError("base_damage must be a positive integer")
+            raise ValueError("base_damage must be a positive safe integer")
         result = self.request(
             "enumerate_damage_rolls",
             state=state,
