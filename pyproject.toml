@@ -17,6 +17,7 @@ dev = [
 champions-practice = "champions_practice.cli:main"
 champions-demo = "champions_practice.demo_server:main"
 champions-replays = "champions_practice.replay_corpus:main"
+champions-trajectories = "champions_practice.replay_trajectories:main"
 champions-teams = "champions_practice.team_corpus:main"
 champions-recovery-corpus = "champions_practice.recovery_corpus:main"
 

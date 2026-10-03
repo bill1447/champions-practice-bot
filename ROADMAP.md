@@ -342,12 +342,21 @@ outside Git with hashes, provenance, retry/checkpoint state, measured throughput
 per-format separation. Collection currently prioritizes Regulation M-C; older regulations can
 be added as separate corpora rather than silently mixed.
 
-Next replay work is deterministic trajectory extraction:
+The deterministic trajectory-extraction baseline is now implemented:
 
-- reconstruct the player's public decision-time state;
-- retain only observable/reconstructible joint-action labels;
-- never fabricate a selected action that the replay did not reveal;
-- preserve replay/game boundaries for leakage-safe training/evaluation splits.
+- reconstruct common public decision-time state from the replay prefix only;
+- retain only observable/reconstructible two-slot action identity;
+- ignore replay inputlog commands even when present;
+- exclude called moves as selected actions and leave prevented/unobservable slots incomplete;
+- retain a move's resolved public target without claiming that it was the originally selected
+  target;
+- preserve one trajectory document and one stable group key per replay for leakage-safe
+  training/evaluation splits;
+- bind every generated trajectory to the archived raw replay hash and an explicit schema.
+
+The next policy-data boundary is mapping these authority-safe semantic labels onto the live
+legal-action menu. That adapter must not turn resolved targets, move-slot indices, or other
+unavailable replay details into fabricated selected commands.
 
 ### Team corpus and generalization
 
@@ -469,9 +478,11 @@ Near-term implementation order:
 1. **Complete:** replay downloader/raw corpus archive with throughput measurement;
 2. **Complete baseline:** curated M-A/M-B/M-C VGCPastes ground-truth team corpus;
 3. **Complete baseline:** offline true-world-survival recovery harness;
-4. **Complete infrastructure / local measurement next:** deterministic exact-team soundness
-   runner with fixed external pools and arbitrary-team battle instantiation;
-5. **Next:** replay-to-public-state/joint-action trajectory extractor;
-6. first behavior-cloned joint-action policy;
+4. **Complete infrastructure:** deterministic exact-team soundness runner with fixed external
+   pools and arbitrary-team battle instantiation; the first local M-C measurement completed
+   64 battles / 469 transitions with zero observed true-world false exclusions;
+5. **Complete baseline:** replay-to-public-state/action-identity trajectory extractor with
+   replay-disjoint grouping and explicit label authority;
+6. **Next:** legal-menu dataset adapter and first behavior-cloned joint-action policy;
 7. bounded CFR/Bayesian matrix-game prototype;
 8. additional stochastic mechanics only when measured soundness failures require them.
