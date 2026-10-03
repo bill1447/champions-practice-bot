@@ -40,7 +40,6 @@ from champions_practice.recovery_soundness import (
 from champions_practice.replay_corpus import DATA_ROOT_ENV, ensure_external_data_root
 from champions_practice.search_worker import (
     HypotheticalSearchWorker,
-    ShowdownRequestError,
     TeamValidationWorker,
 )
 from champions_practice.team_corpus import REGULATION_BY_KEY
@@ -293,7 +292,14 @@ def load_exact_team_records(
                 f"exact-ready team {row['regulation']}:{row['team_id']} "
                 "has no canonical path"
             )
-        path = root / Path(relative)
+        path = (root / Path(relative)).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as error:
+            raise RecoveryCorpusError(
+                f"canonical team path escapes external root for "
+                f"{row['regulation']}:{row['team_id']}"
+            ) from error
         try:
             payload = path.read_bytes()
         except OSError as error:
@@ -403,26 +409,45 @@ def select_team_pools(
     grouped: dict[str, list[ExactTeamRecord]] = defaultdict(list)
     for record in records:
         grouped[record.regulation].append(record)
+
     evaluation: list[ExactTeamRecord] = []
     training: list[ExactTeamRecord] = []
     for regulation in sorted(grouped):
         group = grouped[regulation]
+        by_canonical: dict[str, list[ExactTeamRecord]] = defaultdict(list)
+        for record in group:
+            by_canonical[record.canonical_sha256].append(record)
+
+        representatives = [
+            min(aliases, key=lambda record: record.key)
+            for aliases in by_canonical.values()
+        ]
         chosen = _diverse_evaluation_subset(
-            group,
+            representatives,
             count=evaluation_per_regulation,
             pool_seed=pool_seed,
             regulation=regulation,
         )
-        chosen_keys = {record.key for record in chosen}
+        evaluation_hashes = {
+            record.canonical_sha256
+            for record in chosen
+        }
+
+        # A canonical hidden truth must never appear on both sides of the split
+        # merely because VGCPastes contains multiple provenance rows for it.
         evaluation.extend(chosen)
-        training.extend(record for record in group if record.key not in chosen_keys)
+        training.extend(
+            record
+            for record in group
+            if record.canonical_sha256 not in evaluation_hashes
+        )
+
     return TeamPools(
         training=tuple(sorted(training, key=lambda record: record.key)),
         evaluation=tuple(sorted(evaluation, key=lambda record: record.key)),
         pool_seed=pool_seed,
         evaluation_per_regulation=evaluation_per_regulation,
     )
-
 
 def _pool_member(record: ExactTeamRecord) -> dict[str, Any]:
     return {
@@ -762,14 +787,15 @@ def _instantiate_decoy_worlds(
     worker: CorpusWorker,
     validator: TeamValidator,
     *,
-    p1_text: str,
-    true_p2: ExactTeamRecord,
-    p2_preview: str,
+    p2_text: str,
+    true_p1: ExactTeamRecord,
     p1_preview: str,
+    p2_preview: str,
     candidates: Iterable[ExactTeamRecord],
     battle_format: str,
     battle_seed: str,
     expected_public_view: dict[str, Any],
+    previews: dict[str, list[str]],
     cache: dict[tuple[str, str], str],
     battle_index: int,
 ) -> list[_BattleWorld]:
@@ -777,26 +803,30 @@ def _instantiate_decoy_worlds(
     worlds: list[_BattleWorld] = []
     for record in candidates:
         try:
-            p2_text = validate_team_for_battle(
+            p1_text = validate_team_for_battle(
                 validator,
                 record,
                 battle_format=battle_format,
                 cache=cache,
             )
             translated = translate_preview(
-                p2_preview,
-                source_species=true_p2.species,
+                p1_preview,
+                source_species=true_p1.species,
                 target_species=record.species,
             )
             state = worker.create_state(
                 battle_format=battle_format,
                 p1_team=p1_text,
                 p2_team=p2_text,
-                p1_preview=p1_preview,
-                p2_preview=translated,
+                p1_preview=translated,
+                p2_preview=p2_preview,
                 seed=battle_seed,
             )
-            view = worker.state_view(state=state, side="p1")
+            view = worker.state_view(
+                state=state,
+                side="p2",
+                previews=previews,
+            )
         except (RecoveryCorpusError, ValueError):
             continue
         if public_observation_signature(view) != wanted:
@@ -812,54 +842,6 @@ def _instantiate_decoy_worlds(
             )
         )
     return worlds
-
-
-def _advance_compatible_world(
-    worker: CorpusWorker,
-    world: _BattleWorld,
-    *,
-    p1_choice: str,
-    p2_choice: str,
-    actual_rng_seed: str,
-    expected_view: dict[str, Any],
-    turn_number: int,
-) -> _BattleWorld | None:
-    try:
-        branches = worker.branch_many(
-            state=world.state,
-            branches=[
-                {
-                    "p1_choice": p1_choice,
-                    "p2_choice": p2_choice,
-                    "rng_seed": actual_rng_seed,
-                    "include_state": True,
-                    "view_side": "p1",
-                }
-            ],
-        )
-    except ShowdownRequestError as error:
-        if error.choice_rejected:
-            return None
-        raise
-    if len(branches) != 1:
-        raise RecoveryCorpusError("decoy branch returned an invalid batch")
-    child = branches[0].get("state")
-    view = branches[0].get("view")
-    if not isinstance(child, dict) or not isinstance(view, dict):
-        raise RecoveryCorpusError("decoy branch omitted state/view")
-    if public_observation_signature(view) != public_observation_signature(
-        expected_view
-    ):
-        return None
-    return _BattleWorld(
-        record=world.record,
-        state=child,
-        world_id=world.world_id,
-        history_id=f"{world.history_id}:turn-{turn_number}",
-        p1_lineage=world.p1_lineage,
-        p2_lineage=world.p2_lineage,
-    )
-
 
 def _increment(
     bucket: dict[str, dict[str, int]],
@@ -944,7 +926,6 @@ def run_recovery_corpus(
     battles_attempted = 0
     battles_completed = 0
     decoy_worlds_created = 0
-    decoy_worlds_surviving_history = 0
 
     all_records = tuple(records)
     for regulation in config.regulations:
@@ -987,7 +968,7 @@ def run_recovery_corpus(
                 p1.key,
                 p2.key,
             )
-            state, p1_preview, p2_preview, p1_text, _ = (
+            state, p1_preview, p2_preview, p1_text, p2_text = (
                 instantiate_exact_battle(
                     worker,
                     validator,
@@ -1000,10 +981,18 @@ def run_recovery_corpus(
                 )
             )
 
-            before_view = worker.state_view(state=state, side="p1")
+            previews = {
+                "p1": list(p1.species),
+                "p2": list(p2.species),
+            }
+            before_view = worker.state_view(
+                state=state,
+                side="p2",
+                previews=previews,
+            )
             decoy_records = _same_species_decoys(
                 all_records,
-                true_record=p2,
+                true_record=p1,
                 max_decoys=config.max_decoys,
                 seed_parts=(
                     config.pool_seed,
@@ -1015,23 +1004,24 @@ def run_recovery_corpus(
             decoys = _instantiate_decoy_worlds(
                 worker,
                 validator,
-                p1_text=p1_text,
-                true_p2=p2,
-                p2_preview=p2_preview,
+                p2_text=p2_text,
+                true_p1=p1,
                 p1_preview=p1_preview,
+                p2_preview=p2_preview,
                 candidates=decoy_records,
                 battle_format=battle_format,
                 battle_seed=battle_seed,
                 expected_public_view=before_view,
+                previews=previews,
                 cache=validation_cache,
                 battle_index=battle_index,
             )
             decoy_worlds_created += len(decoys)
             true_world = _BattleWorld(
-                record=p2,
+                record=p1,
                 state=state,
-                world_id=f"true:{p2.key}",
-                history_id=f"battle-{battle_index}:opening:{p2.key}",
+                world_id=f"true:{p1.key}",
+                history_id=f"battle-{battle_index}:opening:{p1.key}",
                 p1_lineage=identity_member_lineage(state, "p1"),
                 p2_lineage=identity_member_lineage(state, "p2"),
             )
@@ -1060,12 +1050,6 @@ def run_recovery_corpus(
                 )
                 if p1_choice is None or p2_choice is None:
                     break
-                actual_seed = _sodium_seed(
-                    "actual",
-                    config.battle_seed,
-                    battle_index,
-                    turn_number,
-                )
                 probe_seed = _sodium_seed(
                     "probe",
                     config.conditioning_seed,
@@ -1081,12 +1065,13 @@ def run_recovery_corpus(
                     case_id=case_id,
                     source=f"exact-team-corpus:{regulation}",
                     state=true_world.state,
-                    side="p1",
+                    side="p2",
                     p1_choice=p1_choice,
                     p2_choice=p2_choice,
-                    actual_rng_seed=actual_seed,
+                    actual_rng_seed=None,
                     probe_rng_seed=probe_seed,
                     previous_public_view=before_view,
+                    previews=previews,
                 )
                 reachability_outcome = evaluate_true_world_transition(
                     worker,
@@ -1094,9 +1079,10 @@ def run_recovery_corpus(
                 )
                 reachability_outcomes.append(reachability_outcome)
 
+                case_decoys = decoys if turn_number == 1 else []
                 particles = (true_world.particle(),) + tuple(
                     world.particle()
-                    for world in decoys
+                    for world in case_decoys
                 )
                 conditioning_case = TrueWorldConditioningCase(
                     transition=transition,
@@ -1154,10 +1140,10 @@ def run_recovery_corpus(
                         "battle_format_authoritative": authoritative,
                         "battle_index": battle_index,
                         "turn": turn_number,
-                        "p1_team": p1.key,
-                        "p2_true_team": p2.key,
+                        "p1_true_team": p1.key,
+                        "p2_ai_team": p2.key,
                         "candidate_worlds": len(particles),
-                        "decoy_worlds": len(decoys),
+                        "decoy_worlds": len(case_decoys),
                         "p1_choice": p1_choice,
                         "p2_choice": p2_choice,
                         "actual_rng_draw_count": (
@@ -1186,21 +1172,6 @@ def run_recovery_corpus(
                     }
                 )
 
-                next_decoys: list[_BattleWorld] = []
-                for decoy in decoys:
-                    advanced = _advance_compatible_world(
-                        worker,
-                        decoy,
-                        p1_choice=p1_choice,
-                        p2_choice=p2_choice,
-                        actual_rng_seed=actual_seed,
-                        expected_view=transition.actual_public_view,
-                        turn_number=turn_number,
-                    )
-                    if advanced is not None:
-                        next_decoys.append(advanced)
-                decoys = next_decoys
-                decoy_worlds_surviving_history += len(decoys)
                 true_world = _BattleWorld(
                     record=true_world.record,
                     state=child,
@@ -1248,9 +1219,6 @@ def run_recovery_corpus(
         "battles_completed": battles_completed,
         "transitions": len(case_rows),
         "decoy_worlds_created": decoy_worlds_created,
-        "decoy_worlds_surviving_history": (
-            decoy_worlds_surviving_history
-        ),
         "reachability": reachability_report.summary(),
         "conditioning": conditioning_report.summary(),
         "breakdown": {
