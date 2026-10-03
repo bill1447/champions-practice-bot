@@ -200,10 +200,21 @@ def _connect_manifest(path: Path) -> sqlite3.Connection:
             format_id TEXT NOT NULL,
             attempts INTEGER NOT NULL,
             last_error TEXT NOT NULL,
+            search_metadata_json TEXT NOT NULL DEFAULT '{}',
             updated_at TEXT NOT NULL
         );
         """
     )
+    failure_columns = {
+        row[1]
+        for row in connection.execute("PRAGMA table_info(failures)").fetchall()
+    }
+    if "search_metadata_json" not in failure_columns:
+        connection.execute(
+            "ALTER TABLE failures "
+            "ADD COLUMN search_metadata_json TEXT NOT NULL DEFAULT '{}'"
+        )
+        connection.commit()
     return connection
 
 
@@ -523,20 +534,58 @@ def _record_failure(
     *,
     replay_id: str,
     format_id: str,
+    search_row: dict[str, Any],
     error: BaseException,
 ) -> None:
+    metadata = json.dumps(
+        search_row,
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
     connection.execute(
         """
-        INSERT INTO failures (replay_id, format_id, attempts, last_error, updated_at)
-        VALUES (?, ?, 1, ?, ?)
+        INSERT INTO failures (
+            replay_id, format_id, attempts, last_error,
+            search_metadata_json, updated_at
+        )
+        VALUES (?, ?, 1, ?, ?, ?)
         ON CONFLICT(replay_id) DO UPDATE SET
             attempts = failures.attempts + 1,
             last_error = excluded.last_error,
+            search_metadata_json = excluded.search_metadata_json,
             updated_at = excluded.updated_at
         """,
-        (replay_id, format_id, str(error), _utc_now()),
+        (replay_id, format_id, str(error), metadata, _utc_now()),
     )
     connection.commit()
+
+
+def _pending_failures(
+    connection: sqlite3.Connection,
+    *,
+    format_id: str,
+) -> list[tuple[str, dict[str, Any]]]:
+    rows = connection.execute(
+        """
+        SELECT replay_id, search_metadata_json
+        FROM failures
+        WHERE format_id = ?
+        ORDER BY updated_at ASC, replay_id ASC
+        """,
+        (format_id,),
+    ).fetchall()
+    pending: list[tuple[str, dict[str, Any]]] = []
+    for replay_id, metadata_json in rows:
+        try:
+            metadata = json.loads(metadata_json)
+        except json.JSONDecodeError:
+            metadata = {}
+        if not isinstance(metadata, dict):
+            metadata = {}
+        metadata.setdefault("id", replay_id)
+        pending.append((replay_id, metadata))
+    return pending
 
 
 def _has_indexed_replay(
@@ -607,14 +656,69 @@ def download_replay_corpus(
         run_present = 0
         run_failed = 0
 
+        for replay_id, row in _pending_failures(
+            connection,
+            format_id=config.format_id,
+        ):
+            if config.max_replays and run_downloaded >= config.max_replays:
+                break
+            path = _raw_path(
+                layout,
+                format_id=config.format_id,
+                replay_id=replay_id,
+            )
+            try:
+                raw = source.fetch_replay(replay_id)
+                detail = _validated_detail(raw, replay_id=replay_id)
+                _atomic_write(path, raw)
+                _upsert_replay_record(
+                    connection,
+                    layout=layout,
+                    format_id=config.format_id,
+                    replay_id=replay_id,
+                    search_row=row,
+                    raw=raw,
+                    detail=detail,
+                    raw_path=path,
+                )
+            except Exception as error:
+                _record_failure(
+                    connection,
+                    replay_id=replay_id,
+                    format_id=config.format_id,
+                    search_row=row,
+                    error=error,
+                )
+                run_failed += 1
+                if config.strict:
+                    raise
+                if progress is not None:
+                    progress(f"RETRY FAILED {replay_id}: {error}")
+                continue
+            run_downloaded += 1
+            replay_total += 1
+            if progress is not None:
+                progress(f"Recovered previously failed replay {replay_id}")
+
+        if saved is not None and run_downloaded:
+            _write_checkpoint(
+                connection,
+                format_id=config.format_id,
+                before_uploadtime=before,
+                exhausted=exhausted,
+                pages_completed=pages_completed,
+                search_rows_seen=search_rows_seen,
+                replays_downloaded=replay_total,
+            )
+
         if exhausted and not config.restart_search:
             return DownloadStats(
                 format_id=config.format_id,
                 pages_completed=pages_completed,
                 search_rows_seen=search_rows_seen,
-                downloaded=0,
-                already_present=0,
-                failed=0,
+                downloaded=run_downloaded,
+                already_present=run_present,
+                failed=run_failed,
                 exhausted=True,
                 next_before=None,
             )
@@ -666,6 +770,7 @@ def download_replay_corpus(
                     raw_path=path,
                 ):
                     run_present += 1
+                    replay_total += 1
                     continue
 
                 try:
@@ -687,6 +792,7 @@ def download_replay_corpus(
                         connection,
                         replay_id=replay_id,
                         format_id=config.format_id,
+                        search_row=row,
                         error=error,
                     )
                     run_failed += 1
