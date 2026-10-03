@@ -116,6 +116,10 @@ jobs:
         shell: pwsh
         run: .\bridge-smoke.ps1
 
+      - name: Pinned Showdown team corpus validation smoke test
+        shell: pwsh
+        run: .\team-corpus-smoke.ps1
+
       - name: Persistent battle session smoke test
         shell: pwsh
         run: .\session-smoke.ps1
