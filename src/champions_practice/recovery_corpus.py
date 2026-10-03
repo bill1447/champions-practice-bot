@@ -892,6 +892,10 @@ def _run_id(
         "schema": RUN_SCHEMA,
         "showdown_revision": showdown_revision,
         "config": config.__dict__,
+        "training": [
+            (record.key, record.canonical_sha256)
+            for record in pools.training
+        ],
         "evaluation": [
             (record.key, record.canonical_sha256)
             for record in pools.evaluation
@@ -959,7 +963,7 @@ def run_recovery_corpus(
     battles_completed = 0
     decoy_worlds_created = 0
 
-    all_records = tuple(records)
+    all_records = pools.all
     for regulation in config.regulations:
         battle_format, authoritative = _battle_format(
             regulation,
