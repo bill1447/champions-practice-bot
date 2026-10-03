@@ -141,9 +141,21 @@ def _external_root(tmp_path: Path) -> tuple[Path, Path]:
 
 def test_regulation_sources_cover_ma_mb_mc_with_current_first():
     assert tuple(REGULATION_BY_KEY) == ("mc", "mb", "ma")
-    assert REGULATION_BY_KEY["mc"].format_id == "gen9championsvgc2026regmc"
-    assert REGULATION_BY_KEY["mb"].format_id == "gen9championsvgc2026regmb"
-    assert REGULATION_BY_KEY["ma"].format_id == "gen9championsvgc2026regma"
+    mc = REGULATION_BY_KEY["mc"]
+    mb = REGULATION_BY_KEY["mb"]
+    ma = REGULATION_BY_KEY["ma"]
+
+    assert mc.format_id == "gen9championsvgc2026regmc"
+    assert mc.validator_format_id == mc.format_id
+    assert mc.regulation_validation_authoritative is True
+
+    assert mb.format_id == "gen9championsvgc2026regmb"
+    assert mb.validator_format_id == mb.format_id
+    assert mb.regulation_validation_authoritative is True
+
+    assert ma.format_id == "gen9championsvgc2026regma"
+    assert ma.validator_format_id == "gen9championsdoublescustomgame"
+    assert ma.regulation_validation_authoritative is False
 
 
 def test_vgcpastes_csv_url_uses_exact_public_sheet_gid():
@@ -244,7 +256,8 @@ def test_sync_archives_raw_and_canonical_and_marks_exact_truth(tmp_path: Path):
     assert stats.processed == 1
     assert stats.downloaded == 1
     assert stats.valid == 1
-    assert stats.exact_truth_ready == 1
+    assert stats.exact_team_ready == 1
+    assert stats.regulation_validated == 1
     assert source.paste_calls == [paste_url]
     assert validator.calls == [
         ("gen9championsvgc2026regmc", raw.decode("utf-8"))
@@ -273,7 +286,8 @@ def test_sync_archives_raw_and_canonical_and_marks_exact_truth(tmp_path: Path):
     assert status["teams"]["mc"] == {
         "indexed": 1,
         "valid": 1,
-        "exact_truth_ready": 1,
+        "exact_team_ready": 1,
+        "regulation_validated": 1,
     }
     assert status["fetch_failures"] == 0
 
@@ -353,7 +367,44 @@ def test_showdown_revision_change_revalidates_without_refetch(tmp_path: Path):
     assert validator.calls == [("gen9championsvgc2026regmc", raw.decode("utf-8"))]
 
 
-def test_no_evs_team_is_valid_but_not_exact_truth_ready(tmp_path: Path):
+def test_ma_complete_team_is_truth_ready_without_exact_regulation_claim(
+    tmp_path: Path,
+):
+    project_root, data_root = _external_root(tmp_path)
+    paste_url = "https://pokepast.es/0123456789abcdef"
+    raw = b"Historical M-A team\n"
+    source = FakeSource(
+        indexes={"ma": _index_csv(team_id="PC001")},
+        pastes={paste_url: raw},
+    )
+    validator = FakeValidator()
+
+    stats = sync_team_corpus(
+        source,
+        validator,
+        data_root=data_root,
+        regulations=("ma",),
+        project_root=project_root,
+        progress=None,
+    )
+
+    assert stats.valid == 1
+    assert stats.exact_team_ready == 1
+    assert stats.regulation_validated == 0
+    assert validator.calls == [
+        ("gen9championsdoublescustomgame", raw.decode("utf-8"))
+    ]
+
+    status = team_corpus_status(data_root, project_root=project_root)
+    assert status["teams"]["ma"] == {
+        "indexed": 1,
+        "valid": 1,
+        "exact_team_ready": 1,
+        "regulation_validated": 0,
+    }
+
+
+def test_no_evs_team_is_valid_but_not_exact_team_ready(tmp_path: Path):
     project_root, data_root = _external_root(tmp_path)
     paste_url = "https://pokepast.es/0123456789abcdef"
     source = FakeSource(
@@ -371,10 +422,10 @@ def test_no_evs_team_is_valid_but_not_exact_truth_ready(tmp_path: Path):
     )
 
     assert stats.valid == 1
-    assert stats.exact_truth_ready == 0
+    assert stats.exact_team_ready == 0
 
 
-def test_invalid_team_is_preserved_but_not_exact_truth_ready(tmp_path: Path):
+def test_invalid_team_is_preserved_but_not_exact_team_ready(tmp_path: Path):
     project_root, data_root = _external_root(tmp_path)
     paste_url = "https://pokepast.es/0123456789abcdef"
     raw = b"Invalid but parseable team\n"
@@ -393,7 +444,7 @@ def test_invalid_team_is_preserved_but_not_exact_truth_ready(tmp_path: Path):
     )
 
     assert stats.invalid == 1
-    assert stats.exact_truth_ready == 0
+    assert stats.exact_team_ready == 0
     raw_path = (
         data_root
         / "teams"
@@ -441,7 +492,7 @@ def test_missing_pokepaste_is_indexed_without_network_fetch(tmp_path: Path):
     with sqlite3.connect(layout.database) as connection:
         state, ready = connection.execute(
             """
-            SELECT validation_state, exact_truth_ready
+            SELECT validation_state, exact_team_ready
             FROM teams
             WHERE regulation = 'mc' AND team_id = 'MC001'
             """
