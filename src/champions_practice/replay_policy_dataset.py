@@ -28,7 +28,7 @@ _TRANSFORMATION_TOKENS = {
     "terastallize",
 }
 _GENERIC_MEGA_TOKENS = {"mega", "megax", "megay"}
-_TARGET_RE = re.compile(r"^[+-]\d+$")
+_TARGET_RE = re.compile(r"^[+-]?\d+$")
 
 
 class ReplayMenuAdapterError(ValueError):
