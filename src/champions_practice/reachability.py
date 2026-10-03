@@ -1939,17 +1939,16 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
                 "must be an effect emitted by a pinned activation producer",
             )
 
-        if not tail:
+        # These pinned producers always carry exactly one [of] target.
+        if effect in _ACTIVATION_OF_EFFECTS:
+            if len(tail) != 1 or not _of_modifier(tail[0]):
+                return _schema_error(
+                    path,
+                    f"{effect} requires exactly one [of] target",
+                )
             return None
 
-        # Non-empty generic activation payloads are producer-specific. The
-        # remaining [of] forms are exactly the emitters that use that shape in
-        # the pinned runtime; other payload-bearing effects are handled above.
-        if (
-            effect in _ACTIVATION_OF_EFFECTS
-            and len(tail) == 1
-            and _of_modifier(tail[0])
-        ):
+        if not tail:
             return None
 
         return _schema_error(
