@@ -21,6 +21,12 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Protocol
 
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    ParticleUpdate,
+    condition_particles,
+    resample_particles_by_world,
+)
 from champions_practice.reachability import (
     PublicReachabilityStep,
     ReachabilityResult,
@@ -53,6 +59,7 @@ class TrueWorldTransition:
     p1_choice: str
     p2_choice: str
     actual_public_view: dict[str, Any]
+    previous_public_view: dict[str, Any] | None
     actual_rng_seed: str | None
     probe_rng_seed: str | None
     actual_rng_draw_count: int | None = None
@@ -78,6 +85,13 @@ class TrueWorldTransition:
         if not isinstance(self.actual_public_view, dict):
             raise ValueError(
                 "true-world transition requires an actual public view"
+            )
+        if self.previous_public_view is not None and not isinstance(
+            self.previous_public_view,
+            dict,
+        ):
+            raise ValueError(
+                "previous_public_view must be a dictionary or None"
             )
         for label, seed in (
             ("actual_rng_seed", self.actual_rng_seed),
@@ -115,6 +129,99 @@ class TrueWorldTransitionOutcome:
     @property
     def false_exclusion(self) -> bool:
         return self.result.establishes_impossibility
+
+
+@dataclass(frozen=True)
+class TrueWorldConditioningCase:
+    """Production-shaped sampled conditioning for one known hidden world."""
+
+    transition: TrueWorldTransition
+    particles: tuple[BeliefParticle, ...]
+    true_world_id: str
+    rng_seeds: tuple[str | None, ...]
+    max_particles: int
+    resample_seed: int
+
+    def __post_init__(self) -> None:
+        if not self.particles:
+            raise ValueError("conditioning case requires at least one particle")
+        if not isinstance(self.true_world_id, str) or not self.true_world_id:
+            raise ValueError("conditioning case requires a true_world_id")
+        if not any(
+            particle.world_id == self.true_world_id
+            for particle in self.particles
+        ):
+            raise ValueError(
+                "conditioning case does not contain the declared true world"
+            )
+        if not self.rng_seeds:
+            raise ValueError("conditioning case requires at least one RNG seed")
+        if self.max_particles <= 0:
+            raise ValueError("conditioning max_particles must be positive")
+
+
+@dataclass(frozen=True)
+class TrueWorldConditioningOutcome:
+    """One production-shaped posterior update with known hidden truth."""
+
+    case: TrueWorldConditioningCase
+    update: ParticleUpdate
+    posterior: tuple[BeliefParticle, ...]
+    degraded_retention: bool
+
+    @property
+    def survived(self) -> bool:
+        return any(
+            particle.world_id == self.case.true_world_id
+            for particle in self.posterior
+        )
+
+    @property
+    def false_exclusion(self) -> bool:
+        return not self.survived
+
+
+@dataclass(frozen=True)
+class ConditioningSoundnessReport:
+    """True-world retention under production-shaped sampled conditioning."""
+
+    outcomes: tuple[TrueWorldConditioningOutcome, ...]
+
+    @property
+    def total(self) -> int:
+        return len(self.outcomes)
+
+    @property
+    def survived(self) -> int:
+        return sum(outcome.survived for outcome in self.outcomes)
+
+    @property
+    def false_exclusions(self) -> int:
+        return sum(outcome.false_exclusion for outcome in self.outcomes)
+
+    @property
+    def degraded_retentions(self) -> int:
+        return sum(outcome.degraded_retention for outcome in self.outcomes)
+
+    @property
+    def true_world_survival_rate(self) -> float:
+        if not self.outcomes:
+            return 1.0
+        return self.survived / self.total
+
+    @property
+    def sound(self) -> bool:
+        return self.false_exclusions == 0
+
+    def summary(self) -> dict[str, Any]:
+        return {
+            "total": self.total,
+            "survived": self.survived,
+            "false_exclusions": self.false_exclusions,
+            "degraded_retentions": self.degraded_retentions,
+            "true_world_survival_rate": self.true_world_survival_rate,
+            "sound": self.sound,
+        }
 
 
 @dataclass(frozen=True)
@@ -203,6 +310,7 @@ def generate_true_world_transition(
     p2_choice: str,
     actual_rng_seed: str | None,
     probe_rng_seed: str | None,
+    previous_public_view: dict[str, Any] | None = None,
     previews: dict[str, list[str]] | None = None,
 ) -> tuple[TrueWorldTransition, dict[str, Any]]:
     """Generate one known-real transition with the pinned Showdown runtime.
@@ -262,6 +370,7 @@ def generate_true_world_transition(
         p1_choice=p1_choice,
         p2_choice=p2_choice,
         actual_public_view=public_view,
+        previous_public_view=previous_public_view,
         actual_rng_seed=actual_rng_seed,
         probe_rng_seed=probe_rng_seed,
         actual_rng_draw_count=draw_count,
@@ -314,6 +423,154 @@ def evaluate_true_world_suite(
         for transition in transitions
     )
     return RecoverySoundnessReport(outcomes=outcomes)
+
+
+def evaluate_true_world_conditioning(
+    worker: Any,
+    case: TrueWorldConditioningCase,
+) -> TrueWorldConditioningOutcome:
+    """Emulate one production conditioning boundary without mutating live state.
+
+    If sampled conditioning finds no matching child at all, production keeps the
+    last-good particles and enters degraded mode; this harness does the same.
+    If at least one child matches, production replaces the posterior with those
+    sampled survivors, which is where a true hidden world can be falsely lost.
+    """
+
+    transition = case.transition
+    ai_choice = (
+        transition.p1_choice
+        if transition.side == "p1"
+        else transition.p2_choice
+    )
+    update = condition_particles(
+        worker,
+        particles=case.particles,
+        ai_side=transition.side,
+        ai_choice=ai_choice,
+        actual_public_view=transition.actual_public_view,
+        previous_public_view=transition.previous_public_view,
+        rng_seeds=case.rng_seeds,
+        previews=transition.previews,
+    )
+    if update.particles:
+        posterior = resample_particles_by_world(
+            update.particles,
+            limit=case.max_particles,
+            seed=case.resample_seed,
+        )
+        degraded = False
+    else:
+        posterior = case.particles
+        degraded = True
+
+    return TrueWorldConditioningOutcome(
+        case=case,
+        update=update,
+        posterior=posterior,
+        degraded_retention=degraded,
+    )
+
+
+def evaluate_true_world_conditioning_suite(
+    worker: Any,
+    cases: Iterable[TrueWorldConditioningCase],
+) -> ConditioningSoundnessReport:
+    return ConditioningSoundnessReport(
+        outcomes=tuple(
+            evaluate_true_world_conditioning(worker, case)
+            for case in cases
+        )
+    )
+
+
+def conditioning_false_exclusion_payload(
+    outcome: TrueWorldConditioningOutcome,
+) -> dict[str, Any]:
+    if not outcome.false_exclusion:
+        raise ValueError(
+            "only conditioning false exclusions may be serialized"
+        )
+    case = outcome.case
+    transition = case.transition
+    return {
+        "schema": "conditioning-true-world-regression-v1",
+        "case_id": transition.case_id,
+        "source": transition.source,
+        "true_world_id": case.true_world_id,
+        "side": transition.side,
+        "pre_state": transition.pre_state,
+        "state_fingerprint": transition.state_fingerprint,
+        "p1_choice": transition.p1_choice,
+        "p2_choice": transition.p2_choice,
+        "previous_public_view": transition.previous_public_view,
+        "actual_public_view": transition.actual_public_view,
+        "previous_public_view": transition.previous_public_view,
+        "actual_rng_seed": transition.actual_rng_seed,
+        "actual_rng_draw_count": transition.actual_rng_draw_count,
+        "conditioning_rng_seeds": list(case.rng_seeds),
+        "previews": transition.previews,
+        "max_particles": case.max_particles,
+        "resample_seed": case.resample_seed,
+        "starting_particles": [
+            {
+                "state": particle.state,
+                "weight": particle.weight,
+                "world_id": particle.world_id,
+                "history_id": particle.history_id,
+                "p1_member_lineage": list(particle.p1_member_lineage),
+                "p2_member_lineage": list(particle.p2_member_lineage),
+            }
+            for particle in case.particles
+        ],
+        "conditioning": {
+            "generated": outcome.update.generated,
+            "matched": outcome.update.matched,
+            "deduplicated": outcome.update.deduplicated,
+            "stochastic_only_mismatches": (
+                outcome.update.stochastic_only_mismatches
+            ),
+            "structural_mismatches": outcome.update.structural_mismatches,
+            "posterior_world_ids": [
+                particle.world_id for particle in outcome.posterior
+            ],
+            "degraded_retention": outcome.degraded_retention,
+        },
+    }
+
+
+def write_conditioning_false_exclusion_regressions(
+    report: ConditioningSoundnessReport,
+    *,
+    output_dir: str | Path,
+) -> tuple[Path, ...]:
+    root = Path(output_dir).expanduser().resolve()
+    root.mkdir(parents=True, exist_ok=True)
+    written: list[Path] = []
+    for outcome in report.outcomes:
+        if not outcome.false_exclusion:
+            continue
+        payload = conditioning_false_exclusion_payload(outcome)
+        key = (
+            f"{outcome.case.transition.source}:"
+            f"{outcome.case.transition.case_id}:conditioning"
+        )
+        safe_id = hashlib.sha256(key.encode("utf-8")).hexdigest()[:12]
+        path = root / f"conditioning-{safe_id}.json"
+        temporary = path.with_suffix(".json.part")
+        temporary.write_text(
+            json.dumps(
+                payload,
+                ensure_ascii=False,
+                indent=2,
+                sort_keys=True,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        os.replace(temporary, path)
+        written.append(path)
+    return tuple(written)
 
 
 def _coverage_json(result: ReachabilityResult) -> dict[str, Any] | None:
