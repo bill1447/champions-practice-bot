@@ -128,6 +128,19 @@ uses the same external `F:\Showdown replay data` root as the replay corpus. See
 `docs/team-corpus.md` for provenance, exact-team readiness, regulation authority, and
 resume behavior.
 
+## Recovery soundness
+
+The offline recovery-soundness harness measures whether a known exact hidden world survives
+both isolated reachability authority and production-shaped sampled conditioning.
+
+```powershell
+.\recovery-soundness-smoke.ps1
+```
+
+A sampled miss is allowed to remain unresolved/degraded; it must not become false exclusion
+evidence. If the smoke detects a false exclusion, it saves a deterministic hard case under
+`.runtime/recovery-hard-cases/` before failing. See `docs/recovery-soundness.md`.
+
 ## Playable local demo
 
 After setup or an `update-local.ps1 -UpdateShowdown` that produced a verified Showdown build:
