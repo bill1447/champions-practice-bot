@@ -26,6 +26,7 @@ from champions_practice.replay_corpus import (
     ReplayCorpusError,
     _connect_manifest,
     _utc_now,
+    _validate_public_id,
     ensure_external_data_root,
     initialize_layout,
 )
@@ -51,6 +52,7 @@ class TrajectoryConfig:
     strict: bool = False
 
     def __post_init__(self) -> None:
+        _validate_public_id(self.format_id, label="format")
         if (
             isinstance(self.max_replays, bool)
             or not isinstance(self.max_replays, int)
@@ -706,6 +708,8 @@ def _connect_trajectory_manifest(path: Path) -> sqlite3.Connection:
 
 
 def _trajectory_path(root: Path, format_id: str, replay_id: str) -> Path:
+    _validate_public_id(format_id, label="format")
+    _validate_public_id(replay_id, label="replay id")
     return root / "trajectories" / format_id / f"{replay_id}.json"
 
 
@@ -731,7 +735,7 @@ def _manifest_rows(
     connection: sqlite3.Connection,
     *,
     format_id: str,
-) -> list[tuple[Any, ...]]:
+) -> sqlite3.Cursor:
     return connection.execute(
         """
         SELECT replay_id, raw_relative_path, raw_sha256, rating, uploadtime
@@ -740,7 +744,7 @@ def _manifest_rows(
         ORDER BY uploadtime DESC, replay_id ASC
         """,
         (format_id,),
-    ).fetchall()
+    )
 
 
 def extract_trajectory_corpus(
