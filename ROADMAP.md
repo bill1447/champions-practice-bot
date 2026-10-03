@@ -278,12 +278,20 @@ Current stochastic and recovery work:
   pinned-Showdown `Battle#randomizer` damage-roll domain;
 - primitive exhaustiveness remains distinct from complete-transition exhaustiveness;
 - no stochastic primitive may install, supplement, or eliminate live belief particles yet;
-- stop expanding stochastic mechanics speculatively. The next mechanics work is driven by an
-  offline recovery-soundness harness that knows the true hidden world and records any false
-  exclusion as a reproducible hard case;
+- the offline true-world-survival harness now measures both isolated reachability authority
+  and production-shaped sampled conditioning against known exact hidden worlds;
+- only an authoritative `EXHAUSTIVELY_DISPROVED` reachability result counts as a
+  reachability exclusion; `WITNESSED`, `UNRESOLVED`, and `UNSUPPORTED` all preserve the
+  true world;
+- sampled conditioning is measured separately because a nonempty posterior can still be
+  unsound if only wrong worlds happened to sample matching RNG outcomes;
+- both false-exclusion channels can serialize exact pre-state, commands, observations, RNG,
+  particle lineage, and coverage into deterministic hard-case JSON;
 - ambiguous evidence should widen or retain support rather than forcing false precision;
-- add accuracy, crit, multihit, secondary-effect, speed-tie, HP-interval, or other stochastic
-  machinery only when measured soundness failures show that the missing dimension matters.
+- stop expanding stochastic mechanics speculatively. Scale the soundness harness over diverse
+  exact teams and add accuracy, crit, multihit, secondary-effect, speed-tie, HP-interval, or
+  other stochastic machinery only when measured failures show that the missing dimension
+  matters.
 
 Primary recovery metric:
 
@@ -302,13 +310,16 @@ Phase exit criteria:
    authority findings through the v9 review after PR #138.
 3. **Complete baseline:** add isolated finite stochastic-domain enumeration without granting it
    live-admission authority; PR #139 provides the first exact damage-roll primitive.
-4. Build the offline true-world-survival harness and save every false exclusion as a
-   deterministic regression.
-5. Build an independent Showdown differential validator that does not reuse production
+4. **Complete baseline:** build the offline true-world-survival harness, cover both
+   reachability authority and production-shaped sampled conditioning, and serialize detected
+   false exclusions as deterministic regressions.
+5. Scale the harness across a diverse exact-team/game corpus and drive new stochastic support
+   from measured false exclusions and inconclusive-coverage hotspots.
+6. Build an independent Showdown differential validator that does not reuse production
    acceptance logic as its oracle.
-6. Demonstrate sound recovery on a diverse team/game corpus, with private information unable
-   to influence pre-seal decisions.
-7. Only then allow mechanics-authoritative recovery to affect live particle admission or
+7. Demonstrate sound recovery on that diverse corpus, with private information unable to
+   influence pre-seal decisions.
+8. Only then allow mechanics-authoritative recovery to affect live particle admission or
    elimination.
 
 This phase is no longer a blocker on beginning human-data collection and policy learning.
@@ -451,10 +462,11 @@ primitive → [parallel tracks: recovery soundness + human replay/team corpus]
 Near-term implementation order:
 
 1. **Complete:** replay downloader/raw corpus archive with throughput measurement;
-2. **Current:** curated M-A/M-B/M-C VGCPastes ground-truth team corpus;
-3. offline true-world-survival recovery harness;
-4. fixed team training/evaluation pools plus arbitrary-team battle instantiation;
+2. **Complete baseline:** curated M-A/M-B/M-C VGCPastes ground-truth team corpus;
+3. **Complete baseline:** offline true-world-survival recovery harness;
+4. **Next:** scale soundness cases over exact teams while defining fixed team
+   training/evaluation pools and arbitrary-team battle instantiation;
 5. replay-to-public-state/joint-action trajectory extractor;
 6. first behavior-cloned joint-action policy;
 7. bounded CFR/Bayesian matrix-game prototype;
-8. additional stochastic mechanics only when soundness failures require them.
+8. additional stochastic mechanics only when measured soundness failures require them.
