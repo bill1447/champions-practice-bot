@@ -1957,7 +1957,7 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             "activation payload is not a pinned variant for this effect",
         )
 
-    return _schema_error(path, f"{event} lacks an explicit v7 producer variant")
+    return _schema_error(path, f"{event} lacks an explicit v8 producer variant")
 
 
 def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
