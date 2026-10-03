@@ -2627,6 +2627,24 @@ def test_v8_execution_string_discriminators_are_type_guarded(
     assert public_reachability_observation_issue(view) is not None
 
 
+@pytest.mark.parametrize(
+    "event",
+    (
+        ["-activate", "p1a", "ability:commander"],
+        ["-activate", "p1a", "move:trick"],
+        ["-activate", "p1a", "move:bind"],
+    ),
+)
+def test_v8_targeted_activation_producers_require_of_payload(event):
+    view = _v5_semantic_valid_view()
+    view["public_event_delta"] = {
+        "turn": 1,
+        "events": [event],
+        "unsupported": [],
+    }
+    assert public_reachability_observation_issue(view) is not None
+
+
 def test_v8_pinned_actor_ability_activation_relationship_remains_supported():
     view = _v5_semantic_valid_view()
     view["public_event_delta"] = {
