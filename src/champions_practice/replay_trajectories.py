@@ -713,11 +713,18 @@ def _trajectory_path(root: Path, format_id: str, replay_id: str) -> Path:
     return root / "trajectories" / format_id / f"{replay_id}.json"
 
 
-def _atomic_write_text(path: Path, payload: str) -> None:
+def _atomic_write_bytes(path: Path, payload: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(path.suffix + ".part")
-    temporary.write_text(payload, encoding="utf-8")
+    temporary.write_bytes(payload)
     os.replace(temporary, path)
+
+
+def _file_sha256(path: Path) -> str | None:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
 
 
 def _safe_raw_path(root: Path, relative_path: str) -> Path:
@@ -772,21 +779,23 @@ def extract_trajectory_corpus(
             output_path = _trajectory_path(layout.root, config.format_id, replay_id)
             existing = connection.execute(
                 """
-                SELECT raw_sha256, trajectory_relative_path, schema_id
+                SELECT raw_sha256, trajectory_relative_path, schema_id,
+                       trajectory_sha256
                 FROM trajectories
                 WHERE replay_id = ?
                 """,
                 (replay_id,),
             ).fetchone()
-            if (
-                not config.refresh
-                and existing is not None
-                and existing[0] == raw_sha256
-                and existing[2] == TRAJECTORY_SCHEMA
-                and (layout.root / existing[1]).is_file()
-            ):
-                already_current += 1
-                continue
+            if not config.refresh and existing is not None:
+                existing_path = layout.root / existing[1]
+                if (
+                    existing[0] == raw_sha256
+                    and existing[2] == TRAJECTORY_SCHEMA
+                    and existing_path.is_file()
+                    and _file_sha256(existing_path) == existing[3]
+                ):
+                    already_current += 1
+                    continue
 
             try:
                 if not isinstance(raw_relative_path, str) or not raw_relative_path:
@@ -834,7 +843,7 @@ def extract_trajectory_corpus(
                 )
                 encoded = payload.encode("utf-8")
                 digest = hashlib.sha256(encoded).hexdigest()
-                _atomic_write_text(output_path, payload)
+                _atomic_write_bytes(output_path, encoded)
                 relative = output_path.relative_to(layout.root).as_posix()
                 connection.execute(
                     """

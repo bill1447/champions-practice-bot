@@ -322,3 +322,88 @@ def test_raw_hash_mismatch_fails_closed(tmp_path: Path):
                 strict=True,
             )
         )
+
+
+def _trajectory_manifest_hash(data_root: Path, replay_id: str) -> str:
+    layout = initialize_layout(data_root)
+    with closing(sqlite3.connect(layout.database)) as connection:
+        row = connection.execute(
+            "SELECT trajectory_sha256 FROM trajectories WHERE replay_id = ?",
+            (replay_id,),
+        ).fetchone()
+    assert row is not None
+    return str(row[0])
+
+
+def test_written_trajectory_bytes_match_manifest_hash(tmp_path: Path):
+    data_root = tmp_path / "external"
+    replay_id = f"{DEFAULT_FORMAT}-202"
+    _install_raw_replay(data_root, replay_id=replay_id, detail=_detail(replay_id))
+
+    stats = extract_trajectory_corpus(
+        config=TrajectoryConfig(
+            data_root=data_root,
+            max_replays=1,
+            strict=True,
+        )
+    )
+
+    assert stats.extracted == 1
+    output = (
+        data_root
+        / "trajectories"
+        / DEFAULT_FORMAT
+        / f"{replay_id}.json"
+    )
+    actual = hashlib.sha256(output.read_bytes()).hexdigest()
+    assert actual == _trajectory_manifest_hash(data_root, replay_id)
+
+
+def test_existing_platform_newline_mismatch_is_repaired_without_refresh(
+    tmp_path: Path,
+):
+    data_root = tmp_path / "external"
+    replay_id = f"{DEFAULT_FORMAT}-203"
+    _install_raw_replay(data_root, replay_id=replay_id, detail=_detail(replay_id))
+
+    first = extract_trajectory_corpus(
+        config=TrajectoryConfig(
+            data_root=data_root,
+            max_replays=1,
+            strict=True,
+        )
+    )
+    assert first.extracted == 1
+
+    output = (
+        data_root
+        / "trajectories"
+        / DEFAULT_FORMAT
+        / f"{replay_id}.json"
+    )
+    intended_hash = _trajectory_manifest_hash(data_root, replay_id)
+    payload = output.read_bytes()
+    assert payload.endswith(b"\n")
+    output.write_bytes(payload[:-1] + b"\r\n")
+    assert hashlib.sha256(output.read_bytes()).hexdigest() != intended_hash
+
+    repaired = extract_trajectory_corpus(
+        config=TrajectoryConfig(
+            data_root=data_root,
+            max_replays=1,
+            strict=True,
+        )
+    )
+    assert repaired.extracted == 1
+    assert repaired.already_current == 0
+    assert hashlib.sha256(output.read_bytes()).hexdigest() == intended_hash
+
+    current = extract_trajectory_corpus(
+        config=TrajectoryConfig(
+            data_root=data_root,
+            max_replays=1,
+            strict=True,
+        )
+    )
+    assert current.extracted == 0
+    assert current.already_current == 1
