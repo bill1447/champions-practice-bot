@@ -131,9 +131,8 @@ def main() -> None:
                     regulations=("mc",),
                     battles=1,
                     turns=2,
-                    max_decoys=0,
-                    conditioning_batches=1,
-                    conditioning_batch_size=1,
+                    max_decoys=1,
+                    conditioning_batch_sizes=(2, 4),
                     evaluation_per_regulation=2,
                 ),
                 refresh_pools=True,
@@ -142,6 +141,10 @@ def main() -> None:
         if result.summary["transitions"] < 1:
             raise SystemExit(
                 "ERROR: recovery corpus smoke generated no transitions"
+            )
+        if result.summary["decoy_worlds_created"] < 1:
+            raise SystemExit(
+                "ERROR: recovery corpus smoke did not instantiate a decoy world"
             )
         if result.reachability.false_exclusions:
             raise SystemExit(
