@@ -64,6 +64,8 @@ class RecoveryCorpusError(RuntimeError):
 
 
 class TeamValidator(Protocol):
+    showdown_revision: str
+
     def validate_team(
         self,
         *,
@@ -462,6 +464,7 @@ def _pool_member(record: ExactTeamRecord) -> dict[str, Any]:
         "regulation": record.regulation,
         "team_id": record.team_id,
         "canonical_sha256": record.canonical_sha256,
+        "validator_revision": record.validator_revision,
         "species": list(record.species),
     }
 
@@ -877,9 +880,15 @@ def _increment(
         item["false_exclusions"] += 1
 
 
-def _run_id(config: CorpusRunConfig, pools: TeamPools) -> str:
+def _run_id(
+    config: CorpusRunConfig,
+    pools: TeamPools,
+    *,
+    showdown_revision: str,
+) -> str:
     payload = {
         "schema": RUN_SCHEMA,
+        "showdown_revision": showdown_revision,
         "config": config.__dict__,
         "evaluation": [
             (record.key, record.canonical_sha256)
@@ -915,7 +924,11 @@ def run_recovery_corpus(
         evaluation_per_regulation=config.evaluation_per_regulation,
         refresh=refresh_pools,
     )
-    run_id = _run_id(config, pools)
+    run_id = _run_id(
+        config,
+        pools,
+        showdown_revision=validator.showdown_revision,
+    )
     run_dir = output_root / "runs" / run_id
     cases_path = run_dir / "cases.jsonl"
     summary_path = run_dir / "summary.json"
@@ -1229,6 +1242,7 @@ def run_recovery_corpus(
     summary = {
         "schema": RUN_SCHEMA,
         "run_id": run_id,
+        "showdown_revision": validator.showdown_revision,
         "config": config.__dict__,
         "pool_manifest": str(pool_path),
         "shared_pool_manifest": str(shared_pool_path),
