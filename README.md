@@ -114,7 +114,9 @@ See `docs/replay-corpus.md` for layout, resume behavior, and CLI details.
 
 The first ground-truth team source is the public VGCPastes Repository. The importer covers
 Champions M-C, M-B, and M-A, preserves raw Pokepastes outside Git, and asks the exact pinned
-Showdown runtime to validate and normalize each team.
+Showdown runtime to parse and normalize each team. The current pin can validate M-C and M-B
+against their exact regulation formats; historical M-A is normalized through Champions
+Doubles Custom Game and is not falsely labeled as exact-regulation-validated.
 
 On the primary Windows development machine:
 
@@ -123,7 +125,7 @@ On the primary Windows development machine:
 ```
 
 uses the same external `F:\Showdown replay data` root as the replay corpus. See
-`docs/team-corpus.md` for provenance, exact-truth eligibility, regulation selection, and
+`docs/team-corpus.md` for provenance, exact-team readiness, regulation authority, and
 resume behavior.
 
 ## Playable local demo
