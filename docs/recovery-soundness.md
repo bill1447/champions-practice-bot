@@ -30,7 +30,9 @@ This intentionally treats ambiguity as survival. A finite RNG miss is not negati
 ### 2. Production-shaped sampled conditioning
 
 The harness can also start from an explicit particle set containing a tagged true
-`world_id` and run the same `condition_particles` path used by production.
+`world_id` and run the same `condition_particles` path used by production. Each case
+supplies deterministic RNG batches; the harness accumulates misses and stops at the first
+nonempty batch, mirroring the production adaptive-conditioning shape.
 
 It then emulates the live controller's current one-transition update semantics:
 
@@ -81,7 +83,7 @@ Conditioning regressions additionally preserve:
 
 - all starting particles;
 - tagged true `world_id`;
-- fixed conditioning RNG seeds;
+- fixed adaptive conditioning RNG batches;
 - resample limit/seed;
 - branch/mismatch counters;
 - resulting posterior world IDs.
