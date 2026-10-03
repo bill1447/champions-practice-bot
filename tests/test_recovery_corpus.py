@@ -158,6 +158,33 @@ def test_fixed_pool_manifest_refuses_seed_change_without_refresh(tmp_path: Path)
 
 
 
+def test_team_pool_split_blocks_cross_regulation_canonical_alias():
+    digest = "c" * 64
+    records = (
+        _record("mc-only", regulation="mc", digest=digest),
+        _record("mb-alias", regulation="mb", digest=digest),
+        _record("other", regulation="mb"),
+    )
+
+    pools = select_team_pools(
+        records,
+        pool_seed=145,
+        evaluation_per_regulation=1,
+    )
+
+    assert "mc:mc-only" in {record.key for record in pools.evaluation}
+    assert "mb:mb-alias" not in {record.key for record in pools.training}
+    assert {
+        record.canonical_sha256
+        for record in pools.training
+    }.isdisjoint(
+        {
+            record.canonical_sha256
+            for record in pools.evaluation
+        }
+    )
+
+
 def test_team_pool_split_never_leaks_canonical_duplicate_truth():
     duplicate_hash = "a" * 64
     records = (
