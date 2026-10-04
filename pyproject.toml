@@ -21,6 +21,7 @@ champions-replays = "champions_practice.replay_corpus:main"
 champions-trajectories = "champions_practice.replay_trajectories:main"
 champions-replay-audit = "champions_practice.replay_semantic_audit:main"
 champions-policy-train = "champions_practice.semantic_policy_train:main"
+champions-policy-tools = "champions_practice.semantic_policy_tools:main"
 champions-teams = "champions_practice.team_corpus:main"
 champions-recovery-corpus = "champions_practice.recovery_corpus:main"
 
