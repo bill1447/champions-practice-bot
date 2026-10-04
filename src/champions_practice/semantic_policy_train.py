@@ -47,6 +47,12 @@ from champions_practice.semantic_policy_features import (
     rating_weight,
     state_tokens,
 )
+from champions_practice.semantic_policy_registry import (
+    SemanticPolicyRegistryError,
+    register_dataset_alias,
+    register_training_alias,
+    resolve_dataset_reference,
+)
 
 
 MODEL_SCHEMA = "semantic-two-tower-adagrad-v1"
@@ -83,6 +89,8 @@ class TrainingConfig:
     seed: int = DEFAULT_SEED
     max_train_rows: int = 0
     max_eval_rows: int = 0
+    dataset_alias: str | None = None
+    training_alias: str | None = None
     refresh: bool = False
 
     def __post_init__(self) -> None:
@@ -112,6 +120,12 @@ class TrainingConfig:
             raise ValueError("learning_rate must be positive and finite")
         if self.state_buckets < 128 or self.action_buckets < 128:
             raise ValueError("feature bucket counts must be at least 128")
+        for label, value in (
+            ("dataset alias", self.dataset_alias),
+            ("training alias", self.training_alias),
+        ):
+            if value is not None:
+                _validate_public_id(value, label=label)
 
 
 @dataclass(frozen=True)
@@ -223,6 +237,11 @@ def _load_dataset_summary(
         run_id = latest_summary.get("run_id")
     if not isinstance(run_id, str) or not run_id:
         raise SemanticPolicyTrainingError("dataset run id is missing")
+    run_id = resolve_dataset_reference(
+        data_root,
+        run_id,
+        format_id=format_id,
+    )
     summary_path = base / "runs" / run_id / "summary.json"
     if not summary_path.is_file():
         raise SemanticPolicyTrainingError(f"dataset run {run_id!r} does not exist")
@@ -639,7 +658,7 @@ def _build_batch(
     np.ndarray,
     np.ndarray,
     np.ndarray,
-    list[dict[str, str]],
+    list[dict[str, Any]],
 ]:
     states: list[tuple[int, ...]] = []
     action_candidates: list[list[tuple[int, ...]]] = []
@@ -675,6 +694,10 @@ def _build_batch(
                 "action_family": family,
                 "turn_band": str(row.get("turn_band")),
                 "positive_key": positive_key,
+                "candidate_keys": [
+                    positive_key,
+                    *[entry.key for entry in negatives_selected],
+                ],
             }
         )
 
@@ -725,6 +748,62 @@ def _finalize_metric(metric: dict[str, Any]) -> dict[str, Any]:
     return result
 
 
+def _metric_groups() -> dict[str, Any]:
+    return {
+        "overall": {"all": _empty_metric()},
+        "rating_band": defaultdict(_empty_metric),
+        "action_family": defaultdict(_empty_metric),
+        "turn_band": defaultdict(_empty_metric),
+        "training_vocabulary_status": defaultdict(_empty_metric),
+    }
+
+
+def _metric_destinations(
+    metrics: dict[str, Any],
+    group: dict[str, Any],
+    *,
+    unseen: bool,
+) -> list[dict[str, Any]]:
+    return [
+        metrics["overall"]["all"],
+        metrics["rating_band"][group["rating_band"]],
+        metrics["action_family"][group["action_family"]],
+        metrics["turn_band"][group["turn_band"]],
+        metrics["training_vocabulary_status"]["unseen" if unseen else "seen"],
+    ]
+
+
+def _record_rank(metric: dict[str, Any], *, rank: int, unseen: bool) -> None:
+    metric["rows"] += 1
+    metric["unseen_positive_actions"] += int(unseen)
+    for k in _RECALL_K:
+        metric[f"hits_at_{k}"] += int(rank <= k)
+
+
+def _finalize_metric_groups(metrics: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "overall": _finalize_metric(metrics["overall"]["all"]),
+        "rating_band": {
+            key: _finalize_metric(value)
+            for key, value in sorted(metrics["rating_band"].items())
+        },
+        "action_family": {
+            key: _finalize_metric(value)
+            for key, value in sorted(metrics["action_family"].items())
+        },
+        "turn_band": {
+            key: _finalize_metric(value)
+            for key, value in sorted(metrics["turn_band"].items())
+        },
+        "training_vocabulary_status": {
+            key: _finalize_metric(value)
+            for key, value in sorted(
+                metrics["training_vocabulary_status"].items()
+            )
+        },
+    }
+
+
 def _evaluate(
     model: SemanticTwoTower,
     *,
@@ -734,12 +813,8 @@ def _evaluate(
     split: str,
 ) -> dict[str, Any]:
     rng = random.Random(config.seed + (17 if split == "validation" else 29))
-    metrics: dict[str, dict[str, dict[str, Any]]] = {
-        "overall": {"all": _empty_metric()},
-        "rating_band": defaultdict(_empty_metric),
-        "action_family": defaultdict(_empty_metric),
-        "turn_band": defaultdict(_empty_metric),
-    }
+    model_metrics = _metric_groups()
+    baseline_metrics = _metric_groups()
 
     rows = _iter_rows(paths, limit=config.max_eval_rows)
     for batch in _batched(rows, batch_size=config.batch_size):
@@ -768,19 +843,32 @@ def _evaluate(
         ranks = 1 + np.sum(scores[:, 1:] >= positive[:, None], axis=1)
 
         for index, group in enumerate(groups):
-            destinations = [
-                metrics["overall"]["all"],
-                metrics["rating_band"][group["rating_band"]],
-                metrics["action_family"][group["action_family"]],
-                metrics["turn_band"][group["turn_band"]],
-            ]
             unseen = not vocabulary.contains(group["positive_key"])
-            for metric in destinations:
-                metric["rows"] += 1
-                metric["unseen_positive_actions"] += int(unseen)
-                for k in _RECALL_K:
-                    metric[f"hits_at_{k}"] += int(int(ranks[index]) <= k)
+            candidate_keys = group["candidate_keys"]
+            frequency_scores = [
+                vocabulary.by_key[key].count if vocabulary.contains(key) else 0
+                for key in candidate_keys
+            ]
+            baseline_rank = 1 + sum(
+                score >= frequency_scores[0]
+                for score in frequency_scores[1:]
+            )
 
+            for metric in _metric_destinations(
+                model_metrics,
+                group,
+                unseen=unseen,
+            ):
+                _record_rank(metric, rank=int(ranks[index]), unseen=unseen)
+            for metric in _metric_destinations(
+                baseline_metrics,
+                group,
+                unseen=unseen,
+            ):
+                _record_rank(metric, rank=int(baseline_rank), unseen=unseen)
+
+    model_results = _finalize_metric_groups(model_metrics)
+    baseline_results = _finalize_metric_groups(baseline_metrics)
     return {
         "candidate_count": config.eval_negatives + 1,
         "candidate_source": (
@@ -792,18 +880,16 @@ def _evaluate(
             "Sampled recall is a representation/training metric, not exact legal-menu "
             "recall and not a gameplay-strength metric."
         ),
-        "overall": _finalize_metric(metrics["overall"]["all"]),
-        "rating_band": {
-            key: _finalize_metric(value)
-            for key, value in sorted(metrics["rating_band"].items())
-        },
-        "action_family": {
-            key: _finalize_metric(value)
-            for key, value in sorted(metrics["action_family"].items())
-        },
-        "turn_band": {
-            key: _finalize_metric(value)
-            for key, value in sorted(metrics["turn_band"].items())
+        **model_results,
+        "state_blind_baseline": {
+            "name": "most-frequent-semantic-joint-action-within-action-family",
+            "uses_public_state": False,
+            "score": "training-row frequency of each semantic joint action",
+            "candidate_pool": "identical sampled candidates used for learned-model recall",
+            "tie_policy": (
+                "pessimistic; equal-frequency negatives rank ahead of the positive"
+            ),
+            **baseline_results,
         },
     }
 
@@ -844,6 +930,13 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
         format_id=config.format_id,
         run_id=config.run_id,
     )
+    if config.dataset_alias is not None:
+        register_dataset_alias(
+            config.data_root,
+            alias=config.dataset_alias,
+            run_id=summary["run_id"],
+            format_id=config.format_id,
+        )
     train_files = _split_files(summary, run_dir, "train")
     validation_files = _split_files(summary, run_dir, "validation")
     test_files = _split_files(summary, run_dir, "test")
@@ -860,6 +953,14 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
             json.dumps(report, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        if config.training_alias is not None:
+            register_training_alias(
+                config.data_root,
+                alias=config.training_alias,
+                training_id=training_id,
+                dataset_reference=summary["run_id"],
+                format_id=config.format_id,
+            )
         return report
 
     started = time.monotonic()
@@ -1045,6 +1146,14 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
         json.dumps(report, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
+    if config.training_alias is not None:
+        register_training_alias(
+            config.data_root,
+            alias=config.training_alias,
+            training_id=training_id,
+            dataset_reference=summary["run_id"],
+            format_id=config.format_id,
+        )
     return report
 
 
@@ -1130,6 +1239,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--seed", type=int, default=DEFAULT_SEED)
     parser.add_argument("--max-train-rows", type=int, default=0)
     parser.add_argument("--max-eval-rows", type=int, default=0)
+    parser.add_argument("--dataset-alias")
+    parser.add_argument("--training-alias")
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--status", action="store_true")
     return parser
@@ -1169,12 +1280,15 @@ def main(argv: list[str] | None = None) -> None:
                 seed=args.seed,
                 max_train_rows=args.max_train_rows,
                 max_eval_rows=args.max_eval_rows,
+                dataset_alias=args.dataset_alias,
+                training_alias=args.training_alias,
                 refresh=args.refresh,
             )
         )
         print(json.dumps(report, indent=2, sort_keys=True))
     except (
         SemanticPolicyTrainingError,
+        SemanticPolicyRegistryError,
         ValueError,
         OSError,
         json.JSONDecodeError,
