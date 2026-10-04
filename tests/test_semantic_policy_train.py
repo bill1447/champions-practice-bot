@@ -9,7 +9,11 @@ from champions_practice.replay_semantic_audit import (
     SEMANTIC_AUDIT_SCHEMA,
     SEMANTIC_POLICY_SCHEMA,
 )
-from champions_practice.semantic_policy_diagnostics import evaluate_saved_training
+from champions_practice.semantic_policy_diagnostics import (
+    compare_training_runs,
+    evaluate_saved_training,
+    format_comparison_table,
+)
 from champions_practice.semantic_policy_registry import (
     register_dataset_alias,
     register_training_alias,
@@ -313,6 +317,17 @@ def test_saved_model_can_be_re_evaluated_and_addressed_by_alias(tmp_path: Path):
         / report["training_id"]
         / "diagnostics.json"
     ).is_file()
+
+    comparison = compare_training_runs(
+        data_root,
+        ["fixture-bc-v1", report["training_id"]],
+    )
+    table = format_comparison_table(comparison)
+    assert len(comparison) == 2
+    assert comparison[0]["blind_top1"] is not None
+    assert comparison[0]["unseen_rows"] == 1
+    assert "blind1" in table
+    assert "unseen1" in table
 
 
 def test_training_can_register_aliases_without_changing_training_identity(tmp_path: Path):
