@@ -457,7 +457,12 @@ player-side request.
 The implemented baseline uses deterministic hashed features, separate state/action embedding
 towers, sampled same-family contrastive alternatives, sparse AdaGrad, and explicit rating-aware
 loss weights. Validation/test report sampled semantic recall at 1, 4, 8, and 16 by rating band,
-turn phase, and action family.
+turn phase, action family, and whether the exact semantic joint action was seen in training.
+
+Before live integration, evaluation also compares the learned scorer against a state-blind
+training-frequency baseline on the identical sampled candidate pool. Saved models can be
+re-evaluated post hoc without rerunning training, and immutable dataset/training hashes can be
+given non-authoritative human-readable aliases for comparison reporting.
 
 Those sampled metrics are representation/training diagnostics, not legal-menu recall. Exact-menu
 evaluation requires simulator-generated or player-authoritative positions where the complete
@@ -548,9 +553,15 @@ Near-term implementation order:
    replay evidence cannot identify one submitted command;
 7. **Complete infrastructure + measured:** replay-disjoint semantic-policy corpus audit and
    compressed dataset shards; the 50k M-C snapshot yields 455,802 complete semantic labels;
-8. **Complete implementation / local training next:** rating-aware semantic two-tower policy
-   trainer with frozen-dataset provenance and sampled recall diagnostics;
-9. **Next after measured training:** authority-safe live feature/menu projection and shadow
-   policy-prior evaluation against the protected exact-search selector;
-10. bounded CFR/Bayesian matrix-game prototype;
-11. additional stochastic mechanics only when measured soundness failures require them.
+8. **Complete implementation / measuring:** rating-aware semantic two-tower policy trainer
+   with frozen-dataset provenance and sampled recall diagnostics;
+9. **Evaluation gate:** human-readable immutable-run aliases, state-blind frequency baseline,
+   seen-vs-unseen semantic-action metrics, post-hoc saved-model evaluation, and compact run
+   comparison reporting; keep the learned policy disconnected from live selection;
+10. **Cross-regulation experiment:** keep M-B separately tagged and compare M-C-only,
+    M-B+M-C mixed, and M-B pretraining -> M-C fine-tuning on an unchanged M-C test set;
+11. **After those measurements:** authoritative exact-menu/shadow policy evaluation with
+    semantic projection onto Showdown's true choosing-side legal menu; exact search remains
+    protected and authoritative;
+12. bounded CFR/Bayesian matrix-game prototype;
+13. additional stochastic mechanics only when measured soundness failures require them.
