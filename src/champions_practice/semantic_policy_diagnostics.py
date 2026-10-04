@@ -290,7 +290,6 @@ def compare_training_runs(
             format_id=format_id,
         )
         report_path = Path(resolved["report_path"])
-        report = json.loads(report_path.read_text(encoding="utf-8"))
         evaluation, has_diagnostics = _load_evaluation_source(report_path)
         test = evaluation.get("test")
         if not isinstance(test, dict):
