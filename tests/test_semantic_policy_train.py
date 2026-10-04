@@ -9,6 +9,15 @@ from champions_practice.replay_semantic_audit import (
     SEMANTIC_AUDIT_SCHEMA,
     SEMANTIC_POLICY_SCHEMA,
 )
+from champions_practice.semantic_policy_diagnostics import (
+    compare_training_runs,
+    evaluate_saved_training,
+    format_comparison_table,
+)
+from champions_practice.semantic_policy_registry import (
+    register_dataset_alias,
+    register_training_alias,
+)
 from champions_practice.semantic_policy_train import (
     MODEL_SCHEMA,
     TRAINING_REPORT_SCHEMA,
@@ -122,6 +131,23 @@ def _install_dataset(data_root: Path) -> str:
     train_rows = [_row(index, split="train") for index in range(20)]
     validation_rows = [_row(index, split="validation") for index in range(4)]
     test_rows = [_row(index + 4, split="test") for index in range(4)]
+    test_rows[-1]["semantic_label"] = {
+        "actions": [
+            {
+                "slot": 1,
+                "kind": "move",
+                "move": "unseenalpha",
+                "gimmicks": [],
+            },
+            {
+                "slot": 2,
+                "kind": "move",
+                "move": "unseenbeta",
+                "gimmicks": [],
+            },
+        ],
+        "action_family": "move+move",
+    }
     _write_shard(run_dir / "train" / "part-00000.jsonl.gz", train_rows)
     _write_shard(
         run_dir / "validation" / "part-00000.jsonl.gz",
@@ -197,6 +223,9 @@ def test_tiny_semantic_policy_training_produces_reproducible_artifacts(
     assert first["validation"]["candidate_count"] == 16
     assert first["validation"]["overall"]["rows"] == 4
     assert first["test"]["overall"]["rows"] == 4
+    assert first["test"]["training_vocabulary_status"]["seen"]["rows"] == 3
+    assert first["test"]["training_vocabulary_status"]["unseen"]["rows"] == 1
+    assert first["test"]["state_blind_baseline"]["uses_public_state"] is False
     assert first["authority"]["live_decision_authority"] is False
     assert first["artifacts"]["model"]["bytes"] > 0
     assert first["artifacts"]["vocabulary"]["bytes"] > 0
@@ -239,3 +268,93 @@ def test_training_report_keeps_sampled_metrics_distinct_from_legal_menu_metrics(
         "sampled_recall_at_8",
         "sampled_recall_at_16",
     }
+
+
+def test_saved_model_can_be_re_evaluated_and_addressed_by_alias(tmp_path: Path):
+    data_root = tmp_path / "external"
+    run_id = _install_dataset(data_root)
+    report = train_semantic_policy(
+        TrainingConfig(
+            data_root=data_root,
+            run_id=run_id,
+            epochs=1,
+            batch_size=4,
+            train_negatives=3,
+            eval_negatives=15,
+            embedding_dim=8,
+            state_buckets=256,
+            action_buckets=256,
+            shuffle_buffer=8,
+            seed=11,
+        )
+    )
+
+    register_dataset_alias(
+        data_root,
+        alias="fixture-semantic-v1",
+        run_id=run_id,
+    )
+    register_training_alias(
+        data_root,
+        alias="fixture-bc-v1",
+        training_id=report["training_id"],
+        dataset_reference="fixture-semantic-v1",
+    )
+
+    diagnostics = evaluate_saved_training(data_root, "fixture-bc-v1")
+
+    assert diagnostics["training_id"] == report["training_id"]
+    assert diagnostics["dataset_run_id"] == run_id
+    assert diagnostics["test"]["training_vocabulary_status"]["seen"]["rows"] == 3
+    assert diagnostics["test"]["training_vocabulary_status"]["unseen"]["rows"] == 1
+    assert diagnostics["test"]["state_blind_baseline"]["uses_public_state"] is False
+    assert diagnostics["authority"]["live_decision_authority"] is False
+    assert (
+        data_root
+        / "models"
+        / "semantic-policy"
+        / run_id
+        / report["training_id"]
+        / "diagnostics.json"
+    ).is_file()
+
+    comparison = compare_training_runs(
+        data_root,
+        ["fixture-bc-v1", report["training_id"]],
+    )
+    table = format_comparison_table(comparison)
+    assert len(comparison) == 2
+    assert comparison[0]["blind_top1"] is not None
+    assert comparison[0]["unseen_rows"] == 1
+    assert "blind1" in table
+    assert "unseen1" in table
+
+
+def test_training_can_register_aliases_without_changing_training_identity(tmp_path: Path):
+    data_root = tmp_path / "external"
+    run_id = _install_dataset(data_root)
+    base = TrainingConfig(
+        data_root=data_root,
+        run_id=run_id,
+        epochs=1,
+        batch_size=4,
+        train_negatives=3,
+        eval_negatives=15,
+        embedding_dim=8,
+        state_buckets=256,
+        action_buckets=256,
+        shuffle_buffer=8,
+        seed=12,
+    )
+    first = train_semantic_policy(base)
+    aliased = train_semantic_policy(
+        TrainingConfig(
+            **{
+                **base.__dict__,
+                "dataset_alias": "fixture-dataset-alias",
+                "training_alias": "fixture-training-alias",
+            }
+        )
+    )
+
+    assert aliased["training_id"] == first["training_id"]

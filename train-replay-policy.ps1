@@ -16,6 +16,8 @@ param(
     [int]$Seed = 150,
     [int]$MaxTrainRows = 0,
     [int]$MaxEvalRows = 0,
+    [string]$DatasetAlias = "",
+    [string]$TrainingAlias = "",
     [switch]$Refresh,
     [switch]$Status
 )
@@ -57,6 +59,12 @@ $TrainArgs = @(
 
 if ($RunId) {
     $TrainArgs += @("--run-id", $RunId)
+}
+if ($DatasetAlias) {
+    $TrainArgs += @("--dataset-alias", $DatasetAlias)
+}
+if ($TrainingAlias) {
+    $TrainArgs += @("--training-alias", $TrainingAlias)
 }
 if ($Refresh) {
     $TrainArgs += "--refresh"

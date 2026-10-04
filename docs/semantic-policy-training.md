@@ -28,7 +28,9 @@ Default rating weights are: unrated 0.10, below 1200 0.15, 1200-1399 0.35, 1400-
 
 ## Metrics
 
-Validation and test report sampled recall at 1, 4, 8, and 16, split by rating band, action family, and turn phase. The default evaluation pool contains the positive plus 63 sampled semantic alternatives.
+Validation and test report sampled recall at 1, 4, 8, and 16, split by rating band, action family, turn phase, and whether the exact semantic joint action was seen in the training vocabulary. The default evaluation pool contains the positive plus 63 sampled semantic alternatives.
+
+The same sampled candidate pool is also scored by a state-blind baseline: training-row frequency of each semantic joint action within the sampled action-family pool. That baseline answers how much apparent recall can be explained by action-frequency structure without looking at battle state.
 
 These are sampled semantic retrieval metrics. They are not exact legal-menu recall and are not gameplay-strength measurements because the historical public replay cannot prove the exact menu.
 
@@ -37,6 +39,10 @@ Team-archetype metrics are deferred until an authority-safe replay/team-linking 
 ## Artifacts
 
 Outputs stay outside Git under `models/semantic-policy/<dataset-run-id>/<training-id>/` and include `model.npz`, `action-vocabulary.json.gz`, and `report.json`. The report binds the model to the dataset run, source fingerprint, Showdown revision, shard hashes, model/feature schemas, hyperparameters, rating weights, action-vocabulary hash, and random seed.
+
+Human-readable aliases live separately in `models/semantic-policy/aliases.json`. Aliases never replace immutable dataset/training IDs in provenance, and an existing alias cannot be rebound to a different run.
+
+Post-hoc evaluation writes `diagnostics.json` beside the saved model. It reloads the frozen model, vocabulary, and dataset split and recomputes the new baseline/generalization metrics without rerunning training epochs or mutating the original training report.
 
 ## Running
 
@@ -58,4 +64,27 @@ Check status:
 .\train-replay-policy.ps1 -RunId <audit-run-id> -Status
 ```
 
-The model is not connected to the live selector in this phase. Search remains the player. The next gate is to inspect frozen validation/test results and only then build the authority-safe adapter that projects model scores onto the bot's exact legal menu.
+Register aliases while training or when reusing an already-complete training identity:
+
+```powershell
+.\train-replay-policy.ps1 -RunId 413769c4a1ce3a35d35b -Epochs 6 `
+    -DatasetAlias mc71k-semantic-full-v1 -TrainingAlias mc71k-bc-v1-6ep
+```
+
+Retroactively alias existing runs:
+
+```powershell
+.\replay-policy-tools.ps1 alias-dataset mc50k-semantic-v1 e3e4e78563f34fabd35c
+.\replay-policy-tools.ps1 alias-training mc50k-bc-v1-6ep e714047872b7963ddd35 `
+    --dataset mc50k-semantic-v1
+```
+
+Re-evaluate a saved model without retraining it, then compare runs:
+
+```powershell
+.\replay-policy-tools.ps1 evaluate mc50k-bc-v1-6ep
+.\replay-policy-tools.ps1 evaluate mc71k-bc-v1-6ep
+.\replay-policy-tools.ps1 compare mc50k-bc-v1-6ep mc71k-bc-v1-6ep
+```
+
+The model is not connected to the live selector in this phase. Search remains the player. The next gate is honest offline evaluation first, followed later by an authority-safe adapter that projects model scores onto the bot's exact legal menu without removing the protected tactical baseline.
