@@ -754,7 +754,10 @@ def _metric_groups() -> dict[str, Any]:
         "rating_band": defaultdict(_empty_metric),
         "action_family": defaultdict(_empty_metric),
         "turn_band": defaultdict(_empty_metric),
-        "training_vocabulary_status": defaultdict(_empty_metric),
+        "training_vocabulary_status": {
+            "seen": _empty_metric(),
+            "unseen": _empty_metric(),
+        },
     }
 
 
@@ -1171,6 +1174,12 @@ def training_status(
             run_id=None,
         )
         run_id = summary["run_id"]
+    else:
+        run_id = resolve_dataset_reference(
+            data_root,
+            run_id,
+            format_id=format_id,
+        )
     path = layout.models / "semantic-policy" / run_id / "latest-report.json"
     if not path.is_file():
         return {
