@@ -18,6 +18,8 @@ param(
     [int]$MaxEvalRows = 0,
     [string]$DatasetAlias = "",
     [string]$TrainingAlias = "",
+    [string[]]$ExtraDataset = @(),
+    [string]$InitializeFrom = "",
     [switch]$Refresh,
     [switch]$Status
 )
@@ -65,6 +67,12 @@ if ($DatasetAlias) {
 }
 if ($TrainingAlias) {
     $TrainArgs += @("--training-alias", $TrainingAlias)
+}
+foreach ($Dataset in $ExtraDataset) {
+    $TrainArgs += @("--extra-dataset", $Dataset)
+}
+if ($InitializeFrom) {
+    $TrainArgs += @("--initialize-from", $InitializeFrom)
 }
 if ($Refresh) {
     $TrainArgs += "--refresh"
