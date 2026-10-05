@@ -622,3 +622,30 @@ def test_invalid_existing_raw_is_replaced_by_fresh_valid_download(tmp_path: Path
 
     assert stats.downloaded == 1
     assert path.read_bytes() == valid
+
+
+def test_truncated_utf32_existing_raw_is_replaced_by_fresh_valid_download(
+    tmp_path: Path,
+):
+    project_root, data_root = _external_root(tmp_path)
+    replay_id = f"{DEFAULT_FORMAT}-801"
+    layout = initialize_layout(data_root, project_root=project_root)
+    path = layout.raw / DEFAULT_FORMAT / f"{replay_id}.json"
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"\x00\x00\x00{\x00\x00\x00")
+
+    valid = _detail_bytes(replay_id, uploadtime=801)
+    source = FakeReplaySource(
+        pages={None: [_search_row(replay_id, uploadtime=801)]},
+        details={replay_id: valid},
+    )
+    stats = download_replay_corpus(
+        source,
+        config=DownloadConfig(data_root=data_root),
+        project_root=project_root,
+        progress=None,
+    )
+
+    assert source.fetch_calls == [replay_id]
+    assert stats.downloaded == 1
+    assert path.read_bytes() == valid
