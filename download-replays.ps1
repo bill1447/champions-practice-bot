@@ -10,7 +10,8 @@ param(
     [double]$DelaySeconds = 0.25,
     [switch]$RestartSearch,
     [switch]$Strict,
-    [switch]$Status
+    [switch]$Status,
+    [switch]$Survey
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,9 +44,17 @@ if ($Strict) {
 if ($Status) {
     $ReplayArgs += "--status"
 }
+if ($Survey) {
+    $ReplayArgs += "--survey"
+}
 
-Write-Host "Replay data root: $DataRoot"
+if (-not $Survey) {
+    Write-Host "Replay data root: $DataRoot"
+}
 Write-Host "Replay format:    $Format"
+if ($Survey) {
+    Write-Host "Replay mode:      search-index survey (no replay downloads)"
+}
 & $Python @ReplayArgs
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE

@@ -19,6 +19,7 @@ from champions_practice.replay_corpus import (
     download_replay_corpus,
     ensure_external_data_root,
     initialize_layout,
+    survey_replay_archive,
 )
 
 
@@ -195,6 +196,65 @@ def test_showdown_source_uses_documented_search_and_replay_json_urls():
             7.5,
         ),
     ]
+
+
+def test_archive_survey_counts_search_rows_without_fetching_replay_bodies():
+    first_page = [
+        _search_row(f"{DEFAULT_FORMAT}-{2000 - index}", uploadtime=2000 - index)
+        for index in range(51)
+    ]
+    next_before = first_page[-1]["uploadtime"]
+    tail = [
+        _search_row(f"{DEFAULT_FORMAT}-1900", uploadtime=1900),
+        _search_row(f"{DEFAULT_FORMAT}-1899", uploadtime=1899),
+    ]
+    source = FakeReplaySource(
+        pages={None: first_page, next_before: tail},
+        details={},
+    )
+
+    stats = survey_replay_archive(
+        source,
+        format_id=DEFAULT_FORMAT,
+        progress=None,
+        clock=lambda: 10.0,
+    )
+
+    assert source.search_calls == [
+        (DEFAULT_FORMAT, None),
+        (DEFAULT_FORMAT, next_before),
+    ]
+    assert source.fetch_calls == []
+    assert stats.pages_completed == 2
+    assert stats.search_rows_seen == 53
+    assert stats.unique_replays == 53
+    assert stats.duplicate_rows == 0
+    assert stats.newest_uploadtime == 2000
+    assert stats.oldest_uploadtime == 1899
+    assert stats.elapsed_seconds == 0.0
+
+
+def test_archive_survey_rejects_nonadvancing_pagination_cursor():
+    rows = [
+        _search_row(f"{DEFAULT_FORMAT}-{index}", uploadtime=100)
+        for index in range(51)
+    ]
+    source = FakeReplaySource(
+        pages={None: rows, 100: rows},
+        details={},
+    )
+
+    with pytest.raises(
+        ReplayCorpusError,
+        match="survey pagination cursor did not move backward",
+    ):
+        survey_replay_archive(
+            source,
+            format_id=DEFAULT_FORMAT,
+            progress=None,
+        )
+
+    assert source.fetch_calls == []
 
 
 def test_replay_corpus_rejects_data_inside_repository(tmp_path: Path):
