@@ -413,9 +413,11 @@ def _new_or_initialized_model(
     config: TrainingConfig,
     initialization: dict[str, Any] | None,
 ) -> SemanticTwoTower:
-    model = _new_or_initialized_model(
-        config=config,
-        initialization=initialization,
+    model = SemanticTwoTower(
+        state_buckets=config.state_buckets,
+        action_buckets=config.action_buckets,
+        embedding_dim=config.embedding_dim,
+        seed=config.seed,
     )
     if initialization is None:
         return model
@@ -1189,7 +1191,7 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
     shard_manifest = {
         split: _shard_manifest(paths, run_dir=run_dir)
         for split, paths in (
-            ("train", train_files),
+            ("train", list(training_datasets[0].train_files)),
             ("validation", validation_files),
             ("test", test_files),
         )
@@ -1202,11 +1204,9 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
     vocabulary_bytes = _vocabulary_payload(vocabulary)
     vocabulary_sha = hashlib.sha256(vocabulary_bytes).hexdigest()
 
-    model = SemanticTwoTower(
-        state_buckets=config.state_buckets,
-        action_buckets=config.action_buckets,
-        embedding_dim=config.embedding_dim,
-        seed=config.seed,
+    model = _new_or_initialized_model(
+        config=config,
+        initialization=initialization,
     )
 
     epoch_reports: list[dict[str, Any]] = []
