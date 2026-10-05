@@ -33,6 +33,7 @@ DEFAULT_REQUEST_DELAY_SECONDS = 0.25
 DEFAULT_TIMEOUT_SECONDS = 20.0
 DEFAULT_RETRIES = 4
 PROGRESS_EVERY_DOWNLOADS = 100
+PROGRESS_EVERY_SURVEY_PAGES = 100
 _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
@@ -76,6 +77,18 @@ class DownloadStats:
     next_before: int | None
     elapsed_seconds: float
     replay_rate_per_minute: float
+
+
+@dataclass(frozen=True)
+class SurveyStats:
+    format_id: str
+    pages_completed: int
+    search_rows_seen: int
+    unique_replays: int
+    duplicate_rows: int
+    newest_uploadtime: int | None
+    oldest_uploadtime: int | None
+    elapsed_seconds: float
 
 
 @dataclass(frozen=True)
@@ -1001,6 +1014,80 @@ def download_replay_corpus(
         connection.close()
 
 
+def survey_replay_archive(
+    source: ReplaySource,
+    *,
+    format_id: str = DEFAULT_FORMAT,
+    progress: Callable[[str], None] | None = print,
+    clock: Callable[[], float] = time.monotonic,
+) -> SurveyStats:
+    """Count replay IDs exposed by the Showdown search archive without downloading them.
+
+    This intentionally does not open the local manifest database and therefore cannot
+    mutate or contend with downloader checkpoints.
+    """
+
+    _validate_public_id(format_id, label="format")
+    started_at = clock()
+    before: int | None = None
+    pages_completed = 0
+    search_rows_seen = 0
+    duplicate_rows = 0
+    newest_uploadtime: int | None = None
+    oldest_uploadtime: int | None = None
+    seen_ids: set[str] = set()
+
+    while True:
+        rows = source.search(format_id=format_id, before=before)
+        pages_completed += 1
+        if not rows:
+            break
+
+        for row in rows:
+            search_rows_seen += 1
+            replay_id = row["id"]
+            uploadtime = int(row["uploadtime"])
+            if replay_id in seen_ids:
+                duplicate_rows += 1
+            else:
+                seen_ids.add(replay_id)
+            if newest_uploadtime is None or uploadtime > newest_uploadtime:
+                newest_uploadtime = uploadtime
+            if oldest_uploadtime is None or uploadtime < oldest_uploadtime:
+                oldest_uploadtime = uploadtime
+
+        if progress is not None and (
+            pages_completed == 1
+            or pages_completed % PROGRESS_EVERY_SURVEY_PAGES == 0
+        ):
+            progress(
+                f"Surveyed {pages_completed} pages | "
+                f"{len(seen_ids)} unique replays | "
+                f"{search_rows_seen} search rows"
+            )
+
+        if len(rows) < SEARCH_PAGE_LIMIT:
+            break
+
+        next_before = min(int(row["uploadtime"]) for row in rows)
+        if before is not None and next_before >= before:
+            raise ReplayCorpusError(
+                "Showdown replay survey pagination cursor did not move backward"
+            )
+        before = next_before
+
+    return SurveyStats(
+        format_id=format_id,
+        pages_completed=pages_completed,
+        search_rows_seen=search_rows_seen,
+        unique_replays=len(seen_ids),
+        duplicate_rows=duplicate_rows,
+        newest_uploadtime=newest_uploadtime,
+        oldest_uploadtime=oldest_uploadtime,
+        elapsed_seconds=round(max(0.0, clock() - started_at), 3),
+    )
+
+
 def corpus_status(
     data_root: str | Path,
     *,
@@ -1080,6 +1167,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Print local corpus status without contacting Showdown.",
     )
+    parser.add_argument(
+        "--survey",
+        action="store_true",
+        help=(
+            "Count replay IDs exposed by Showdown search without downloading replay "
+            "bodies or opening the local manifest database."
+        ),
+    )
     return parser
 
 
@@ -1087,8 +1182,10 @@ def main(argv: list[str] | None = None) -> None:
     parser = _build_parser()
     args = parser.parse_args(argv)
     try:
-        data_root = _resolve_cli_data_root(args.data_root)
+        if args.status and args.survey:
+            raise ReplayCorpusError("--status and --survey are mutually exclusive")
         if args.status:
+            data_root = _resolve_cli_data_root(args.data_root)
             print(json.dumps(corpus_status(data_root, format_id=args.format_id), indent=2))
             return
 
@@ -1097,6 +1194,15 @@ def main(argv: list[str] | None = None) -> None:
             timeout_seconds=args.timeout,
             retries=args.retries,
         )
+        if args.survey:
+            stats = survey_replay_archive(
+                source,
+                format_id=args.format_id,
+            )
+            print(json.dumps(stats.__dict__, indent=2))
+            return
+
+        data_root = _resolve_cli_data_root(args.data_root)
         stats = download_replay_corpus(
             source,
             config=DownloadConfig(
