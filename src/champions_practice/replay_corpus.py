@@ -512,7 +512,7 @@ def _atomic_write(path: Path, payload: bytes) -> None:
 def _validated_detail(raw: bytes, *, replay_id: str) -> dict[str, Any]:
     try:
         detail = json.loads(raw)
-    except json.JSONDecodeError as error:
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
         raise ReplayCorpusError(f"replay {replay_id} returned invalid JSON") from error
     if not isinstance(detail, dict):
         raise ReplayCorpusError(f"replay {replay_id} returned a non-object JSON payload")
