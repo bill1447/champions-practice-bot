@@ -52,6 +52,7 @@ from champions_practice.semantic_policy_registry import (
     register_dataset_alias,
     register_training_alias,
     resolve_dataset_reference,
+    resolve_training_reference,
 )
 
 
@@ -91,6 +92,8 @@ class TrainingConfig:
     max_eval_rows: int = 0
     dataset_alias: str | None = None
     training_alias: str | None = None
+    extra_datasets: tuple[str, ...] = ()
+    initialize_from: str | None = None
     refresh: bool = False
 
     def __post_init__(self) -> None:
@@ -123,9 +126,12 @@ class TrainingConfig:
         for label, value in (
             ("dataset alias", self.dataset_alias),
             ("training alias", self.training_alias),
+            ("initialization training", self.initialize_from),
         ):
             if value is not None:
                 _validate_public_id(value, label=label)
+        for spec in self.extra_datasets:
+            _parse_dataset_spec(spec)
 
 
 @dataclass(frozen=True)
@@ -255,6 +261,187 @@ def _load_dataset_summary(
     if summary.get("format_id") != format_id:
         raise SemanticPolicyTrainingError("dataset format does not match requested format")
     return summary, summary_path.parent
+
+
+def _parse_dataset_spec(spec: str) -> tuple[str, str]:
+    if not isinstance(spec, str) or ":" not in spec:
+        raise ValueError(
+            "extra dataset must be FORMAT:DATASET-RUN-OR-ALIAS"
+        )
+    format_id, reference = spec.split(":", 1)
+    _validate_public_id(format_id, label="extra dataset format")
+    _validate_public_id(reference, label="extra dataset run or alias")
+    return format_id, reference
+
+
+@dataclass(frozen=True)
+class TrainingDataset:
+    format_id: str
+    summary: dict[str, Any]
+    run_dir: Path
+    train_files: tuple[Path, ...]
+
+
+def _training_datasets(
+    *,
+    config: TrainingConfig,
+    primary_summary: dict[str, Any],
+    primary_run_dir: Path,
+) -> list[TrainingDataset]:
+    primary = TrainingDataset(
+        format_id=config.format_id,
+        summary=primary_summary,
+        run_dir=primary_run_dir,
+        train_files=tuple(_split_files(primary_summary, primary_run_dir, "train")),
+    )
+    datasets = [primary]
+    seen = {(config.format_id, primary_summary["run_id"])}
+    for spec in config.extra_datasets:
+        format_id, reference = _parse_dataset_spec(spec)
+        summary, run_dir = _load_dataset_summary(
+            data_root=config.data_root,
+            format_id=format_id,
+            run_id=reference,
+        )
+        identity = (format_id, summary["run_id"])
+        if identity in seen:
+            raise SemanticPolicyTrainingError(
+                f"training dataset {format_id}:{summary['run_id']} was supplied twice"
+            )
+        if summary.get("showdown_revision") != primary_summary.get("showdown_revision"):
+            raise SemanticPolicyTrainingError(
+                "all training datasets must use the same pinned Showdown revision"
+            )
+        seen.add(identity)
+        datasets.append(
+            TrainingDataset(
+                format_id=format_id,
+                summary=summary,
+                run_dir=run_dir,
+                train_files=tuple(_split_files(summary, run_dir, "train")),
+            )
+        )
+    return datasets
+
+
+def _training_dataset_manifest(dataset: TrainingDataset) -> dict[str, Any]:
+    summary = dataset.summary
+    return {
+        "format_id": dataset.format_id,
+        "run_id": summary["run_id"],
+        "source_fingerprint": summary["source_fingerprint"],
+        "showdown_revision": summary["showdown_revision"],
+        "semantic_trainable_rows": summary["semantic_trainable_rows"],
+        "split_rows": summary["split_rows"],
+        "train_shards": _shard_manifest(
+            dataset.train_files,
+            run_dir=dataset.run_dir,
+        ),
+    }
+
+
+def _resolve_initialization(
+    *,
+    config: TrainingConfig,
+) -> dict[str, Any] | None:
+    if config.initialize_from is None:
+        return None
+    resolved = resolve_training_reference(
+        config.data_root,
+        config.initialize_from,
+        format_id=config.format_id,
+    )
+    report_path = resolved["report_path"]
+    report = json.loads(report_path.read_text(encoding="utf-8"))
+    if report.get("model_schema") != MODEL_SCHEMA:
+        raise SemanticPolicyTrainingError(
+            "initialization model schema is incompatible"
+        )
+    if report.get("feature_schema") != FEATURE_SCHEMA:
+        raise SemanticPolicyTrainingError(
+            "initialization feature schema is incompatible"
+        )
+    configuration = report.get("configuration")
+    if not isinstance(configuration, dict):
+        raise SemanticPolicyTrainingError(
+            "initialization report has no configuration"
+        )
+    expected = {
+        "embedding_dim": config.embedding_dim,
+        "state_buckets": config.state_buckets,
+        "action_buckets": config.action_buckets,
+    }
+    for key, value in expected.items():
+        if configuration.get(key) != value:
+            raise SemanticPolicyTrainingError(
+                f"initialization {key}={configuration.get(key)!r} "
+                f"does not match requested {value!r}"
+            )
+    artifacts = report.get("artifacts")
+    model_artifact = artifacts.get("model") if isinstance(artifacts, dict) else None
+    if not isinstance(model_artifact, dict):
+        raise SemanticPolicyTrainingError(
+            "initialization report has no model artifact"
+        )
+    relative = model_artifact.get("path")
+    expected_sha = model_artifact.get("sha256")
+    if not isinstance(relative, str) or not isinstance(expected_sha, str):
+        raise SemanticPolicyTrainingError(
+            "initialization model artifact metadata is malformed"
+        )
+    model_path = (report_path.parent / relative).resolve()
+    if model_path.parent != report_path.parent.resolve() or not model_path.is_file():
+        raise SemanticPolicyTrainingError(
+            "initialization model artifact is missing or escapes its run directory"
+        )
+    actual_sha = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    if actual_sha != expected_sha:
+        raise SemanticPolicyTrainingError(
+            "initialization model artifact hash does not match its report"
+        )
+    return {
+        "reference": config.initialize_from,
+        "dataset_run_id": resolved["dataset_run_id"],
+        "training_id": resolved["training_id"],
+        "model_path": model_path,
+        "model_sha256": actual_sha,
+    }
+
+
+def _new_or_initialized_model(
+    *,
+    config: TrainingConfig,
+    initialization: dict[str, Any] | None,
+) -> SemanticTwoTower:
+    model = SemanticTwoTower(
+        state_buckets=config.state_buckets,
+        action_buckets=config.action_buckets,
+        embedding_dim=config.embedding_dim,
+        seed=config.seed,
+    )
+    if initialization is None:
+        return model
+    with np.load(initialization["model_path"], allow_pickle=False) as payload:
+        try:
+            state_table = np.asarray(payload["state_table"], dtype=np.float32)
+            action_table = np.asarray(payload["action_table"], dtype=np.float32)
+        except KeyError as error:
+            raise SemanticPolicyTrainingError(
+                "initialization model is missing embedding tables"
+            ) from error
+    if state_table.shape != model.state_table.shape:
+        raise SemanticPolicyTrainingError(
+            "initialization state embedding shape is incompatible"
+        )
+    if action_table.shape != model.action_table.shape:
+        raise SemanticPolicyTrainingError(
+            "initialization action embedding shape is incompatible"
+        )
+    model.state_table[:] = state_table
+    model.action_table[:] = action_table
+    model.state_accumulator.fill(0)
+    model.action_accumulator.fill(0)
+    return model
 
 
 def _split_files(
@@ -900,6 +1087,8 @@ def _evaluate(
 def _training_identity(
     *,
     dataset_summary: dict[str, Any],
+    training_datasets: list[TrainingDataset],
+    initialization: dict[str, Any] | None,
     config: TrainingConfig,
 ) -> str:
     identity = {
@@ -908,6 +1097,23 @@ def _training_identity(
         "feature_schema": FEATURE_SCHEMA,
         "dataset_run_id": dataset_summary["run_id"],
         "source_fingerprint": dataset_summary["source_fingerprint"],
+        "training_datasets": [
+            {
+                "format_id": dataset.format_id,
+                "run_id": dataset.summary["run_id"],
+                "source_fingerprint": dataset.summary["source_fingerprint"],
+            }
+            for dataset in training_datasets
+        ],
+        "initialization": (
+            None
+            if initialization is None
+            else {
+                "training_id": initialization["training_id"],
+                "dataset_run_id": initialization["dataset_run_id"],
+                "model_sha256": initialization["model_sha256"],
+            }
+        ),
         "epochs": config.epochs,
         "batch_size": config.batch_size,
         "train_negatives": config.train_negatives,
@@ -940,11 +1146,26 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
             run_id=summary["run_id"],
             format_id=config.format_id,
         )
-    train_files = _split_files(summary, run_dir, "train")
+    training_datasets = _training_datasets(
+        config=config,
+        primary_summary=summary,
+        primary_run_dir=run_dir,
+    )
+    train_files = [
+        path
+        for dataset in training_datasets
+        for path in dataset.train_files
+    ]
     validation_files = _split_files(summary, run_dir, "validation")
     test_files = _split_files(summary, run_dir, "test")
+    initialization = _resolve_initialization(config=config)
 
-    training_id = _training_identity(dataset_summary=summary, config=config)
+    training_id = _training_identity(
+        dataset_summary=summary,
+        training_datasets=training_datasets,
+        initialization=initialization,
+        config=config,
+    )
     output_base = layout.models / "semantic-policy" / summary["run_id"]
     output_dir = output_base / training_id
     report_path = output_dir / "report.json"
@@ -970,7 +1191,7 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
     shard_manifest = {
         split: _shard_manifest(paths, run_dir=run_dir)
         for split, paths in (
-            ("train", train_files),
+            ("train", list(training_datasets[0].train_files)),
             ("validation", validation_files),
             ("test", test_files),
         )
@@ -983,11 +1204,9 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
     vocabulary_bytes = _vocabulary_payload(vocabulary)
     vocabulary_sha = hashlib.sha256(vocabulary_bytes).hexdigest()
 
-    model = SemanticTwoTower(
-        state_buckets=config.state_buckets,
-        action_buckets=config.action_buckets,
-        embedding_dim=config.embedding_dim,
-        seed=config.seed,
+    model = _new_or_initialized_model(
+        config=config,
+        initialization=initialization,
     )
 
     epoch_reports: list[dict[str, Any]] = []
@@ -1090,6 +1309,21 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
             "split_rows": summary["split_rows"],
             "shards": shard_manifest,
         },
+        "training_datasets": [
+            _training_dataset_manifest(dataset)
+            for dataset in training_datasets
+        ],
+        "initialization": (
+            None
+            if initialization is None
+            else {
+                "reference": initialization["reference"],
+                "dataset_run_id": initialization["dataset_run_id"],
+                "training_id": initialization["training_id"],
+                "model_sha256": initialization["model_sha256"],
+                "optimizer_state": "reset",
+            }
+        ),
         "configuration": {
             "epochs": config.epochs,
             "batch_size": config.batch_size,
@@ -1103,6 +1337,8 @@ def train_semantic_policy(config: TrainingConfig) -> dict[str, Any]:
             "seed": config.seed,
             "max_train_rows": config.max_train_rows,
             "max_eval_rows": config.max_eval_rows,
+            "extra_datasets": list(config.extra_datasets),
+            "initialize_from": config.initialize_from,
             "rating_weights": RATING_WEIGHTS,
         },
         "action_vocabulary": {
@@ -1250,6 +1486,22 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-eval-rows", type=int, default=0)
     parser.add_argument("--dataset-alias")
     parser.add_argument("--training-alias")
+    parser.add_argument(
+        "--extra-dataset",
+        action="append",
+        default=[],
+        help=(
+            "Additional training-only frozen dataset as "
+            "FORMAT:DATASET-RUN-OR-ALIAS; may be repeated."
+        ),
+    )
+    parser.add_argument(
+        "--initialize-from",
+        help=(
+            "Saved semantic-policy training run or alias whose embedding tables "
+            "initialize this run. Optimizer state is reset."
+        ),
+    )
     parser.add_argument("--refresh", action="store_true")
     parser.add_argument("--status", action="store_true")
     return parser
@@ -1291,6 +1543,8 @@ def main(argv: list[str] | None = None) -> None:
                 max_eval_rows=args.max_eval_rows,
                 dataset_alias=args.dataset_alias,
                 training_alias=args.training_alias,
+                extra_datasets=tuple(args.extra_dataset),
+                initialize_from=args.initialize_from,
                 refresh=args.refresh,
             )
         )

@@ -4,6 +4,8 @@ import gzip
 import json
 from pathlib import Path
 
+import pytest
+
 from champions_practice.replay_corpus import DEFAULT_FORMAT, initialize_layout
 from champions_practice.replay_semantic_audit import (
     SEMANTIC_AUDIT_SCHEMA,
@@ -21,6 +23,7 @@ from champions_practice.semantic_policy_registry import (
 from champions_practice.semantic_policy_train import (
     MODEL_SCHEMA,
     TRAINING_REPORT_SCHEMA,
+    SemanticPolicyTrainingError,
     TrainingConfig,
     train_semantic_policy,
     training_status,
@@ -184,6 +187,76 @@ def _install_dataset(data_root: Path) -> str:
         encoding="utf-8",
     )
     latest = layout.processed / "replay-policy" / DEFAULT_FORMAT / "latest-summary.json"
+    latest.parent.mkdir(parents=True, exist_ok=True)
+    latest.write_text(
+        json.dumps(summary, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    return run_id
+
+
+def _install_dataset_for_format(
+    data_root: Path,
+    *,
+    format_id: str,
+    run_id: str,
+    move_prefix: str,
+) -> str:
+    layout = initialize_layout(data_root)
+    run_dir = (
+        layout.processed
+        / "replay-policy"
+        / format_id
+        / "runs"
+        / run_id
+    )
+
+    def rows_for(split: str, count: int, *, offset: int = 0) -> list[dict]:
+        rows = []
+        for index in range(count):
+            row = _row(index + offset, split=split)
+            for action in row["semantic_label"]["actions"]:
+                action["move"] = f"{move_prefix}-{action['move']}"
+            rows.append(row)
+        return rows
+
+    train_rows = rows_for("train", 20)
+    validation_rows = rows_for("validation", 4)
+    test_rows = rows_for("test", 4, offset=4)
+    _write_shard(run_dir / "train" / "part-00000.jsonl.gz", train_rows)
+    _write_shard(
+        run_dir / "validation" / "part-00000.jsonl.gz",
+        validation_rows,
+    )
+    _write_shard(run_dir / "test" / "part-00000.jsonl.gz", test_rows)
+
+    summary = {
+        "schema": SEMANTIC_AUDIT_SCHEMA,
+        "policy_schema": SEMANTIC_POLICY_SCHEMA,
+        "run_id": run_id,
+        "format_id": format_id,
+        "source_fingerprint": (move_prefix[0] * 64),
+        "showdown_revision": "d" * 40,
+        "semantic_trainable_rows": 28,
+        "split_rows": {
+            "train": 20,
+            "validation": 4,
+            "test": 4,
+        },
+        "dataset": {
+            "root": f"processed/replay-policy/{format_id}/runs/{run_id}",
+            "files": [
+                {"path": "train/part-00000.jsonl.gz", "rows": 20},
+                {"path": "validation/part-00000.jsonl.gz", "rows": 4},
+                {"path": "test/part-00000.jsonl.gz", "rows": 4},
+            ],
+        },
+    }
+    (run_dir / "summary.json").write_text(
+        json.dumps(summary, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    latest = layout.processed / "replay-policy" / format_id / "latest-summary.json"
     latest.parent.mkdir(parents=True, exist_ok=True)
     latest.write_text(
         json.dumps(summary, indent=2, sort_keys=True) + "\n",
@@ -358,3 +431,167 @@ def test_training_can_register_aliases_without_changing_training_identity(tmp_pa
     )
 
     assert aliased["training_id"] == first["training_id"]
+
+
+def test_mixed_training_uses_extra_train_rows_but_primary_eval_splits(
+    tmp_path: Path,
+):
+    data_root = tmp_path / "external"
+    primary_run = _install_dataset(data_root)
+    extra_format = "gen9championsvgc2026regmb"
+    extra_run = _install_dataset_for_format(
+        data_root,
+        format_id=extra_format,
+        run_id="fixturesemanticrunmb0001",
+        move_prefix="mb",
+    )
+
+    report = train_semantic_policy(
+        TrainingConfig(
+            data_root=data_root,
+            run_id=primary_run,
+            epochs=1,
+            batch_size=4,
+            train_negatives=3,
+            eval_negatives=15,
+            embedding_dim=8,
+            state_buckets=256,
+            action_buckets=256,
+            shuffle_buffer=8,
+            seed=21,
+            extra_datasets=(f"{extra_format}:{extra_run}",),
+        )
+    )
+
+    assert report["epochs"][0]["training_rows"] == 40
+    assert report["validation"]["overall"]["rows"] == 4
+    assert report["test"]["overall"]["rows"] == 4
+    assert [
+        (entry["format_id"], entry["run_id"])
+        for entry in report["training_datasets"]
+    ] == [
+        (DEFAULT_FORMAT, primary_run),
+        (extra_format, extra_run),
+    ]
+    assert report["dataset"]["run_id"] == primary_run
+
+
+def test_duplicate_training_dataset_is_rejected(tmp_path: Path):
+    data_root = tmp_path / "external"
+    primary_run = _install_dataset(data_root)
+
+    with pytest.raises(
+        SemanticPolicyTrainingError,
+        match="was supplied twice",
+    ):
+        train_semantic_policy(
+            TrainingConfig(
+                data_root=data_root,
+                run_id=primary_run,
+                epochs=1,
+                batch_size=4,
+                train_negatives=3,
+                eval_negatives=15,
+                embedding_dim=8,
+                state_buckets=256,
+                action_buckets=256,
+                shuffle_buffer=8,
+                seed=22,
+                extra_datasets=(f"{DEFAULT_FORMAT}:{primary_run}",),
+            )
+        )
+
+
+def test_training_can_warm_start_from_compatible_saved_model(tmp_path: Path):
+    data_root = tmp_path / "external"
+    primary_run = _install_dataset(data_root)
+    pretrain_format = "gen9championsvgc2026regmb"
+    pretrain_run = _install_dataset_for_format(
+        data_root,
+        format_id=pretrain_format,
+        run_id="fixturesemanticrunmb0002",
+        move_prefix="pretrain",
+    )
+    common = {
+        "epochs": 1,
+        "batch_size": 4,
+        "train_negatives": 3,
+        "eval_negatives": 15,
+        "embedding_dim": 8,
+        "state_buckets": 256,
+        "action_buckets": 256,
+        "shuffle_buffer": 8,
+    }
+    pretrain = train_semantic_policy(
+        TrainingConfig(
+            data_root=data_root,
+            format_id=pretrain_format,
+            run_id=pretrain_run,
+            seed=23,
+            **common,
+        )
+    )
+    cold = train_semantic_policy(
+        TrainingConfig(
+            data_root=data_root,
+            run_id=primary_run,
+            seed=24,
+            **common,
+        )
+    )
+    fine_tuned = train_semantic_policy(
+        TrainingConfig(
+            data_root=data_root,
+            run_id=primary_run,
+            seed=24,
+            initialize_from=pretrain["training_id"],
+            **common,
+        )
+    )
+
+    assert fine_tuned["training_id"] != cold["training_id"]
+    assert fine_tuned["initialization"]["training_id"] == pretrain["training_id"]
+    assert fine_tuned["initialization"]["dataset_run_id"] == pretrain_run
+    assert fine_tuned["initialization"]["optimizer_state"] == "reset"
+    assert fine_tuned["epochs"][0]["training_rows"] == 20
+
+
+def test_warm_start_rejects_incompatible_embedding_shape(tmp_path: Path):
+    data_root = tmp_path / "external"
+    primary_run = _install_dataset(data_root)
+    pretrain = train_semantic_policy(
+        TrainingConfig(
+            data_root=data_root,
+            run_id=primary_run,
+            epochs=1,
+            batch_size=4,
+            train_negatives=3,
+            eval_negatives=15,
+            embedding_dim=8,
+            state_buckets=256,
+            action_buckets=256,
+            shuffle_buffer=8,
+            seed=25,
+        )
+    )
+
+    with pytest.raises(
+        SemanticPolicyTrainingError,
+        match="initialization embedding_dim",
+    ):
+        train_semantic_policy(
+            TrainingConfig(
+                data_root=data_root,
+                run_id=primary_run,
+                epochs=1,
+                batch_size=4,
+                train_negatives=3,
+                eval_negatives=15,
+                embedding_dim=16,
+                state_buckets=256,
+                action_buckets=256,
+                shuffle_buffer=8,
+                seed=26,
+                initialize_from=pretrain["training_id"],
+            )
+        )
