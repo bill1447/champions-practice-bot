@@ -9,7 +9,9 @@ from champions_practice.strength_league import (
     RUN_SCHEMA,
     GameResult,
     LeagueConfig,
+    StrengthLeagueError,
     _particle_seed,
+    _resolve_preview_choice,
     _run_id,
     _sodium_seed,
     summarize_games,
@@ -159,6 +161,28 @@ def test_config_rejects_invalid_benchmark_shapes():
         LeagueConfig(world_limit=8, max_particles=7)
     with pytest.raises(ValueError, match="decision_budget_seconds"):
         LeagueConfig(decision_budget_seconds=0.0)
+    with pytest.raises(ValueError, match="worker_startup_timeout_seconds"):
+        LeagueConfig(worker_startup_timeout_seconds=0.0)
+
+
+
+
+
+def test_preview_choice_resolves_showdown_canonical_spacing():
+    legal = (
+        "team 1, 2, 3, 4",
+        "team 2, 1, 3, 5",
+    )
+
+    assert _resolve_preview_choice(legal, "team 2135") == "team 2, 1, 3, 5"
+
+
+def test_preview_choice_rejects_different_bring_order():
+    with pytest.raises(StrengthLeagueError, match="preview is not legal"):
+        _resolve_preview_choice(
+            ("team 2, 1, 4, 5",),
+            "team 2135",
+        )
 
 
 def test_v1_identifiers_are_explicit():

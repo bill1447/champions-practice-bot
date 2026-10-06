@@ -2508,6 +2508,7 @@ class SealedBattleFacade:
         recovery_rng_sample_batches: tuple[int, ...] = (4, 8),
         observed_action_rng_multiplier: int = 16,
         particle_seed: int = 53,
+        worker_startup_timeout_seconds: float = 10.0,
         live_transport_timeout_seconds: float = 5.0,
         fallback_selector: FallbackSelector = choose_public_fallback,
     ):
@@ -2528,6 +2529,8 @@ class SealedBattleFacade:
             recovery_rng_sample_batches=recovery_rng_sample_batches,
             observed_action_rng_multiplier=observed_action_rng_multiplier,
         )
+        if worker_startup_timeout_seconds <= 0:
+            raise ValueError("worker_startup_timeout_seconds must be positive")
         if live_transport_timeout_seconds <= 0:
             raise ValueError("live_transport_timeout_seconds must be positive")
 
@@ -2535,6 +2538,7 @@ class SealedBattleFacade:
         try:
             worker = ShowdownSearchWorker(
                 project_root,
+                startup_timeout_seconds=worker_startup_timeout_seconds,
                 request_timeout_seconds=live_transport_timeout_seconds,
             )
             self.__coordinator = _BeliefBattleCoordinator(
