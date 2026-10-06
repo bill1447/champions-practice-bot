@@ -11,6 +11,7 @@ param(
     [int]$StrategicResponseLimit = 2,
     [double]$DecisionBudgetSeconds = 8.0,
     [double]$ConditioningBudgetSeconds = 8.0,
+    [double]$WorkerStartupTimeoutSeconds = 30.0,
     [int]$Seed = 15601,
     [switch]$Refresh
 )
@@ -39,6 +40,7 @@ $ArgsList = @(
     "--strategic-response-limit", "$StrategicResponseLimit",
     "--decision-budget-seconds", "$DecisionBudgetSeconds",
     "--conditioning-budget-seconds", "$ConditioningBudgetSeconds",
+    "--worker-startup-timeout-seconds", "$WorkerStartupTimeoutSeconds",
     "--seed", "$Seed"
 )
 
@@ -53,6 +55,7 @@ Write-Host "Baseline:            public-fallback-v1"
 Write-Host "Battles:             $Battles"
 Write-Host "Decision budget:     $DecisionBudgetSeconds s"
 Write-Host "Conditioning budget: $ConditioningBudgetSeconds s"
+Write-Host "Worker startup:      $WorkerStartupTimeoutSeconds s"
 Write-Host "Worlds/particles:    $WorldLimit / $MaxParticles"
 Write-Host "Candidate/response:  $CandidateLimit / $ResponseLimit"
 
