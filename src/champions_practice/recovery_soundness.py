@@ -25,6 +25,7 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
     condition_particles,
+    merge_sampled_world_witnesses,
     resample_particles_by_world,
 )
 from champions_practice.reachability import (
@@ -462,6 +463,7 @@ def evaluate_true_world_conditioning(
     stochastic_only_mismatches = 0
     structural_mismatches = 0
     sampled_matched_worlds: set[str] = set()
+    witnessed_particles: list[BeliefParticle] = []
     exhaustive_exclusions: set[str] = set()
     unsupported_public_evidence: set[str] = set()
     required_worlds = {
@@ -494,27 +496,35 @@ def evaluate_true_world_conditioning(
                 if particle.world_id or particle.history_id
             }
         sampled_matched_worlds.update(update_worlds)
+        witnessed_particles.extend(update.particles)
         exhaustive_exclusions.update(update.exhaustively_excluded_world_ids)
         unsupported_public_evidence.update(update.unsupported_public_evidence)
         installable_worlds = required_worlds - exhaustive_exclusions
-        if update.particles and installable_worlds.issubset(update_worlds):
-            selected_update = ParticleUpdate(
-                particles=update.particles,
-                generated=generated,
-                matched=matched,
-                deduplicated=deduplicated,
-                stochastic_only_mismatches=stochastic_only_mismatches,
-                structural_mismatches=structural_mismatches,
-                matched_world_ids=tuple(sorted(update_worlds)),
-                sampled_unresolved_world_ids=(),
-                exhaustively_excluded_world_ids=tuple(
-                    sorted(exhaustive_exclusions)
-                ),
-                unsupported_public_evidence=tuple(
-                    sorted(unsupported_public_evidence)
-                ),
+        if installable_worlds.issubset(sampled_matched_worlds):
+            merged = merge_sampled_world_witnesses(
+                case.particles,
+                tuple(witnessed_particles),
             )
-            break
+            if merged:
+                selected_update = ParticleUpdate(
+                    particles=merged,
+                    generated=generated,
+                    matched=matched,
+                    deduplicated=deduplicated,
+                    stochastic_only_mismatches=stochastic_only_mismatches,
+                    structural_mismatches=structural_mismatches,
+                    matched_world_ids=tuple(
+                        sorted(sampled_matched_worlds)
+                    ),
+                    sampled_unresolved_world_ids=(),
+                    exhaustively_excluded_world_ids=tuple(
+                        sorted(exhaustive_exclusions)
+                    ),
+                    unsupported_public_evidence=tuple(
+                        sorted(unsupported_public_evidence)
+                    ),
+                )
+                break
 
     if selected_update is None:
         unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
