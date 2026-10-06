@@ -650,6 +650,74 @@ def test_sampled_partial_world_match_is_not_installable(
     assert update.exhaustively_excluded_world_ids == ()
 
 
+def test_exhaustive_world_exclusion_allows_safe_posterior_install(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=1,
+    )
+    kept = BeliefParticle(
+        {"turn": 2, "world": "kept"},
+        0.5,
+        world_id="kept",
+        history_id="kept-child",
+    )
+    excluded = BeliefParticle(
+        {"turn": 1, "world": "excluded"},
+        0.5,
+        world_id="excluded",
+        history_id="excluded-root",
+    )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        lambda *args, **kwargs: False,
+    )
+
+    def fake_condition(*args, **kwargs):
+        del args, kwargs
+        return ParticleUpdate(
+            particles=(kept,),
+            generated=1,
+            matched=1,
+            deduplicated=0,
+            matched_world_ids=("kept",),
+            sampled_unresolved_world_ids=(),
+            exhaustively_excluded_world_ids=("excluded",),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        fake_condition,
+    )
+
+    update = engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(
+            BeliefParticle(
+                {"turn": 1, "world": "kept"},
+                0.5,
+                world_id="kept",
+                history_id="kept-root",
+            ),
+            excluded,
+        ),
+        ai_choice="move protect",
+        view={"turn": 2},
+        batches=(1,),
+    )
+
+    assert update.exhaustively_excluded_world_ids == ("excluded",)
+    assert update.sampled_unresolved_world_ids == ()
+    assert len(update.particles) == 1
+    assert update.particles[0].world_id == "kept"
+    assert update.particles[0].weight == 1.0
+
+
 def test_partial_world_sampling_records_recovery_diagnostic() -> None:
     engine = BeliefDecisionEngine(
         ".",
