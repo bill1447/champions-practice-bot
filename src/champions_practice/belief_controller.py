@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from copy import deepcopy
 from dataclasses import dataclass
@@ -31,6 +32,7 @@ from champions_practice.recovery import RecoveryOpeningAuthority
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
+    StructuralMismatchExample,
     condition_particles,
     identity_member_lineage,
     merge_sampled_world_witnesses,
@@ -181,6 +183,9 @@ class BeliefRecoveryDiagnostic:
     sampled_matches: int
     stochastic_only_mismatches: int
     structural_mismatches: int
+    structural_mismatch_paths: tuple[tuple[str, int], ...]
+    structural_mismatch_worlds: tuple[tuple[str, int], ...]
+    structural_mismatch_examples: tuple[StructuralMismatchExample, ...]
     sampled_matched_worlds: int
     sampled_unresolved_worlds: int
     exhaustively_excluded_worlds: int
@@ -313,6 +318,15 @@ def _recovery_diagnostic(
         ),
         structural_mismatches=(
             update.structural_mismatches if update is not None else 0
+        ),
+        structural_mismatch_paths=(
+            update.structural_mismatch_paths if update is not None else ()
+        ),
+        structural_mismatch_worlds=(
+            update.structural_mismatch_worlds if update is not None else ()
+        ),
+        structural_mismatch_examples=(
+            update.structural_mismatch_examples if update is not None else ()
         ),
         sampled_matched_worlds=(
             len(update.matched_world_ids) if update is not None else 0
@@ -881,6 +895,10 @@ class BeliefDecisionEngine:
         deduplicated = 0
         stochastic_only_mismatches = 0
         structural_mismatches = 0
+        structural_mismatch_paths: Counter[str] = Counter()
+        structural_mismatch_worlds: Counter[str] = Counter()
+        structural_mismatch_examples: list[StructuralMismatchExample] = []
+        structural_example_keys: set[tuple[str, str]] = set()
         required_worlds = set(_particle_world_keys(particles))
         sampled_matched_worlds: set[str] = set()
         witnessed_particles: list[BeliefParticle] = []
@@ -895,11 +913,44 @@ class BeliefDecisionEngine:
             else 1
         )
 
+        def aggregate_diagnostics(update: ParticleUpdate) -> None:
+            structural_mismatch_paths.update(
+                dict(update.structural_mismatch_paths)
+            )
+            structural_mismatch_worlds.update(
+                dict(update.structural_mismatch_worlds)
+            )
+            for example in update.structural_mismatch_examples:
+                key = (example.world_id, example.path)
+                if key in structural_example_keys:
+                    continue
+                structural_example_keys.add(key)
+                if len(structural_mismatch_examples) < 8:
+                    structural_mismatch_examples.append(example)
+
+        def update_kwargs() -> dict:
+            return {
+                "structural_mismatch_paths": tuple(
+                    sorted(
+                        structural_mismatch_paths.items(),
+                        key=lambda item: (-item[1], item[0]),
+                    )[:16]
+                ),
+                "structural_mismatch_worlds": tuple(
+                    sorted(
+                        structural_mismatch_worlds.items(),
+                        key=lambda item: (-item[1], item[0]),
+                    )[:16]
+                ),
+                "structural_mismatch_examples": tuple(
+                    structural_mismatch_examples
+                ),
+            }
+
         # A sampled witness may advance a hypothesis; a sampled miss may not
-        # eliminate one. Keep drawing bounded chunks until one update witnesses
-        # every still-authoritative starting world. If the budget expires first,
-        # return no installable posterior so the caller retains the last-good
-        # particles and enters recovery instead of silently dropping hypotheses.
+        # eliminate one. Keep drawing bounded chunks until every still-authoritative
+        # starting world has a witness. Structural diagnostics accumulate across
+        # batches so a collapse explains itself rather than reporting only a count.
         for sample_count in batches:
             for _ in range(multiplier):
                 unresolved = (
@@ -928,6 +979,7 @@ class BeliefDecisionEngine:
                         unsupported_public_evidence=tuple(
                             sorted(unsupported_public_evidence)
                         ),
+                        **update_kwargs(),
                     )
 
                 seeds = tuple(
@@ -948,6 +1000,7 @@ class BeliefDecisionEngine:
                 deduplicated += update.deduplicated
                 stochastic_only_mismatches += update.stochastic_only_mismatches
                 structural_mismatches += update.structural_mismatches
+                aggregate_diagnostics(update)
                 update_matched_worlds = set(update.matched_world_ids)
                 if not update_matched_worlds and update.particles:
                     update_matched_worlds = set(
@@ -992,6 +1045,7 @@ class BeliefDecisionEngine:
                             unsupported_public_evidence=tuple(
                                 sorted(unsupported_public_evidence)
                             ),
+                            **update_kwargs(),
                         )
 
         unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
@@ -1006,6 +1060,7 @@ class BeliefDecisionEngine:
             sampled_unresolved_world_ids=tuple(sorted(unresolved)),
             exhaustively_excluded_world_ids=tuple(sorted(exhaustive_exclusions)),
             unsupported_public_evidence=tuple(sorted(unsupported_public_evidence)),
+            **update_kwargs(),
         )
 
     def _record_recovery_authority_observation(
