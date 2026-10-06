@@ -36,14 +36,15 @@ nonempty batch, mirroring the production adaptive-conditioning shape.
 
 It then emulates the live controller's current one-transition update semantics:
 
-- when no sampled branch matches at all, retain the last-good particles and mark degraded;
-- when at least one sampled branch matches, replace/resample from those matching children.
+- sampled positive matches are witnesses for the worlds that produced them;
+- a finite sampled miss is never negative authority;
+- a sampled posterior is installable only when every still-authoritative starting world
+  is represented by at least one matching child;
+- otherwise the last-good particles are retained and the controller enters degraded recovery.
 
-The second case is important: a wrong world can happen to receive a matching sampled RNG
-outcome while the true world does not. If that replacement posterior contains no particle
-with the tagged true `world_id`, the harness records a conditioning false exclusion.
-
-The harness does not change that production behavior in this PR. It measures it.
+This closes the measured conditioning false-exclusion channel in which a wrong world could
+receive a lucky sampled match while the true world received none. The controller still needs
+mechanics-authoritative exhaustive evidence before any starting world may be removed.
 
 ## Primary metric
 
