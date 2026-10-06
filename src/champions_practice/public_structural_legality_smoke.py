@@ -279,6 +279,10 @@ def main() -> None:
         finally:
             coordinator.close()
 
+    # _BeliefBattleCoordinator owns and closes its worker. Run the independent
+    # hidden-disable regression with a fresh worker instead of trying to reuse
+    # the closed transport from the first fixture.
+    with ShowdownSearchWorker() as worker:
         _run_hidden_disable_probe(worker)
 
 
