@@ -47,6 +47,93 @@ def test_condition_particles_filters_public_mismatches_and_normalizes():
     assert update.particles[0].weight == 1.0
 
 
+def test_public_seen_roster_exhaustively_excludes_wrong_bring_four() -> None:
+    actual = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {"species": "Rillaboom"},
+                {"species": "Armarouge"},
+            ],
+            "revealed": [
+                {"species": "Indeedee-F", "seen": True},
+                {"species": "Sneasler", "seen": True},
+                {"species": "Rillaboom", "seen": True},
+                {"species": "Armarouge", "seen": True},
+                {"species": "Gardevoir", "seen": False},
+                {"species": "Metagross", "seen": False},
+            ],
+        },
+    }
+
+    def state(world_id: str, selected: tuple[str, ...]) -> dict:
+        return {
+            "id": world_id,
+            "sides": [
+                {
+                    "pokemon": [
+                        {"set": {"species": species}}
+                        for species in selected
+                    ]
+                },
+                {"pokemon": [{"set": {"species": "Gardevoir"}}]},
+            ],
+        }
+
+    class RosterWorker:
+        def __init__(self) -> None:
+            self.branched_worlds: list[str] = []
+
+        def legal_choices(self, *, state, side):
+            assert side == "p1"
+            return ["move protect, move protect"]
+
+        def branch_many(self, *, state, branches):
+            self.branched_worlds.append(state["id"])
+            return [
+                {
+                    "state": state,
+                    "view": actual,
+                    "member_lineage": {"p1": [0, 1, 2, 3], "p2": [0]},
+                }
+                for _branch in branches
+            ]
+
+    worker = RosterWorker()
+    good = BeliefParticle(
+        state(
+            "good",
+            ("Indeedee-F", "Sneasler", "Rillaboom", "Armarouge"),
+        ),
+        0.5,
+        world_id="good",
+    )
+    wrong = BeliefParticle(
+        state(
+            "wrong",
+            ("Indeedee-F", "Sneasler", "Gardevoir", "Metagross"),
+        ),
+        0.5,
+        world_id="wrong",
+    )
+
+    update = condition_particles(
+        worker,
+        particles=(good, wrong),
+        ai_side="p2",
+        ai_choice="move protect, move protect",
+        actual_public_view=actual,
+        rng_seeds=("rng",),
+    )
+
+    assert worker.branched_worlds == ["good"]
+    assert update.matched_world_ids == ("good",)
+    assert update.exhaustively_excluded_world_ids == ("wrong",)
+    assert update.sampled_unresolved_world_ids == ()
+    assert len(update.particles) == 1
+    assert update.particles[0].world_id == "good"
+
+
 def test_public_signature_is_order_independent():
     left = {"turn": 2, "field": {"terrain": "grassyterrain", "weather": None}}
     right = {"field": {"weather": None, "terrain": "grassyterrain"}, "turn": 2}
