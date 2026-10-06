@@ -14,7 +14,6 @@ import json
 import math
 import os
 import subprocess
-import sys
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
