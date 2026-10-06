@@ -51,6 +51,97 @@ def _helping_hand_commands(choices: list[str]) -> list[str]:
     ]
 
 
+def _run_hidden_disable_probe(worker: ShowdownSearchWorker) -> None:
+    session = worker.start_session(
+        battle_format=CHAMPIONS_FORMAT,
+        p1_team=SMOKE_TEAM,
+        p2_team=SMOKE_TEAM,
+        p1_name="Imprison User",
+        p2_name="Public Choice AI",
+        seed="sodium,15800001158000021580000315800004",
+    )
+    session_id = session["session_id"]
+    try:
+        preview = "team 2135"
+        worker.choose_session(
+            session_id,
+            p1_choice=preview,
+            p2_choice=preview,
+        )
+
+        p1_turn_one = next(
+            choice
+            for choice in worker.session_legal_choices(session_id, side="p1")
+            if choice.startswith("move protect")
+            and choice.split(",")[1].strip().startswith("move imprison")
+        )
+        p2_turn_one = next(
+            choice
+            for choice in worker.session_legal_choices(session_id, side="p2")
+            if choice.startswith("move protect")
+            and choice.split(",")[1].strip().startswith("move psychic")
+        )
+        worker.choose_session(
+            session_id,
+            p1_choice=p1_turn_one,
+            p2_choice=p2_turn_one,
+        )
+
+        before = worker.session_view(session_id, side="p2")["view"]
+        active = before.get("request", {}).get("active", [])
+        if len(active) < 2 or not (
+            active[1].get("maybeDisabled") or active[1].get("maybeLocked")
+        ):
+            raise SystemExit(
+                "ERROR: Imprison fixture did not expose Showdown's hidden "
+                "fight-button uncertainty on the right active slot"
+            )
+
+        public_choices = worker.session_public_choices(session_id, side="p2")
+        after = worker.session_view(session_id, side="p2")["view"]
+        if after != before:
+            raise SystemExit(
+                "ERROR: public fight-button probing mutated the live session"
+            )
+        if not public_choices:
+            raise SystemExit(
+                "ERROR: public fight-button probing exposed no selectable choices"
+            )
+
+        blocked = {"psychic", "followme", "trickroom", "imprison"}
+        for choice in public_choices:
+            commands = [command.strip().split() for command in choice.split(",")]
+            if len(commands) < 2:
+                continue
+            if (
+                len(commands[1]) >= 2
+                and commands[1][0] == "move"
+                and commands[1][1] in blocked
+            ):
+                raise SystemExit(
+                    "ERROR: public choice generator retained a hidden-disabled "
+                    f"Imprison move after fight-button resolution: {choice}"
+                )
+
+        p1_turn_two = worker.session_legal_choices(session_id, side="p1")[0]
+        worker.choose_session(
+            session_id,
+            p1_choice=p1_turn_two,
+            p2_choice=public_choices[0],
+        )
+
+        print("Hidden disabled-move public choice authority")
+        print(f"Resolved public choices: {len(public_choices)}")
+        print("Live request mutated by probe: NO")
+        print("Hidden-disabled Imprison move offered: NO")
+        print("RESULT: public fight-button resolution yields submit-safe choices")
+    finally:
+        try:
+            worker.close_session(session_id)
+        except Exception:
+            pass
+
+
 def main() -> None:
     with ShowdownSearchWorker() as worker:
         coordinator = _BeliefBattleCoordinator(
@@ -187,6 +278,12 @@ def main() -> None:
             print("RESULT: degraded fallback seals only public-selectable target geometry")
         finally:
             coordinator.close()
+
+    # _BeliefBattleCoordinator owns and closes its worker. Run the independent
+    # hidden-disable regression with a fresh worker instead of trying to reuse
+    # the closed transport from the first fixture.
+    with ShowdownSearchWorker() as worker:
+        _run_hidden_disable_probe(worker)
 
 
 if __name__ == "__main__":
