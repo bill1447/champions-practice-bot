@@ -214,36 +214,15 @@ def _protect_chain_slots(state: dict[str, Any], side: SideId) -> tuple[int, ...]
     return tuple(sorted(slots))
 
 
-def _side_legality_key(state: dict[str, Any], side: SideId) -> str:
-    """Key legal-choice requests by the acting side's request-visible state.
+def _exact_legality_key(state: dict[str, Any]) -> str:
+    """Key legality requests by the complete hypothetical Showdown state.
 
-    Showdown legal choices are determined by the acting side's active request. Opponent
-    hidden sets are deliberately excluded so public-belief worlds that differ only in
-    secret information can reuse the same enumeration.
+    Exact choice legality can depend on hidden opponent state even when the acting
+    side's public request is identical. Imprison, trapping abilities, and similar
+    mechanics make a request-visible cache key unsound. Belief worlds are hypotheses,
+    so using their complete serialized state here does not inspect live hidden truth.
     """
-    sides = state.get("sides")
-    side_index = 0 if side == "p1" else 1
-    side_state = (
-        sides[side_index]
-        if isinstance(sides, list)
-        and len(sides) > side_index
-        and isinstance(sides[side_index], dict)
-        else state.get(side)
-    )
-    if not isinstance(side_state, dict):
-        return json.dumps(state, sort_keys=True, separators=(",", ":"))
-    opponent_active: Any = None
-    if isinstance(sides, list) and len(sides) == 2:
-        opponent_state = sides[1 - side_index]
-        if isinstance(opponent_state, dict):
-            opponent_active = opponent_state.get("active")
-    payload = {
-        "requestState": state.get("requestState"),
-        "turn": state.get("turn"),
-        "side": side_state,
-        "opponentActive": opponent_active,
-    }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return json.dumps(state, sort_keys=True, separators=(",", ":"))
 
 
 def _cached_legal_choices(
@@ -252,7 +231,7 @@ def _cached_legal_choices(
     side: SideId,
     cache: dict[tuple[SideId, str], list[str]],
 ) -> tuple[list[str], bool]:
-    key = (side, _side_legality_key(state, side))
+    key = (side, _exact_legality_key(state))
     cached = cache.get(key)
     if cached is not None:
         return cached, True

@@ -231,35 +231,88 @@ def test_belief_search_averages_rng_before_world_minimax() -> None:
     assert result.chosen.worlds[0].worst_sample_score is not None
 
 
-def test_legal_choice_cache_reuses_equivalent_side_state() -> None:
-    worker = FakeBeliefWorker()
-    shared_p1 = {"pokemon": [{"moves": ["attack", "safe"]}], "active": ["p1a"]}
+def test_legal_choice_cache_does_not_reuse_hidden_different_worlds() -> None:
+    class HiddenLegalityWorker:
+        def __init__(self) -> None:
+            self.legal_calls = 0
+
+        def legal_choices(self, *, state, side):
+            self.legal_calls += 1
+            if side == "p2":
+                return ["counter"]
+            if state["sides"][1]["hidden"] == "imprison":
+                return ["move struggle", "switch"]
+            return ["move psychic", "switch"]
+
+        def branch_many(self, *, state, branches):
+            legal_p1 = set(self.legal_choices(state=state, side="p1"))
+            legal_p2 = set(self.legal_choices(state=state, side="p2"))
+            results = []
+            for index, branch in enumerate(branches):
+                assert branch["p1_choice"] in legal_p1
+                assert branch["p2_choice"] in legal_p2
+                results.append(
+                    {
+                        "index": index,
+                        "summary": _summary(100, 100),
+                    }
+                )
+            return results
+
+    shared_p1 = {
+        "pokemon": [{"moves": ["psychic"]}],
+        "active": ["p1a"],
+    }
     worlds = (
         ExactBeliefWorldState(
             state={
-                "id": "A",
                 "turn": 1,
                 "requestState": "move",
-                "sides": [shared_p1, {"active": ["p2a"], "hidden": "first"}],
+                "sides": [
+                    shared_p1,
+                    {"active": ["p2a"], "hidden": "imprison"},
+                ],
             },
             weight=1.0,
         ),
         ExactBeliefWorldState(
             state={
-                "id": "B",
                 "turn": 1,
                 "requestState": "move",
-                "sides": [shared_p1, {"active": ["p2a"], "hidden": "second"}],
+                "sides": [
+                    shared_p1,
+                    {"active": ["p2a"], "hidden": "no-imprison"},
+                ],
             },
             weight=1.0,
         ),
     )
 
-    result = search_exact_belief_turn(worker, worlds=worlds, side="p1")
+    result = search_exact_belief_turn(
+        HiddenLegalityWorker(),
+        worlds=worlds,
+        side="p1",
+    )
+
+    assert result.evaluated_choices == ("switch",)
+    assert result.timing.legal_cache_misses >= 4
+
+
+def test_legal_choice_cache_can_reuse_identical_exact_state() -> None:
+    worker = FakeBeliefWorker()
+    state = {"id": "A"}
+
+    result = search_exact_belief_turn(
+        worker,
+        worlds=(
+            ExactBeliefWorldState(state=state, weight=1.0, label="first"),
+            ExactBeliefWorldState(state=state, weight=1.0, label="second"),
+        ),
+        side="p1",
+    )
 
     assert result.evaluated_choices == ("attack", "safe")
-    assert result.timing.legal_cache_hits >= 1
-    assert result.timing.legal_cache_misses < 4
+    assert result.timing.legal_cache_hits >= 2
 
 
 def test_response_pruning_scores_target_variants_before_truncating() -> None:
