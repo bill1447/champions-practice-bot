@@ -2132,6 +2132,12 @@ class _BeliefBattleCoordinator:
             )["view"]
 
     def human_legal_choices(self) -> list[str]:
+        """Return choices derivable from the human side's public request.
+
+        Hidden opponent effects must not be exposed by exact live-state legality
+        probing. The worker resolves only Showdown's public fight-button
+        uncertainty before returning submit-safe choices.
+        """
         with self._state_lock:
             if self._turn_state in {
                 SealedTurnState.STARTING,
@@ -2143,7 +2149,7 @@ class _BeliefBattleCoordinator:
                 SealedTurnState.CLOSED,
             }:
                 return []
-            return self._worker.session_legal_choices(
+            return self._worker.session_public_choices(
                 self._require_session(),
                 side="p1",
             )
@@ -2227,7 +2233,7 @@ class _BeliefBattleCoordinator:
         expected_token, decision = self._sealed_decision
         if not secrets.compare_digest(token, expected_token):
             raise ValueError("invalid locked-decision token")
-        legal = self._worker.session_legal_choices(
+        legal = self._worker.session_public_choices(
             self._require_session(),
             side="p1",
         )
@@ -2366,9 +2372,11 @@ class _BeliefBattleCoordinator:
                     self._pending_public_view = None
                     self._pre_submit_signature = None
                     self._turn_state = SealedTurnState.RESTART_REQUIRED
+                detail = submission_error.detail
                 raise RuntimeError(
                     "Showdown rejected the sealed joint command; "
-                    "the battle is fail-closed and must be restarted"
+                    "the battle is fail-closed and must be restarted. "
+                    f"Showdown detail: {detail}"
                 ) from submission_error
 
             with self._state_lock:
