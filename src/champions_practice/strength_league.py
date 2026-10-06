@@ -112,6 +112,7 @@ class GameResult:
     branch_count: int
     decision_seconds: tuple[float, ...]
     conditioning_seconds: tuple[float, ...]
+    recovery_events: tuple[dict[str, Any], ...] = ()
 
 
 def _sha256_text(value: str) -> str:
@@ -240,8 +241,18 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
         value for game in games for value in game.conditioning_seconds
     ]
     fallback_reasons: Counter[str] = Counter()
+    recovery_reasons: Counter[str] = Counter()
+    recovery_events = [
+        event
+        for game in games
+        for event in game.recovery_events
+    ]
     for game in games:
         fallback_reasons.update(dict(game.fallback_reasons))
+    for event in recovery_events:
+        reason = event.get("reason")
+        if isinstance(reason, str):
+            recovery_reasons[reason] += 1
 
     total_decisions = sum(game.decisions for game in games)
     search_decisions = sum(game.search_decisions for game in games)
@@ -277,6 +288,30 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
                 degraded_turns / total_decisions if total_decisions else 0.0
             ),
             "branches": sum(game.branch_count for game in games),
+        },
+        "recovery": {
+            "events": len(recovery_events),
+            "reasons": dict(sorted(recovery_reasons.items())),
+            "sampled_matches": sum(
+                int(event.get("sampled_matches", 0))
+                for event in recovery_events
+            ),
+            "sampled_unresolved_worlds": sum(
+                int(event.get("sampled_unresolved_worlds", 0))
+                for event in recovery_events
+            ),
+            "exhaustively_excluded_worlds": sum(
+                int(event.get("exhaustively_excluded_worlds", 0))
+                for event in recovery_events
+            ),
+            "unsupported_events": sum(
+                bool(event.get("unsupported_public_evidence"))
+                for event in recovery_events
+            ),
+            "conditioning_errors": sum(
+                event.get("reason") == "conditioning-error"
+                for event in recovery_events
+            ),
         },
         "decision_seconds": {
             "mean": fmean(decision_seconds) if decision_seconds else None,
@@ -339,6 +374,7 @@ def run_game(
 
     decision_seconds: list[float] = []
     conditioning_seconds: list[float] = []
+    recovery_events: list[dict[str, Any]] = []
     fallback_reasons: Counter[str] = Counter()
     search_decisions = 0
     forced_wait_decisions = 0
@@ -400,6 +436,8 @@ def run_game(
             decision = result.decision
             decision_seconds.append(float(decision.elapsed_seconds))
             conditioning_seconds.append(float(result.conditioning_seconds))
+            if result.recovery_diagnostic is not None:
+                recovery_events.append(asdict(result.recovery_diagnostic))
             branch_count += int(decision.branch_count)
             if decision.mode == "belief-search":
                 search_decisions += 1
@@ -445,6 +483,7 @@ def run_game(
             branch_count=branch_count,
             decision_seconds=tuple(decision_seconds),
             conditioning_seconds=tuple(conditioning_seconds),
+            recovery_events=tuple(recovery_events),
         )
 
 
