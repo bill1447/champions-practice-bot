@@ -1895,7 +1895,8 @@ class BeliefDecisionEngine:
         view: dict,
     ) -> BeliefTurnUpdate:
         """Condition the posterior on a sanitized p2 public observation."""
-        particles_before = len(self.particles)
+        starting_particles = self.particles
+        particles_before = len(starting_particles)
         previous_view = self.last_public_view
         self.last_public_view = view
 
@@ -1903,6 +1904,7 @@ class BeliefDecisionEngine:
         conditioning_deadline = (
             conditioning_started + self.conditioning_budget_seconds
         )
+        recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
         if self.pending_observations:
             self.pending_observations.append(
@@ -1918,11 +1920,18 @@ class BeliefDecisionEngine:
             self.degraded = True
             generated = 0
             matched = 0
+            recovery_diagnostic = _recovery_diagnostic(
+                reason="pending-backlog",
+                view=view,
+                particles_before=starting_particles,
+                update=None,
+                recovery_candidates=self.particles,
+            )
         else:
             def run_conditioning(worker: HypotheticalSearchWorker):
                 return self._condition_adaptive(
                     worker,
-                    particles=self.particles,
+                    particles=starting_particles,
                     ai_choice=decision.choice,
                     view=view,
                     previous_view=previous_view,
@@ -1930,13 +1939,19 @@ class BeliefDecisionEngine:
                     deadline=conditioning_deadline,
                 )
 
-            update, timed_out = self._run_until_deadline(
-                run_conditioning,
-                deadline=conditioning_deadline,
-            )
+            conditioning_error: Exception | None = None
+            try:
+                update, timed_out = self._run_until_deadline(
+                    run_conditioning,
+                    deadline=conditioning_deadline,
+                )
+            except (RuntimeError, ValueError, ShowdownRequestError) as error:
+                update = None
+                timed_out = False
+                conditioning_error = error
             conditioning_seconds = perf_counter() - conditioning_started
 
-            if timed_out or update is None:
+            if conditioning_error is not None:
                 self.pending_observations.append(
                     (
                         decision.choice,
@@ -1947,6 +1962,35 @@ class BeliefDecisionEngine:
                 self.degraded = True
                 generated = 0
                 matched = 0
+                recovery_diagnostic = _recovery_diagnostic(
+                    reason="conditioning-error",
+                    view=view,
+                    particles_before=starting_particles,
+                    update=None,
+                    recovery_candidates=self.particles,
+                    error=(
+                        f"{type(conditioning_error).__name__}: "
+                        f"{conditioning_error}"
+                    ),
+                )
+            elif timed_out or update is None:
+                self.pending_observations.append(
+                    (
+                        decision.choice,
+                        previous_view,
+                        view,
+                    )
+                )
+                self.degraded = True
+                generated = 0 if update is None else update.generated
+                matched = 0 if update is None else update.matched
+                recovery_diagnostic = _recovery_diagnostic(
+                    reason="conditioning-timeout",
+                    view=view,
+                    particles_before=starting_particles,
+                    update=update,
+                    recovery_candidates=self.particles,
+                )
             elif update.particles:
                 self.particles = resample_particles_by_world(
                     update.particles,
@@ -1971,7 +2015,20 @@ class BeliefDecisionEngine:
                 )
                 self.degraded = True
                 generated = update.generated
-                matched = 0
+                matched = update.matched
+                if update.unsupported_public_evidence:
+                    reason = "unsupported-public-evidence"
+                elif update.matched > 0:
+                    reason = "partial-world-sampled-match"
+                else:
+                    reason = "zero-sampled-match"
+                recovery_diagnostic = _recovery_diagnostic(
+                    reason=reason,
+                    view=view,
+                    particles_before=starting_particles,
+                    update=update,
+                    recovery_candidates=self.particles,
+                )
 
         return BeliefTurnUpdate(
             decision=decision,
@@ -1983,6 +2040,7 @@ class BeliefDecisionEngine:
             conditioning_seconds=conditioning_seconds,
             conditioning_over_budget=timed_out,
             degraded=self.degraded,
+            recovery_diagnostic=recovery_diagnostic,
         )
 
 
@@ -2459,6 +2517,7 @@ class _BeliefBattleCoordinator:
             terminal=terminal,
             winner=public_view.get("winner"),
             collapse_diagnostic=collapse_diagnostic,
+            recovery_diagnostic=getattr(update, "recovery_diagnostic", None),
         )
 
     def commit_human_action(
