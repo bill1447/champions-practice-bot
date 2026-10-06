@@ -124,6 +124,28 @@ def _run_hidden_disable_probe(worker: ShowdownSearchWorker) -> None:
                 )
 
         p1_turn_two = worker.session_legal_choices(session_id, side="p1")[0]
+
+        # Exact hypothetical choices must be reusable as branch inputs. Showdown's
+        # canonical Choice#getChoice() string for a forced Struggle is "move struggle",
+        # but that string is not itself a legal input command. This regression catches
+        # any legality enumerator that returns canonical-but-unsubmittable output.
+        exact_state = worker.session_snapshot(session_id)["state"]
+        exact_p2_choices = worker.legal_choices(state=exact_state, side="p2")
+        if not exact_p2_choices:
+            raise SystemExit(
+                "ERROR: exact hidden-disable fixture exposed no legal p2 choices"
+            )
+        worker.branch_many(
+            state=exact_state,
+            branches=[
+                {
+                    "p1_choice": p1_turn_two,
+                    "p2_choice": choice,
+                }
+                for choice in exact_p2_choices
+            ],
+        )
+
         worker.choose_session(
             session_id,
             p1_choice=p1_turn_two,
@@ -132,9 +154,11 @@ def _run_hidden_disable_probe(worker: ShowdownSearchWorker) -> None:
 
         print("Hidden disabled-move public choice authority")
         print(f"Resolved public choices: {len(public_choices)}")
+        print(f"Replayable exact choices: {len(exact_p2_choices)}")
         print("Live request mutated by probe: NO")
         print("Hidden-disabled Imprison move offered: NO")
-        print("RESULT: public fight-button resolution yields submit-safe choices")
+        print("Canonical forced Struggle replay failure: NO")
+        print("RESULT: public and exact hidden-disable choices are submit-safe")
     finally:
         try:
             worker.close_session(session_id)

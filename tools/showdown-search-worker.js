@@ -1063,23 +1063,39 @@ function validateChoices(state, sideId, candidates) {
   // Reuse one restored battle for the entire candidate set. Side.choose() only mutates
   // choice/request bookkeeping, so clearing the choice is enough between validations;
   // no turn is advanced until both players have submitted choices.
+  //
+  // Keep one *replayable input command* for each canonical action. Showdown
+  // serializes an auto-selected forced Struggle as "move struggle", but that
+  // canonical string cannot itself be submitted again because Struggle is not
+  // present in the Pokemon's move request. In that case preserve the original
+  // validated candidate (for example "auto" or a disabled request move) while
+  // still deduplicating all candidates that resolve to the same action.
   const branch = Battle.fromJSON(JSON.stringify(state));
   branch.restart(() => {});
   const side = sideId === "p1" ? branch.p1 : branch.p2;
-  const legal = new Set();
+  const legalByCanonicalChoice = new Map();
   try {
     for (const candidate of candidates) {
       try {
         side.clearChoice();
         if (candidate === FORCED_WAIT_CHOICE) {
           if (side.activeRequest?.wait === true) {
-            legal.add(FORCED_WAIT_CHOICE);
+            legalByCanonicalChoice.set(FORCED_WAIT_CHOICE, FORCED_WAIT_CHOICE);
           }
           continue;
         }
         if (candidate === "") continue;
         if (!side.choose(candidate) || !side.isChoiceDone()) continue;
-        legal.add(side.getChoice());
+        const canonical = side.getChoice();
+        const forcedStruggle = canonical
+          .split(",")
+          .some((command) => command.trim().startsWith("move struggle"));
+        if (!legalByCanonicalChoice.has(canonical)) {
+          legalByCanonicalChoice.set(
+            canonical,
+            forcedStruggle ? candidate : canonical,
+          );
+        }
       } catch {
         // A rejected candidate must not poison validation of later candidates.
         side.clearChoice();
@@ -1088,7 +1104,7 @@ function validateChoices(state, sideId, candidates) {
   } finally {
     branch.destroy();
   }
-  return [...legal].sort();
+  return [...legalByCanonicalChoice.values()].sort();
 }
 
 function isPubliclyStructurallySelectable(choice, request, gameType) {
