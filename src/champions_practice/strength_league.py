@@ -59,6 +59,7 @@ class LeagueConfig:
     strategic_response_limit: int = 2
     decision_budget_seconds: float = 8.0
     conditioning_budget_seconds: float = 8.0
+    worker_startup_timeout_seconds: float = 30.0
     seed: int = 15601
 
     def __post_init__(self) -> None:
@@ -82,6 +83,10 @@ class LeagueConfig:
         for label, value in (
             ("decision_budget_seconds", self.decision_budget_seconds),
             ("conditioning_budget_seconds", self.conditioning_budget_seconds),
+            (
+                "worker_startup_timeout_seconds",
+                self.worker_startup_timeout_seconds,
+            ),
         ):
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{label} must be positive and finite")
@@ -292,6 +297,34 @@ def _baseline_choice(choices: tuple[str, ...]) -> str:
     return choose_public_fallback(list(choices))
 
 
+def _preview_signature(choice: str) -> str | None:
+    stripped = choice.strip().lower()
+    if not stripped.startswith("team"):
+        return None
+    digits = "".join(character for character in stripped[4:] if character.isdigit())
+    return digits or None
+
+
+def _resolve_preview_choice(
+    choices: tuple[str, ...],
+    desired: str,
+) -> str:
+    if desired in choices:
+        return desired
+    target = _preview_signature(desired)
+    matches = [
+        choice
+        for choice in choices
+        if _preview_signature(choice) == target
+    ]
+    if len(matches) == 1:
+        return matches[0]
+    raise StrengthLeagueError(
+        "benchmark fixture preview is not legal for the baseline side; "
+        f"wanted {desired!r}, legal choices include {choices[:8]!r}"
+    )
+
+
 def run_game(
     config: LeagueConfig,
     *,
@@ -330,6 +363,7 @@ def run_game(
         strategic_response_limit=config.strategic_response_limit,
         decision_budget_seconds=config.decision_budget_seconds,
         conditioning_budget_seconds=config.conditioning_budget_seconds,
+        worker_startup_timeout_seconds=config.worker_startup_timeout_seconds,
         particle_seed=particle_seed,
     ) as battle:
         battle.start(
@@ -339,11 +373,11 @@ def run_game(
             session_seed=session_seed,
         )
         preview_choices = battle.legal_human_choices()
-        if DEMO_AI_PREVIEW_CHOICE not in preview_choices:
-            raise StrengthLeagueError(
-                "benchmark fixture preview is not legal for the baseline side"
-            )
-        battle.commit_preview(human_choice=DEMO_AI_PREVIEW_CHOICE)
+        baseline_preview = _resolve_preview_choice(
+            preview_choices,
+            DEMO_AI_PREVIEW_CHOICE,
+        )
+        battle.commit_preview(human_choice=baseline_preview)
 
         result = None
         for _ in range(config.max_decisions):
@@ -498,6 +532,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--strategic-response-limit", type=int, default=2)
     parser.add_argument("--decision-budget-seconds", type=float, default=8.0)
     parser.add_argument("--conditioning-budget-seconds", type=float, default=8.0)
+    parser.add_argument("--worker-startup-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--seed", type=int, default=15601)
     parser.add_argument("--refresh", action="store_true")
     return parser
@@ -520,6 +555,7 @@ def main(argv: list[str] | None = None) -> None:
                 strategic_response_limit=args.strategic_response_limit,
                 decision_budget_seconds=args.decision_budget_seconds,
                 conditioning_budget_seconds=args.conditioning_budget_seconds,
+                worker_startup_timeout_seconds=args.worker_startup_timeout_seconds,
                 seed=args.seed,
             ),
             refresh=args.refresh,
