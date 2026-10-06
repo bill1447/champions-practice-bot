@@ -141,6 +141,20 @@ A sampled miss is allowed to remain unresolved/degraded; it must not become fals
 evidence. If the smoke detects a false exclusion, it saves a deterministic hard case under
 `.runtime/recovery-hard-cases/` before failing. See `docs/recovery-soundness.md`.
 
+## Offline strength league
+
+The gameplay-strength benchmark runs the production belief/search/strategy bot against a
+fixed public-only baseline under deterministic seeds and writes immutable local reports.
+
+```powershell
+.\strength-league.ps1
+```
+
+V1 intentionally uses the current-roster mirror fixture and is a regression instrument, not
+a calibrated ladder rating. Reports include win/loss results, decision latency, fallback
+frequency, degraded-belief turns, strategy usage, and exact-search branch counts. See
+`docs/strength-league.md`.
+
 ## Playable local demo
 
 After setup or an `update-local.ps1 -UpdateShowdown` that produced a verified Showdown build:
