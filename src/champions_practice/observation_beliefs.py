@@ -30,6 +30,10 @@ class ParticleUpdate:
     deduplicated: int
     stochastic_only_mismatches: int = 0
     structural_mismatches: int = 0
+    matched_world_ids: tuple[str, ...] = ()
+    sampled_unresolved_world_ids: tuple[str, ...] = ()
+    exhaustively_excluded_world_ids: tuple[str, ...] = ()
+    unsupported_public_evidence: tuple[str, ...] = ()
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
@@ -556,6 +560,11 @@ def _unsupported_public_transition_evidence(
     return tuple(value for value in values if isinstance(value, str) and value)
 
 
+def _source_world_id(particle: BeliefParticle, index: int) -> str:
+    """Stable source-hypothesis label for sampled-conditioning diagnostics."""
+    return particle.world_id or particle.history_id or f"particle-{index}"
+
+
 def condition_particles(
     worker: ShowdownSearchWorker,
     *,
@@ -578,6 +587,11 @@ def condition_particles(
     if not particles:
         return ParticleUpdate((), 0, 0, 0)
 
+    source_world_ids = tuple(
+        _source_world_id(particle, index)
+        for index, particle in enumerate(particles)
+    )
+
     # A public mechanics event that the worker cannot canonicalize is evidence
     # that our exact-match predicate is incomplete. Never silently accept a
     # particle by comparing only the reduced board in that case; force the
@@ -590,6 +604,8 @@ def condition_particles(
             matched=0,
             deduplicated=0,
             structural_mismatches=1,
+            sampled_unresolved_world_ids=tuple(sorted(set(source_world_ids))),
+            unsupported_public_evidence=unsupported,
         )
 
     opponent_side = "p2" if ai_side == "p1" else "p1"
@@ -599,13 +615,15 @@ def condition_particles(
     matched = 0
     stochastic_only_mismatches = 0
     structural_mismatches = 0
+    matched_source_world_ids: set[str] = set()
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
         previous_public_view=previous_public_view,
     )
 
-    for particle in particles:
+    for particle_index, particle in enumerate(particles):
+        source_world_id = _source_world_id(particle, particle_index)
         responses: tuple[str, ...]
         validator = getattr(worker, "validate_choices", None)
 
@@ -695,6 +713,7 @@ def condition_particles(
                     structural_mismatches += 1
                 continue
             matched += 1
+            matched_source_world_ids.add(source_world_id)
             rng_label = "native" if rng_seed is None else rng_seed
             history = f"{particle.history_id}|{response}|{rng_label}".strip("|")
             p1_lineage, p2_lineage = _compose_branch_member_lineage(
@@ -730,6 +749,7 @@ def condition_particles(
             )
 
     posterior = _normalize(merged.values())
+    all_world_ids = set(source_world_ids)
     return ParticleUpdate(
         particles=posterior,
         generated=generated,
@@ -737,4 +757,8 @@ def condition_particles(
         deduplicated=len(survivors) - len(posterior),
         stochastic_only_mismatches=stochastic_only_mismatches,
         structural_mismatches=structural_mismatches,
+        matched_world_ids=tuple(sorted(matched_source_world_ids)),
+        sampled_unresolved_world_ids=tuple(
+            sorted(all_world_ids - matched_source_world_ids)
+        ),
     )
