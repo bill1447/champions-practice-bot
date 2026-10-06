@@ -125,6 +125,14 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
                     "sampled_unresolved_worlds": 1,
                     "exhaustively_excluded_worlds": 0,
                     "unsupported_public_evidence": (),
+                    "structural_mismatch_paths": (
+                        ("$.request.active[0]", 7),
+                        ("$.public_event_delta.turn", 2),
+                    ),
+                    "structural_mismatch_worlds": (
+                        ("world-a", 5),
+                        ("world-b", 4),
+                    ),
                 },
             ),
         ),
@@ -158,6 +166,14 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
     assert summary["recovery"]["sampled_matches"] == 3
     assert summary["recovery"]["sampled_unresolved_worlds"] == 1
     assert summary["recovery"]["exhaustively_excluded_worlds"] == 0
+    assert summary["recovery"]["top_structural_mismatch_paths"] == [
+        ["$.request.active[0]", 7],
+        ["$.public_event_delta.turn", 2],
+    ]
+    assert summary["recovery"]["top_structural_mismatch_worlds"] == [
+        ["world-a", 5],
+        ["world-b", 4],
+    ]
 
 
 def test_summary_handles_all_draws_without_fake_decisive_interval():
