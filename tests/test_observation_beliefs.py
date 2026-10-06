@@ -45,6 +45,17 @@ def test_condition_particles_filters_public_mismatches_and_normalizes():
     assert update.matched == 1
     assert len(update.particles) == 1
     assert update.particles[0].weight == 1.0
+    assert update.structural_mismatches == 1
+    assert update.structural_mismatch_paths == (
+        ("$.opponent.active[0]", 1),
+    )
+    assert update.structural_mismatch_worlds == (("w1", 1),)
+    assert len(update.structural_mismatch_examples) == 1
+    example = update.structural_mismatch_examples[0]
+    assert example.world_id == "w1"
+    assert example.path == "$.opponent.active[0]"
+    assert example.actual == "A"
+    assert example.simulated == "B"
 
 
 def test_public_seen_roster_exhaustively_excludes_wrong_bring_four() -> None:
