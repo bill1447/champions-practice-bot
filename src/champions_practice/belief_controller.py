@@ -275,6 +275,79 @@ def _particle_world_keys(
     )
 
 
+def _merge_sampled_world_witnesses(
+    starting_particles: tuple[BeliefParticle, ...],
+    witnessed_particles: tuple[BeliefParticle, ...],
+) -> tuple[BeliefParticle, ...]:
+    """Merge cross-batch witnesses while preserving prior hidden-world mass.
+
+    RNG batches are sampling coverage, not independent posterior authorities.
+    Once every authoritative world has at least one witnessed child, distribute
+    each world's prior mass over its witnessed descendants and normalize.
+    """
+    prior_mass: dict[str, float] = {}
+    for index, particle in enumerate(starting_particles):
+        world_id = _particle_world_key(particle, index)
+        prior_mass[world_id] = prior_mass.get(world_id, 0.0) + particle.weight
+
+    grouped: dict[str, dict[str, tuple[BeliefParticle, float]]] = {}
+    for particle in witnessed_particles:
+        if not particle.world_id:
+            continue
+        key = json.dumps(
+            {
+                "state": particle.state,
+                "p1_member_lineage": particle.p1_member_lineage,
+                "p2_member_lineage": particle.p2_member_lineage,
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        world_group = grouped.setdefault(particle.world_id, {})
+        previous = world_group.get(key)
+        if previous is None:
+            world_group[key] = (particle, particle.weight)
+        else:
+            world_group[key] = (previous[0], previous[1] + particle.weight)
+
+    if set(grouped) != set(prior_mass):
+        return ()
+
+    merged: list[BeliefParticle] = []
+    for world_id in sorted(grouped):
+        descendants = grouped[world_id]
+        sampled_mass = sum(weight for _particle, weight in descendants.values())
+        if sampled_mass <= 0:
+            return ()
+        world_mass = prior_mass[world_id]
+        for particle, sampled_weight in descendants.values():
+            merged.append(
+                BeliefParticle(
+                    state=particle.state,
+                    weight=world_mass * sampled_weight / sampled_mass,
+                    world_id=particle.world_id,
+                    history_id=particle.history_id,
+                    p1_member_lineage=particle.p1_member_lineage,
+                    p2_member_lineage=particle.p2_member_lineage,
+                )
+            )
+
+    total = sum(particle.weight for particle in merged)
+    if total <= 0:
+        return ()
+    return tuple(
+        BeliefParticle(
+            state=particle.state,
+            weight=particle.weight / total,
+            world_id=particle.world_id,
+            history_id=particle.history_id,
+            p1_member_lineage=particle.p1_member_lineage,
+            p2_member_lineage=particle.p2_member_lineage,
+        )
+        for particle in merged
+    )
+
+
 def _observation_action_strings(view: dict) -> tuple[str, ...]:
     raw = view.get("opponent_last_actions")
     if not isinstance(raw, list):
@@ -882,6 +955,7 @@ class BeliefDecisionEngine:
         structural_mismatches = 0
         required_worlds = set(_particle_world_keys(particles))
         sampled_matched_worlds: set[str] = set()
+        witnessed_particles: list[BeliefParticle] = []
         exhaustive_exclusions: set[str] = set()
         unsupported_public_evidence: set[str] = set()
         multiplier = (
@@ -952,6 +1026,7 @@ class BeliefDecisionEngine:
                         _particle_world_keys(update.particles)
                     )
                 sampled_matched_worlds.update(update_matched_worlds)
+                witnessed_particles.extend(update.particles)
                 exhaustive_exclusions.update(
                     update.exhaustively_excluded_world_ids
                 )
@@ -960,26 +1035,30 @@ class BeliefDecisionEngine:
                 )
 
                 installable_worlds = required_worlds - exhaustive_exclusions
-                if (
-                    update.particles
-                    and installable_worlds.issubset(update_matched_worlds)
-                ):
-                    return ParticleUpdate(
-                        particles=update.particles,
-                        generated=generated,
-                        matched=matched,
-                        deduplicated=deduplicated,
-                        stochastic_only_mismatches=stochastic_only_mismatches,
-                        structural_mismatches=structural_mismatches,
-                        matched_world_ids=tuple(sorted(update_matched_worlds)),
-                        sampled_unresolved_world_ids=(),
-                        exhaustively_excluded_world_ids=tuple(
-                            sorted(exhaustive_exclusions)
-                        ),
-                        unsupported_public_evidence=tuple(
-                            sorted(unsupported_public_evidence)
-                        ),
+                if installable_worlds.issubset(sampled_matched_worlds):
+                    merged = _merge_sampled_world_witnesses(
+                        particles,
+                        tuple(witnessed_particles),
                     )
+                    if merged:
+                        return ParticleUpdate(
+                            particles=merged,
+                            generated=generated,
+                            matched=matched,
+                            deduplicated=deduplicated,
+                            stochastic_only_mismatches=stochastic_only_mismatches,
+                            structural_mismatches=structural_mismatches,
+                            matched_world_ids=tuple(
+                                sorted(sampled_matched_worlds)
+                            ),
+                            sampled_unresolved_world_ids=(),
+                            exhaustively_excluded_world_ids=tuple(
+                                sorted(exhaustive_exclusions)
+                            ),
+                            unsupported_public_evidence=tuple(
+                                sorted(unsupported_public_evidence)
+                            ),
+                        )
 
         unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
         return ParticleUpdate(
