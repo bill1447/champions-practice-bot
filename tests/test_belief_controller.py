@@ -16,7 +16,11 @@ from champions_practice.belief_controller import (
     _pin_known_team_genders,
     choose_public_fallback,
 )
-from champions_practice.observation_beliefs import BeliefParticle, ParticleUpdate
+from champions_practice.observation_beliefs import (
+    BeliefParticle,
+    ParticleUpdate,
+    StructuralMismatchExample,
+)
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
 from champions_practice.search_worker import (
@@ -625,8 +629,21 @@ def test_sampled_partial_world_match_is_not_installable(
             matched=1,
             deduplicated=0,
             stochastic_only_mismatches=1,
+            structural_mismatches=2,
             matched_world_ids=("world-a",),
             sampled_unresolved_world_ids=("world-b",),
+            structural_mismatch_paths=(("$.request.active[0]", 2),),
+            structural_mismatch_worlds=(("world-b", 2),),
+            structural_mismatch_examples=(
+                StructuralMismatchExample(
+                    world_id="world-b",
+                    path="$.request.active[0]",
+                    actual={"moves": ["protect"]},
+                    simulated={"moves": ["psychic"]},
+                    opponent_choice="move psychic",
+                    rng_seed=rng_seeds[0],
+                ),
+            ),
         )
 
     monkeypatch.setattr(
@@ -648,6 +665,13 @@ def test_sampled_partial_world_match_is_not_installable(
     assert update.matched_world_ids == ("world-a",)
     assert update.sampled_unresolved_world_ids == ("world-b",)
     assert update.exhaustively_excluded_world_ids == ()
+    assert update.structural_mismatches == 4
+    assert update.structural_mismatch_paths == (
+        ("$.request.active[0]", 4),
+    )
+    assert update.structural_mismatch_worlds == (("world-b", 4),)
+    assert len(update.structural_mismatch_examples) == 1
+    assert update.structural_mismatch_examples[0].world_id == "world-b"
 
 
 def test_exhaustive_world_exclusion_allows_safe_posterior_install(
