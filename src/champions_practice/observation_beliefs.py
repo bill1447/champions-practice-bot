@@ -30,6 +30,10 @@ class ParticleUpdate:
     deduplicated: int
     stochastic_only_mismatches: int = 0
     structural_mismatches: int = 0
+    matched_world_ids: tuple[str, ...] = ()
+    sampled_unresolved_world_ids: tuple[str, ...] = ()
+    exhaustively_excluded_world_ids: tuple[str, ...] = ()
+    unsupported_public_evidence: tuple[str, ...] = ()
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
@@ -556,6 +560,155 @@ def _unsupported_public_transition_evidence(
     return tuple(value for value in values if isinstance(value, str) and value)
 
 
+def _source_world_id(particle: BeliefParticle, index: int) -> str:
+    """Stable source-hypothesis label for sampled-conditioning diagnostics."""
+    return particle.world_id or particle.history_id or f"particle-{index}"
+
+
+def merge_sampled_world_witnesses(
+    starting_particles: tuple[BeliefParticle, ...],
+    witnessed_particles: tuple[BeliefParticle, ...],
+) -> tuple[BeliefParticle, ...]:
+    """Merge cross-batch witnesses without changing prior hidden-world mass."""
+    prior_mass: dict[str, float] = {}
+    starting_history: list[tuple[str, str]] = []
+    for index, particle in enumerate(starting_particles):
+        world_id = _source_world_id(particle, index)
+        prior_mass[world_id] = prior_mass.get(world_id, 0.0) + particle.weight
+        if particle.history_id:
+            starting_history.append((world_id, particle.history_id))
+
+    grouped: dict[str, dict[str, tuple[BeliefParticle, float]]] = {}
+    for particle in witnessed_particles:
+        world_id = particle.world_id
+        if not world_id and particle.history_id:
+            candidates = [
+                (source_world_id, history_id)
+                for source_world_id, history_id in starting_history
+                if particle.history_id == history_id
+                or particle.history_id.startswith(history_id + "|")
+            ]
+            if candidates:
+                world_id = max(candidates, key=lambda item: len(item[1]))[0]
+        if not world_id or world_id not in prior_mass:
+            continue
+        key = _particle_key(particle)
+        world_group = grouped.setdefault(world_id, {})
+        previous = world_group.get(key)
+        if previous is None:
+            world_group[key] = (particle, particle.weight)
+        else:
+            world_group[key] = (previous[0], previous[1] + particle.weight)
+
+    if set(grouped) != set(prior_mass):
+        return ()
+
+    merged: list[BeliefParticle] = []
+    for world_id in sorted(grouped):
+        descendants = grouped[world_id]
+        sampled_mass = sum(weight for _particle, weight in descendants.values())
+        if sampled_mass <= 0:
+            return ()
+        world_mass = prior_mass[world_id]
+        for particle, sampled_weight in descendants.values():
+            merged.append(
+                BeliefParticle(
+                    state=particle.state,
+                    weight=world_mass * sampled_weight / sampled_mass,
+                    world_id=particle.world_id,
+                    history_id=particle.history_id,
+                    p1_member_lineage=particle.p1_member_lineage,
+                    p2_member_lineage=particle.p2_member_lineage,
+                )
+            )
+
+    return _normalize(merged)
+
+
+def _publicly_seen_species(view: dict[str, Any]) -> set[str]:
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return set()
+    revealed = opponent.get("revealed")
+    if not isinstance(revealed, list):
+        return set()
+    return {
+        _id(str(entry.get("species", "")))
+        for entry in revealed
+        if isinstance(entry, dict)
+        and entry.get("seen") is True
+        and _id(str(entry.get("species", "")))
+    }
+
+
+def _particle_selected_species(
+    particle: BeliefParticle,
+    *,
+    ai_side: str,
+) -> set[str] | None:
+    sides = particle.state.get("sides")
+    opponent_index = 1 if ai_side == "p1" else 0
+    if (
+        not isinstance(sides, list)
+        or len(sides) <= opponent_index
+        or not isinstance(sides[opponent_index], dict)
+    ):
+        return None
+    pokemon = sides[opponent_index].get("pokemon")
+    if not isinstance(pokemon, list) or not pokemon:
+        return None
+
+    species: set[str] = set()
+    for mon in pokemon:
+        if not isinstance(mon, dict):
+            return None
+        set_data = mon.get("set")
+        if not isinstance(set_data, dict):
+            return None
+        value = _id(str(set_data.get("species") or set_data.get("name") or ""))
+        if not value:
+            return None
+        species.add(value)
+    return species
+
+
+def _public_roster_exhaustive_exclusions(
+    particles: tuple[BeliefParticle, ...],
+    *,
+    ai_side: str,
+    actual_public_view: dict[str, Any],
+) -> tuple[set[int], tuple[str, ...]]:
+    """Exclude worlds contradicted by public bring-four membership evidence.
+
+    The public producer marks a preview-roster species as seen only after a
+    channel-visible switch/drag/replace event. Once seen, that species must be one
+    of the four Pokemon selected in any compatible exact world. This fact is
+    deterministic and RNG-independent, so it is valid exhaustive negative
+    evidence rather than a sampled miss.
+    """
+    seen_species = _publicly_seen_species(actual_public_view)
+    if not seen_species:
+        return set(), ()
+
+    incompatible_indexes: set[int] = set()
+    world_members: dict[str, list[int]] = {}
+    for index, particle in enumerate(particles):
+        world_id = _source_world_id(particle, index)
+        world_members.setdefault(world_id, []).append(index)
+        selected = _particle_selected_species(particle, ai_side=ai_side)
+        if selected is not None and not seen_species.issubset(selected):
+            incompatible_indexes.add(index)
+
+    excluded_worlds = tuple(
+        sorted(
+            world_id
+            for world_id, indexes in world_members.items()
+            if indexes and all(index in incompatible_indexes for index in indexes)
+        )
+    )
+    return incompatible_indexes, excluded_worlds
+
+
 def condition_particles(
     worker: ShowdownSearchWorker,
     *,
@@ -578,6 +731,11 @@ def condition_particles(
     if not particles:
         return ParticleUpdate((), 0, 0, 0)
 
+    source_world_ids = tuple(
+        _source_world_id(particle, index)
+        for index, particle in enumerate(particles)
+    )
+
     # A public mechanics event that the worker cannot canonicalize is evidence
     # that our exact-match predicate is incomplete. Never silently accept a
     # particle by comparing only the reduced board in that case; force the
@@ -590,6 +748,8 @@ def condition_particles(
             matched=0,
             deduplicated=0,
             structural_mismatches=1,
+            sampled_unresolved_world_ids=tuple(sorted(set(source_world_ids))),
+            unsupported_public_evidence=unsupported,
         )
 
     opponent_side = "p2" if ai_side == "p1" else "p1"
@@ -599,13 +759,25 @@ def condition_particles(
     matched = 0
     stochastic_only_mismatches = 0
     structural_mismatches = 0
+    matched_source_world_ids: set[str] = set()
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
         previous_public_view=previous_public_view,
     )
+    (
+        roster_incompatible_indexes,
+        roster_excluded_world_ids,
+    ) = _public_roster_exhaustive_exclusions(
+        particles,
+        ai_side=ai_side,
+        actual_public_view=actual_public_view,
+    )
 
-    for particle in particles:
+    for particle_index, particle in enumerate(particles):
+        source_world_id = _source_world_id(particle, particle_index)
+        if particle_index in roster_incompatible_indexes:
+            continue
         responses: tuple[str, ...]
         validator = getattr(worker, "validate_choices", None)
 
@@ -695,6 +867,7 @@ def condition_particles(
                     structural_mismatches += 1
                 continue
             matched += 1
+            matched_source_world_ids.add(source_world_id)
             rng_label = "native" if rng_seed is None else rng_seed
             history = f"{particle.history_id}|{response}|{rng_label}".strip("|")
             p1_lineage, p2_lineage = _compose_branch_member_lineage(
@@ -730,6 +903,7 @@ def condition_particles(
             )
 
     posterior = _normalize(merged.values())
+    all_world_ids = set(source_world_ids)
     return ParticleUpdate(
         particles=posterior,
         generated=generated,
@@ -737,4 +911,13 @@ def condition_particles(
         deduplicated=len(survivors) - len(posterior),
         stochastic_only_mismatches=stochastic_only_mismatches,
         structural_mismatches=structural_mismatches,
+        matched_world_ids=tuple(sorted(matched_source_world_ids)),
+        sampled_unresolved_world_ids=tuple(
+            sorted(
+                all_world_ids
+                - matched_source_world_ids
+                - set(roster_excluded_world_ids)
+            )
+        ),
+        exhaustively_excluded_world_ids=roster_excluded_world_ids,
     )

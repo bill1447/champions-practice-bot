@@ -25,6 +25,7 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
     condition_particles,
+    merge_sampled_world_witnesses,
     resample_particles_by_world,
 )
 from champions_practice.reachability import (
@@ -444,10 +445,10 @@ def evaluate_true_world_conditioning(
 ) -> TrueWorldConditioningOutcome:
     """Emulate one production conditioning boundary without mutating live state.
 
-    If sampled conditioning finds no matching child at all, production keeps the
-    last-good particles and enters degraded mode; this harness does the same.
-    If at least one child matches, production replaces the posterior with those
-    sampled survivors, which is where a true hidden world can be falsely lost.
+    Sampled positive witnesses may advance a world. Finite sampled misses do not
+    exclude a starting world. A sampled posterior is installable only when every
+    still-authoritative starting world is represented; otherwise the last-good
+    particles survive and the boundary is degraded.
     """
 
     transition = case.transition
@@ -457,9 +458,18 @@ def evaluate_true_world_conditioning(
         else transition.p2_choice
     )
     generated = 0
+    matched = 0
     deduplicated = 0
     stochastic_only_mismatches = 0
     structural_mismatches = 0
+    sampled_matched_worlds: set[str] = set()
+    witnessed_particles: list[BeliefParticle] = []
+    exhaustive_exclusions: set[str] = set()
+    unsupported_public_evidence: set[str] = set()
+    required_worlds = {
+        particle.world_id or particle.history_id or f"particle-{index}"
+        for index, particle in enumerate(case.particles)
+    }
     selected_update: ParticleUpdate | None = None
 
     for rng_seeds in case.rng_batches:
@@ -474,28 +484,73 @@ def evaluate_true_world_conditioning(
             previews=transition.previews,
         )
         generated += update.generated
+        matched += update.matched
         deduplicated += update.deduplicated
         stochastic_only_mismatches += update.stochastic_only_mismatches
         structural_mismatches += update.structural_mismatches
-        if update.particles:
-            selected_update = ParticleUpdate(
-                particles=update.particles,
-                generated=generated,
-                matched=update.matched,
-                deduplicated=deduplicated,
-                stochastic_only_mismatches=stochastic_only_mismatches,
-                structural_mismatches=structural_mismatches,
+        update_worlds = set(update.matched_world_ids)
+        if not update_worlds and update.particles:
+            update_worlds = {
+                particle.world_id or particle.history_id
+                for particle in update.particles
+                if particle.world_id or particle.history_id
+            }
+        sampled_matched_worlds.update(update_worlds)
+        witnessed_particles.extend(update.particles)
+        exhaustive_exclusions.update(update.exhaustively_excluded_world_ids)
+        unsupported_public_evidence.update(update.unsupported_public_evidence)
+        installable_worlds = required_worlds - exhaustive_exclusions
+        if installable_worlds.issubset(sampled_matched_worlds):
+            authoritative_particles = tuple(
+                particle
+                for index, particle in enumerate(case.particles)
+                if (
+                    particle.world_id
+                    or particle.history_id
+                    or f"particle-{index}"
+                )
+                not in exhaustive_exclusions
             )
-            break
+            merged = merge_sampled_world_witnesses(
+                authoritative_particles,
+                tuple(witnessed_particles),
+            )
+            if merged:
+                selected_update = ParticleUpdate(
+                    particles=merged,
+                    generated=generated,
+                    matched=matched,
+                    deduplicated=deduplicated,
+                    stochastic_only_mismatches=stochastic_only_mismatches,
+                    structural_mismatches=structural_mismatches,
+                    matched_world_ids=tuple(
+                        sorted(sampled_matched_worlds)
+                    ),
+                    sampled_unresolved_world_ids=(),
+                    exhaustively_excluded_world_ids=tuple(
+                        sorted(exhaustive_exclusions)
+                    ),
+                    unsupported_public_evidence=tuple(
+                        sorted(unsupported_public_evidence)
+                    ),
+                )
+                break
 
     if selected_update is None:
+        unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
         selected_update = ParticleUpdate(
             particles=(),
             generated=generated,
-            matched=0,
+            matched=matched,
             deduplicated=deduplicated,
             stochastic_only_mismatches=stochastic_only_mismatches,
             structural_mismatches=structural_mismatches,
+            matched_world_ids=tuple(sorted(sampled_matched_worlds)),
+            sampled_unresolved_world_ids=tuple(sorted(unresolved)),
+            exhaustively_excluded_world_ids=tuple(sorted(exhaustive_exclusions)),
+            unsupported_public_evidence=tuple(
+                sorted(unsupported_public_evidence)
+            ),
         )
 
     if selected_update.particles:

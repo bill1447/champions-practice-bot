@@ -586,6 +586,207 @@ def test_observed_action_rng_multiplier_uses_incremental_chunks(
     assert update.matched == 1
 
 
+def test_sampled_partial_world_match_is_not_installable(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=2,
+    )
+    first = BeliefParticle(
+        {"turn": 1, "world": "a"},
+        0.5,
+        world_id="world-a",
+        history_id="a",
+    )
+    second = BeliefParticle(
+        {"turn": 1, "world": "b"},
+        0.5,
+        world_id="world-b",
+        history_id="b",
+    )
+    calls = 0
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        lambda *args, **kwargs: True,
+    )
+
+    def fake_condition(*args, rng_seeds, **kwargs):
+        nonlocal calls
+        del args, kwargs
+        calls += 1
+        return ParticleUpdate(
+            particles=(first,),
+            generated=2 * len(rng_seeds),
+            matched=1,
+            deduplicated=0,
+            stochastic_only_mismatches=1,
+            matched_world_ids=("world-a",),
+            sampled_unresolved_world_ids=("world-b",),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        fake_condition,
+    )
+
+    update = engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(first, second),
+        ai_choice="move protect",
+        view={"turn": 2},
+        batches=(2,),
+    )
+
+    assert calls == 2
+    assert update.particles == ()
+    assert update.matched == 2
+    assert update.matched_world_ids == ("world-a",)
+    assert update.sampled_unresolved_world_ids == ("world-b",)
+    assert update.exhaustively_excluded_world_ids == ()
+
+
+def test_exhaustive_world_exclusion_allows_safe_posterior_install(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=1,
+    )
+    kept = BeliefParticle(
+        {"turn": 2, "world": "kept"},
+        0.5,
+        world_id="kept",
+        history_id="kept-child",
+    )
+    excluded = BeliefParticle(
+        {"turn": 1, "world": "excluded"},
+        0.5,
+        world_id="excluded",
+        history_id="excluded-root",
+    )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        lambda *args, **kwargs: False,
+    )
+
+    def fake_condition(*args, **kwargs):
+        del args, kwargs
+        return ParticleUpdate(
+            particles=(kept,),
+            generated=1,
+            matched=1,
+            deduplicated=0,
+            matched_world_ids=("kept",),
+            sampled_unresolved_world_ids=(),
+            exhaustively_excluded_world_ids=("excluded",),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        fake_condition,
+    )
+
+    update = engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(
+            BeliefParticle(
+                {"turn": 1, "world": "kept"},
+                0.5,
+                world_id="kept",
+                history_id="kept-root",
+            ),
+            excluded,
+        ),
+        ai_choice="move protect",
+        view={"turn": 2},
+        batches=(1,),
+    )
+
+    assert update.exhaustively_excluded_world_ids == ("excluded",)
+    assert update.sampled_unresolved_world_ids == ()
+    assert len(update.particles) == 1
+    assert update.particles[0].world_id == "kept"
+    assert update.particles[0].weight == 1.0
+
+
+def test_partial_world_sampling_records_recovery_diagnostic() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    first = BeliefParticle(
+        {"turn": 1, "world": "a"},
+        0.5,
+        world_id="world-a",
+        history_id="a",
+    )
+    second = BeliefParticle(
+        {"turn": 1, "world": "b"},
+        0.5,
+        world_id="world-b",
+        history_id="b",
+    )
+    engine.particles = (first, second)
+    engine.last_public_view = {"turn": 1}
+    engine._run_until_deadline = lambda operation, deadline: (
+        ParticleUpdate(
+            particles=(),
+            generated=16,
+            matched=3,
+            deduplicated=0,
+            stochastic_only_mismatches=9,
+            structural_mismatches=4,
+            matched_world_ids=("world-a",),
+            sampled_unresolved_world_ids=("world-b",),
+        ),
+        False,
+    )
+
+    update = engine.observe_public_turn(
+        view={
+            "turn": 2,
+            "opponent_last_actions": [
+                {"turn": 1, "slot": 1, "move": "psychic", "target": 1}
+            ],
+        },
+        decision=BeliefDecision(
+            choice="move protect",
+            mode="belief-search",
+            particle_count=2,
+            candidate_count=1,
+            branch_count=1,
+            elapsed_seconds=0.0,
+        ),
+    )
+
+    assert engine.particles == (first, second)
+    assert engine.degraded is True
+    assert update.matched_branches == 3
+    assert update.recovery_diagnostic is not None
+    diagnostic = update.recovery_diagnostic
+    assert diagnostic.reason == "partial-world-sampled-match"
+    assert diagnostic.particles_before == 2
+    assert diagnostic.worlds_before == 2
+    assert diagnostic.sampled_matches == 3
+    assert diagnostic.sampled_matched_worlds == 1
+    assert diagnostic.sampled_unresolved_worlds == 1
+    assert diagnostic.exhaustively_excluded_worlds == 0
+    assert diagnostic.recovery_candidates_remaining == 2
+    assert diagnostic.recovery_worlds_remaining == 2
+    assert diagnostic.observed_opponent_actions
+
+
 def test_incremental_conditioning_returns_before_hard_deadline(
     monkeypatch,
 ) -> None:
