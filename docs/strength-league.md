@@ -126,3 +126,7 @@ sake:
 Replay-policy recall remains an offline model metric. The strength league is where a policy
 integration must demonstrate that spending search budget on learned candidates improves
 actual play.
+
+## Recovery diagnostics
+
+League reports record recovery-event reasons, sampled matches and unresolved worlds, unsupported public evidence, exhaustive exclusions, and retained last-good candidates. Finite sampled misses are diagnostic only and cannot eliminate a belief world.
