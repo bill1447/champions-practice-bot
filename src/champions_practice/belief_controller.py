@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeout
 from copy import deepcopy
 from dataclasses import dataclass
 from enum import Enum
+import hashlib
 import json
 import random
 import secrets
@@ -168,6 +169,27 @@ class BeliefCollapseDiagnostic:
 
 
 @dataclass(frozen=True)
+class BeliefRecoveryDiagnostic:
+    reason: str
+    observation_turn: int
+    observation_sha256: str
+    observed_opponent_actions: tuple[str, ...]
+    particles_before: int
+    worlds_before: int
+    generated_branches: int
+    sampled_matches: int
+    stochastic_only_mismatches: int
+    structural_mismatches: int
+    sampled_matched_worlds: int
+    sampled_unresolved_worlds: int
+    exhaustively_excluded_worlds: int
+    recovery_candidates_remaining: int
+    recovery_worlds_remaining: int
+    unsupported_public_evidence: tuple[str, ...] = ()
+    error: str | None = None
+
+
+@dataclass(frozen=True)
 class SealedDecisionReady:
     token: str
 
@@ -203,6 +225,7 @@ class SealedTurnResult:
     terminal: bool
     winner: str | None
     collapse_diagnostic: BeliefCollapseDiagnostic | None = None
+    recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
 
 @dataclass(frozen=True)
@@ -232,6 +255,84 @@ class BeliefTurnUpdate:
     conditioning_seconds: float
     conditioning_over_budget: bool
     degraded: bool
+    recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
+
+
+def _particle_world_key(particle: BeliefParticle, index: int) -> str:
+    return particle.world_id or particle.history_id or f"particle-{index}"
+
+
+def _particle_world_keys(
+    particles: tuple[BeliefParticle, ...],
+) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            {
+                _particle_world_key(particle, index)
+                for index, particle in enumerate(particles)
+            }
+        )
+    )
+
+
+def _observation_action_strings(view: dict) -> tuple[str, ...]:
+    raw = view.get("opponent_last_actions")
+    if not isinstance(raw, list):
+        return ()
+    return tuple(
+        json.dumps(value, sort_keys=True, separators=(",", ":"))
+        for value in raw
+        if isinstance(value, dict)
+    )
+
+
+def _recovery_diagnostic(
+    *,
+    reason: str,
+    view: dict,
+    particles_before: tuple[BeliefParticle, ...],
+    update: ParticleUpdate | None,
+    recovery_candidates: tuple[BeliefParticle, ...],
+    error: str | None = None,
+) -> BeliefRecoveryDiagnostic:
+    signature = public_observation_signature(view)
+    before_worlds = _particle_world_keys(particles_before)
+    remaining_worlds = _particle_world_keys(recovery_candidates)
+    return BeliefRecoveryDiagnostic(
+        reason=reason,
+        observation_turn=int(view.get("turn", 0)),
+        observation_sha256=hashlib.sha256(signature.encode("utf-8")).hexdigest(),
+        observed_opponent_actions=_observation_action_strings(view),
+        particles_before=len(particles_before),
+        worlds_before=len(before_worlds),
+        generated_branches=update.generated if update is not None else 0,
+        sampled_matches=update.matched if update is not None else 0,
+        stochastic_only_mismatches=(
+            update.stochastic_only_mismatches if update is not None else 0
+        ),
+        structural_mismatches=(
+            update.structural_mismatches if update is not None else 0
+        ),
+        sampled_matched_worlds=(
+            len(update.matched_world_ids) if update is not None else 0
+        ),
+        sampled_unresolved_worlds=(
+            len(update.sampled_unresolved_world_ids)
+            if update is not None
+            else len(before_worlds)
+        ),
+        exhaustively_excluded_worlds=(
+            len(update.exhaustively_excluded_world_ids)
+            if update is not None
+            else 0
+        ),
+        recovery_candidates_remaining=len(recovery_candidates),
+        recovery_worlds_remaining=len(remaining_worlds),
+        unsupported_public_evidence=(
+            update.unsupported_public_evidence if update is not None else ()
+        ),
+        error=error,
+    )
 
 
 def _fallback_score(choice: str) -> tuple[int, int, str]:
@@ -775,9 +876,14 @@ class BeliefDecisionEngine:
         deadline: float | None = None,
     ) -> ParticleUpdate:
         generated = 0
+        matched = 0
         deduplicated = 0
         stochastic_only_mismatches = 0
         structural_mismatches = 0
+        required_worlds = set(_particle_world_keys(particles))
+        sampled_matched_worlds: set[str] = set()
+        exhaustive_exclusions: set[str] = set()
+        unsupported_public_evidence: set[str] = set()
         multiplier = (
             self.observed_action_rng_multiplier
             if public_opponent_moves_fully_observed(
@@ -787,13 +893,20 @@ class BeliefDecisionEngine:
             else 1
         )
 
-        # Publicly observed moves reduce response uncertainty but can make exact
-        # damage/RNG matching sparse. The multiplier is therefore additional
-        # sampling coverage, not permission to create one enormous indivisible
-        # branch batch. Small chunks let us stop as soon as any continuation
-        # matches and let the caller recover control before its hard deadline.
+        # A sampled witness may advance a hypothesis; a sampled miss may not
+        # eliminate one. Keep drawing bounded chunks until one update witnesses
+        # every still-authoritative starting world. If the budget expires first,
+        # return no installable posterior so the caller retains the last-good
+        # particles and enters recovery instead of silently dropping hypotheses.
         for sample_count in batches:
             for _ in range(multiplier):
+                unresolved = (
+                    required_worlds
+                    - sampled_matched_worlds
+                    - exhaustive_exclusions
+                )
+                if not unresolved:
+                    break
                 if (
                     deadline is not None
                     and perf_counter() >= deadline - 0.5
@@ -801,10 +914,18 @@ class BeliefDecisionEngine:
                     return ParticleUpdate(
                         (),
                         generated,
-                        0,
+                        matched,
                         deduplicated,
                         stochastic_only_mismatches,
                         structural_mismatches,
+                        matched_world_ids=tuple(sorted(sampled_matched_worlds)),
+                        sampled_unresolved_world_ids=tuple(sorted(unresolved)),
+                        exhaustively_excluded_world_ids=tuple(
+                            sorted(exhaustive_exclusions)
+                        ),
+                        unsupported_public_evidence=tuple(
+                            sorted(unsupported_public_evidence)
+                        ),
                     )
 
                 seeds = tuple(
@@ -821,25 +942,57 @@ class BeliefDecisionEngine:
                     previews=self.previews,
                 )
                 generated += update.generated
+                matched += update.matched
                 deduplicated += update.deduplicated
                 stochastic_only_mismatches += update.stochastic_only_mismatches
                 structural_mismatches += update.structural_mismatches
-                if update.particles:
+                update_matched_worlds = set(update.matched_world_ids)
+                if not update_matched_worlds and update.particles:
+                    update_matched_worlds = set(
+                        _particle_world_keys(update.particles)
+                    )
+                sampled_matched_worlds.update(update_matched_worlds)
+                exhaustive_exclusions.update(
+                    update.exhaustively_excluded_world_ids
+                )
+                unsupported_public_evidence.update(
+                    update.unsupported_public_evidence
+                )
+
+                installable_worlds = required_worlds - exhaustive_exclusions
+                if (
+                    update.particles
+                    and installable_worlds.issubset(update_matched_worlds)
+                ):
                     return ParticleUpdate(
                         particles=update.particles,
                         generated=generated,
-                        matched=update.matched,
+                        matched=matched,
                         deduplicated=deduplicated,
                         stochastic_only_mismatches=stochastic_only_mismatches,
                         structural_mismatches=structural_mismatches,
+                        matched_world_ids=tuple(sorted(update_matched_worlds)),
+                        sampled_unresolved_world_ids=(),
+                        exhaustively_excluded_world_ids=tuple(
+                            sorted(exhaustive_exclusions)
+                        ),
+                        unsupported_public_evidence=tuple(
+                            sorted(unsupported_public_evidence)
+                        ),
                     )
+
+        unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
         return ParticleUpdate(
             (),
             generated,
-            0,
+            matched,
             deduplicated,
             stochastic_only_mismatches,
             structural_mismatches,
+            matched_world_ids=tuple(sorted(sampled_matched_worlds)),
+            sampled_unresolved_world_ids=tuple(sorted(unresolved)),
+            exhaustively_excluded_world_ids=tuple(sorted(exhaustive_exclusions)),
+            unsupported_public_evidence=tuple(sorted(unsupported_public_evidence)),
         )
 
     def _record_recovery_authority_observation(
