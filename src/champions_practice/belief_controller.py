@@ -964,8 +964,14 @@ class BeliefDecisionEngine:
 
                 installable_worlds = required_worlds - exhaustive_exclusions
                 if installable_worlds.issubset(sampled_matched_worlds):
+                    authoritative_particles = tuple(
+                        particle
+                        for index, particle in enumerate(particles)
+                        if _particle_world_key(particle, index)
+                        not in exhaustive_exclusions
+                    )
                     merged = merge_sampled_world_witnesses(
-                        particles,
+                        authoritative_particles,
                         tuple(witnessed_particles),
                     )
                     if merged:
