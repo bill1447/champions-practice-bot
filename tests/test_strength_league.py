@@ -25,6 +25,7 @@ def _game(
     fallback_decisions: int = 0,
     degraded_turns: int = 0,
     strategy_decisions: int = 0,
+    recovery_events: tuple[dict, ...] = (),
 ) -> GameResult:
     winner = {
         "bot-win": "League Bot",
@@ -52,6 +53,7 @@ def _game(
         branch_count=100 + index,
         decision_seconds=(1.0, 2.0, 3.0, 4.0),
         conditioning_seconds=(0.1, 0.2, 0.3, 0.4),
+        recovery_events=recovery_events,
     )
 
 
@@ -116,6 +118,15 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
             fallback_decisions=1,
             degraded_turns=1,
             strategy_decisions=2,
+            recovery_events=(
+                {
+                    "reason": "partial-world-sampled-match",
+                    "sampled_matches": 3,
+                    "sampled_unresolved_worlds": 1,
+                    "exhaustively_excluded_worlds": 0,
+                    "unsupported_public_evidence": (),
+                },
+            ),
         ),
         _game(1, outcome="bot-loss", strategy_decisions=1),
         _game(2, outcome="draw"),
@@ -140,6 +151,13 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
     assert summary["decision_seconds"]["p50"] == 2.5
     assert summary["decision_seconds"]["p95"] == 4.0
     assert summary["conditioning_seconds"]["p95"] == 0.4
+    assert summary["recovery"]["events"] == 1
+    assert summary["recovery"]["reasons"] == {
+        "partial-world-sampled-match": 1
+    }
+    assert summary["recovery"]["sampled_matches"] == 3
+    assert summary["recovery"]["sampled_unresolved_worlds"] == 1
+    assert summary["recovery"]["exhaustively_excluded_worlds"] == 0
 
 
 def test_summary_handles_all_draws_without_fake_decisive_interval():
