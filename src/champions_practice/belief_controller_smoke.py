@@ -80,7 +80,8 @@ def main() -> None:
             )
         if update.degraded:
             raise SystemExit(
-                "ERROR: live public observation degraded the persistent posterior"
+                "ERROR: live public observation degraded the persistent posterior: "
+                f"{update.recovery_diagnostic}"
             )
         if update.matched_branches <= 0:
             raise SystemExit("ERROR: no hypothetical branch matched the live observation")
@@ -102,7 +103,8 @@ def main() -> None:
             )
         if second_update.degraded:
             raise SystemExit(
-                "ERROR: second live observation degraded the persistent posterior"
+                "ERROR: second live observation degraded the persistent posterior: "
+                f"{second_update.recovery_diagnostic}"
             )
         if second_update.matched_branches <= 0:
             raise SystemExit("ERROR: turn-two observation matched no particle branch")
