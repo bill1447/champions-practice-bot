@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import json
 import random
+from collections import Counter
 from dataclasses import dataclass
 from itertools import product
 from typing import Any, Iterable
@@ -23,6 +24,16 @@ class BeliefParticle:
 
 
 @dataclass(frozen=True)
+class StructuralMismatchExample:
+    world_id: str
+    path: str
+    actual: Any
+    simulated: Any
+    opponent_choice: str
+    rng_seed: str | None
+
+
+@dataclass(frozen=True)
 class ParticleUpdate:
     particles: tuple[BeliefParticle, ...]
     generated: int
@@ -34,6 +45,9 @@ class ParticleUpdate:
     sampled_unresolved_world_ids: tuple[str, ...] = ()
     exhaustively_excluded_world_ids: tuple[str, ...] = ()
     unsupported_public_evidence: tuple[str, ...] = ()
+    structural_mismatch_paths: tuple[tuple[str, int], ...] = ()
+    structural_mismatch_worlds: tuple[tuple[str, int], ...] = ()
+    structural_mismatch_examples: tuple[StructuralMismatchExample, ...] = ()
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
@@ -125,6 +139,77 @@ def _public_diff_paths(
                 break
         return tuple(paths[:limit])
     return () if left == right else (path,)
+
+
+def _public_diff_details(
+    left: object,
+    right: object,
+    path: str = "$",
+    *,
+    limit: int = 64,
+) -> tuple[tuple[str, Any, Any], ...]:
+    """Return bounded public-view differences with representative values."""
+    if type(left) is not type(right):
+        return ((path, left, right),)
+    if isinstance(left, dict):
+        details: list[tuple[str, Any, Any]] = []
+        for key in sorted(set(left) | set(right)):
+            child = f"{path}.{key}"
+            if key not in left:
+                details.append((child, "<missing>", right[key]))
+            elif key not in right:
+                details.append((child, left[key], "<missing>"))
+            else:
+                details.extend(
+                    _public_diff_details(
+                        left[key],
+                        right[key],
+                        child,
+                        limit=max(0, limit - len(details)),
+                    )
+                )
+            if len(details) >= limit:
+                break
+        return tuple(details[:limit])
+    if isinstance(left, list):
+        if len(left) != len(right):
+            return ((f"{path}.length", len(left), len(right)),)
+        details: list[tuple[str, Any, Any]] = []
+        for index, (left_item, right_item) in enumerate(
+            zip(left, right, strict=True)
+        ):
+            details.extend(
+                _public_diff_details(
+                    left_item,
+                    right_item,
+                    f"{path}[{index}]",
+                    limit=max(0, limit - len(details)),
+                )
+            )
+            if len(details) >= limit:
+                break
+        return tuple(details[:limit])
+    return () if left == right else ((path, left, right),)
+
+
+def public_observation_mismatch_details(
+    actual_view: dict[str, Any],
+    simulated_view: dict[str, Any],
+) -> tuple[tuple[str, Any, Any], ...]:
+    """Compare normalized public observations and retain representative values."""
+    actual = json.loads(public_observation_signature(actual_view))
+    simulated = json.loads(public_observation_signature(simulated_view))
+    return _public_diff_details(actual, simulated)
+
+
+def _top_counter_items(
+    counter: Counter[str],
+    *,
+    limit: int = 16,
+) -> tuple[tuple[str, int], ...]:
+    return tuple(
+        sorted(counter.items(), key=lambda item: (-item[1], item[0]))[:limit]
+    )
 
 
 def public_observation_mismatch_paths(
@@ -759,6 +844,10 @@ def condition_particles(
     matched = 0
     stochastic_only_mismatches = 0
     structural_mismatches = 0
+    structural_mismatch_paths: Counter[str] = Counter()
+    structural_mismatch_worlds: Counter[str] = Counter()
+    structural_mismatch_examples: list[StructuralMismatchExample] = []
+    structural_example_keys: set[tuple[str, str]] = set()
     matched_source_world_ids: set[str] = set()
 
     observed_candidates = _observed_joint_move_candidates(
@@ -857,7 +946,7 @@ def condition_particles(
                     previews=previews,
                 )
             if public_observation_signature(view) != wanted:
-                kind, _paths = classify_public_observation_mismatch(
+                kind, paths = classify_public_observation_mismatch(
                     actual_public_view,
                     view,
                 )
@@ -865,6 +954,31 @@ def condition_particles(
                     stochastic_only_mismatches += 1
                 else:
                     structural_mismatches += 1
+                    structural_mismatch_paths.update(paths)
+                    structural_mismatch_worlds[source_world_id] += 1
+                    if len(structural_mismatch_examples) < 8:
+                        for path, actual, simulated in (
+                            public_observation_mismatch_details(
+                                actual_public_view,
+                                view,
+                            )
+                        ):
+                            key = (source_world_id, path)
+                            if key in structural_example_keys:
+                                continue
+                            structural_example_keys.add(key)
+                            structural_mismatch_examples.append(
+                                StructuralMismatchExample(
+                                    world_id=source_world_id,
+                                    path=path,
+                                    actual=actual,
+                                    simulated=simulated,
+                                    opponent_choice=response,
+                                    rng_seed=rng_seed,
+                                )
+                            )
+                            if len(structural_mismatch_examples) >= 8:
+                                break
                 continue
             matched += 1
             matched_source_world_ids.add(source_world_id)
@@ -920,4 +1034,11 @@ def condition_particles(
             )
         ),
         exhaustively_excluded_world_ids=roster_excluded_world_ids,
+        structural_mismatch_paths=_top_counter_items(
+            structural_mismatch_paths
+        ),
+        structural_mismatch_worlds=_top_counter_items(
+            structural_mismatch_worlds
+        ),
+        structural_mismatch_examples=tuple(structural_mismatch_examples),
     )
