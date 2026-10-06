@@ -973,8 +973,10 @@ function moveSlotCandidates(request, slot, gameType) {
   if (!active || isFainted(pokemon) || pokemon.commanding) return ["pass"];
 
   const choices = [];
+  let enabledMoveCount = 0;
   for (const move of active.moves) {
     if (move.disabled) continue;
+    enabledMoveCount++;
     const targets = publicMoveTargetLocations(
       request,
       slot,
@@ -995,6 +997,18 @@ function moveSlotCandidates(request, slot, gameType) {
         choices.push(parts.join(" "));
       }
     }
+  }
+
+  // Showdown's public "testfight" protocol can disclose that the final active
+  // has no enabled moves without revealing which hidden foe set caused it. In
+  // that exact case, "auto" is the protocol-safe way to let Showdown choose the
+  // forced Struggle. Restrict this to the last active: Side#autoChoose finishes
+  // every remaining slot, so using it earlier would surrender unrelated choices.
+  if (
+    enabledMoveCount === 0 &&
+    slot === request.active.length - 1
+  ) {
+    choices.push("auto");
   }
 
   if (!active.trapped) choices.push(...availableSwitches(request));
@@ -1117,6 +1131,13 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
         if (!healthySwitches.has(command)) return false;
         continue;
       }
+      if (tokens[0] === "auto") {
+        if (slot !== request.active.length - 1) return false;
+        if (!active.moves.length || active.moves.some((move) => !move.disabled)) {
+          return false;
+        }
+        continue;
+      }
       if (tokens[0] !== "move") return false;
     }
 
@@ -1186,11 +1207,7 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
   return true;
 }
 
-function publicChoiceCandidates(battle, sideId) {
-  if (sideId !== "p1" && sideId !== "p2") {
-    throw new Error("side must be p1 or p2");
-  }
-  if (battle.ended) return [];
+function publicChoiceCandidatesFromRequest(battle, sideId) {
   const side = sideId === "p1" ? battle.p1 : battle.p2;
   const request = side.activeRequest;
   const choices = proposedChoices(battle, side).filter((choice) =>
@@ -1199,27 +1216,65 @@ function publicChoiceCandidates(battle, sideId) {
 
   // Never probe a maybe-trapped slot against the exact hidden live state before
   // sealing. Showdown deliberately exposes maybeTrapped when switching might be
-  // unavailable because of hidden opponent information. Until we have an explicit
-  // unavailable-choice retry protocol, keep only choices that are certainly
-  // selectable from the public request.
+  // unavailable because of hidden opponent information. Keep only choices that
+  // are certainly selectable from the public request.
   if (!request?.active) return [...new Set(choices)].sort();
 
-  const uncertainSlots = new Set(
+  const uncertainSwitchSlots = new Set(
     request.active
       .map((active, index) => ({ active, index }))
       .filter(({ active }) => active?.maybeTrapped || active?.maybeLocked)
       .map(({ index }) => index),
   );
-  if (!uncertainSlots.size) return [...new Set(choices)].sort();
+  if (!uncertainSwitchSlots.size) return [...new Set(choices)].sort();
 
   const certain = choices.filter((choice) => {
     const commands = choice.split(",").map((command) => command.trim());
-    for (const slot of uncertainSlots) {
+    for (const slot of uncertainSwitchSlots) {
       if (commands[slot]?.startsWith("switch ")) return false;
     }
     return true;
   });
   return [...new Set(certain)].sort();
+}
+
+function publicChoiceCandidates(battle, sideId) {
+  if (sideId !== "p1" && sideId !== "p2") {
+    throw new Error("side must be p1 or p2");
+  }
+  if (battle.ended) return [];
+
+  const side = sideId === "p1" ? battle.p1 : battle.p2;
+  const request = side.activeRequest;
+  const needsFightProbe = request?.active?.some(
+    (active) => active?.maybeDisabled || active?.maybeLocked,
+  );
+  if (!needsFightProbe) {
+    return publicChoiceCandidatesFromRequest(battle, sideId);
+  }
+
+  // Showdown intentionally hides some Imprison/locking information behind the
+  // public "testfight" protocol. Do not replace that with exact hidden-state
+  // legality probing. Instead, fork the battle and invoke Showdown's own
+  // updateDisabledRequest routine -- the same request update used by testfight --
+  // then derive choices only from the resulting player-visible request.
+  const probe = Battle.fromJSON(JSON.stringify(battle.toJSON()));
+  probe.restart(() => {});
+  try {
+    const probeSide = sideId === "p1" ? probe.p1 : probe.p2;
+    const probeRequest = probeSide.activeRequest;
+    if (probeRequest?.active) {
+      for (const [slot, active] of probeRequest.active.entries()) {
+        if (!active?.maybeDisabled && !active?.maybeLocked) continue;
+        const pokemon = probeSide.active[slot];
+        if (!pokemon) continue;
+        probeSide.updateDisabledRequest(pokemon, active);
+      }
+    }
+    return publicChoiceCandidatesFromRequest(probe, sideId);
+  } finally {
+    probe.destroy();
+  }
 }
 
 function enumerateLegalChoices(battle, sideId) {
