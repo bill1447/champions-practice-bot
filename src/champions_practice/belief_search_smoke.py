@@ -307,8 +307,11 @@ def main() -> None:
             )
         if len(recommendation.chosen.worlds) != recommendation.world_count:
             raise SystemExit("ERROR: chosen action was not evaluated in every world")
-        if recommendation.timing.legal_cache_hits < recommendation.world_count - 1:
-            raise SystemExit("ERROR: equivalent candidate legality was not cached")
+        if recommendation.timing.legal_cache_misses < recommendation.world_count:
+            raise SystemExit(
+                "ERROR: exact belief-world candidate legality was not enumerated "
+                "independently"
+            )
         if recommendation.response_screening_branch_count > 1000:
             raise SystemExit("ERROR: autonomous response screening exceeded its budget")
 
