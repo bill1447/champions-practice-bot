@@ -9,6 +9,7 @@ from champions_practice.strength_league import (
     RUN_SCHEMA,
     GameResult,
     LeagueConfig,
+    StrengthLeagueError,
     _particle_seed,
     _resolve_preview_choice,
     _run_id,
@@ -177,7 +178,7 @@ def test_preview_choice_resolves_showdown_canonical_spacing():
 
 
 def test_preview_choice_rejects_different_bring_order():
-    with pytest.raises(Exception, match="preview is not legal"):
+    with pytest.raises(StrengthLeagueError, match="preview is not legal"):
         _resolve_preview_choice(
             ("team 2, 1, 4, 5",),
             "team 2135",
