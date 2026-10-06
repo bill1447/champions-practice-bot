@@ -122,6 +122,20 @@ class _CoordinatorWorker:
         self.aborted = True
 
 
+def test_human_choice_menu_uses_public_request_not_hidden_legality() -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+
+    assert controller.human_legal_choices() == ["move human"]
+
+
 class _WaitingCoordinatorWorker(_CoordinatorWorker):
     def session_public_choices(self, session_id, *, side):
         if side == "p2":
