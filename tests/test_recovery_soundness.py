@@ -207,11 +207,11 @@ def _particle(world_id: str) -> BeliefParticle:
     )
 
 
-def test_conditioning_report_detects_true_world_drop(monkeypatch):
+def test_conditioning_partial_sample_retains_all_starting_worlds(monkeypatch):
     true_particle = _particle("true")
     decoy_particle = _particle("decoy")
     case = TrueWorldConditioningCase(
-        transition=_transition("conditioning-drop"),
+        transition=_transition("conditioning-partial"),
         particles=(true_particle, decoy_particle),
         true_world_id="true",
         rng_batches=(("sodium," + "3" * 64,),),
@@ -236,22 +236,23 @@ def test_conditioning_report_detects_true_world_drop(monkeypatch):
     )
 
     report = evaluate_true_world_conditioning_suite(object(), (case,))
+    outcome = report.outcomes[0]
 
     assert report.total == 1
-    assert report.survived == 0
-    assert report.false_exclusions == 1
-    assert report.degraded_retentions == 0
-    assert report.true_world_survival_rate == 0.0
-    assert report.sound is False
+    assert report.survived == 1
+    assert report.false_exclusions == 0
+    assert report.degraded_retentions == 1
+    assert report.true_world_survival_rate == 1.0
+    assert report.sound is True
+    assert outcome.update.particles == ()
+    assert outcome.update.matched == 1
+    assert outcome.update.matched_world_ids == ("decoy",)
+    assert outcome.update.sampled_unresolved_world_ids == ("true",)
+    with pytest.raises(ValueError, match="only conditioning false exclusions"):
+        conditioning_false_exclusion_payload(outcome)
 
-    payload = conditioning_false_exclusion_payload(report.outcomes[0])
-    assert payload["schema"] == "conditioning-true-world-regression-v1"
-    assert payload["true_world_id"] == "true"
-    assert payload["conditioning"]["posterior_world_ids"] == ["decoy"]
-    assert payload["conditioning"]["stochastic_only_mismatches"] == 1
 
-
-def test_conditioning_false_exclusion_writer_persists_hard_case(
+def test_conditioning_sampling_miss_writes_no_false_exclusion(
     monkeypatch,
     tmp_path: Path,
 ):
@@ -288,16 +289,12 @@ def test_conditioning_false_exclusion_writer_persists_hard_case(
         output_dir=tmp_path / "hard-cases",
     )
 
-    assert len(paths) == 1
-    payload = json.loads(paths[0].read_text(encoding="utf-8"))
-    assert payload["case_id"] == "conditioning-write"
-    assert payload["true_world_id"] == "true"
-    assert payload["starting_particles"][0]["world_id"] == "true"
-    assert payload["conditioning"]["posterior_world_ids"] == ["decoy"]
+    assert paths == ()
+    assert list((tmp_path / "hard-cases").glob("*.json")) == []
     assert list((tmp_path / "hard-cases").glob("*.part")) == []
 
 
-def test_conditioning_adaptive_batches_stop_at_first_nonempty_update(
+def test_conditioning_adaptive_batches_wait_for_all_worlds(
     monkeypatch,
 ):
     true_particle = _particle("true")
@@ -341,7 +338,14 @@ def test_conditioning_adaptive_batches_stop_at_first_nonempty_update(
                 stochastic_only_mismatches=1,
                 structural_mismatches=0,
             )
-        raise AssertionError("conditioning evaluated after first nonempty batch")
+        return ParticleUpdate(
+            particles=(true_particle, decoy_particle),
+            generated=2,
+            matched=2,
+            deduplicated=0,
+            stochastic_only_mismatches=0,
+            structural_mismatches=0,
+        )
 
     monkeypatch.setattr(
         "champions_practice.recovery_soundness.condition_particles",
@@ -351,12 +355,14 @@ def test_conditioning_adaptive_batches_stop_at_first_nonempty_update(
     report = evaluate_true_world_conditioning_suite(object(), (case,))
     outcome = report.outcomes[0]
 
-    assert seen == [(first_seed,), (second_seed,)]
+    assert seen == [(first_seed,), (second_seed,), (third_seed,)]
     assert outcome.survived is True
     assert outcome.degraded_retention is False
-    assert outcome.update.generated == 4
-    assert outcome.update.matched == 1
+    assert outcome.update.generated == 6
+    assert outcome.update.matched == 3
     assert outcome.update.stochastic_only_mismatches == 3
+    assert set(outcome.update.matched_world_ids) == {"true", "decoy"}
+
 
 
 def test_conditioning_zero_match_retains_last_good_true_world(monkeypatch):
