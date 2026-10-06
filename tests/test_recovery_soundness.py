@@ -339,11 +339,11 @@ def test_conditioning_adaptive_batches_wait_for_all_worlds(
                 structural_mismatches=0,
             )
         return ParticleUpdate(
-            particles=(true_particle, decoy_particle),
+            particles=(decoy_particle,),
             generated=2,
-            matched=2,
+            matched=1,
             deduplicated=0,
-            stochastic_only_mismatches=0,
+            stochastic_only_mismatches=1,
             structural_mismatches=0,
         )
 
@@ -359,8 +359,8 @@ def test_conditioning_adaptive_batches_wait_for_all_worlds(
     assert outcome.survived is True
     assert outcome.degraded_retention is False
     assert outcome.update.generated == 6
-    assert outcome.update.matched == 3
-    assert outcome.update.stochastic_only_mismatches == 3
+    assert outcome.update.matched == 2
+    assert outcome.update.stochastic_only_mismatches == 4
     assert set(outcome.update.matched_world_ids) == {"true", "decoy"}
 
 
