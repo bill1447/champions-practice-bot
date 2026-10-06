@@ -625,6 +625,90 @@ def merge_sampled_world_witnesses(
     return _normalize(merged)
 
 
+def _publicly_seen_species(view: dict[str, Any]) -> set[str]:
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return set()
+    revealed = opponent.get("revealed")
+    if not isinstance(revealed, list):
+        return set()
+    return {
+        _id(str(entry.get("species", "")))
+        for entry in revealed
+        if isinstance(entry, dict)
+        and entry.get("seen") is True
+        and _id(str(entry.get("species", "")))
+    }
+
+
+def _particle_selected_species(
+    particle: BeliefParticle,
+    *,
+    ai_side: str,
+) -> set[str] | None:
+    sides = particle.state.get("sides")
+    opponent_index = 1 if ai_side == "p1" else 0
+    if (
+        not isinstance(sides, list)
+        or len(sides) <= opponent_index
+        or not isinstance(sides[opponent_index], dict)
+    ):
+        return None
+    pokemon = sides[opponent_index].get("pokemon")
+    if not isinstance(pokemon, list) or not pokemon:
+        return None
+
+    species: set[str] = set()
+    for mon in pokemon:
+        if not isinstance(mon, dict):
+            return None
+        set_data = mon.get("set")
+        if not isinstance(set_data, dict):
+            return None
+        value = _id(str(set_data.get("species") or set_data.get("name") or ""))
+        if not value:
+            return None
+        species.add(value)
+    return species
+
+
+def _public_roster_exhaustive_exclusions(
+    particles: tuple[BeliefParticle, ...],
+    *,
+    ai_side: str,
+    actual_public_view: dict[str, Any],
+) -> tuple[set[int], tuple[str, ...]]:
+    """Exclude worlds contradicted by public bring-four membership evidence.
+
+    The public producer marks a preview-roster species as seen only after a
+    channel-visible switch/drag/replace event. Once seen, that species must be one
+    of the four Pokemon selected in any compatible exact world. This fact is
+    deterministic and RNG-independent, so it is valid exhaustive negative
+    evidence rather than a sampled miss.
+    """
+    seen_species = _publicly_seen_species(actual_public_view)
+    if not seen_species:
+        return set(), ()
+
+    incompatible_indexes: set[int] = set()
+    world_members: dict[str, list[int]] = {}
+    for index, particle in enumerate(particles):
+        world_id = _source_world_id(particle, index)
+        world_members.setdefault(world_id, []).append(index)
+        selected = _particle_selected_species(particle, ai_side=ai_side)
+        if selected is not None and not seen_species.issubset(selected):
+            incompatible_indexes.add(index)
+
+    excluded_worlds = tuple(
+        sorted(
+            world_id
+            for world_id, indexes in world_members.items()
+            if indexes and all(index in incompatible_indexes for index in indexes)
+        )
+    )
+    return incompatible_indexes, excluded_worlds
+
+
 def condition_particles(
     worker: ShowdownSearchWorker,
     *,
@@ -681,9 +765,19 @@ def condition_particles(
         actual_public_view,
         previous_public_view=previous_public_view,
     )
+    (
+        roster_incompatible_indexes,
+        roster_excluded_world_ids,
+    ) = _public_roster_exhaustive_exclusions(
+        particles,
+        ai_side=ai_side,
+        actual_public_view=actual_public_view,
+    )
 
     for particle_index, particle in enumerate(particles):
         source_world_id = _source_world_id(particle, particle_index)
+        if particle_index in roster_incompatible_indexes:
+            continue
         responses: tuple[str, ...]
         validator = getattr(worker, "validate_choices", None)
 
@@ -819,6 +913,11 @@ def condition_particles(
         structural_mismatches=structural_mismatches,
         matched_world_ids=tuple(sorted(matched_source_world_ids)),
         sampled_unresolved_world_ids=tuple(
-            sorted(all_world_ids - matched_source_world_ids)
+            sorted(
+                all_world_ids
+                - matched_source_world_ids
+                - set(roster_excluded_world_ids)
+            )
         ),
+        exhaustively_excluded_world_ids=roster_excluded_world_ids,
     )
