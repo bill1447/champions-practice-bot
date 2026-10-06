@@ -76,7 +76,7 @@ class FakeReplaySource:
     def __init__(
         self,
         *,
-        pages: dict[int | None, list[dict[str, Any]]],
+        pages: dict[int | None, list[dict[str, Any]] | BaseException],
         details: dict[str, bytes | BaseException],
     ) -> None:
         self.pages = pages
@@ -91,7 +91,10 @@ class FakeReplaySource:
         before: int | None,
     ) -> list[dict[str, Any]]:
         self.search_calls.append((format_id, before))
-        return list(self.pages.get(before, []))
+        result = self.pages.get(before, [])
+        if isinstance(result, BaseException):
+            raise result
+        return list(result)
 
     def fetch_replay(self, replay_id: str) -> bytes:
         self.fetch_calls.append(replay_id)
@@ -232,6 +235,112 @@ def test_archive_survey_counts_search_rows_without_fetching_replay_bodies():
     assert stats.newest_uploadtime == 2000
     assert stats.oldest_uploadtime == 1899
     assert stats.elapsed_seconds == 0.0
+    assert stats.resumed is False
+
+
+def test_archive_survey_resumes_from_separate_cache_checkpoint(tmp_path: Path):
+    project_root, data_root = _external_root(tmp_path)
+    first_page = [
+        _search_row(f"{DEFAULT_FORMAT}-{3000 - index}", uploadtime=3000 - index)
+        for index in range(51)
+    ]
+    next_before = first_page[-1]["uploadtime"]
+    tail = [
+        _search_row(f"{DEFAULT_FORMAT}-2900", uploadtime=2900),
+        _search_row(f"{DEFAULT_FORMAT}-2899", uploadtime=2899),
+    ]
+
+    interrupted = FakeReplaySource(
+        pages={
+            None: first_page,
+            next_before: ReplayCorpusError("temporary search failure"),
+        },
+        details={},
+    )
+    with pytest.raises(ReplayCorpusError, match="temporary search failure"):
+        survey_replay_archive(
+            interrupted,
+            format_id=DEFAULT_FORMAT,
+            data_root=data_root,
+            project_root=project_root,
+            progress=None,
+            clock=lambda: 10.0,
+        )
+
+    checkpoint = (
+        data_root
+        / "cache"
+        / "replay-surveys"
+        / DEFAULT_FORMAT
+        / "checkpoint.json"
+    )
+    ledger = checkpoint.with_name("seen-ids.txt")
+    assert checkpoint.is_file()
+    assert ledger.is_file()
+    assert not (data_root / "manifests" / "replays.sqlite3").exists()
+
+    resumed_source = FakeReplaySource(
+        pages={next_before: tail},
+        details={},
+    )
+    stats = survey_replay_archive(
+        resumed_source,
+        format_id=DEFAULT_FORMAT,
+        data_root=data_root,
+        project_root=project_root,
+        progress=None,
+        clock=lambda: 20.0,
+    )
+
+    assert resumed_source.search_calls == [(DEFAULT_FORMAT, next_before)]
+    assert resumed_source.fetch_calls == []
+    assert stats.resumed is True
+    assert stats.pages_completed == 2
+    assert stats.search_rows_seen == 53
+    assert stats.unique_replays == 53
+    assert stats.duplicate_rows == 0
+    assert stats.newest_uploadtime == 3000
+    assert stats.oldest_uploadtime == 2899
+
+    saved = json.loads(checkpoint.read_text(encoding="utf-8"))
+    assert saved["exhausted"] is True
+    assert saved["unique_replays"] == 53
+
+
+def test_archive_survey_restart_discards_saved_progress(tmp_path: Path):
+    project_root, data_root = _external_root(tmp_path)
+    old_id = f"{DEFAULT_FORMAT}-4000"
+    initial = FakeReplaySource(
+        pages={None: [_search_row(old_id, uploadtime=4000)]},
+        details={},
+    )
+    first = survey_replay_archive(
+        initial,
+        format_id=DEFAULT_FORMAT,
+        data_root=data_root,
+        project_root=project_root,
+        progress=None,
+    )
+    assert first.unique_replays == 1
+
+    new_id = f"{DEFAULT_FORMAT}-5000"
+    restarted = FakeReplaySource(
+        pages={None: [_search_row(new_id, uploadtime=5000)]},
+        details={},
+    )
+    second = survey_replay_archive(
+        restarted,
+        format_id=DEFAULT_FORMAT,
+        data_root=data_root,
+        project_root=project_root,
+        restart=True,
+        progress=None,
+    )
+
+    assert restarted.search_calls == [(DEFAULT_FORMAT, None)]
+    assert second.resumed is False
+    assert second.unique_replays == 1
+    assert second.newest_uploadtime == 5000
 
 
 def test_archive_survey_rejects_nonadvancing_pagination_cursor():

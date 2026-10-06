@@ -34,6 +34,7 @@ DEFAULT_TIMEOUT_SECONDS = 20.0
 DEFAULT_RETRIES = 4
 PROGRESS_EVERY_DOWNLOADS = 100
 PROGRESS_EVERY_SURVEY_PAGES = 100
+SURVEY_CHECKPOINT_SCHEMA = "replay-archive-survey-checkpoint-v1"
 _SAFE_ID = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
 
@@ -89,6 +90,7 @@ class SurveyStats:
     newest_uploadtime: int | None
     oldest_uploadtime: int | None
     elapsed_seconds: float
+    resumed: bool
 
 
 @dataclass(frozen=True)
@@ -1014,47 +1016,225 @@ def download_replay_corpus(
         connection.close()
 
 
+def _survey_state_paths(
+    data_root: str | Path,
+    *,
+    format_id: str,
+    project_root: str | Path | None = None,
+) -> tuple[Path, Path]:
+    layout = initialize_layout(data_root, project_root=project_root)
+    base = layout.cache / "replay-surveys" / format_id
+    return base / "checkpoint.json", base / "seen-ids.txt"
+
+
+def _load_survey_seen_ids(path: Path) -> set[str]:
+    if not path.is_file():
+        return set()
+    seen: set[str] = set()
+    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), start=1):
+        replay_id = line.strip()
+        if not replay_id:
+            continue
+        try:
+            _validate_public_id(replay_id, label=f"survey id ledger line {line_number}")
+        except ValueError as error:
+            raise ReplayCorpusError(str(error)) from error
+        seen.add(replay_id)
+    return seen
+
+
+def _append_survey_ids(path: Path, replay_ids: list[str]) -> None:
+    if not replay_ids:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8", newline="\n") as handle:
+        for replay_id in replay_ids:
+            handle.write(replay_id)
+            handle.write("\n")
+        handle.flush()
+        os.fsync(handle.fileno())
+
+
+def _load_survey_checkpoint(
+    path: Path,
+    *,
+    format_id: str,
+) -> dict[str, Any] | None:
+    if not path.is_file():
+        return None
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as error:
+        raise ReplayCorpusError(f"invalid replay survey checkpoint at {path}") from error
+    if not isinstance(payload, dict) or payload.get("schema") != SURVEY_CHECKPOINT_SCHEMA:
+        raise ReplayCorpusError(f"unsupported replay survey checkpoint at {path}")
+    if payload.get("format_id") != format_id:
+        raise ReplayCorpusError("replay survey checkpoint format does not match request")
+    for key in ("pages_completed", "search_rows_seen", "unique_replays"):
+        value = payload.get(key)
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise ReplayCorpusError(f"replay survey checkpoint has invalid {key}")
+    before = payload.get("before_uploadtime")
+    if before is not None and (
+        isinstance(before, bool) or not isinstance(before, int) or before <= 0
+    ):
+        raise ReplayCorpusError(
+            "replay survey checkpoint has invalid before_uploadtime"
+        )
+    for key in ("newest_uploadtime", "oldest_uploadtime"):
+        value = payload.get(key)
+        if value is not None and (
+            isinstance(value, bool) or not isinstance(value, int) or value <= 0
+        ):
+            raise ReplayCorpusError(f"replay survey checkpoint has invalid {key}")
+    elapsed = payload.get("elapsed_seconds", 0.0)
+    if isinstance(elapsed, bool) or not isinstance(elapsed, (int, float)) or elapsed < 0:
+        raise ReplayCorpusError(
+            "replay survey checkpoint has invalid elapsed_seconds"
+        )
+    if not isinstance(payload.get("exhausted"), bool):
+        raise ReplayCorpusError("replay survey checkpoint has invalid exhausted flag")
+    return payload
+
+
+def _write_survey_checkpoint(
+    path: Path,
+    *,
+    format_id: str,
+    before_uploadtime: int | None,
+    exhausted: bool,
+    pages_completed: int,
+    search_rows_seen: int,
+    unique_replays: int,
+    newest_uploadtime: int | None,
+    oldest_uploadtime: int | None,
+    elapsed_seconds: float,
+) -> None:
+    payload = {
+        "schema": SURVEY_CHECKPOINT_SCHEMA,
+        "format_id": format_id,
+        "before_uploadtime": before_uploadtime,
+        "exhausted": exhausted,
+        "pages_completed": pages_completed,
+        "search_rows_seen": search_rows_seen,
+        "unique_replays": unique_replays,
+        "newest_uploadtime": newest_uploadtime,
+        "oldest_uploadtime": oldest_uploadtime,
+        "elapsed_seconds": round(max(0.0, elapsed_seconds), 3),
+        "updated_at": _utc_now(),
+    }
+    _atomic_write(
+        path,
+        (json.dumps(payload, indent=2, sort_keys=True) + "\n").encode("utf-8"),
+    )
+
+
 def survey_replay_archive(
     source: ReplaySource,
     *,
     format_id: str = DEFAULT_FORMAT,
+    data_root: str | Path | None = None,
+    project_root: str | Path | None = None,
+    restart: bool = False,
     progress: Callable[[str], None] | None = print,
     clock: Callable[[], float] = time.monotonic,
 ) -> SurveyStats:
-    """Count replay IDs exposed by the Showdown search archive without downloading them.
+    """Count replay IDs exposed by Showdown search without downloading replay bodies.
 
-    This intentionally does not open the local manifest database and therefore cannot
-    mutate or contend with downloader checkpoints.
+    Persistent survey state, when requested, lives under the external cache tree and is
+    completely separate from the downloader's SQLite manifest/checkpoint.
     """
 
     _validate_public_id(format_id, label="format")
-    started_at = clock()
-    before: int | None = None
-    pages_completed = 0
-    search_rows_seen = 0
-    duplicate_rows = 0
-    newest_uploadtime: int | None = None
-    oldest_uploadtime: int | None = None
+    checkpoint_path: Path | None = None
+    ids_path: Path | None = None
+    checkpoint: dict[str, Any] | None = None
     seen_ids: set[str] = set()
+
+    if data_root is not None:
+        checkpoint_path, ids_path = _survey_state_paths(
+            data_root,
+            format_id=format_id,
+            project_root=project_root,
+        )
+        if restart:
+            checkpoint_path.unlink(missing_ok=True)
+            ids_path.unlink(missing_ok=True)
+        seen_ids = _load_survey_seen_ids(ids_path)
+        checkpoint = _load_survey_checkpoint(
+            checkpoint_path,
+            format_id=format_id,
+        )
+        if checkpoint is not None and checkpoint["unique_replays"] > len(seen_ids):
+            raise ReplayCorpusError(
+                "replay survey checkpoint references more unique IDs than its ledger"
+            )
+
+    resumed = checkpoint is not None or bool(seen_ids)
+    before = checkpoint.get("before_uploadtime") if checkpoint is not None else None
+    pages_completed = int(checkpoint["pages_completed"]) if checkpoint is not None else 0
+    search_rows_seen = int(checkpoint["search_rows_seen"]) if checkpoint is not None else 0
+    newest_uploadtime = (
+        checkpoint.get("newest_uploadtime") if checkpoint is not None else None
+    )
+    oldest_uploadtime = (
+        checkpoint.get("oldest_uploadtime") if checkpoint is not None else None
+    )
+    prior_elapsed = (
+        float(checkpoint.get("elapsed_seconds", 0.0)) if checkpoint is not None else 0.0
+    )
+    started_at = clock()
+
+    def elapsed_total() -> float:
+        return prior_elapsed + max(0.0, clock() - started_at)
+
+    if checkpoint is not None and checkpoint["exhausted"]:
+        return SurveyStats(
+            format_id=format_id,
+            pages_completed=pages_completed,
+            search_rows_seen=search_rows_seen,
+            unique_replays=len(seen_ids),
+            duplicate_rows=max(0, search_rows_seen - len(seen_ids)),
+            newest_uploadtime=newest_uploadtime,
+            oldest_uploadtime=oldest_uploadtime,
+            elapsed_seconds=round(prior_elapsed, 3),
+            resumed=True,
+        )
 
     while True:
         rows = source.search(format_id=format_id, before=before)
         pages_completed += 1
         if not rows:
+            if checkpoint_path is not None:
+                _write_survey_checkpoint(
+                    checkpoint_path,
+                    format_id=format_id,
+                    before_uploadtime=None,
+                    exhausted=True,
+                    pages_completed=pages_completed,
+                    search_rows_seen=search_rows_seen,
+                    unique_replays=len(seen_ids),
+                    newest_uploadtime=newest_uploadtime,
+                    oldest_uploadtime=oldest_uploadtime,
+                    elapsed_seconds=elapsed_total(),
+                )
             break
 
+        new_ids: list[str] = []
         for row in rows:
             search_rows_seen += 1
             replay_id = row["id"]
             uploadtime = int(row["uploadtime"])
-            if replay_id in seen_ids:
-                duplicate_rows += 1
-            else:
+            if replay_id not in seen_ids:
                 seen_ids.add(replay_id)
+                new_ids.append(replay_id)
             if newest_uploadtime is None or uploadtime > newest_uploadtime:
                 newest_uploadtime = uploadtime
             if oldest_uploadtime is None or uploadtime < oldest_uploadtime:
                 oldest_uploadtime = uploadtime
+
+        if ids_path is not None:
+            _append_survey_ids(ids_path, new_ids)
 
         if progress is not None and (
             pages_completed == 1
@@ -1066,14 +1246,31 @@ def survey_replay_archive(
                 f"{search_rows_seen} search rows"
             )
 
-        if len(rows) < SEARCH_PAGE_LIMIT:
-            break
+        exhausted = len(rows) < SEARCH_PAGE_LIMIT
+        next_before: int | None = None
+        if not exhausted:
+            next_before = min(int(row["uploadtime"]) for row in rows)
+            if before is not None and next_before >= before:
+                raise ReplayCorpusError(
+                    "Showdown replay survey pagination cursor did not move backward"
+                )
 
-        next_before = min(int(row["uploadtime"]) for row in rows)
-        if before is not None and next_before >= before:
-            raise ReplayCorpusError(
-                "Showdown replay survey pagination cursor did not move backward"
+        if checkpoint_path is not None:
+            _write_survey_checkpoint(
+                checkpoint_path,
+                format_id=format_id,
+                before_uploadtime=next_before,
+                exhausted=exhausted,
+                pages_completed=pages_completed,
+                search_rows_seen=search_rows_seen,
+                unique_replays=len(seen_ids),
+                newest_uploadtime=newest_uploadtime,
+                oldest_uploadtime=oldest_uploadtime,
+                elapsed_seconds=elapsed_total(),
             )
+
+        if exhausted:
+            break
         before = next_before
 
     return SurveyStats(
@@ -1081,10 +1278,11 @@ def survey_replay_archive(
         pages_completed=pages_completed,
         search_rows_seen=search_rows_seen,
         unique_replays=len(seen_ids),
-        duplicate_rows=duplicate_rows,
+        duplicate_rows=max(0, search_rows_seen - len(seen_ids)),
         newest_uploadtime=newest_uploadtime,
         oldest_uploadtime=oldest_uploadtime,
-        elapsed_seconds=round(max(0.0, clock() - started_at), 3),
+        elapsed_seconds=round(elapsed_total(), 3),
+        resumed=resumed,
     )
 
 
@@ -1175,6 +1373,11 @@ def _build_parser() -> argparse.ArgumentParser:
             "bodies or opening the local manifest database."
         ),
     )
+    parser.add_argument(
+        "--restart-survey",
+        action="store_true",
+        help="Discard saved survey progress and restart from the newest replay.",
+    )
     return parser
 
 
@@ -1184,6 +1387,8 @@ def main(argv: list[str] | None = None) -> None:
     try:
         if args.status and args.survey:
             raise ReplayCorpusError("--status and --survey are mutually exclusive")
+        if args.restart_survey and not args.survey:
+            raise ReplayCorpusError("--restart-survey requires --survey")
         if args.status:
             data_root = _resolve_cli_data_root(args.data_root)
             print(json.dumps(corpus_status(data_root, format_id=args.format_id), indent=2))
@@ -1195,9 +1400,12 @@ def main(argv: list[str] | None = None) -> None:
             retries=args.retries,
         )
         if args.survey:
+            data_root = _resolve_cli_data_root(args.data_root)
             stats = survey_replay_archive(
                 source,
                 format_id=args.format_id,
+                data_root=data_root,
+                restart=args.restart_survey,
             )
             print(json.dumps(stats.__dict__, indent=2))
             return
