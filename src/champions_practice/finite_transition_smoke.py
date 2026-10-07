@@ -19,6 +19,23 @@ P2_PREVIEW = "team 2135"
 P1_CHOICE = "move protect, move trickroom"
 P2_CHOICE = "move closecombat +2, move imprison"
 RNG_SEED = "sodium,0123456789abcdef0123456789abcdef"
+# Avoid mirror speed ties in this isolated transition smoke. The production
+# regression below keeps the exact mirror fixture; this one is deliberately
+# small enough that exhaustive negative coverage can complete in CI.
+P1_TEAM = (
+    SMOKE_TEAM
+    .replace(
+        "EVs: 32 HP / 32 Def / 2 Spe",
+        "EVs: 32 HP / 32 Def / 1 Spe",
+        1,
+    )
+    .replace(
+        "EVs: 2 HP / 32 Atk / 32 Spe",
+        "EVs: 2 HP / 32 Atk / 30 Spe",
+        1,
+    )
+)
+
 PREVIEWS = {
     "p1": [
         "Indeedee-F",
@@ -43,7 +60,7 @@ def main() -> None:
     with HypotheticalSearchWorker() as worker:
         state = worker.create_state(
             battle_format=CHAMPIONS_FORMAT,
-            p1_team=SMOKE_TEAM,
+            p1_team=P1_TEAM,
             p2_team=SMOKE_TEAM,
             p1_preview=P1_PREVIEW,
             p2_preview=P2_PREVIEW,
