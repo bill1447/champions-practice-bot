@@ -41,7 +41,6 @@ from champions_practice.observation_beliefs import (
     observed_joint_move_candidates,
     public_observation_signature,
     public_opponent_actions_fully_observed,
-    public_opponent_moves_fully_observed,
     resample_particles_by_world,
 )
 from champions_practice.reachability import (
