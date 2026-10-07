@@ -26,12 +26,12 @@ P1_TEAM = (
     SMOKE_TEAM
     .replace(
         "EVs: 32 HP / 32 Def / 2 Spe",
-        "EVs: 32 HP / 32 Def / 1 Spe",
+        "EVs: 32 HP / 1 Atk / 32 Def / 1 Spe",
         1,
     )
     .replace(
         "EVs: 2 HP / 32 Atk / 32 Spe",
-        "EVs: 2 HP / 32 Atk / 30 Spe",
+        "EVs: 2 HP / 32 Atk / 2 Def / 30 Spe",
         1,
     )
 )
