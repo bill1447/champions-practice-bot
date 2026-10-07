@@ -11,6 +11,7 @@ from itertools import product
 from typing import Any, Iterable
 
 from .search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
+from .showdown_public_catalog import MEGA_ITEM_IDS, TRANSFORM_ITEM_SPECIES_IDS
 
 
 @dataclass(frozen=True)
@@ -540,6 +541,11 @@ def _observed_opponent_actions(
 
 _TRANSFORMATION_COMMANDS = ("mega", "megax", "megay", "ultra")
 _MEGA_COMMANDS = ("mega", "megax", "megay")
+_MEGA_CAPABLE_SPECIES = frozenset(
+    species
+    for item_id in MEGA_ITEM_IDS
+    for species in TRANSFORM_ITEM_SPECIES_IDS.get(item_id, ())
+)
 
 
 def _public_view_side_id(
@@ -647,6 +653,60 @@ def observed_public_actions(
     )
 
 
+def _public_active_species_id(
+    view: dict[str, Any],
+    *,
+    slot: int,
+) -> str | None:
+    opponent = view.get("opponent")
+    active = opponent.get("active") if isinstance(opponent, dict) else None
+    if not isinstance(active, list) or slot <= 0 or slot > len(active):
+        return None
+    member = active[slot - 1]
+    if not isinstance(member, dict):
+        return None
+    species = member.get("species")
+    return _id(species) if isinstance(species, str) and species else None
+
+
+def _partial_public_transform_requirements(
+    view: dict[str, Any],
+    *,
+    actions: tuple[tuple[int, str, str, int | None], ...],
+    previous_public_view: dict[str, Any] | None = None,
+) -> dict[int, tuple[str, ...]] | None:
+    """Return per-observed-slot transform constraints for partial action evidence.
+
+    Positive public transformation events constrain the corresponding observed
+    move slot directly. Absence of a transformation event is used only when the
+    public active species is itself Mega-capable. That narrow gate keeps
+    unrelated partial-action recovery behavior unchanged while preventing an
+    ordinary public Gardevoir move from being replayed as a Mega command.
+
+    None means event/action alignment is not publicly provable, so callers fail
+    open and apply no transformation pruning.
+    """
+    aligned = _public_opponent_transform_requirements(
+        view,
+        previous_public_view=previous_public_view,
+    )
+    if aligned is None:
+        return None
+
+    requirements: dict[int, tuple[str, ...]] = {}
+    for slot, kind, _value, _target in actions:
+        if kind != "move":
+            continue
+        allowed = aligned.get(slot)
+        if allowed is not None:
+            requirements[slot] = allowed
+            continue
+        species = _public_active_species_id(view, slot=slot)
+        if species in _MEGA_CAPABLE_SPECIES:
+            requirements[slot] = ()
+    return requirements
+
+
 def _state_party_species(
     state: dict[str, Any],
     *,
@@ -682,6 +742,7 @@ def _choice_matches_observed_actions(
     *,
     state: dict[str, Any] | None = None,
     side: str | None = None,
+    transform_requirements: dict[int, tuple[str, ...]] | None = None,
 ) -> bool:
     commands = [command.strip().split() for command in choice.split(",")]
     for slot, kind, action_value, observed_target in actions:
@@ -708,6 +769,27 @@ def _choice_matches_observed_actions(
                 and command_target != observed_target
             ):
                 return False
+
+            if (
+                transform_requirements is not None
+                and slot in transform_requirements
+            ):
+                transform_tokens = [
+                    token
+                    for token in tokens[2:]
+                    if token in _TRANSFORMATION_COMMANDS
+                ]
+                if len(transform_tokens) > 1:
+                    return False
+                command_transform = (
+                    transform_tokens[0] if transform_tokens else None
+                )
+                allowed = transform_requirements[slot]
+                if allowed:
+                    if command_transform not in allowed:
+                        return False
+                elif command_transform is not None:
+                    return False
             continue
 
         if kind == "switch":
@@ -743,6 +825,11 @@ def _filter_responses_by_public_actions(
     )
     if not actions:
         return responses
+    transform_requirements = _partial_public_transform_requirements(
+        actual_public_view,
+        actions=actions,
+        previous_public_view=previous_public_view,
+    )
     filtered = tuple(
         response
         for response in responses
@@ -751,6 +838,7 @@ def _filter_responses_by_public_actions(
             actions,
             state=state,
             side=side,
+            transform_requirements=transform_requirements,
         )
     )
     if filtered or not fail_open:
