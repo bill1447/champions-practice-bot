@@ -697,7 +697,7 @@ def test_public_command_witness_seed_is_replayed_across_worlds(
         "world-a",
         "world-b",
     }
-    assert sorted(particle.weight for particle in update.particles) == [0.4, 0.6]
+    assert sorted(particle.weight for particle in update.particles) == pytest.approx([0.4, 0.6])
     assert update.finite_reachability_witnesses == 2
     assert update.finite_reachability_unresolved == 0
     assert len(worker.seeds) == 2
