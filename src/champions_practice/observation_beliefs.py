@@ -1177,6 +1177,8 @@ def condition_particles(
             tuple(responses),
             actual_public_view,
             previous_public_view=previous_public_view,
+            state=particle.state,
+            side=opponent_side,
         )
         if not responses:
             continue
