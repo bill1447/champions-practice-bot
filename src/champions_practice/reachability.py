@@ -47,7 +47,7 @@ from champions_practice.showdown_public_catalog import (
 )
 
 
-PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v9"
+PUBLIC_OBSERVATION_SCHEMA_VERSION = "showdown-player-view-v10"
 
 
 class ReachabilityStatus(str, Enum):
@@ -2224,17 +2224,35 @@ def _revealed_pokemon_schema_issue(value: object, *, path: str) -> str | None:
 def _opponent_action_schema_issue(value: object, *, path: str) -> str | None:
     if not isinstance(value, dict):
         return _schema_error(path, "must be a dictionary")
-    issue = _exact_keys(
-        value,
-        path=path,
-        keys={"turn", "slot", "move", "target"},
-    )
-    if issue:
-        return issue
+
+    common = {"turn", "slot"}
+    keys = set(value)
+    move_keys = common | {"move", "target"}
+    switch_keys = common | {"switch_species"}
+    if keys == move_keys:
+        kind = "move"
+    elif keys == switch_keys:
+        kind = "switch"
+    else:
+        return _schema_error(
+            path,
+            "must be exactly one selected move or selected-switch variant",
+        )
+
     if not _non_bool_int(value["turn"], minimum=1):
         return _schema_error(f"{path}.turn", "must be a positive integer")
     if not _non_bool_int(value["slot"]) or value["slot"] not in {1, 2}:
         return _schema_error(f"{path}.slot", "must be integer doubles slot 1 or 2")
+
+    if kind == "switch":
+        species = value["switch_species"]
+        if not isinstance(species, str) or species not in SPECIES_IDS:
+            return _schema_error(
+                f"{path}.switch_species",
+                "must be a pinned canonical species id",
+            )
+        return None
+
     if not _known_public_move_id(value["move"]):
         return _schema_error(f"{path}.move", "must be a pinned move id")
     target = value["target"]
@@ -2949,6 +2967,7 @@ def public_reachability_observation_issue(
         retained_by_slot = {
             action["slot"]: action["move"]
             for action in opponent_actions
+            if "move" in action
         }
 
         for slot, moves in selected_by_slot.items():
@@ -2966,6 +2985,8 @@ def public_reachability_observation_issue(
 
     if opponent_actions:
         for index, action in enumerate(opponent_actions):
+            if "move" not in action:
+                continue
             if (
                 execution["turn"] == action["turn"]
                 and (action["slot"], action["move"]) not in public_selected
