@@ -1,15 +1,16 @@
-"""Typed mechanics-reachability evidence with no live-admission authority.
-
-This module defines the result contract for future Showdown-backed stochastic
-damage and categorical reachability. It is intentionally not integrated with
-recovery admission or live belief decisions.
+"""Typed mechanics-reachability evidence for exact Showdown transitions.
 
 A witnessed outcome establishes mechanical reachability for the supplied
 sequential context. An exhaustively-disproved outcome establishes mechanical
 impossibility only when the result explicitly covers the full sequential
 transition context and all relevant randomness. Bounded sampling misses,
-timeouts, and unsupported mechanics remain unresolved or unsupported and may
-not be promoted into exclusion evidence.
+timeouts, unsupported mechanics, and branch-budget exhaustion remain unresolved
+or unsupported and may not be promoted into exclusion evidence.
+
+The finite-transition enumerator is the first live belief-conditioning consumer
+of this authority boundary. It may advance a belief world from a witnessed
+public transition and may exclude a world only after the complete finite
+random-call tree for every public command candidate is exhaustively disproved.
 """
 
 from __future__ import annotations
