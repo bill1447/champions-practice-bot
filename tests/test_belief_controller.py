@@ -904,6 +904,118 @@ def test_finite_public_transition_can_witness_and_exhaustively_exclude_worlds(
     assert update.finite_reachability_leaves == 18
 
 
+def test_concrete_witness_seed_windows_do_not_create_negative_authority(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        _finite_particle_state("a"),
+        1.0,
+        world_id="world-a",
+        history_id="a",
+        p1_member_lineage=(0,),
+        p2_member_lineage=(0,),
+    )
+    expected = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+            {"turn": 1, "slot": 2, "move": "trickroom", "target": None},
+        ],
+        "opponent": {"active": [{"species": "A"}, {"species": "B"}]},
+    }
+
+    class Worker:
+        def __init__(self) -> None:
+            self.seeds: list[str] = []
+
+        def validate_choices(self, *, state, side, candidates):
+            del state
+            assert side == "p1"
+            return [candidates[0]]
+
+        def branch_many(self, *, state, branches):
+            self.seeds.extend(branch["rng_seed"] for branch in branches)
+            return [
+                {
+                    "state": state,
+                    "view": {
+                        "turn": 2,
+                        "opponent_last_actions": [],
+                        "opponent": {
+                            "active": [
+                                {"species": "C"},
+                                {"species": "B"},
+                            ]
+                        },
+                    },
+                    "member_lineage": {"p1": [0], "p2": [0]},
+                }
+                for _branch in branches
+            ]
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        lambda *args, **kwargs: FiniteTransitionReachability(
+            evidence=ReachabilityResult.unresolved(
+                reason="finite stochastic branch budget exhausted",
+                coverage=ReachabilityCoverage(
+                    sequential_context_fingerprint="sha256:window-test",
+                    transitions_covered=1,
+                    outcomes_examined=4,
+                    randomness_domains=("showdown-finite-random-calls-v1",),
+                    randomness_exhaustive=False,
+                    sequential_context_complete=True,
+                ),
+            ),
+            leaves_examined=4,
+            decision_nodes=4,
+            max_depth=2,
+        ),
+    )
+    worker = Worker()
+
+    first = engine._condition_finite_public_transition(
+        worker,
+        particles=(particle,),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=1,
+        witness_seed_window=0,
+    )
+    first_seeds = tuple(worker.seeds)
+    worker.seeds.clear()
+    second = engine._condition_finite_public_transition(
+        worker,
+        particles=(particle,),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=1,
+        witness_seed_window=1,
+    )
+    second_seeds = tuple(worker.seeds)
+
+    assert first_seeds
+    assert second_seeds
+    assert first_seeds != second_seeds
+    for update in (first, second):
+        assert update.particles == ()
+        assert update.exhaustively_excluded_world_ids == ()
+        assert update.finite_reachability_disproofs == 0
+        assert update.sampled_unresolved_world_ids == ("world-a",)
+
+
 def test_finite_public_transition_never_excludes_unresolved_world(
     monkeypatch,
 ) -> None:
@@ -1458,6 +1570,53 @@ def test_pending_rng_retry_reuses_per_world_witnesses() -> None:
         for particle in engine.particles
     } == {1, 2}
     assert engine.pending_observations == []
+
+
+def test_pending_rng_retry_advances_only_the_witness_search_window() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+    ]
+    engine.pending_recovery_witness_window = 1
+    windows: list[int] = []
+
+    def fake_condition(worker, **kwargs):
+        del worker
+        windows.append(kwargs["witness_seed_window"])
+        return ParticleUpdate(
+            (),
+            4,
+            0,
+            0,
+            sampled_unresolved_world_ids=("world-1",),
+        )
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert engine._retry_pending_with_more_rng() is False
+    assert windows == [1, 2]
+    assert engine.pending_recovery_witness_window == 3
+    assert engine.pending_recovery_witnesses == ()
+    assert engine.pending_recovery_excluded_world_ids == ()
+    assert engine.particles == (particle,)
+    assert len(engine.pending_observations) == 1
 
 
 def test_pending_rng_retry_sampled_miss_never_advances_progress() -> None:
