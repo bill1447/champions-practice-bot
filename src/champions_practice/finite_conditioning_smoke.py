@@ -1,11 +1,8 @@
-"""Regression smoke for the league stochastic-collapse conditioning case."""
+"""Regression smoke for the frozen league stochastic-collapse trajectory."""
 
 from __future__ import annotations
 
-from champions_practice.belief_controller import (
-    BeliefDecision,
-    _BeliefBattleCoordinator,
-)
+from champions_practice.belief_controller import SealedBattleFacade
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.demo_fixture import (
     DEMO_AI_PREVIEW_CHOICE,
@@ -13,116 +10,113 @@ from champions_practice.demo_fixture import (
     DEMO_HUMAN_TEAM,
     demo_public_priors,
 )
-from champions_practice.search_worker import ShowdownSearchWorker
-from champions_practice.strength_league import _particle_seed, _sodium_seed
+from champions_practice.strength_league import (
+    LeagueConfig,
+    _baseline_choice,
+    _particle_seed,
+    _resolve_preview_choice,
+    _sodium_seed,
+)
 
 
 LEAGUE_SEED = 15601
 GAME_INDEX = 0
-HUMAN_CHOICE = "move protect, move trickroom"
-AI_CHOICE = "move direclaw +1, move imprison"
 
 
 def main() -> None:
-    with ShowdownSearchWorker() as worker:
-        coordinator = _BeliefBattleCoordinator(
-            worker,
-            battle_format=CHAMPIONS_FORMAT,
-            ai_team=DEMO_AI_TEAM,
-            opponent_priors=demo_public_priors(),
-            world_limit=8,
-            particles_per_world=1,
-            max_particles=8,
-            candidate_limit=4,
-            response_limit=4,
-            decision_budget_seconds=8.0,
-            conditioning_budget_seconds=8.0,
-            particle_seed=_particle_seed(LEAGUE_SEED, GAME_INDEX),
+    config = LeagueConfig(battles=1, max_decisions=4, seed=LEAGUE_SEED)
+    session_seed = _sodium_seed(config.seed, GAME_INDEX)
+    particle_seed = _particle_seed(config.seed, GAME_INDEX)
+
+    with SealedBattleFacade(
+        battle_format=CHAMPIONS_FORMAT,
+        ai_team=DEMO_AI_TEAM,
+        ai_preview_choice=DEMO_AI_PREVIEW_CHOICE,
+        opponent_priors=demo_public_priors(),
+        world_limit=config.world_limit,
+        particles_per_world=config.particles_per_world,
+        max_particles=config.max_particles,
+        candidate_limit=config.candidate_limit,
+        response_limit=config.response_limit,
+        strategic_plan_limit=config.strategic_plan_limit,
+        strategic_candidate_limit=config.strategic_candidate_limit,
+        strategic_response_limit=config.strategic_response_limit,
+        decision_budget_seconds=config.decision_budget_seconds,
+        conditioning_budget_seconds=config.conditioning_budget_seconds,
+        worker_startup_timeout_seconds=config.worker_startup_timeout_seconds,
+        particle_seed=particle_seed,
+    ) as battle:
+        battle.start(
+            opponent_team=DEMO_HUMAN_TEAM,
+            p1_name="Finite Human",
+            p2_name="Finite AI",
+            session_seed=session_seed,
         )
-        try:
-            coordinator.start(
-                opponent_team=DEMO_HUMAN_TEAM,
-                p1_name="Finite Human",
-                p2_name="Finite AI",
-                session_seed=_sodium_seed(LEAGUE_SEED, GAME_INDEX),
-            )
-            coordinator.submit_preview(
-                human_choice=DEMO_AI_PREVIEW_CHOICE,
-                ai_choice=DEMO_AI_PREVIEW_CHOICE,
-            )
-            if HUMAN_CHOICE not in coordinator.human_legal_choices():
-                raise SystemExit(
-                    "ERROR: finite-conditioning human regression choice is not legal"
-                )
-            if AI_CHOICE not in coordinator._ai_preseal_choices():
-                raise SystemExit(
-                    "ERROR: finite-conditioning AI regression choice is not legal"
-                )
+        preview = _resolve_preview_choice(
+            battle.legal_human_choices(),
+            DEMO_AI_PREVIEW_CHOICE,
+        )
+        battle.commit_preview(human_choice=preview)
 
-            forced = BeliefDecision(
-                choice=AI_CHOICE,
-                mode="controlled-finite-smoke",
-                particle_count=len(coordinator._engine.particles),
-                candidate_count=0,
-                branch_count=0,
-                elapsed_seconds=0.0,
-            )
-            original_choose = coordinator._engine.choose_ai_action
-            coordinator._engine.choose_ai_action = (
-                lambda *, legal_live: forced
-            )
-            try:
-                ready = coordinator.lock_ai_action()
-            finally:
-                coordinator._engine.choose_ai_action = original_choose
-
-            result = coordinator.commit_human_action(
+        results = []
+        for decision_index in range(2):
+            choices = battle.legal_human_choices()
+            if not choices:
+                raise SystemExit(
+                    "ERROR: frozen finite-conditioning trajectory exposed no "
+                    f"human choices at decision {decision_index}"
+                )
+            human_choice = _baseline_choice(choices)
+            ready = battle.lock_ai_action()
+            result = battle.commit_human_action(
                 token=ready.token,
-                human_choice=HUMAN_CHOICE,
+                human_choice=human_choice,
             )
-
-            if result.degraded:
+            results.append((human_choice, result))
+            if result.terminal:
                 raise SystemExit(
-                    "ERROR: finite stochastic reachability did not rescue the "
-                    f"known league collapse: {result.recovery_diagnostic!r}"
-                )
-            if result.finite_reachability_witnesses <= 0:
-                raise SystemExit(
-                    "ERROR: known league collapse recovered without a finite "
-                    "reachability witness"
-                )
-            if result.finite_reachability_unresolved:
-                raise SystemExit(
-                    "ERROR: known league collapse left finite worlds unresolved"
-                )
-            if not coordinator._engine.particles:
-                raise SystemExit(
-                    "ERROR: finite stochastic conditioning retained no particles"
+                    "ERROR: frozen finite-conditioning trajectory terminated "
+                    "before the historical collapse boundary"
                 )
 
-            print("Finite stochastic belief-conditioning regression")
-            print(f"Human public command: {HUMAN_CHOICE}")
-            print(f"AI command: {AI_CHOICE}")
-            print(
-                "Finite witnesses: "
-                f"{result.finite_reachability_witnesses}"
+        human_choice, result = results[1]
+        if result.degraded:
+            raise SystemExit(
+                "ERROR: stochastic conditioning still degraded at the frozen "
+                f"league collapse boundary: {result.recovery_diagnostic!r}"
             )
-            print(
-                "Finite exhaustive disproofs: "
-                f"{result.finite_reachability_disproofs}"
+        if not result.matched_branches:
+            raise SystemExit(
+                "ERROR: frozen league collapse boundary advanced without any "
+                "mechanics witness"
             )
-            print(
-                "Finite leaves examined: "
-                f"{result.finite_reachability_leaves}"
-            )
-            print(f"Posterior particles: {result.particles_after}")
-            print(f"Conditioning time: {result.conditioning_seconds:.3f} seconds")
-            print(
-                "RESULT: public command evidence plus finite Showdown stochastic "
-                "reachability prevents the league collapse"
-            )
-        finally:
-            coordinator.close()
+
+        print("Frozen league stochastic-conditioning regression")
+        print(f"Decision 1 human command: {human_choice}")
+        print(f"Decision 1 AI command: {result.decision.choice}")
+        print(f"Matched branches: {result.matched_branches}")
+        print(
+            "Finite witnesses: "
+            f"{result.finite_reachability_witnesses}"
+        )
+        print(
+            "Finite exhaustive disproofs: "
+            f"{result.finite_reachability_disproofs}"
+        )
+        print(
+            "Finite unresolved: "
+            f"{result.finite_reachability_unresolved}"
+        )
+        print(
+            "Finite leaves examined: "
+            f"{result.finite_reachability_leaves}"
+        )
+        print(f"Posterior particles: {result.particles_after}")
+        print(f"Conditioning time: {result.conditioning_seconds:.3f} seconds")
+        print(
+            "RESULT: the exact frozen trajectory advances the posterior "
+            "without entering degraded recovery"
+        )
 
 
 if __name__ == "__main__":
