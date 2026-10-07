@@ -262,6 +262,7 @@ class _EngineObservationSnapshot:
     pending_recovery_prefix_count: int
     pending_recovery_witnesses: tuple[BeliefParticle, ...]
     pending_recovery_excluded_world_ids: tuple[str, ...]
+    pending_recovery_witness_window: int
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
     recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...]
     recovery_authority_root_public_view: dict | None
@@ -705,6 +706,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_prefix_count = 0
         self.pending_recovery_witnesses: tuple[BeliefParticle, ...] = ()
         self.pending_recovery_excluded_world_ids: tuple[str, ...] = ()
+        self.pending_recovery_witness_window = 0
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
@@ -843,6 +845,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_prefix_count = 0
         self.pending_recovery_witnesses = ()
         self.pending_recovery_excluded_world_ids = ()
+        self.pending_recovery_witness_window = 0
         self.degraded = not bool(self.particles)
         return view
 
@@ -935,6 +938,7 @@ class BeliefDecisionEngine:
         deadline: float | None,
         max_leaves: int = 256,
         witness_rounds: int = 64,
+        witness_seed_window: int = 0,
     ) -> ParticleUpdate:
         """Recover public transitions with concrete Showdown witnesses first.
 
@@ -982,7 +986,13 @@ class BeliefDecisionEngine:
         finite_unresolved = 0
         finite_leaves = 0
         wanted = public_observation_signature(view)
-        local_rng = random.Random(0xC011A95E + int(view.get("turn", 0)))
+        seed_basis = 0xC011A95E + int(view.get("turn", 0))
+        if witness_seed_window:
+            window_material = hashlib.sha256(
+                f"{seed_basis}|window:{witness_seed_window}".encode("utf-8")
+            ).digest()
+            seed_basis = int.from_bytes(window_material[:8], "big")
+        local_rng = random.Random(seed_basis)
 
         def next_seed() -> str:
             values = [local_rng.getrandbits(32) for _ in range(4)]
@@ -1320,6 +1330,7 @@ class BeliefDecisionEngine:
         previous_view: dict[str, object] | None = None,
         batches: tuple[int, ...],
         deadline: float | None = None,
+        witness_seed_window: int = 0,
         progress_callback: Callable[
             [tuple[BeliefParticle, ...], tuple[str, ...]],
             None,
@@ -1531,6 +1542,7 @@ class BeliefDecisionEngine:
                 previous_view=previous_view,
                 preexcluded_worlds=set(),
                 deadline=deadline,
+                witness_seed_window=witness_seed_window,
             )
             report_progress(finite)
             exhaustive_exclusions.update(
@@ -1688,6 +1700,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_prefix_count = 0
         self.pending_recovery_witnesses = ()
         self.pending_recovery_excluded_world_ids = ()
+        self.pending_recovery_witness_window = 0
 
     def _retry_pending_with_more_rng(
         self,
@@ -1823,6 +1836,7 @@ class BeliefDecisionEngine:
                 self.pending_recovery_prefix_count = prefix_count
                 self.pending_recovery_witnesses = ()
                 self.pending_recovery_excluded_world_ids = ()
+                self.pending_recovery_witness_window = 0
                 return True
 
             if (
@@ -1842,6 +1856,11 @@ class BeliefDecisionEngine:
                 save_progress()
                 return False
 
+            witness_seed_window = self.pending_recovery_witness_window
+            # Search scheduling only: advancing this cursor never excludes a
+            # world or changes belief mass. A failed window has no authority.
+            self.pending_recovery_witness_window += 1
+
             def recover_one(worker: HypotheticalSearchWorker) -> ParticleUpdate:
                 return self._condition_adaptive(
                     worker,
@@ -1851,6 +1870,7 @@ class BeliefDecisionEngine:
                     previous_view=previous_view,
                     batches=self.recovery_rng_sample_batches,
                     deadline=recovery_deadline,
+                    witness_seed_window=witness_seed_window,
                     progress_callback=record_progress,
                 )
 
@@ -2949,6 +2969,9 @@ class _BeliefBattleCoordinator:
             pending_recovery_excluded_world_ids=(
                 self._engine.pending_recovery_excluded_world_ids
             ),
+            pending_recovery_witness_window=(
+                self._engine.pending_recovery_witness_window
+            ),
             recovery_authority_root_particles=(
                 self._engine.recovery_authority_root_particles
             ),
@@ -2985,6 +3008,9 @@ class _BeliefBattleCoordinator:
         )
         self._engine.pending_recovery_excluded_world_ids = (
             snapshot.pending_recovery_excluded_world_ids
+        )
+        self._engine.pending_recovery_witness_window = (
+            snapshot.pending_recovery_witness_window
         )
         self._engine.recovery_authority_root_particles = (
             snapshot.recovery_authority_root_particles
