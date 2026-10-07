@@ -2,8 +2,13 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.observation_beliefs import observed_joint_move_candidates
+from champions_practice.observation_beliefs import (
+    filter_choices_by_public_actions,
+    observed_joint_move_candidates,
+)
 from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
@@ -145,11 +150,49 @@ def main() -> None:
                 f"Champions command: {resolved_mega!r}"
             )
 
+        partial_ordinary = deepcopy(ordinary_view)
+        partial_ordinary["opponent_last_actions"] = [
+            partial_ordinary["opponent_last_actions"][0]
+        ]
+        partial_mega = deepcopy(mega_view)
+        partial_mega["opponent_last_actions"] = [
+            partial_mega["opponent_last_actions"][0]
+        ]
+
+        ordinary_partial_choices = filter_choices_by_public_actions(
+            p1_legal,
+            partial_ordinary,
+            previous_public_view=before,
+            state=state,
+            side="p1",
+            fail_open=False,
+        )
+        mega_partial_choices = filter_choices_by_public_actions(
+            p1_legal,
+            partial_mega,
+            previous_public_view=before,
+            state=state,
+            side="p1",
+            fail_open=False,
+        )
+        if ordinary not in ordinary_partial_choices or mega in ordinary_partial_choices:
+            raise SystemExit(
+                "ERROR: partial ordinary Gardevoir evidence did not reject "
+                "the unseen Mega modifier"
+            )
+        if mega not in mega_partial_choices or ordinary in mega_partial_choices:
+            raise SystemExit(
+                "ERROR: partial public Mega evidence did not require a "
+                "Mega-compatible modifier on the observed slot"
+            )
+
         print("Public transformation command reconstruction")
         print(f"Ordinary command: {ordinary}")
         print(f"Mega command:     {mega}")
         print(f"Pinned -mega:     {mega_events[0]}")
         print(f"Mega candidates:  {mega_candidates}")
+        print(f"Partial ordinary: {ordinary_partial_choices}")
+        print(f"Partial Mega:     {mega_partial_choices}")
         print(
             "RESULT: public -mega evidence constrains transformation modifiers, "
             "while an aligned no-Mega trace excludes them"
