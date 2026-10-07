@@ -193,6 +193,10 @@ class BeliefRecoveryDiagnostic:
     structural_mismatch_paths: tuple[tuple[str, int], ...]
     structural_mismatch_worlds: tuple[tuple[str, int], ...]
     structural_mismatch_examples: tuple[StructuralMismatchExample, ...]
+    finite_reachability_witnesses: int
+    finite_reachability_disproofs: int
+    finite_reachability_unresolved: int
+    finite_reachability_leaves: int
     sampled_matched_worlds: int
     sampled_unresolved_worlds: int
     exhaustively_excluded_worlds: int
@@ -334,6 +338,18 @@ def _recovery_diagnostic(
         ),
         structural_mismatch_examples=(
             update.structural_mismatch_examples if update is not None else ()
+        ),
+        finite_reachability_witnesses=(
+            update.finite_reachability_witnesses if update is not None else 0
+        ),
+        finite_reachability_disproofs=(
+            update.finite_reachability_disproofs if update is not None else 0
+        ),
+        finite_reachability_unresolved=(
+            update.finite_reachability_unresolved if update is not None else 0
+        ),
+        finite_reachability_leaves=(
+            update.finite_reachability_leaves if update is not None else 0
         ),
         sampled_matched_worlds=(
             len(update.matched_world_ids) if update is not None else 0
