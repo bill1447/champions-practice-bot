@@ -258,6 +258,10 @@ class _EngineObservationSnapshot:
         tuple[str, dict[str, object] | None, dict],
         ...,
     ]
+    pending_recovery_prefix_particles: tuple[BeliefParticle, ...]
+    pending_recovery_prefix_count: int
+    pending_recovery_witnesses: tuple[BeliefParticle, ...]
+    pending_recovery_excluded_world_ids: tuple[str, ...]
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
     recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...]
     recovery_authority_root_public_view: dict | None
@@ -697,6 +701,10 @@ class BeliefDecisionEngine:
         self.pending_observations: list[
             tuple[str, dict[str, object] | None, dict]
         ] = []
+        self.pending_recovery_prefix_particles: tuple[BeliefParticle, ...] = ()
+        self.pending_recovery_prefix_count = 0
+        self.pending_recovery_witnesses: tuple[BeliefParticle, ...] = ()
+        self.pending_recovery_excluded_world_ids: tuple[str, ...] = ()
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
@@ -831,6 +839,10 @@ class BeliefDecisionEngine:
         self.recovery_authority_root_public_view = deepcopy(view)
         self.recovery_authority_history.clear()
         self.recovery_authority_history_complete = bool(self.particles)
+        self.pending_recovery_prefix_particles = ()
+        self.pending_recovery_prefix_count = 0
+        self.pending_recovery_witnesses = ()
+        self.pending_recovery_excluded_world_ids = ()
         self.degraded = not bool(self.particles)
         return view
 
@@ -2759,6 +2771,18 @@ class _BeliefBattleCoordinator:
             last_public_view=self._engine.last_public_view,
             particles=self._engine.particles,
             pending_observations=tuple(self._engine.pending_observations),
+            pending_recovery_prefix_particles=(
+                self._engine.pending_recovery_prefix_particles
+            ),
+            pending_recovery_prefix_count=(
+                self._engine.pending_recovery_prefix_count
+            ),
+            pending_recovery_witnesses=(
+                self._engine.pending_recovery_witnesses
+            ),
+            pending_recovery_excluded_world_ids=(
+                self._engine.pending_recovery_excluded_world_ids
+            ),
             recovery_authority_root_particles=(
                 self._engine.recovery_authority_root_particles
             ),
@@ -2784,6 +2808,18 @@ class _BeliefBattleCoordinator:
         self._engine.last_public_view = snapshot.last_public_view
         self._engine.particles = snapshot.particles
         self._engine.pending_observations = list(snapshot.pending_observations)
+        self._engine.pending_recovery_prefix_particles = (
+            snapshot.pending_recovery_prefix_particles
+        )
+        self._engine.pending_recovery_prefix_count = (
+            snapshot.pending_recovery_prefix_count
+        )
+        self._engine.pending_recovery_witnesses = (
+            snapshot.pending_recovery_witnesses
+        )
+        self._engine.pending_recovery_excluded_world_ids = (
+            snapshot.pending_recovery_excluded_world_ids
+        )
         self._engine.recovery_authority_root_particles = (
             snapshot.recovery_authority_root_particles
         )
