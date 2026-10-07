@@ -395,6 +395,24 @@ def test_finite_transition_witness_has_positive_authority_and_child_state():
     assert worker.calls[0]["expected_public_view"] == expected
 
 
+def test_finite_transition_witness_requires_concrete_showdown_seed():
+    raw = _finite_response(witnessed=True, leaves=3)
+    raw["witness"].pop("rng_seed")
+    worker = _FakeFiniteTransitionWorker(raw)
+
+    with pytest.raises(RuntimeError, match="malformed witness"):
+        finite_public_transition_reachability(
+            worker,
+            state={"node": "root"},
+            side="p2",
+            p1_choice="move protect, move trickroom",
+            p2_choice="move direclaw +1, move imprison",
+            expected_public_view=_valid_public_view(
+                {"turn": 2, "marker": "target"}
+            ),
+        )
+
+
 def test_finite_transition_exhaustive_miss_is_negative_authority():
     worker = _FakeFiniteTransitionWorker(
         _finite_response(exhaustive=True, leaves=96)
