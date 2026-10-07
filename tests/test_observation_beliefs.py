@@ -1831,3 +1831,127 @@ def test_condition_particles_rejects_raw_empty_ai_choice() -> None:
 def test_forced_wait_token_is_non_empty() -> None:
     assert FORCED_WAIT_CHOICE
     assert FORCED_WAIT_CHOICE.strip()
+
+def _public_transform_test_view(
+    event: list[str] | None,
+    *,
+    request_side: str | None = "p2",
+    event_turn: int | None = 3,
+) -> dict:
+    request = (
+        {"side": {"id": request_side}}
+        if request_side is not None
+        else None
+    )
+    events = (
+        [event]
+        if event is not None
+        else [["-singleturn", "p1a", "move:protect"]]
+    )
+    return {
+        "turn": 4,
+        "request": request,
+        "opponent": {
+            "active": [
+                {"species": "Gardevoir"},
+                {"species": "Rillaboom"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+            {"turn": 3, "slot": 2, "move": "woodhammer", "target": 1},
+        ],
+        "public_event_delta": {
+            "turn": event_turn,
+            "events": events,
+            "unsupported": [],
+        },
+    }
+
+
+def test_public_no_mega_event_excludes_transform_modifiers() -> None:
+    actual = _public_transform_test_view(None)
+
+    candidates = observed_joint_move_candidates(actual)
+
+    assert candidates == ("move protect, move woodhammer +1",)
+    assert filter_choices_by_public_actions(
+        (
+            "move protect, move woodhammer +1",
+            "move protect mega, move woodhammer +1",
+            "move protect megax, move woodhammer +1",
+            "move protect megay, move woodhammer +1",
+            "move protect ultra, move woodhammer +1",
+        ),
+        actual,
+        fail_open=False,
+    ) == ("move protect, move woodhammer +1",)
+
+
+def test_public_mega_event_requires_mega_compatible_command() -> None:
+    actual = _public_transform_test_view(
+        ["-mega", "p1a", "gardevoir", "gardevoirite"]
+    )
+
+    candidates = observed_joint_move_candidates(actual)
+
+    assert set(candidates) == {
+        "move protect mega, move woodhammer +1",
+        "move protect megax, move woodhammer +1",
+        "move protect megay, move woodhammer +1",
+    }
+    assert filter_choices_by_public_actions(
+        (
+            "move protect, move woodhammer +1",
+            "move protect mega, move woodhammer +1",
+            "move protect megax, move woodhammer +1",
+            "move protect megay, move woodhammer +1",
+            "move protect ultra, move woodhammer +1",
+        ),
+        actual,
+        fail_open=False,
+    ) == (
+        "move protect mega, move woodhammer +1",
+        "move protect megax, move woodhammer +1",
+        "move protect megay, move woodhammer +1",
+    )
+
+
+def test_public_burst_event_requires_ultra_command() -> None:
+    actual = _public_transform_test_view(
+        ["-burst", "p1a", "necrozmaduskmane", "ultranecroziumz"]
+    )
+
+    assert observed_joint_move_candidates(actual) == (
+        "move protect ultra, move woodhammer +1",
+    )
+
+
+def test_player_side_mega_does_not_invent_opponent_mega() -> None:
+    actual = _public_transform_test_view(
+        ["-mega", "p2a", "gardevoir", "gardevoirite"]
+    )
+
+    assert observed_joint_move_candidates(actual) == (
+        "move protect, move woodhammer +1",
+    )
+
+
+def test_ambiguous_transform_alignment_fails_open() -> None:
+    missing_side = _public_transform_test_view(
+        ["-mega", "p1a", "gardevoir", "gardevoirite"],
+        request_side=None,
+    )
+    stale_delta = _public_transform_test_view(
+        ["-mega", "p1a", "gardevoir", "gardevoirite"],
+        event_turn=2,
+    )
+
+    for actual in (missing_side, stale_delta):
+        candidates = observed_joint_move_candidates(actual)
+        assert "move protect, move woodhammer +1" in candidates
+        assert "move protect mega, move woodhammer +1" in candidates
+        assert "move protect megax, move woodhammer +1" in candidates
+        assert "move protect megay, move woodhammer +1" in candidates
+        assert "move protect ultra, move woodhammer +1" in candidates
+
