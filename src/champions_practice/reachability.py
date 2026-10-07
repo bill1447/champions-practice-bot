@@ -262,6 +262,7 @@ class FiniteTransitionReachability:
     child_state: dict[str, Any] | None = None
     public_view: dict[str, Any] | None = None
     member_lineage: dict[str, list[int]] | None = None
+    rng_seed: str | None = None
     random_path: tuple[dict[str, Any], ...] = ()
 
     def __post_init__(self) -> None:
@@ -278,13 +279,21 @@ class FiniteTransitionReachability:
                 or not self.child_state
                 or not isinstance(self.public_view, dict)
                 or not isinstance(self.member_lineage, dict)
+                or not isinstance(self.rng_seed, str)
+                or not self.rng_seed.strip()
             ):
                 raise ValueError(
-                    "witnessed finite transition requires exact child state/view/lineage"
+                    "witnessed finite transition requires exact child "
+                    "state/view/lineage and a concrete Showdown RNG seed"
                 )
         elif any(
             value is not None
-            for value in (self.child_state, self.public_view, self.member_lineage)
+            for value in (
+                self.child_state,
+                self.public_view,
+                self.member_lineage,
+                self.rng_seed,
+            )
         ) or self.random_path:
             raise ValueError(
                 "non-witness finite transition cannot carry a witness payload"
@@ -3874,12 +3883,15 @@ def finite_public_transition_reachability(
         child_state = witness.get("state")
         public_view = witness.get("view")
         member_lineage = witness.get("member_lineage")
+        rng_seed = witness.get("rng_seed")
         random_path = witness.get("random_path")
         if (
             not isinstance(child_state, dict)
             or not child_state
             or not isinstance(public_view, dict)
             or not isinstance(member_lineage, dict)
+            or not isinstance(rng_seed, str)
+            or not rng_seed.strip()
             or not isinstance(random_path, list)
         ):
             raise RuntimeError("finite transition worker returned malformed witness")
@@ -3897,6 +3909,7 @@ def finite_public_transition_reachability(
         witness_id = "sha256:" + _reachability_hash(
             {
                 "context": fingerprint,
+                "rng_seed": rng_seed,
                 "random_path": random_path,
                 "observed_public_signature": public_observation_signature(
                     public_view
@@ -3914,6 +3927,7 @@ def finite_public_transition_reachability(
             child_state=child_state,
             public_view=public_view,
             member_lineage=member_lineage,
+            rng_seed=rng_seed,
             random_path=tuple(random_path),
         )
 
