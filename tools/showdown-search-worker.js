@@ -465,6 +465,7 @@ function publicLastOpponentActions(battle, sideId) {
   const channel = sideId === "p1" ? 1 : 2;
   const visibleLog = extractChannelMessages(battle.log.join("\n"), [channel])[channel];
   let logTurn = 0;
+  let beforeAnyResolvedAction = false;
   const byTurn = new Map();
 
   function slotIdentity(value) {
@@ -476,17 +477,83 @@ function publicLastOpponentActions(battle, sideId) {
     };
   }
 
+  function turnActions() {
+    if (!byTurn.has(logTurn)) byTurn.set(logTurn, new Map());
+    return byTurn.get(logTurn);
+  }
+
+  function addSelectedAction(slot, action) {
+    const actions = turnActions();
+    const previous = actions.get(slot);
+    if (previous === undefined) {
+      actions.set(slot, action);
+      return;
+    }
+    // A second incompatible public event for the same active slot means the
+    // protocol trace no longer proves one selected command (for example a
+    // forced switch after a selected switch, or a called/nested move). Leave
+    // the slot unconstrained instead of inferring private intent.
+    if (JSON.stringify(previous) !== JSON.stringify(action)) {
+      actions.set(slot, null);
+    }
+  }
+
   for (const line of visibleLog) {
     const parts = line.split("|");
     const event = parts[1];
+
     if (event === "turn") {
       const parsed = Number(parts[2]);
-      if (Number.isInteger(parsed) && parsed > 0) logTurn = parsed;
+      logTurn = Number.isInteger(parsed) && parsed > 0 ? parsed : 0;
+      beforeAnyResolvedAction = logTurn > 0;
       continue;
     }
-    if (event !== "move" || logTurn <= 0) continue;
+    if (logTurn <= 0) continue;
 
     const actor = slotIdentity(parts[2]);
+
+    // Normal selected switches resolve before ordinary move/cant events.
+    // Only a plain channel-visible "switch" in that prefix is admitted as
+    // selected-command evidence. "drag" and "replace" are never promoted,
+    // and pivot/eject/forced switches occur after resolution has begun. If a
+    // slot switches twice in the prefix, addSelectedAction marks it ambiguous.
+    if (
+      event === "switch" &&
+      beforeAnyResolvedAction &&
+      actor &&
+      actor.side === opponentPrefix
+    ) {
+      const species = toId(String(parts[3] || "").split(",", 1)[0]);
+      if (species) {
+        addSelectedAction(actor.slot, {
+          turn: logTurn,
+          slot: actor.slot,
+          switch_species: species,
+        });
+      }
+      continue;
+    }
+
+    if (event === "drag" || event === "replace") {
+      // Never infer a submitted switch from explicitly forced/projection-only
+      // protocol events. A forced event on a slot already carrying a prefix
+      // switch also invalidates that selected-switch inference.
+      if (
+        beforeAnyResolvedAction &&
+        actor &&
+        actor.side === opponentPrefix &&
+        turnActions().has(actor.slot)
+      ) {
+        turnActions().set(actor.slot, null);
+      }
+      continue;
+    }
+
+    if (event === "move" || event === "cant") {
+      beforeAnyResolvedAction = false;
+    }
+    if (event !== "move") continue;
+
     if (!actor || actor.side !== opponentPrefix) continue;
     if (parts.slice(5).some((part) => String(part).startsWith("[from]"))) {
       continue;
@@ -500,22 +567,12 @@ function publicLastOpponentActions(battle, sideId) {
       targetLocation = target.side === opponentPrefix ? -target.slot : target.slot;
     }
 
-    if (!byTurn.has(logTurn)) byTurn.set(logTurn, new Map());
-    const actions = byTurn.get(logTurn);
-    const previous = actions.get(actor.slot);
-    if (previous === undefined) {
-      actions.set(actor.slot, {
-        turn: logTurn,
-        slot: actor.slot,
-        move,
-        target: targetLocation,
-      });
-    } else {
-      // Multiple public move events from one slot can be caused by effects such as
-      // Instruct. They do not map cleanly to one chosen command, so keep that slot
-      // unconstrained rather than inferring private intent.
-      actions.set(actor.slot, null);
-    }
+    addSelectedAction(actor.slot, {
+      turn: logTurn,
+      slot: actor.slot,
+      move,
+      target: targetLocation,
+    });
   }
 
   const turns = [...byTurn.keys()].sort((left, right) => right - left);
