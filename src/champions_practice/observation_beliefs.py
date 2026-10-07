@@ -48,6 +48,10 @@ class ParticleUpdate:
     structural_mismatch_paths: tuple[tuple[str, int], ...] = ()
     structural_mismatch_worlds: tuple[tuple[str, int], ...] = ()
     structural_mismatch_examples: tuple[StructuralMismatchExample, ...] = ()
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
