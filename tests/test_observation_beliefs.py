@@ -1405,6 +1405,74 @@ def test_prevented_public_action_completes_joint_command_evidence() -> None:
     )
 
 
+def _aligned_public_move_view(
+    *,
+    mega: bool,
+) -> dict:
+    events = [
+        ["-singleturn", "p1a", "move:protect"],
+    ]
+    if mega:
+        events.insert(
+            0,
+            ["-mega", "p1a", "gardevoir", "gardevoirite"],
+        )
+    return {
+        "turn": 4,
+        "request": {
+            "active": [{}, {}],
+            "side": {"id": "p2", "name": "AI", "pokemon": []},
+        },
+        "opponent": {
+            "active": [
+                {"species": "Gardevoir-Mega" if mega else "Gardevoir"},
+                {"species": "Rillaboom"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+            {"turn": 3, "slot": 2, "move": "woodhammer", "target": 2},
+        ],
+        "public_event_delta": {
+            "turn": 3,
+            "events": events,
+            "unsupported": [],
+        },
+    }
+
+
+def test_aligned_public_ledger_excludes_unobserved_mega_modifier() -> None:
+    view = _aligned_public_move_view(mega=False)
+
+    candidates = observed_joint_move_candidates(view)
+
+    assert candidates == (
+        "move protect, move woodhammer +2",
+    )
+    assert all(" mega" not in candidate for candidate in candidates)
+    assert all(" ultra" not in candidate for candidate in candidates)
+
+
+def test_aligned_public_mega_event_requires_mega_modifier() -> None:
+    view = _aligned_public_move_view(mega=True)
+
+    candidates = observed_joint_move_candidates(view)
+
+    assert candidates == (
+        "move protect mega, move woodhammer +2",
+    )
+
+
+def test_misaligned_public_ledger_keeps_modifier_search_fail_open() -> None:
+    view = _aligned_public_move_view(mega=False)
+    view["public_event_delta"]["turn"] = 2
+
+    candidates = observed_joint_move_candidates(view)
+
+    assert "move protect, move woodhammer +2" in candidates
+    assert "move protect mega, move woodhammer +2" in candidates
+
+
 def test_called_execution_does_not_invent_selected_command_evidence() -> None:
     previous = {
         "turn": 1,
