@@ -2,13 +2,30 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-from champions_practice.belief_controller import BeliefRecoveryDiagnostic
+from champions_practice.belief_controller import (
+    BeliefCollapseDiagnostic,
+    BeliefRecoveryDiagnostic,
+)
 from champions_practice.observation_beliefs import StructuralMismatchExample
 from champions_practice.strength_league import LeagueConfig
 from champions_practice.structural_collapse_probe import (
     _probe_id,
     run_structural_collapse_probe,
 )
+
+
+def _collapse() -> BeliefCollapseDiagnostic:
+    return BeliefCollapseDiagnostic(
+        summary="exact-match-found-with-extra-rng",
+        elapsed_seconds=0.25,
+        budget_exhausted=False,
+        generated_branches=12,
+        exact_matches=1,
+        worlds_tested=8,
+        legal_worlds=8,
+        illegal_worlds=0,
+        common_mismatch_paths=(("$.opponent.active[0].status", 11),),
+    )
 
 
 def _diagnostic() -> BeliefRecoveryDiagnostic:
@@ -106,6 +123,7 @@ def test_probe_stops_and_persists_first_structural_collapse(
             assert human_choice == "move baseline"
             return SimpleNamespace(
                 recovery_diagnostic=_diagnostic(),
+                collapse_diagnostic=_collapse(),
                 decision=SimpleNamespace(
                     choice="move protect, move protect",
                     mode="belief-search",
@@ -146,6 +164,10 @@ def test_probe_stops_and_persists_first_structural_collapse(
     assert report["recovery_diagnostic"]["structural_mismatch_paths"] == (
         ("$.request.active[0]", 384),
     )
+    assert report["collapse_diagnostic"]["summary"] == (
+        "exact-match-found-with-extra-rng"
+    )
+    assert report["collapse_diagnostic"]["exact_matches"] == 1
     assert len(writes) == 2
     assert writes[0][0].name == "report.json"
     assert writes[1][0].name == "latest-report.json"

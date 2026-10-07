@@ -147,6 +147,11 @@ def run_structural_collapse_probe(
                     "decision_mode": result.decision.mode,
                     "public_view": result.public_view,
                     "recovery_diagnostic": asdict(diagnostic),
+                    "collapse_diagnostic": (
+                        asdict(result.collapse_diagnostic)
+                        if result.collapse_diagnostic is not None
+                        else None
+                    ),
                     "config": asdict(config),
                 }
                 base = root / "runs" / "structural-collapse"
@@ -196,11 +201,41 @@ def main(argv: list[str] | None = None) -> None:
     print(f"Game:       {report['game_index']}")
     print(f"Decision:   {report['decision_index']}")
     print(f"Reason:     {diagnostic['reason']}")
+    print(f"Human:      {report['human_choice']}")
+    print(f"AI:         {report['ai_choice']}")
     print(
         "Structural: "
         f"{diagnostic['structural_mismatches']} / "
         f"{diagnostic['generated_branches']}"
     )
+    collapse = report.get("collapse_diagnostic")
+    if collapse is not None:
+        print(
+            "Exact-human: "
+            f"{collapse['summary']} | "
+            f"matches {collapse['exact_matches']} / "
+            f"{collapse['generated_branches']} | "
+            f"legal worlds {collapse['legal_worlds']} / "
+            f"{collapse['worlds_tested']} | "
+            f"budget exhausted {collapse['budget_exhausted']}"
+        )
+        if collapse["common_mismatch_paths"]:
+            print("Exact-human mismatch paths:")
+            for path, count in collapse["common_mismatch_paths"][:10]:
+                print(f"  {count:>6}  {path}")
+        if collapse["closest_branches"]:
+            closest = collapse["closest_branches"][0]
+            print(
+                "Closest exact-human branch: "
+                f"{closest['world_id']} | "
+                f"{closest['mismatch_count']} mismatches"
+            )
+            for difference in closest["differences"][:5]:
+                print(
+                    f"  {difference['path']}: "
+                    f"actual={difference['actual']!r} "
+                    f"simulated={difference['simulated']!r}"
+                )
     print("Top mismatch paths:")
     for path, count in diagnostic["structural_mismatch_paths"][:10]:
         print(f"  {count:>6}  {path}")
