@@ -690,6 +690,97 @@ def _public_actions_cover_active_slots(
     return {slot for slot, _, _, _ in actions} == expected_slots
 
 
+def _public_player_side_id(
+    view: dict[str, Any] | None,
+    *,
+    fallback_view: dict[str, Any] | None = None,
+) -> str | None:
+    for candidate in (view, fallback_view):
+        if not isinstance(candidate, dict):
+            continue
+        request = candidate.get("request")
+        if not isinstance(request, dict):
+            continue
+        side = request.get("side")
+        if not isinstance(side, dict):
+            continue
+        side_id = side.get("id")
+        if side_id in {"p1", "p2"}:
+            return side_id
+    return None
+
+
+def _public_move_modifier_evidence(
+    actual_public_view: dict[str, Any],
+    *,
+    action_turn: int | None,
+    previous_public_view: dict[str, Any] | None = None,
+) -> dict[int, str] | None:
+    """Return exact public move modifiers for an aligned completed turn.
+
+    An aligned public mechanics ledger is complete for recognized events. When
+    its turn matches the selected-action turn, the presence of -mega/-burst
+    proves the corresponding command modifier and their absence proves that no
+    such modifier was used. A missing/misaligned ledger remains unknown and
+    therefore cannot constrain modifier variants.
+    """
+    if action_turn is None:
+        return None
+    delta = actual_public_view.get("public_event_delta")
+    if not isinstance(delta, dict) or delta.get("turn") != action_turn:
+        return None
+    events = delta.get("events")
+    if not isinstance(events, list):
+        return None
+
+    player_side = _public_player_side_id(
+        actual_public_view,
+        fallback_view=previous_public_view,
+    )
+    if player_side is None:
+        return None
+    opponent_side = "p2" if player_side == "p1" else "p1"
+
+    modifiers: dict[int, str] = {}
+    ambiguous: set[int] = set()
+    for event in events:
+        if (
+            not isinstance(event, list)
+            or len(event) < 2
+            or event[0] not in {"-mega", "-burst"}
+        ):
+            continue
+        actor = event[1]
+        if (
+            not isinstance(actor, str)
+            or len(actor) != 3
+            or not actor.startswith(opponent_side)
+            or actor[2] not in "ab"
+        ):
+            continue
+        slot = ord(actor[2]) - ord("a") + 1
+        if event[0] == "-burst":
+            modifier = "ultra"
+        else:
+            item = event[3] if len(event) > 3 else ""
+            if isinstance(item, str) and item.endswith("itex"):
+                modifier = "megax"
+            elif isinstance(item, str) and item.endswith("itey"):
+                modifier = "megay"
+            else:
+                modifier = "mega"
+
+        previous = modifiers.get(slot)
+        if previous is not None and previous != modifier:
+            ambiguous.add(slot)
+        else:
+            modifiers[slot] = modifier
+
+    for slot in ambiguous:
+        modifiers.pop(slot, None)
+    return modifiers
+
+
 def _observed_joint_move_candidates(
     actual_public_view: dict[str, Any],
     *,
@@ -707,6 +798,19 @@ def _observed_joint_move_candidates(
     if any(kind != "move" for _, kind, _, _ in actions):
         return ()
 
+    action_turns = {
+        turn
+        for turn, _slot, _kind, _value, _target
+        in _public_action_fingerprint(actual_public_view)
+        if turn is not None
+    }
+    action_turn = next(iter(action_turns)) if len(action_turns) == 1 else None
+    modifier_evidence = _public_move_modifier_evidence(
+        actual_public_view,
+        action_turn=action_turn,
+        previous_public_view=previous_public_view,
+    )
+
     per_slot: list[tuple[str, ...]] = []
     for slot, _kind, move_id, target in actions:
         bases = [f"move {move_id}"]
@@ -715,11 +819,19 @@ def _observed_joint_move_candidates(
 
         variants = []
         for base in bases:
-            variants.append(base)
-            variants.extend(
-                f"{base} {event}"
-                for event in ("mega", "megax", "megay", "ultra")
-            )
+            if modifier_evidence is None:
+                variants.append(base)
+                variants.extend(
+                    f"{base} {event}"
+                    for event in ("mega", "megax", "megay", "ultra")
+                )
+            else:
+                modifier = modifier_evidence.get(slot)
+                variants.append(
+                    f"{base} {modifier}"
+                    if modifier is not None
+                    else base
+                )
         per_slot.append(tuple(dict.fromkeys(variants)))
 
     return tuple(
