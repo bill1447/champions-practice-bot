@@ -1786,11 +1786,7 @@ class BeliefDecisionEngine:
             required_worlds = set(_particle_world_keys(prefix_particles))
             witnesses, exclusions = snapshot_progress()
             excluded_worlds_now = set(exclusions)
-            witnessed_worlds = {
-                particle.world_id
-                for particle in witnesses
-                if particle.world_id
-            }
+            witnessed_worlds = set(_particle_world_keys(witnesses))
             installable_worlds = required_worlds - excluded_worlds_now
 
             def complete_current_observation() -> bool:
@@ -1798,11 +1794,7 @@ class BeliefDecisionEngine:
                 witnesses_now, exclusions_now = snapshot_progress()
                 exclusions_set = set(exclusions_now)
                 installable = required_worlds - exclusions_set
-                witnessed = {
-                    particle.world_id
-                    for particle in witnesses_now
-                    if particle.world_id
-                }
+                witnessed = set(_particle_world_keys(witnesses_now))
                 if not installable or not installable.issubset(witnessed):
                     return False
 
