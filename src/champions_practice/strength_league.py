@@ -112,6 +112,10 @@ class GameResult:
     branch_count: int
     decision_seconds: tuple[float, ...]
     conditioning_seconds: tuple[float, ...]
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     recovery_events: tuple[dict[str, Any], ...] = ()
 
 
@@ -318,6 +322,18 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
                 event.get("reason") == "conditioning-error"
                 for event in recovery_events
             ),
+            "finite_reachability_witnesses": sum(
+                game.finite_reachability_witnesses for game in games
+            ),
+            "finite_reachability_disproofs": sum(
+                game.finite_reachability_disproofs for game in games
+            ),
+            "finite_reachability_unresolved": sum(
+                game.finite_reachability_unresolved for game in games
+            ),
+            "finite_reachability_leaves": sum(
+                game.finite_reachability_leaves for game in games
+            ),
             "top_structural_mismatch_paths": [
                 [path, count]
                 for path, count in structural_mismatch_paths.most_common(16)
@@ -396,6 +412,10 @@ def run_game(
     degraded_turns = 0
     strategy_decisions = 0
     branch_count = 0
+    finite_reachability_witnesses = 0
+    finite_reachability_disproofs = 0
+    finite_reachability_unresolved = 0
+    finite_reachability_leaves = 0
 
     with SealedBattleFacade(
         project_root=project_root,
@@ -450,6 +470,18 @@ def run_game(
             decision = result.decision
             decision_seconds.append(float(decision.elapsed_seconds))
             conditioning_seconds.append(float(result.conditioning_seconds))
+            finite_reachability_witnesses += int(
+                result.finite_reachability_witnesses
+            )
+            finite_reachability_disproofs += int(
+                result.finite_reachability_disproofs
+            )
+            finite_reachability_unresolved += int(
+                result.finite_reachability_unresolved
+            )
+            finite_reachability_leaves += int(
+                result.finite_reachability_leaves
+            )
             if result.recovery_diagnostic is not None:
                 recovery_events.append(asdict(result.recovery_diagnostic))
             branch_count += int(decision.branch_count)
@@ -497,6 +529,10 @@ def run_game(
             branch_count=branch_count,
             decision_seconds=tuple(decision_seconds),
             conditioning_seconds=tuple(conditioning_seconds),
+            finite_reachability_witnesses=finite_reachability_witnesses,
+            finite_reachability_disproofs=finite_reachability_disproofs,
+            finite_reachability_unresolved=finite_reachability_unresolved,
+            finite_reachability_leaves=finite_reachability_leaves,
             recovery_events=tuple(recovery_events),
         )
 
