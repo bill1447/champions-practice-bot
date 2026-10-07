@@ -480,6 +480,28 @@ def _hitcount_regression(worker: ShowdownSearchWorker) -> tuple[int, int, int, i
             "ERROR: quantitative conditioning retained an incorrect timesAttacked"
         )
 
+    wrong_only = condition_particles(
+        worker,
+        particles=(
+            BeliefParticle(
+                snapshot,
+                1.0,
+                world_id="hitcount-world",
+                history_id="before-bullet-seed",
+            ),
+        ),
+        ai_side="p2",
+        ai_choice=AI_TURN,
+        actual_public_view=actual["view"],
+        previous_public_view=before,
+        rng_seeds=(wrong_seed,),
+        previews=previews,
+    )
+    if wrong_only.particles or wrong_only.matched != 0:
+        raise SystemExit(
+            "ERROR: the known five-hit branch matched the observed two-hit ledger"
+        )
+
     engine = BeliefDecisionEngine(
         ".",
         battle_format=CHAMPIONS_FORMAT,
@@ -507,18 +529,34 @@ def _hitcount_regression(worker: ShowdownSearchWorker) -> tuple[int, int, int, i
         ),
         view=actual["view"],
     )
-    if observed.matched_branches != 0:
-        raise SystemExit(
-            "ERROR: persistent engine accepted a publicly wrong five-hit history"
-        )
-    if not engine.degraded or not engine.pending_observations:
-        raise SystemExit(
-            "ERROR: persistent engine declared wrong hit-count history healthy"
-        )
-    if engine.particles != (original,):
-        raise SystemExit(
-            "ERROR: persistent engine replaced last-good particles after mismatch"
-        )
+
+    # PR #164 may recover from the deliberately wrong first sample by finding a
+    # later concrete Showdown witness. Both valid outcomes preserve authority:
+    # either recovery remains pending with the last-good particle, or it installs
+    # only an exact two-hit witness. It must never install the known five-hit
+    # history.
+    if observed.matched_branches == 0:
+        if not engine.degraded or not engine.pending_observations:
+            raise SystemExit(
+                "ERROR: persistent engine declared unmatched hit-count history healthy"
+            )
+        if engine.particles != (original,):
+            raise SystemExit(
+                "ERROR: persistent engine replaced last-good particles without a witness"
+            )
+    else:
+        if engine.degraded or engine.pending_observations:
+            raise SystemExit(
+                "ERROR: persistent engine found a valid witness but remained degraded"
+            )
+        if not engine.particles:
+            raise SystemExit(
+                "ERROR: persistent engine reported recovery without particles"
+            )
+        if any(_times_attacked(particle.state) != 2 for particle in engine.particles):
+            raise SystemExit(
+                "ERROR: persistent recovery installed a publicly wrong hit-count history"
+            )
 
     two_hp, two_maxhp, two_fainted, two_turn = _future_rage_fist_result(
         worker,

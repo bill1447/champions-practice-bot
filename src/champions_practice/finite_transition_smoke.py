@@ -16,8 +16,9 @@ from champions_practice.teams import SMOKE_TEAM
 
 P1_PREVIEW = "team 5132"
 P2_PREVIEW = "team 5132"
-P1_CHOICE = "move protect, move trickroom"
-P2_CHOICE = "move woodhammer +2, move imprison"
+PREP_CHOICE = "move protect, move followme"
+P1_CHOICE = "move protect, move followme"
+P2_CHOICE = "move protect, move followme"
 RNG_SEED = "sodium,0123456789abcdef0123456789abcdef"
 # Avoid mirror speed ties in this isolated transition smoke. The production
 # regression below keeps the exact mirror fixture; this one is deliberately
@@ -32,6 +33,11 @@ P1_TEAM = (
     .replace(
         "EVs: 2 HP / 32 Atk / 32 Spe",
         "EVs: 2 HP / 32 Atk / 2 Def / 30 Spe",
+        1,
+    )
+    .replace(
+        "EVs: 32 HP / 2 Atk / 32 SpD",
+        "EVs: 32 HP / 2 Atk / 31 SpD / 1 Spe",
         1,
     )
 )
@@ -58,7 +64,7 @@ PREVIEWS = {
 
 def main() -> None:
     with HypotheticalSearchWorker() as worker:
-        state = worker.create_state(
+        initial_state = worker.create_state(
             battle_format=CHAMPIONS_FORMAT,
             p1_team=P1_TEAM,
             p2_team=SMOKE_TEAM,
@@ -66,6 +72,26 @@ def main() -> None:
             p2_preview=P2_PREVIEW,
             seed="sodium,11111111222222223333333344444444",
         )
+
+        # Build a compact stochastic transition deliberately: the first turn
+        # establishes a successful Protect chain, then the measured turn repeats
+        # Protect. That exercises Showdown randomChance without the enormous
+        # accuracy/crit/damage Cartesian product of an ordinary damaging move.
+        prepared = worker.branch_many(
+            state=initial_state,
+            branches=[
+                {
+                    "p1_choice": PREP_CHOICE,
+                    "p2_choice": PREP_CHOICE,
+                    "include_state": True,
+                    "view_side": "p2",
+                    "rng_seed": "sodium,aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "previews": PREVIEWS,
+                }
+            ],
+        )[0]
+        state = prepared["state"]
+
         branch = worker.branch_many(
             state=state,
             branches=[
@@ -127,6 +153,7 @@ def main() -> None:
             raise SystemExit("ERROR: exhaustive finite disproof lacks negative authority")
 
         print("Pinned Showdown finite stochastic transition reachability")
+        print("Stochastic fixture: repeated Protect randomChance")
         print(f"Witness leaves examined: {witness.leaves_examined}")
         print(f"Witness random depth: {witness.max_depth}")
         print(f"Disproof leaves examined: {disproof.leaves_examined}")
