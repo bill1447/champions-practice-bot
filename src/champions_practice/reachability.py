@@ -234,6 +234,61 @@ class ReachabilityWorker(Protocol):
         branches: list[dict[str, Any]],
     ) -> list[dict[str, Any]]: ...
 
+    def enumerate_finite_transition(
+        self,
+        *,
+        state: dict[str, Any],
+        p1_choice: str,
+        p2_choice: str,
+        view_side: str,
+        expected_public_view: dict[str, Any],
+        previews: dict[str, list[str]] | None = None,
+        max_leaves: int = 4096,
+    ) -> dict[str, Any]: ...
+
+
+FINITE_TRANSITION_RANDOMNESS_DOMAIN = "showdown-finite-random-calls-v1"
+
+
+@dataclass(frozen=True)
+class FiniteTransitionReachability:
+    """Typed result of one finite stochastic Showdown transition probe."""
+
+    evidence: ReachabilityResult
+    leaves_examined: int
+    decision_nodes: int
+    max_depth: int
+    child_state: dict[str, Any] | None = None
+    public_view: dict[str, Any] | None = None
+    member_lineage: dict[str, list[int]] | None = None
+    random_path: tuple[dict[str, Any], ...] = ()
+
+    def __post_init__(self) -> None:
+        for label, value in (
+            ("leaves_examined", self.leaves_examined),
+            ("decision_nodes", self.decision_nodes),
+            ("max_depth", self.max_depth),
+        ):
+            if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+                raise ValueError(f"{label} must be a non-negative integer")
+        if self.evidence.establishes_reachability:
+            if (
+                not isinstance(self.child_state, dict)
+                or not self.child_state
+                or not isinstance(self.public_view, dict)
+                or not isinstance(self.member_lineage, dict)
+            ):
+                raise ValueError(
+                    "witnessed finite transition requires exact child state/view/lineage"
+                )
+        elif any(
+            value is not None
+            for value in (self.child_state, self.public_view, self.member_lineage)
+        ) or self.random_path:
+            raise ValueError(
+                "non-witness finite transition cannot carry a witness payload"
+            )
+
 
 @dataclass(frozen=True)
 class PublicReachabilityStep:
@@ -3662,4 +3717,231 @@ def evaluate_deterministic_public_transition(
             f"{draw_count} PRNG draw(s); one sampled seed is not exhaustive"
         ),
         coverage=coverage,
+    )
+
+
+def finite_public_transition_reachability(
+    worker: ReachabilityWorker,
+    *,
+    state: dict[str, Any],
+    side: str,
+    p1_choice: str,
+    p2_choice: str,
+    expected_public_view: dict[str, Any],
+    previews: dict[str, list[str]] | None = None,
+    max_leaves: int = 4096,
+) -> FiniteTransitionReachability:
+    """Enumerate one transition's finite Showdown random-call outcome tree.
+
+    Positive evidence may return as soon as one exact public witness is found.
+    Negative authority is granted only when the worker reports that the entire
+    finite random-call tree completed without a match. Branch-budget exhaustion,
+    continuous/oversized random domains, or any uninstrumented low-level RNG use
+    remain UNRESOLVED and cannot exclude a belief world.
+    """
+
+    if side not in {"p1", "p2"}:
+        raise ValueError("finite transition side must be p1 or p2")
+    if not isinstance(state, dict) or not state:
+        raise ValueError("finite transition requires a serialized Showdown state")
+    for label, choice in (("p1_choice", p1_choice), ("p2_choice", p2_choice)):
+        if not isinstance(choice, str) or not choice.strip():
+            raise ValueError(f"{label} must be a non-empty command")
+    if not isinstance(expected_public_view, dict):
+        raise ValueError("finite transition requires an expected public view")
+    if (
+        isinstance(max_leaves, bool)
+        or not isinstance(max_leaves, int)
+        or max_leaves < 1
+        or max_leaves > 10000
+    ):
+        raise ValueError("max_leaves must be an integer from 1 through 10000")
+
+    schema_issue = public_reachability_observation_issue(expected_public_view)
+    if schema_issue:
+        return FiniteTransitionReachability(
+            evidence=_observation_unsupported_result(
+                role="expected",
+                issue=schema_issue,
+            ),
+            leaves_examined=0,
+            decision_nodes=0,
+            max_depth=0,
+        )
+    unsupported = _public_target_unsupported(expected_public_view)
+    if unsupported:
+        return FiniteTransitionReachability(
+            evidence=ReachabilityResult.unsupported(
+                reason=(
+                    "transition contains unsupported public mechanics evidence: "
+                    f"{', '.join(unsupported)}"
+                )
+            ),
+            leaves_examined=0,
+            decision_nodes=0,
+            max_depth=0,
+        )
+
+    fingerprint = "sha256:" + _reachability_hash(
+        {
+            "observation_schema": PUBLIC_OBSERVATION_SCHEMA_VERSION,
+            "finite_randomness_domain": FINITE_TRANSITION_RANDOMNESS_DOMAIN,
+            "state": state,
+            "side": side,
+            "previews": previews,
+            "p1_choice": p1_choice,
+            "p2_choice": p2_choice,
+            "expected_public_signature": public_observation_signature(
+                expected_public_view
+            ),
+            "max_leaves": max_leaves,
+        }
+    )
+
+    try:
+        raw = worker.enumerate_finite_transition(
+            state=state,
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+            view_side=side,
+            expected_public_view=expected_public_view,
+            previews=previews,
+            max_leaves=max_leaves,
+        )
+    except TimeoutError:
+        return FiniteTransitionReachability(
+            evidence=ReachabilityResult.unresolved(
+                reason="finite stochastic transition enumeration timed out"
+            ),
+            leaves_examined=0,
+            decision_nodes=0,
+            max_depth=0,
+        )
+    except ShowdownRequestError as error:
+        if error.choice_rejected:
+            return FiniteTransitionReachability(
+                evidence=ReachabilityResult.unresolved(
+                    reason="finite stochastic transition command was rejected"
+                ),
+                leaves_examined=0,
+                decision_nodes=0,
+                max_depth=0,
+            )
+        raise
+
+    if not isinstance(raw, dict):
+        raise RuntimeError("finite transition worker returned a non-dictionary result")
+    required = {
+        "domain",
+        "exhaustive",
+        "witnessed",
+        "leaves_examined",
+        "decision_nodes",
+        "max_depth",
+    }
+    if not required.issubset(raw):
+        raise RuntimeError("finite transition worker returned an incomplete result")
+    if raw["domain"] != FINITE_TRANSITION_RANDOMNESS_DOMAIN:
+        raise RuntimeError("finite transition worker returned an unknown domain")
+    exhaustive = raw["exhaustive"]
+    witnessed = raw["witnessed"]
+    if not isinstance(exhaustive, bool) or not isinstance(witnessed, bool):
+        raise RuntimeError("finite transition worker returned invalid authority flags")
+    if exhaustive and witnessed:
+        raise RuntimeError("finite transition witness must return before exhaustive completion")
+
+    counts: dict[str, int] = {}
+    for key in ("leaves_examined", "decision_nodes", "max_depth"):
+        value = raw[key]
+        if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+            raise RuntimeError(f"finite transition worker returned invalid {key}")
+        counts[key] = value
+
+    coverage = ReachabilityCoverage(
+        sequential_context_fingerprint=fingerprint,
+        transitions_covered=1,
+        outcomes_examined=max(1, counts["leaves_examined"]),
+        randomness_domains=(FINITE_TRANSITION_RANDOMNESS_DOMAIN,),
+        randomness_exhaustive=exhaustive and not witnessed,
+        sequential_context_complete=True,
+    )
+
+    if witnessed:
+        witness = raw.get("witness")
+        if not isinstance(witness, dict):
+            raise RuntimeError("finite transition worker omitted witness payload")
+        child_state = witness.get("state")
+        public_view = witness.get("view")
+        member_lineage = witness.get("member_lineage")
+        random_path = witness.get("random_path")
+        if (
+            not isinstance(child_state, dict)
+            or not child_state
+            or not isinstance(public_view, dict)
+            or not isinstance(member_lineage, dict)
+            or not isinstance(random_path, list)
+        ):
+            raise RuntimeError("finite transition worker returned malformed witness")
+        schema_issue = public_reachability_observation_issue(public_view)
+        if schema_issue:
+            return FiniteTransitionReachability(
+                evidence=_observation_unsupported_result(
+                    role="worker-returned",
+                    issue=schema_issue,
+                ),
+                leaves_examined=counts["leaves_examined"],
+                decision_nodes=counts["decision_nodes"],
+                max_depth=counts["max_depth"],
+            )
+        witness_id = "sha256:" + _reachability_hash(
+            {
+                "context": fingerprint,
+                "random_path": random_path,
+                "observed_public_signature": public_observation_signature(
+                    public_view
+                ),
+            }
+        )
+        return FiniteTransitionReachability(
+            evidence=ReachabilityResult.witnessed(
+                coverage=coverage,
+                witness_ids=(witness_id,),
+            ),
+            leaves_examined=counts["leaves_examined"],
+            decision_nodes=counts["decision_nodes"],
+            max_depth=counts["max_depth"],
+            child_state=child_state,
+            public_view=public_view,
+            member_lineage=member_lineage,
+            random_path=tuple(random_path),
+        )
+
+    if exhaustive:
+        return FiniteTransitionReachability(
+            evidence=ReachabilityResult.exhaustively_disproved(
+                coverage=coverage,
+            ),
+            leaves_examined=counts["leaves_examined"],
+            decision_nodes=counts["decision_nodes"],
+            max_depth=counts["max_depth"],
+        )
+
+    reason = raw.get("reason")
+    if not isinstance(reason, str) or not reason.strip():
+        raise RuntimeError("unresolved finite transition omitted a reason")
+    return FiniteTransitionReachability(
+        evidence=ReachabilityResult.unresolved(
+            reason=reason,
+            coverage=ReachabilityCoverage(
+                sequential_context_fingerprint=fingerprint,
+                transitions_covered=1,
+                outcomes_examined=counts["leaves_examined"],
+                randomness_domains=(FINITE_TRANSITION_RANDOMNESS_DOMAIN,),
+                randomness_exhaustive=False,
+                sequential_context_complete=True,
+            ) if counts["leaves_examined"] > 0 else None,
+        ),
+        leaves_examined=counts["leaves_examined"],
+        decision_nodes=counts["decision_nodes"],
+        max_depth=counts["max_depth"],
     )
