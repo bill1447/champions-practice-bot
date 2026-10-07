@@ -1320,6 +1320,10 @@ class BeliefDecisionEngine:
         previous_view: dict[str, object] | None = None,
         batches: tuple[int, ...],
         deadline: float | None = None,
+        progress_callback: Callable[
+            [tuple[BeliefParticle, ...], tuple[str, ...]],
+            None,
+        ] | None = None,
     ) -> ParticleUpdate:
         generated = 0
         matched = 0
@@ -1344,6 +1348,16 @@ class BeliefDecisionEngine:
             if finite_public_actions
             else 1
         )
+
+        def report_progress(update: ParticleUpdate) -> None:
+            if progress_callback is None:
+                return
+            if not update.particles and not update.exhaustively_excluded_world_ids:
+                return
+            progress_callback(
+                tuple(update.particles),
+                tuple(update.exhaustively_excluded_world_ids),
+            )
 
         def aggregate_diagnostics(update: ParticleUpdate) -> None:
             structural_mismatch_paths.update(
@@ -1433,6 +1447,7 @@ class BeliefDecisionEngine:
                 stochastic_only_mismatches += update.stochastic_only_mismatches
                 structural_mismatches += update.structural_mismatches
                 aggregate_diagnostics(update)
+                report_progress(update)
                 update_matched_worlds = set(update.matched_world_ids)
                 if not update_matched_worlds and update.particles:
                     update_matched_worlds = set(
@@ -1517,6 +1532,7 @@ class BeliefDecisionEngine:
                 preexcluded_worlds=set(),
                 deadline=deadline,
             )
+            report_progress(finite)
             exhaustive_exclusions.update(
                 finite.exhaustively_excluded_world_ids
             )
