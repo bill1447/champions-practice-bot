@@ -258,6 +258,10 @@ class _EngineObservationSnapshot:
         tuple[str, dict[str, object] | None, dict],
         ...,
     ]
+    pending_recovery_prefix_particles: tuple[BeliefParticle, ...]
+    pending_recovery_prefix_count: int
+    pending_recovery_witnesses: tuple[BeliefParticle, ...]
+    pending_recovery_excluded_world_ids: tuple[str, ...]
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
     recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...]
     recovery_authority_root_public_view: dict | None
@@ -697,6 +701,10 @@ class BeliefDecisionEngine:
         self.pending_observations: list[
             tuple[str, dict[str, object] | None, dict]
         ] = []
+        self.pending_recovery_prefix_particles: tuple[BeliefParticle, ...] = ()
+        self.pending_recovery_prefix_count = 0
+        self.pending_recovery_witnesses: tuple[BeliefParticle, ...] = ()
+        self.pending_recovery_excluded_world_ids: tuple[str, ...] = ()
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
@@ -831,6 +839,10 @@ class BeliefDecisionEngine:
         self.recovery_authority_root_public_view = deepcopy(view)
         self.recovery_authority_history.clear()
         self.recovery_authority_history_complete = bool(self.particles)
+        self.pending_recovery_prefix_particles = ()
+        self.pending_recovery_prefix_count = 0
+        self.pending_recovery_witnesses = ()
+        self.pending_recovery_excluded_world_ids = ()
         self.degraded = not bool(self.particles)
         return view
 
@@ -1308,6 +1320,10 @@ class BeliefDecisionEngine:
         previous_view: dict[str, object] | None = None,
         batches: tuple[int, ...],
         deadline: float | None = None,
+        progress_callback: Callable[
+            [tuple[BeliefParticle, ...], tuple[str, ...]],
+            None,
+        ] | None = None,
     ) -> ParticleUpdate:
         generated = 0
         matched = 0
@@ -1332,6 +1348,16 @@ class BeliefDecisionEngine:
             if finite_public_actions
             else 1
         )
+
+        def report_progress(update: ParticleUpdate) -> None:
+            if progress_callback is None:
+                return
+            if not update.particles and not update.exhaustively_excluded_world_ids:
+                return
+            progress_callback(
+                tuple(update.particles),
+                tuple(update.exhaustively_excluded_world_ids),
+            )
 
         def aggregate_diagnostics(update: ParticleUpdate) -> None:
             structural_mismatch_paths.update(
@@ -1421,6 +1447,7 @@ class BeliefDecisionEngine:
                 stochastic_only_mismatches += update.stochastic_only_mismatches
                 structural_mismatches += update.structural_mismatches
                 aggregate_diagnostics(update)
+                report_progress(update)
                 update_matched_worlds = set(update.matched_world_ids)
                 if not update_matched_worlds and update.particles:
                     update_matched_worlds = set(
@@ -1505,6 +1532,7 @@ class BeliefDecisionEngine:
                 preexcluded_worlds=set(),
                 deadline=deadline,
             )
+            report_progress(finite)
             exhaustive_exclusions.update(
                 finite.exhaustively_excluded_world_ids
             )
@@ -1655,52 +1683,202 @@ class BeliefDecisionEngine:
                 view=view,
             )
 
+    def _clear_pending_recovery_progress(self) -> None:
+        self.pending_recovery_prefix_particles = ()
+        self.pending_recovery_prefix_count = 0
+        self.pending_recovery_witnesses = ()
+        self.pending_recovery_excluded_world_ids = ()
+
     def _retry_pending_with_more_rng(
         self,
         *,
         deadline: float | None = None,
     ) -> bool:
-        """Retry last-good particles with more RNG; never reconstruct hidden state."""
+        """Resume public-only recovery without discarding proven prefix work.
+
+        Recovery progress has two layers:
+
+        * a completed prefix of pending observations, represented by exact
+          Showdown-produced particles after that prefix; and
+        * concrete witnesses / exhaustive exclusions already established for
+          the next pending observation.
+
+        Neither a sampled miss nor a timeout advances either layer. A later
+        retry therefore spends its budget only on unresolved worlds and on
+        observations after the completed prefix.
+        """
         if not self.pending_observations:
+            self._clear_pending_recovery_progress()
             return bool(self.particles)
 
-        starting_particles = self.particles
         pending = tuple(self.pending_observations)
+        if (
+            self.pending_recovery_prefix_count < 0
+            or self.pending_recovery_prefix_count > len(pending)
+            or (
+                self.pending_recovery_prefix_count > 0
+                and not self.pending_recovery_prefix_particles
+            )
+        ):
+            self._clear_pending_recovery_progress()
+
+        prefix_count = self.pending_recovery_prefix_count
+        prefix_particles = (
+            self.pending_recovery_prefix_particles
+            if self.pending_recovery_prefix_particles
+            else self.particles
+        )
         recovery_deadline = perf_counter() + self.conditioning_budget_seconds
         if deadline is not None:
             recovery_deadline = min(recovery_deadline, deadline)
 
-        def recover(worker: HypotheticalSearchWorker):
-            particles = starting_particles
-            for ai_choice, previous_view, view in pending:
-                update = self._condition_adaptive(
+        progress_lock = RLock()
+        witness_cache: dict[tuple[str, str], BeliefParticle] = {}
+        excluded_worlds = set(self.pending_recovery_excluded_world_ids)
+
+        def witness_key(particle: BeliefParticle) -> tuple[str, str]:
+            history = particle.history_id
+            if not history:
+                history = hashlib.sha256(
+                    json.dumps(
+                        particle.state,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8")
+                ).hexdigest()
+            return particle.world_id, history
+
+        for particle in self.pending_recovery_witnesses:
+            witness_cache[witness_key(particle)] = particle
+
+        def record_progress(
+            witnesses: tuple[BeliefParticle, ...],
+            exclusions: tuple[str, ...],
+        ) -> None:
+            with progress_lock:
+                for particle in witnesses:
+                    witness_cache.setdefault(witness_key(particle), particle)
+                excluded_worlds.update(exclusions)
+
+        def snapshot_progress() -> tuple[
+            tuple[BeliefParticle, ...],
+            tuple[str, ...],
+        ]:
+            with progress_lock:
+                return (
+                    tuple(witness_cache.values()),
+                    tuple(sorted(excluded_worlds)),
+                )
+
+        def save_progress() -> None:
+            witnesses, exclusions = snapshot_progress()
+            self.pending_recovery_prefix_particles = prefix_particles
+            self.pending_recovery_prefix_count = prefix_count
+            self.pending_recovery_witnesses = witnesses
+            self.pending_recovery_excluded_world_ids = exclusions
+
+        while prefix_count < len(pending):
+            if perf_counter() >= recovery_deadline - 0.5:
+                save_progress()
+                return False
+
+            ai_choice, previous_view, view = pending[prefix_count]
+            required_worlds = set(_particle_world_keys(prefix_particles))
+            witnesses, exclusions = snapshot_progress()
+            excluded_worlds_now = set(exclusions)
+            witnessed_worlds = set(_particle_world_keys(witnesses))
+            installable_worlds = required_worlds - excluded_worlds_now
+
+            def complete_current_observation() -> bool:
+                nonlocal prefix_count, prefix_particles
+                witnesses_now, exclusions_now = snapshot_progress()
+                exclusions_set = set(exclusions_now)
+                installable = required_worlds - exclusions_set
+                witnessed = set(_particle_world_keys(witnesses_now))
+                if not installable or not installable.issubset(witnessed):
+                    return False
+
+                authoritative_particles = tuple(
+                    particle
+                    for index, particle in enumerate(prefix_particles)
+                    if _particle_world_key(particle, index) not in exclusions_set
+                )
+                merged = merge_sampled_world_witnesses(
+                    authoritative_particles,
+                    witnesses_now,
+                )
+                if not merged:
+                    return False
+
+                prefix_particles = resample_particles_by_world(
+                    merged,
+                    limit=self.max_particles,
+                    seed=int(view.get("turn", 0)) + 155,
+                )
+                prefix_count += 1
+                with progress_lock:
+                    witness_cache.clear()
+                    excluded_worlds.clear()
+                self.pending_recovery_prefix_particles = prefix_particles
+                self.pending_recovery_prefix_count = prefix_count
+                self.pending_recovery_witnesses = ()
+                self.pending_recovery_excluded_world_ids = ()
+                return True
+
+            if (
+                installable_worlds
+                and installable_worlds.issubset(witnessed_worlds)
+                and complete_current_observation()
+            ):
+                continue
+
+            unresolved_worlds = installable_worlds - witnessed_worlds
+            attempt_particles = tuple(
+                particle
+                for index, particle in enumerate(prefix_particles)
+                if _particle_world_key(particle, index) in unresolved_worlds
+            )
+            if not attempt_particles:
+                save_progress()
+                return False
+
+            def recover_one(worker: HypotheticalSearchWorker) -> ParticleUpdate:
+                return self._condition_adaptive(
                     worker,
-                    particles=particles,
+                    particles=attempt_particles,
                     ai_choice=ai_choice,
                     view=view,
                     previous_view=previous_view,
                     batches=self.recovery_rng_sample_batches,
                     deadline=recovery_deadline,
+                    progress_callback=record_progress,
                 )
-                if not update.particles:
-                    return None
-                particles = resample_particles_by_world(
-                    update.particles,
-                    limit=self.max_particles,
-                    seed=int(view.get("turn", 0)) + 155,
-                )
-            return particles
 
-        recovered, timed_out = self._run_until_deadline(
-            recover,
-            deadline=recovery_deadline,
-        )
-        if timed_out or not recovered:
+            update, timed_out = self._run_until_deadline(
+                recover_one,
+                deadline=recovery_deadline,
+            )
+            if update is not None:
+                record_progress(
+                    tuple(update.particles),
+                    tuple(update.exhaustively_excluded_world_ids),
+                )
+
+            if complete_current_observation():
+                continue
+
+            save_progress()
+            if timed_out or update is None or not update.particles:
+                return False
+
+            # A nonempty update that did not complete the current observation
+            # is still only positive progress. Keep it cached and retry later.
             return False
 
-        self.particles = recovered
+        self.particles = prefix_particles
         self._promote_pending_to_recovery_authority(pending)
         self.pending_observations.clear()
+        self._clear_pending_recovery_progress()
         self.degraded = False
         return True
 
@@ -2759,6 +2937,18 @@ class _BeliefBattleCoordinator:
             last_public_view=self._engine.last_public_view,
             particles=self._engine.particles,
             pending_observations=tuple(self._engine.pending_observations),
+            pending_recovery_prefix_particles=(
+                self._engine.pending_recovery_prefix_particles
+            ),
+            pending_recovery_prefix_count=(
+                self._engine.pending_recovery_prefix_count
+            ),
+            pending_recovery_witnesses=(
+                self._engine.pending_recovery_witnesses
+            ),
+            pending_recovery_excluded_world_ids=(
+                self._engine.pending_recovery_excluded_world_ids
+            ),
             recovery_authority_root_particles=(
                 self._engine.recovery_authority_root_particles
             ),
@@ -2784,6 +2974,18 @@ class _BeliefBattleCoordinator:
         self._engine.last_public_view = snapshot.last_public_view
         self._engine.particles = snapshot.particles
         self._engine.pending_observations = list(snapshot.pending_observations)
+        self._engine.pending_recovery_prefix_particles = (
+            snapshot.pending_recovery_prefix_particles
+        )
+        self._engine.pending_recovery_prefix_count = (
+            snapshot.pending_recovery_prefix_count
+        )
+        self._engine.pending_recovery_witnesses = (
+            snapshot.pending_recovery_witnesses
+        )
+        self._engine.pending_recovery_excluded_world_ids = (
+            snapshot.pending_recovery_excluded_world_ids
+        )
         self._engine.recovery_authority_root_particles = (
             snapshot.recovery_authority_root_particles
         )
