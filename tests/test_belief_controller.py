@@ -568,7 +568,7 @@ def test_observed_action_rng_multiplier_uses_incremental_chunks(
     calls: list[int] = []
 
     monkeypatch.setattr(
-        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        "champions_practice.belief_controller.public_opponent_actions_fully_observed",
         lambda *args, **kwargs: True,
     )
 
@@ -616,6 +616,109 @@ def _finite_particle_state(label: str) -> dict:
             {"pokemon": [{"set": {"species": "Gardevoir"}}]},
         ],
     }
+
+
+def _finite_switch_particle_state(label: str) -> dict:
+    return {
+        "label": label,
+        "sides": [
+            {
+                "pokemon": [
+                    {"set": {"species": "Indeedee-F"}},
+                    {"set": {"species": "Sneasler"}},
+                    {"set": {"species": "Rillaboom"}},
+                    {"set": {"species": "Armarouge"}},
+                ]
+            },
+            {"pokemon": [{"set": {"species": "Gardevoir"}}]},
+        ],
+    }
+
+
+def test_public_switch_command_resolves_particle_party_index_before_witness_search(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        _finite_switch_particle_state("root"),
+        1.0,
+        world_id="world-a",
+        history_id="root",
+        p1_member_lineage=(0, 1, 2, 3),
+        p2_member_lineage=(0,),
+    )
+    expected = {
+        "turn": 4,
+        "opponent_last_actions": [
+            {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+            {"turn": 3, "slot": 2, "switch_species": "rillaboom"},
+        ],
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Rillaboom"},
+            ]
+        },
+    }
+
+    class Worker:
+        def __init__(self) -> None:
+            self.attempted: list[str] = []
+
+        def legal_choices(self, *, state, side):
+            assert state["label"] == "root"
+            assert side == "p1"
+            return [
+                "move protect, switch 3",
+                "move protect, switch 4",
+                "move protect, move trickroom",
+            ]
+
+        def branch_many(self, *, state, branches):
+            self.attempted.extend(branch["p1_choice"] for branch in branches)
+            child = _finite_switch_particle_state("child")
+            return [
+                {
+                    "state": child,
+                    "view": expected,
+                    "member_lineage": {
+                        "p1": [0, 1, 2, 3],
+                        "p2": [0],
+                    },
+                }
+                for _branch in branches
+            ]
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("finite tree should not run after switch witness")
+        ),
+    )
+    worker = Worker()
+
+    update = engine._condition_finite_public_transition(
+        worker,
+        particles=(particle,),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 3, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=1,
+    )
+
+    assert worker.attempted == ["move protect, switch 3"]
+    assert len(update.particles) == 1
+    assert update.particles[0].state["label"] == "child"
+    assert update.particles[0].world_id == "world-a"
+    assert update.finite_reachability_witnesses == 1
+    assert update.finite_reachability_unresolved == 0
 
 
 def test_public_command_witness_seed_is_replayed_across_worlds(
@@ -697,6 +800,9 @@ def test_public_command_witness_seed_is_replayed_across_worlds(
         "world-a",
         "world-b",
     }
+    assert sorted(particle.weight for particle in update.particles) == pytest.approx(
+        [0.4, 0.6]
+    )
     assert sorted(particle.weight for particle in update.particles) == pytest.approx([0.4, 0.6])
     assert update.finite_reachability_witnesses == 2
     assert update.finite_reachability_unresolved == 0
@@ -890,7 +996,7 @@ def test_sampled_partial_world_match_is_not_installable(
     calls = 0
 
     monkeypatch.setattr(
-        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        "champions_practice.belief_controller.public_opponent_actions_fully_observed",
         lambda *args, **kwargs: True,
     )
 
@@ -973,7 +1079,7 @@ def test_exhaustive_world_exclusion_allows_safe_posterior_install(
     )
 
     monkeypatch.setattr(
-        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        "champions_practice.belief_controller.public_opponent_actions_fully_observed",
         lambda *args, **kwargs: False,
     )
 
@@ -1106,7 +1212,7 @@ def test_incremental_conditioning_returns_before_hard_deadline(
     calls: list[int] = []
 
     monkeypatch.setattr(
-        "champions_practice.belief_controller.public_opponent_moves_fully_observed",
+        "champions_practice.belief_controller.public_opponent_actions_fully_observed",
         lambda *args, **kwargs: True,
     )
     ticks = iter((0.0, 0.6))

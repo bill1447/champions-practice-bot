@@ -47,10 +47,13 @@ receive a lucky sampled match while the true world received none.
 
 ### 3. Finite stochastic transition reachability
 
-When ordinary sampled conditioning cannot install a posterior and both opponent move slots
-were freshly observed from the public Showdown channel, production may escalate to the
-finite-transition enumerator. The enumerator replays the exact hypothetical state and the
-publicly reconstructible joint command while branching Showdown's finite random-call domains.
+When ordinary sampled conditioning cannot install a posterior and every opponent action slot
+is freshly recoverable from the public Showdown channel, production may escalate to
+public-command witness recovery and then the finite-transition enumerator. Recoverable
+actions include direct selected moves, publicly prevented attempted moves, and plain selected
+switches from Showdown's pre-resolution switch prefix. The enumerator replays the exact
+hypothetical state and the publicly reconstructible joint command while branching Showdown's
+finite random-call domains.
 
 The authority rule remains fail-closed:
 
@@ -59,6 +62,10 @@ The authority rule remains fail-closed:
   exhaustively disproved by a completed finite random-call tree;
 - branch-budget exhaustion, unsupported/unbounded random calls, timeout, or incomplete public
   command evidence remain unresolved and retain the last-good belief;
+- switch species are resolved independently against each hypothetical particle's party indexes;
+  a public species label is never treated as a universal private switch number;
+- source-driven switches, `drag`, `replace`, and ambiguous/disguised switch projections are
+  not promoted to exhaustive command authority;
 - the sealed opponent command is never supplied as live belief authority.
 
 This layer is broader than the isolated 16-bucket damage randomizer: it follows the complete

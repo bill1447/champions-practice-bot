@@ -36,10 +36,11 @@ from champions_practice.observation_beliefs import (
     compose_branch_member_lineage,
     condition_particles,
     identity_member_lineage,
+    filter_choices_by_public_actions,
     merge_sampled_world_witnesses,
     observed_joint_move_candidates,
     public_observation_signature,
-    public_opponent_moves_fully_observed,
+    public_opponent_actions_fully_observed,
     resample_particles_by_world,
 )
 from champions_practice.reachability import (
@@ -925,7 +926,7 @@ class BeliefDecisionEngine:
     ) -> ParticleUpdate:
         """Recover public transitions with concrete Showdown witnesses first.
 
-        Once both opponent moves are public, positive reachability does not need
+        Once every opponent action slot is public, positive reachability does not need
         exhaustive stochastic coverage: one concrete Showdown seed is a genuine
         sequential witness. Search those witnesses round-robin across worlds
         using the same deterministic seed stream as collapse diagnostics, and
@@ -937,11 +938,14 @@ class BeliefDecisionEngine:
         exhaustive finite tree with no match. Any timeout, branch cap, unsupported
         RNG path, or other coverage gap remains unresolved.
         """
-        public_candidates = observed_joint_move_candidates(
+        public_move_candidates = observed_joint_move_candidates(
             view,
             previous_public_view=previous_view,
         )
-        if not public_candidates:
+        if not public_opponent_actions_fully_observed(
+            view,
+            previous_public_view=previous_view,
+        ):
             return ParticleUpdate(
                 (),
                 generated=0,
@@ -972,25 +976,57 @@ class BeliefDecisionEngine:
             values = [local_rng.getrandbits(32) for _ in range(4)]
             return "sodium," + "".join(f"{value:08x}" for value in values)
 
-        validated_cache: dict[tuple[str, str], tuple[str, ...]] = {}
+        validated_cache: dict[
+            tuple[str, str],
+            tuple[tuple[str, ...], bool],
+        ] = {}
 
         def validated_choices(
             world_id: str,
             particle: BeliefParticle,
-        ) -> tuple[str, ...]:
+        ) -> tuple[tuple[str, ...], bool]:
             key = (world_id, particle.history_id or str(id(particle)))
             cached = validated_cache.get(key)
             if cached is not None:
                 return cached
-            validated = tuple(
-                worker.validate_choices(
+
+            if public_move_candidates:
+                validated = tuple(
+                    worker.validate_choices(
+                        state=particle.state,
+                        side="p1",
+                        candidates=list(public_move_candidates),
+                    )
+                )
+                result = (validated, bool(validated))
+                validated_cache[key] = result
+                return result
+
+            legal = tuple(
+                worker.legal_choices(
                     state=particle.state,
                     side="p1",
-                    candidates=list(public_candidates),
                 )
             )
-            validated_cache[key] = validated
-            return validated
+            filtered = filter_choices_by_public_actions(
+                legal,
+                view,
+                previous_public_view=previous_view,
+                state=particle.state,
+                side="p1",
+                fail_open=False,
+            )
+            if filtered:
+                result = (filtered, True)
+            else:
+                # A disguise or otherwise ambiguous species projection can make
+                # a public switch impossible to map to one party index in this
+                # particle. Searching every legal command is still safe for a
+                # positive Showdown witness, but it cannot support exhaustive
+                # negative authority for that world.
+                result = (legal, False)
+            validated_cache[key] = result
+            return result
 
         def witness_from_result(
             *,
@@ -1042,7 +1078,7 @@ class BeliefDecisionEngine:
             if world_id in witnesses or world_id in excluded_worlds:
                 return world_id in witnesses
             for particle in grouped[world_id]:
-                choices = validated_choices(world_id, particle)
+                choices, _actions_exact = validated_choices(world_id, particle)
                 if not choices:
                     continue
                 branches = [
@@ -1139,8 +1175,14 @@ class BeliefDecisionEngine:
                     if deadline is not None and perf_counter() >= deadline - 0.75:
                         world_unresolved = True
                         break
-                    choices = validated_choices(world_id, particle)
+                    choices, actions_exact = validated_choices(
+                        world_id,
+                        particle,
+                    )
                     if not choices:
+                        world_unresolved = True
+                        continue
+                    if not actions_exact:
                         world_unresolved = True
                         continue
 
@@ -1281,7 +1323,7 @@ class BeliefDecisionEngine:
         witnessed_particles: list[BeliefParticle] = []
         exhaustive_exclusions: set[str] = set()
         unsupported_public_evidence: set[str] = set()
-        finite_public_actions = public_opponent_moves_fully_observed(
+        finite_public_actions = public_opponent_actions_fully_observed(
             view,
             previous_public_view=previous_view,
         )

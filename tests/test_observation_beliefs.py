@@ -4,9 +4,12 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     classify_public_observation_mismatch,
     condition_particles,
+    filter_choices_by_public_actions,
     is_stochastic_observation_path,
     observed_joint_move_candidates,
+    observed_public_actions,
     public_observation_signature,
+    public_opponent_actions_fully_observed,
     public_opponent_moves_fully_observed,
     resample_particles,
     resample_particles_by_world,
@@ -1238,6 +1241,120 @@ def test_incomplete_public_action_never_uses_unrevealed_submitted_command() -> N
         "move psychic +1, move protect",
         "move psychic +1, move closecombat +1",
     }
+
+
+def _public_switch_state() -> dict:
+    return {
+        "sides": [
+            {
+                "pokemon": [
+                    {"set": {"species": "Indeedee-F"}},
+                    {"set": {"species": "Sneasler"}},
+                    {"set": {"species": "Rillaboom"}},
+                    {"set": {"species": "Armarouge"}},
+                ]
+            },
+            {
+                "pokemon": [
+                    {"set": {"species": "Gardevoir"}},
+                    {"set": {"species": "Metagross"}},
+                ]
+            },
+        ]
+    }
+
+
+def test_mixed_public_move_and_selected_switch_resolve_particle_command() -> None:
+    previous = {
+        "turn": 3,
+        "opponent_last_actions": [
+            {"turn": 2, "slot": 1, "move": "protect", "target": -1},
+            {"turn": 2, "slot": 2, "move": "trickroom", "target": None},
+        ],
+    }
+    actual = {
+        "turn": 4,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Rillaboom"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+            {"turn": 3, "slot": 2, "switch_species": "rillaboom"},
+        ],
+    }
+    choices = (
+        "move protect, switch 3",
+        "move protect, switch 4",
+        "move protect, move trickroom",
+    )
+
+    actions = observed_public_actions(
+        actual,
+        previous_public_view=previous,
+    )
+    filtered = filter_choices_by_public_actions(
+        choices,
+        actual,
+        previous_public_view=previous,
+        state=_public_switch_state(),
+        side="p1",
+        fail_open=False,
+    )
+
+    assert actions == (
+        (1, "move", "protect", -1),
+        (2, "switch", "rillaboom", None),
+    )
+    assert filtered == ("move protect, switch 3",)
+    assert public_opponent_actions_fully_observed(
+        actual,
+        previous_public_view=previous,
+    )
+    assert not public_opponent_moves_fully_observed(
+        actual,
+        previous_public_view=previous,
+    )
+    assert observed_joint_move_candidates(
+        actual,
+        previous_public_view=previous,
+    ) == ()
+
+
+def test_public_switch_species_mapping_fails_open_for_ambiguous_projection() -> None:
+    actual = {
+        "turn": 4,
+        "opponent": {
+            "active": [
+                {"species": "Indeedee-F"},
+                {"species": "Rillaboom"},
+            ]
+        },
+        "opponent_last_actions": [
+            {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+            {"turn": 3, "slot": 2, "switch_species": "zoroark"},
+        ],
+    }
+    choices = (
+        "move protect, switch 3",
+        "move protect, switch 4",
+    )
+
+    assert filter_choices_by_public_actions(
+        choices,
+        actual,
+        state=_public_switch_state(),
+        side="p1",
+    ) == choices
+    assert filter_choices_by_public_actions(
+        choices,
+        actual,
+        state=_public_switch_state(),
+        side="p1",
+        fail_open=False,
+    ) == ()
 
 
 def test_prevented_public_action_completes_joint_command_evidence() -> None:

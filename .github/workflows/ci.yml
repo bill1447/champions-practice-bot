@@ -217,6 +217,10 @@ jobs:
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1
 
+      - name: Public selected-switch action smoke test
+        shell: pwsh
+        run: .\public-switch-action-smoke.ps1
+
       - name: Public action execution evidence smoke test
         shell: pwsh
         run: .\execution-evidence-smoke.ps1
