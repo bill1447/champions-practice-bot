@@ -673,6 +673,7 @@ def test_finite_public_transition_can_witness_and_exhaustively_exclude_worlds(
                 child_state=child,
                 public_view=expected,
                 member_lineage={"p1": [0], "p2": [0]},
+                rng_seed="sodium,finite-test-witness",
                 random_path=({"kind": "chance", "value": True},),
             )
         return FiniteTransitionReachability(
