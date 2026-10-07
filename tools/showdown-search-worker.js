@@ -523,13 +523,21 @@ function publicLastOpponentActions(battle, sideId) {
       actor &&
       actor.side === opponentPrefix
     ) {
-      const species = toId(String(parts[3] || "").split(",", 1)[0]);
-      if (species) {
-        addSelectedAction(actor.slot, {
-          turn: logTurn,
-          slot: actor.slot,
-          switch_species: species,
-        });
+      // Pinned Showdown annotates effect-driven switches with public
+      // "[from] ..." provenance. Those are consequences of an earlier action,
+      // not proof that this switch was the slot's submitted command.
+      const sourceDriven = parts.slice(4).some(
+        (part) => String(part).trim().toLowerCase().startsWith("[from]"),
+      );
+      if (!sourceDriven) {
+        const species = toId(String(parts[3] || "").split(",", 1)[0]);
+        if (species) {
+          addSelectedAction(actor.slot, {
+            turn: logTurn,
+            slot: actor.slot,
+            switch_species: species,
+          });
+        }
       }
       continue;
     }
