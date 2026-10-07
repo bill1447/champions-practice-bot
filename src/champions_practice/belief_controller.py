@@ -33,13 +33,20 @@ from champions_practice.observation_beliefs import (
     BeliefParticle,
     ParticleUpdate,
     StructuralMismatchExample,
+    compose_branch_member_lineage,
     condition_particles,
     identity_member_lineage,
     merge_sampled_world_witnesses,
+    observed_joint_move_candidates,
     public_observation_signature,
     public_opponent_moves_fully_observed,
     resample_particles_by_world,
 )
+from champions_practice.reachability import (
+    finite_public_transition_reachability,
+)
+
+
 from champions_practice.search_worker import (
     FORCED_WAIT_CHOICE,
     HypotheticalSearchWorker,
@@ -191,6 +198,10 @@ class BeliefRecoveryDiagnostic:
     exhaustively_excluded_worlds: int
     recovery_candidates_remaining: int
     recovery_worlds_remaining: int
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     unsupported_public_evidence: tuple[str, ...] = ()
     error: str | None = None
 
@@ -230,6 +241,10 @@ class SealedTurnResult:
     degraded: bool
     terminal: bool
     winner: str | None
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     collapse_diagnostic: BeliefCollapseDiagnostic | None = None
     recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
@@ -261,6 +276,10 @@ class BeliefTurnUpdate:
     conditioning_seconds: float
     conditioning_over_budget: bool
     degraded: bool
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
 
@@ -327,6 +346,18 @@ def _recovery_diagnostic(
         ),
         structural_mismatch_examples=(
             update.structural_mismatch_examples if update is not None else ()
+        ),
+        finite_reachability_witnesses=(
+            update.finite_reachability_witnesses if update is not None else 0
+        ),
+        finite_reachability_disproofs=(
+            update.finite_reachability_disproofs if update is not None else 0
+        ),
+        finite_reachability_unresolved=(
+            update.finite_reachability_unresolved if update is not None else 0
+        ),
+        finite_reachability_leaves=(
+            update.finite_reachability_leaves if update is not None else 0
         ),
         sampled_matched_worlds=(
             len(update.matched_world_ids) if update is not None else 0
@@ -879,6 +910,352 @@ class BeliefDecisionEngine:
             return None, True
         return result, False
 
+    def _condition_finite_public_transition(
+        self,
+        worker: HypotheticalSearchWorker,
+        *,
+        particles: tuple[BeliefParticle, ...],
+        ai_choice: str,
+        view: dict,
+        previous_view: dict[str, object] | None,
+        preexcluded_worlds: set[str],
+        deadline: float | None,
+        max_leaves: int = 256,
+        witness_rounds: int = 64,
+    ) -> ParticleUpdate:
+        """Recover public transitions with concrete Showdown witnesses first.
+
+        Once both opponent moves are public, positive reachability does not need
+        exhaustive stochastic coverage: one concrete Showdown seed is a genuine
+        sequential witness. Search those witnesses round-robin across worlds
+        using the same deterministic seed stream as collapse diagnostics, and
+        immediately replay any discovered seed across the other worlds.
+
+        Only worlds still unresolved after concrete witness search are eligible
+        for finite-tree negative authority. A world may be excluded only when
+        every retained particle and every public command candidate completes an
+        exhaustive finite tree with no match. Any timeout, branch cap, unsupported
+        RNG path, or other coverage gap remains unresolved.
+        """
+        public_candidates = observed_joint_move_candidates(
+            view,
+            previous_public_view=previous_view,
+        )
+        if not public_candidates:
+            return ParticleUpdate(
+                (),
+                generated=0,
+                matched=0,
+                deduplicated=0,
+                sampled_unresolved_world_ids=_particle_world_keys(particles),
+            )
+
+        world_order: list[str] = []
+        grouped: dict[str, list[BeliefParticle]] = {}
+        for index, particle in enumerate(particles):
+            world_id = _particle_world_key(particle, index)
+            if world_id not in grouped:
+                grouped[world_id] = []
+                world_order.append(world_id)
+            grouped[world_id].append(particle)
+
+        excluded_worlds = set(preexcluded_worlds)
+        witnesses: dict[str, BeliefParticle] = {}
+        generated = 0
+        finite_disproofs = 0
+        finite_unresolved = 0
+        finite_leaves = 0
+        wanted = public_observation_signature(view)
+        local_rng = random.Random(0xC011A95E + int(view.get("turn", 0)))
+
+        def next_seed() -> str:
+            values = [local_rng.getrandbits(32) for _ in range(4)]
+            return "sodium," + "".join(f"{value:08x}" for value in values)
+
+        validated_cache: dict[tuple[str, str], tuple[str, ...]] = {}
+
+        def validated_choices(
+            world_id: str,
+            particle: BeliefParticle,
+        ) -> tuple[str, ...]:
+            key = (world_id, particle.history_id or str(id(particle)))
+            cached = validated_cache.get(key)
+            if cached is not None:
+                return cached
+            validated = tuple(
+                worker.validate_choices(
+                    state=particle.state,
+                    side="p1",
+                    candidates=list(public_candidates),
+                )
+            )
+            validated_cache[key] = validated
+            return validated
+
+        def witness_from_result(
+            *,
+            world_id: str,
+            particle: BeliefParticle,
+            result: dict,
+            seed: str,
+        ) -> BeliefParticle | None:
+            state = result.get("state")
+            if not isinstance(state, dict):
+                return None
+            simulated_view = result.get("view")
+            if not isinstance(simulated_view, dict):
+                simulated_view = worker.state_view(
+                    state=state,
+                    side="p2",
+                    previews=self.previews,
+                )
+            if public_observation_signature(simulated_view) != wanted:
+                return None
+            raw_lineage = result.get("member_lineage")
+            p1_lineage, p2_lineage = compose_branch_member_lineage(
+                particle,
+                child_state=state,
+                raw_lineage=raw_lineage,
+            )
+            witness_id = hashlib.sha256(
+                (
+                    world_id
+                    + "|"
+                    + seed
+                    + "|"
+                    + wanted
+                ).encode("utf-8")
+            ).hexdigest()
+            return BeliefParticle(
+                state=state,
+                weight=particle.weight,
+                world_id=world_id,
+                history_id=(
+                    f"{particle.history_id}|public-witness:sha256:{witness_id}"
+                ).strip("|"),
+                p1_member_lineage=p1_lineage,
+                p2_member_lineage=p2_lineage,
+            )
+
+        def try_seed(world_id: str, seed: str) -> bool:
+            nonlocal generated
+            if world_id in witnesses or world_id in excluded_worlds:
+                return world_id in witnesses
+            for particle in grouped[world_id]:
+                choices = validated_choices(world_id, particle)
+                if not choices:
+                    continue
+                branches = [
+                    {
+                        "p1_choice": human_choice,
+                        "p2_choice": ai_choice,
+                        "include_state": True,
+                        "view_side": "p2",
+                        "rng_seed": seed,
+                        **(
+                            {"previews": self.previews}
+                            if self.previews is not None
+                            else {}
+                        ),
+                    }
+                    for human_choice in choices
+                ]
+                resolved = worker.branch_many(
+                    state=particle.state,
+                    branches=branches,
+                )
+                generated += len(resolved)
+                for result in resolved:
+                    witness = witness_from_result(
+                        world_id=world_id,
+                        particle=particle,
+                        result=result,
+                        seed=seed,
+                    )
+                    if witness is not None:
+                        witnesses[world_id] = witness
+                        return True
+            return False
+
+        # This reproduces the successful collapse-debug search but uses only the
+        # channel-reconstructed public command. Two seeds per world keeps calls
+        # small; a seed that witnesses one world is immediately replayed across
+        # every other unresolved world before generating more randomness.
+        rounds = 0
+        while rounds < witness_rounds:
+            unresolved = [
+                world_id
+                for world_id in world_order
+                if world_id not in witnesses
+                and world_id not in excluded_worlds
+            ]
+            if not unresolved:
+                break
+            if deadline is not None and perf_counter() >= deadline - 1.0:
+                break
+
+            discovered_seed: str | None = None
+            for world_id in unresolved:
+                for _ in range(2):
+                    if deadline is not None and perf_counter() >= deadline - 1.0:
+                        break
+                    seed = next_seed()
+                    if try_seed(world_id, seed):
+                        discovered_seed = seed
+                        break
+                if discovered_seed is not None:
+                    break
+
+            if discovered_seed is not None:
+                for world_id in world_order:
+                    if world_id in witnesses or world_id in excluded_worlds:
+                        continue
+                    if deadline is not None and perf_counter() >= deadline - 1.0:
+                        break
+                    try_seed(world_id, discovered_seed)
+            rounds += 1
+
+        unresolved_worlds = {
+            world_id
+            for world_id in world_order
+            if world_id not in witnesses
+            and world_id not in excluded_worlds
+        }
+
+        # Use the finite tree only for unresolved worlds and keep the cap small
+        # enough that production cannot spend tens of seconds inside one worker
+        # call. Positive witnesses from this phase are still concrete-seed-bound
+        # by finite_public_transition_reachability(); negative authority requires
+        # exhaustive completion.
+        if unresolved_worlds:
+            for world_id in world_order:
+                if world_id not in unresolved_worlds:
+                    continue
+                world_unresolved = False
+                saw_conclusive_probe = False
+                world_witness: BeliefParticle | None = None
+
+                for particle in grouped[world_id]:
+                    if deadline is not None and perf_counter() >= deadline - 0.75:
+                        world_unresolved = True
+                        break
+                    choices = validated_choices(world_id, particle)
+                    if not choices:
+                        world_unresolved = True
+                        continue
+
+                    particle_all_disproved = True
+                    for human_choice in choices:
+                        if deadline is not None and perf_counter() >= deadline - 0.75:
+                            world_unresolved = True
+                            particle_all_disproved = False
+                            break
+                        probe = finite_public_transition_reachability(
+                            worker,
+                            state=particle.state,
+                            side="p2",
+                            p1_choice=human_choice,
+                            p2_choice=ai_choice,
+                            expected_public_view=view,
+                            previews=self.previews,
+                            max_leaves=max_leaves,
+                        )
+                        finite_leaves += probe.leaves_examined
+                        if probe.evidence.establishes_reachability:
+                            assert probe.child_state is not None
+                            assert probe.member_lineage is not None
+                            p1_lineage, p2_lineage = compose_branch_member_lineage(
+                                particle,
+                                child_state=probe.child_state,
+                                raw_lineage=probe.member_lineage,
+                            )
+                            witness_id = probe.evidence.witness_ids[0]
+                            world_witness = BeliefParticle(
+                                state=probe.child_state,
+                                weight=particle.weight,
+                                world_id=particle.world_id,
+                                history_id=(
+                                    f"{particle.history_id}|finite:{witness_id}"
+                                ).strip("|"),
+                                p1_member_lineage=p1_lineage,
+                                p2_member_lineage=p2_lineage,
+                            )
+                            saw_conclusive_probe = True
+                            break
+                        if probe.evidence.establishes_impossibility:
+                            saw_conclusive_probe = True
+                            continue
+                        particle_all_disproved = False
+                        world_unresolved = True
+
+                    if world_witness is not None:
+                        break
+                    if not particle_all_disproved:
+                        world_unresolved = True
+
+                if world_witness is not None:
+                    witnesses[world_id] = world_witness
+                    unresolved_worlds.discard(world_id)
+                    continue
+                if saw_conclusive_probe and not world_unresolved:
+                    excluded_worlds.add(world_id)
+                    unresolved_worlds.discard(world_id)
+                    finite_disproofs += 1
+                else:
+                    finite_unresolved += 1
+
+        authoritative_particles = tuple(
+            particle
+            for index, particle in enumerate(particles)
+            if _particle_world_key(particle, index) not in excluded_worlds
+        )
+        if (
+            authoritative_particles
+            and not unresolved_worlds
+            and set(witnesses)
+            == {
+                _particle_world_key(particle, index)
+                for index, particle in enumerate(authoritative_particles)
+            }
+        ):
+            merged = merge_sampled_world_witnesses(
+                authoritative_particles,
+                tuple(witnesses.values()),
+            )
+            if merged:
+                return ParticleUpdate(
+                    particles=merged,
+                    generated=generated + finite_leaves,
+                    matched=len(witnesses),
+                    deduplicated=0,
+                    matched_world_ids=tuple(sorted(witnesses)),
+                    sampled_unresolved_world_ids=(),
+                    exhaustively_excluded_world_ids=tuple(
+                        sorted(excluded_worlds)
+                    ),
+                    finite_reachability_witnesses=len(witnesses),
+                    finite_reachability_disproofs=finite_disproofs,
+                    finite_reachability_unresolved=0,
+                    finite_reachability_leaves=finite_leaves,
+                )
+
+        return ParticleUpdate(
+            (),
+            generated=generated + finite_leaves,
+            matched=len(witnesses),
+            deduplicated=0,
+            matched_world_ids=tuple(sorted(witnesses)),
+            sampled_unresolved_world_ids=tuple(sorted(unresolved_worlds)),
+            exhaustively_excluded_world_ids=tuple(sorted(excluded_worlds)),
+            finite_reachability_witnesses=len(witnesses),
+            finite_reachability_disproofs=finite_disproofs,
+            finite_reachability_unresolved=max(
+                finite_unresolved,
+                len(unresolved_worlds),
+            ),
+            finite_reachability_leaves=finite_leaves,
+        )
+
     def _condition_adaptive(
         self,
         worker: HypotheticalSearchWorker,
@@ -904,12 +1281,13 @@ class BeliefDecisionEngine:
         witnessed_particles: list[BeliefParticle] = []
         exhaustive_exclusions: set[str] = set()
         unsupported_public_evidence: set[str] = set()
+        finite_public_actions = public_opponent_moves_fully_observed(
+            view,
+            previous_public_view=previous_view,
+        )
         multiplier = (
             self.observed_action_rng_multiplier
-            if public_opponent_moves_fully_observed(
-                view,
-                previous_public_view=previous_view,
-            )
+            if finite_public_actions
             else 1
         )
 
@@ -1048,7 +1426,137 @@ class BeliefDecisionEngine:
                             **update_kwargs(),
                         )
 
+            # Once a complete public joint command is available, a full sampled
+            # pass with zero world witnesses has already served its screening
+            # purpose. Do not spend the remaining conditioning budget repeating
+            # the same probabilistic miss; reserve it for finite Showdown
+            # reachability below. Partial sampled coverage still gets later
+            # batches because those witnesses can cheaply complete the posterior.
+            if (
+                finite_public_actions
+                and not sampled_matched_worlds
+                and structural_mismatches > 0
+                and not unsupported_public_evidence
+            ):
+                break
+
         unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
+
+        if (
+            unresolved
+            and finite_public_actions
+            and not sampled_matched_worlds
+            and not unsupported_public_evidence
+            and (deadline is None or perf_counter() < deadline - 0.5)
+        ):
+            finite_source_particles = tuple(
+                particle
+                for index, particle in enumerate(particles)
+                if _particle_world_key(particle, index) in unresolved
+            )
+            finite = self._condition_finite_public_transition(
+                worker,
+                particles=finite_source_particles,
+                ai_choice=ai_choice,
+                view=view,
+                previous_view=previous_view,
+                preexcluded_worlds=set(),
+                deadline=deadline,
+            )
+            exhaustive_exclusions.update(
+                finite.exhaustively_excluded_world_ids
+            )
+            finite_matched_worlds = set(finite.matched_world_ids)
+            combined_matched_worlds = (
+                sampled_matched_worlds | finite_matched_worlds
+            )
+            installable_worlds = required_worlds - exhaustive_exclusions
+
+            if (
+                finite.particles
+                and installable_worlds.issubset(combined_matched_worlds)
+            ):
+                authoritative_particles = tuple(
+                    particle
+                    for index, particle in enumerate(particles)
+                    if _particle_world_key(particle, index)
+                    not in exhaustive_exclusions
+                )
+                merged = merge_sampled_world_witnesses(
+                    authoritative_particles,
+                    (
+                        *tuple(witnessed_particles),
+                        *finite.particles,
+                    ),
+                )
+                if merged:
+                    return ParticleUpdate(
+                        particles=merged,
+                        generated=generated + finite.generated,
+                        matched=matched + finite.matched,
+                        deduplicated=deduplicated + finite.deduplicated,
+                        stochastic_only_mismatches=stochastic_only_mismatches,
+                        structural_mismatches=structural_mismatches,
+                        matched_world_ids=tuple(
+                            sorted(combined_matched_worlds)
+                        ),
+                        sampled_unresolved_world_ids=(),
+                        exhaustively_excluded_world_ids=tuple(
+                            sorted(exhaustive_exclusions)
+                        ),
+                        unsupported_public_evidence=tuple(
+                            sorted(unsupported_public_evidence)
+                        ),
+                        finite_reachability_witnesses=(
+                            finite.finite_reachability_witnesses
+                        ),
+                        finite_reachability_disproofs=(
+                            finite.finite_reachability_disproofs
+                        ),
+                        finite_reachability_unresolved=0,
+                        finite_reachability_leaves=(
+                            finite.finite_reachability_leaves
+                        ),
+                        **update_kwargs(),
+                    )
+
+            unresolved = (
+                required_worlds
+                - combined_matched_worlds
+                - exhaustive_exclusions
+            )
+            return ParticleUpdate(
+                (),
+                generated + finite.generated,
+                matched + finite.matched,
+                deduplicated + finite.deduplicated,
+                stochastic_only_mismatches,
+                structural_mismatches,
+                matched_world_ids=tuple(
+                    sorted(combined_matched_worlds)
+                ),
+                sampled_unresolved_world_ids=tuple(sorted(unresolved)),
+                exhaustively_excluded_world_ids=tuple(
+                    sorted(exhaustive_exclusions)
+                ),
+                unsupported_public_evidence=tuple(
+                    sorted(unsupported_public_evidence)
+                ),
+                finite_reachability_witnesses=(
+                    finite.finite_reachability_witnesses
+                ),
+                finite_reachability_disproofs=(
+                    finite.finite_reachability_disproofs
+                ),
+                finite_reachability_unresolved=(
+                    finite.finite_reachability_unresolved
+                ),
+                finite_reachability_leaves=(
+                    finite.finite_reachability_leaves
+                ),
+                **update_kwargs(),
+            )
+
         return ParticleUpdate(
             (),
             generated,
@@ -2108,6 +2616,26 @@ class BeliefDecisionEngine:
             conditioning_seconds=conditioning_seconds,
             conditioning_over_budget=timed_out,
             degraded=self.degraded,
+            finite_reachability_witnesses=(
+                update.finite_reachability_witnesses
+                if update is not None
+                else 0
+            ),
+            finite_reachability_disproofs=(
+                update.finite_reachability_disproofs
+                if update is not None
+                else 0
+            ),
+            finite_reachability_unresolved=(
+                update.finite_reachability_unresolved
+                if update is not None
+                else 0
+            ),
+            finite_reachability_leaves=(
+                update.finite_reachability_leaves
+                if update is not None
+                else 0
+            ),
             recovery_diagnostic=recovery_diagnostic,
         )
 
@@ -2584,6 +3112,18 @@ class _BeliefBattleCoordinator:
             degraded=update.degraded,
             terminal=terminal,
             winner=public_view.get("winner"),
+            finite_reachability_witnesses=getattr(
+                update, "finite_reachability_witnesses", 0
+            ),
+            finite_reachability_disproofs=getattr(
+                update, "finite_reachability_disproofs", 0
+            ),
+            finite_reachability_unresolved=getattr(
+                update, "finite_reachability_unresolved", 0
+            ),
+            finite_reachability_leaves=getattr(
+                update, "finite_reachability_leaves", 0
+            ),
             collapse_diagnostic=collapse_diagnostic,
             recovery_diagnostic=getattr(update, "recovery_diagnostic", None),
         )

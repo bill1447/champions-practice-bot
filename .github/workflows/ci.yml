@@ -205,6 +205,14 @@ jobs:
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
+      - name: Finite stochastic transition reachability smoke test
+        shell: pwsh
+        run: .\finite-transition-smoke.ps1
+
+      - name: Finite stochastic belief conditioning smoke test
+        shell: pwsh
+        run: .\finite-conditioning-smoke.ps1
+
       - name: Quantitative public transition authority smoke test
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1

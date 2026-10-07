@@ -21,6 +21,13 @@ from champions_practice.observation_beliefs import (
     ParticleUpdate,
     StructuralMismatchExample,
 )
+from champions_practice.reachability import (
+    FiniteTransitionReachability,
+    ReachabilityCoverage,
+    ReachabilityResult,
+)
+
+
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.strategy import DesiredBoard, StrategicPlan
 from champions_practice.search_worker import (
@@ -588,6 +595,274 @@ def test_observed_action_rng_multiplier_uses_incremental_chunks(
     assert update.particles == (particle,)
     assert update.generated == 4
     assert update.matched == 1
+
+
+def _finite_coverage(*, exhaustive: bool) -> ReachabilityCoverage:
+    return ReachabilityCoverage(
+        sequential_context_fingerprint="sha256:finite-test",
+        transitions_covered=1,
+        outcomes_examined=4,
+        randomness_domains=("showdown-finite-random-calls-v1",),
+        randomness_exhaustive=exhaustive,
+        sequential_context_complete=True,
+    )
+
+
+def _finite_particle_state(label: str) -> dict:
+    return {
+        "label": label,
+        "sides": [
+            {"pokemon": [{"set": {"species": "Indeedee-F"}}]},
+            {"pokemon": [{"set": {"species": "Gardevoir"}}]},
+        ],
+    }
+
+
+def test_public_command_witness_seed_is_replayed_across_worlds(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    expected = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+            {"turn": 1, "slot": 2, "move": "trickroom", "target": None},
+        ],
+        "opponent": {"active": [{"species": "A"}, {"species": "B"}]},
+    }
+    particles = (
+        BeliefParticle(
+            _finite_particle_state("a"),
+            0.4,
+            world_id="world-a",
+            history_id="a",
+            p1_member_lineage=(0,),
+            p2_member_lineage=(0,),
+        ),
+        BeliefParticle(
+            _finite_particle_state("b"),
+            0.6,
+            world_id="world-b",
+            history_id="b",
+            p1_member_lineage=(0,),
+            p2_member_lineage=(0,),
+        ),
+    )
+
+    class Worker:
+        def __init__(self) -> None:
+            self.seeds: list[str] = []
+
+        def validate_choices(self, *, state, side, candidates):
+            assert side == "p1"
+            return [candidates[0]]
+
+        def branch_many(self, *, state, branches):
+            self.seeds.extend(branch["rng_seed"] for branch in branches)
+            return [
+                {
+                    "state": _finite_particle_state(state["label"] + "-child"),
+                    "view": expected,
+                    "member_lineage": {"p1": [0], "p2": [0]},
+                }
+                for _branch in branches
+            ]
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("finite tree should not run after all worlds are witnessed")
+        ),
+    )
+    worker = Worker()
+
+    update = engine._condition_finite_public_transition(
+        worker,
+        particles=particles,
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=1,
+    )
+
+    assert len(update.particles) == 2
+    assert {particle.world_id for particle in update.particles} == {
+        "world-a",
+        "world-b",
+    }
+    assert sorted(particle.weight for particle in update.particles) == [0.4, 0.6]
+    assert update.finite_reachability_witnesses == 2
+    assert update.finite_reachability_unresolved == 0
+    assert len(worker.seeds) == 2
+    assert worker.seeds[0] == worker.seeds[1]
+
+
+def test_finite_public_transition_can_witness_and_exhaustively_exclude_worlds(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    first = BeliefParticle(
+        _finite_particle_state("a"),
+        0.5,
+        world_id="world-a",
+        history_id="a",
+        p1_member_lineage=(0,),
+        p2_member_lineage=(0,),
+    )
+    second = BeliefParticle(
+        _finite_particle_state("b"),
+        0.5,
+        world_id="world-b",
+        history_id="b",
+        p1_member_lineage=(0,),
+        p2_member_lineage=(0,),
+    )
+    expected = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+            {"turn": 1, "slot": 2, "move": "trickroom", "target": None},
+        ],
+        "opponent": {"active": [{"species": "A"}, {"species": "B"}]},
+    }
+
+    class Worker:
+        def validate_choices(self, *, state, side, candidates):
+            assert side == "p1"
+            assert candidates
+            return [candidates[0]]
+
+    def fake_probe(worker, *, state, **kwargs):
+        del worker, kwargs
+        if state["label"] == "a":
+            child = _finite_particle_state("a-child")
+            return FiniteTransitionReachability(
+                evidence=ReachabilityResult.witnessed(
+                    coverage=_finite_coverage(exhaustive=False),
+                    witness_ids=("sha256:witness-a",),
+                ),
+                leaves_examined=7,
+                decision_nodes=5,
+                max_depth=3,
+                child_state=child,
+                public_view=expected,
+                member_lineage={"p1": [0], "p2": [0]},
+                rng_seed="sodium,finite-test-witness",
+                random_path=({"kind": "chance", "value": True},),
+            )
+        return FiniteTransitionReachability(
+            evidence=ReachabilityResult.exhaustively_disproved(
+                coverage=_finite_coverage(exhaustive=True),
+            ),
+            leaves_examined=11,
+            decision_nodes=7,
+            max_depth=4,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        fake_probe,
+    )
+
+    update = engine._condition_finite_public_transition(
+        Worker(),
+        particles=(first, second),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=0,
+    )
+
+    assert len(update.particles) == 1
+    assert update.particles[0].world_id == "world-a"
+    assert update.particles[0].state["label"] == "a-child"
+    assert update.particles[0].weight == 1.0
+    assert update.exhaustively_excluded_world_ids == ("world-b",)
+    assert update.finite_reachability_witnesses == 1
+    assert update.finite_reachability_disproofs == 1
+    assert update.finite_reachability_unresolved == 0
+    assert update.finite_reachability_leaves == 18
+
+
+def test_finite_public_transition_never_excludes_unresolved_world(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        _finite_particle_state("a"),
+        1.0,
+        world_id="world-a",
+        history_id="a",
+        p1_member_lineage=(0,),
+        p2_member_lineage=(0,),
+    )
+    expected = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+            {"turn": 1, "slot": 2, "move": "trickroom", "target": None},
+        ],
+        "opponent": {"active": [{"species": "A"}, {"species": "B"}]},
+    }
+
+    class Worker:
+        def validate_choices(self, *, state, side, candidates):
+            return [candidates[0]]
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        lambda *args, **kwargs: FiniteTransitionReachability(
+            evidence=ReachabilityResult.unresolved(
+                reason="finite stochastic branch budget exhausted",
+                coverage=ReachabilityCoverage(
+                    sequential_context_fingerprint="sha256:finite-test",
+                    transitions_covered=1,
+                    outcomes_examined=4,
+                    randomness_domains=("showdown-finite-random-calls-v1",),
+                    randomness_exhaustive=False,
+                    sequential_context_complete=True,
+                ),
+            ),
+            leaves_examined=4,
+            decision_nodes=4,
+            max_depth=2,
+        ),
+    )
+
+    update = engine._condition_finite_public_transition(
+        Worker(),
+        particles=(particle,),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=0,
+    )
+
+    assert update.particles == ()
+    assert update.exhaustively_excluded_world_ids == ()
+    assert update.sampled_unresolved_world_ids == ("world-a",)
+    assert update.finite_reachability_unresolved == 1
 
 
 def test_sampled_partial_world_match_is_not_installable(

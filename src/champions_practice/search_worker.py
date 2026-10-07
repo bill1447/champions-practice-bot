@@ -430,6 +430,27 @@ class HypotheticalSearchWorker:
             base_damage=base_damage,
         )
 
+    def enumerate_finite_transition(
+        self,
+        *,
+        state: dict[str, Any],
+        p1_choice: str,
+        p2_choice: str,
+        view_side: str,
+        expected_public_view: dict[str, Any],
+        previews: dict[str, list[str]] | None = None,
+        max_leaves: int = 4096,
+    ) -> dict[str, Any]:
+        return self.__worker.enumerate_finite_transition(
+            state=state,
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+            view_side=view_side,
+            expected_public_view=expected_public_view,
+            previews=previews,
+            max_leaves=max_leaves,
+        )
+
     def state_view(
         self,
         *,
@@ -1229,6 +1250,51 @@ class ShowdownSearchWorker:
                 "Showdown worker returned invalid damage-roll enumeration"
             )
         return result
+    def enumerate_finite_transition(
+        self,
+        *,
+        state: dict[str, Any],
+        p1_choice: str,
+        p2_choice: str,
+        view_side: str,
+        expected_public_view: dict[str, Any],
+        previews: dict[str, list[str]] | None = None,
+        max_leaves: int = 4096,
+    ) -> dict[str, Any]:
+        """Enumerate a bounded finite Showdown transition RNG tree."""
+        if not isinstance(state, dict) or not state:
+            raise ValueError("finite transition enumeration requires a serialized state")
+        if view_side not in {"p1", "p2"}:
+            raise ValueError("finite transition view_side must be p1 or p2")
+        if not isinstance(p1_choice, str) or not p1_choice:
+            raise ValueError("finite transition requires non-empty p1_choice")
+        if not isinstance(p2_choice, str) or not p2_choice:
+            raise ValueError("finite transition requires non-empty p2_choice")
+        if not isinstance(expected_public_view, dict):
+            raise ValueError("finite transition requires expected_public_view")
+        if (
+            isinstance(max_leaves, bool)
+            or not isinstance(max_leaves, int)
+            or max_leaves < 1
+            or max_leaves > 10000
+        ):
+            raise ValueError("max_leaves must be an integer from 1 through 10000")
+        result = self.request(
+            "enumerate_finite_transition",
+            state=state,
+            p1_choice=p1_choice,
+            p2_choice=p2_choice,
+            view_side=view_side,
+            expected_public_view=expected_public_view,
+            previews=previews,
+            max_leaves=max_leaves,
+        )
+        if not isinstance(result, dict):
+            raise RuntimeError(
+                "Showdown worker returned invalid finite transition enumeration"
+            )
+        return result
+
 
     def move_metadata(
         self,

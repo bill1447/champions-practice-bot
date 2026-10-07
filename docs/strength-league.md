@@ -163,3 +163,8 @@ runs/structural-collapse/latest-report.json
 Use `-GameIndex N` to reproduce a different frozen league game. The probe is a
 diagnostic harness only; mismatch paths and examples do not gain exclusion
 authority from being recorded.
+
+
+Finite stochastic conditioning activity is reported separately from ordinary sampled
+conditioning: witnesses, exhaustive world disproofs, unresolved probes, and finite leaves
+examined are aggregated across the league.

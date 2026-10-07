@@ -25,6 +25,10 @@ def _game(
     fallback_decisions: int = 0,
     degraded_turns: int = 0,
     strategy_decisions: int = 0,
+    finite_reachability_witnesses: int = 0,
+    finite_reachability_disproofs: int = 0,
+    finite_reachability_unresolved: int = 0,
+    finite_reachability_leaves: int = 0,
     recovery_events: tuple[dict, ...] = (),
 ) -> GameResult:
     winner = {
@@ -53,6 +57,10 @@ def _game(
         branch_count=100 + index,
         decision_seconds=(1.0, 2.0, 3.0, 4.0),
         conditioning_seconds=(0.1, 0.2, 0.3, 0.4),
+        finite_reachability_witnesses=finite_reachability_witnesses,
+        finite_reachability_disproofs=finite_reachability_disproofs,
+        finite_reachability_unresolved=finite_reachability_unresolved,
+        finite_reachability_leaves=finite_reachability_leaves,
         recovery_events=recovery_events,
     )
 
@@ -118,6 +126,10 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
             fallback_decisions=1,
             degraded_turns=1,
             strategy_decisions=2,
+            finite_reachability_witnesses=2,
+            finite_reachability_disproofs=1,
+            finite_reachability_unresolved=3,
+            finite_reachability_leaves=384,
             recovery_events=(
                 {
                     "reason": "partial-world-sampled-match",
@@ -166,6 +178,10 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
     assert summary["recovery"]["sampled_matches"] == 3
     assert summary["recovery"]["sampled_unresolved_worlds"] == 1
     assert summary["recovery"]["exhaustively_excluded_worlds"] == 0
+    assert summary["recovery"]["finite_reachability_witnesses"] == 2
+    assert summary["recovery"]["finite_reachability_disproofs"] == 1
+    assert summary["recovery"]["finite_reachability_unresolved"] == 3
+    assert summary["recovery"]["finite_reachability_leaves"] == 384
     assert summary["recovery"]["top_structural_mismatch_paths"] == [
         ["$.request.active[0]", 7],
         ["$.public_event_delta.turn", 2],

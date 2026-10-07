@@ -48,6 +48,10 @@ class ParticleUpdate:
     structural_mismatch_paths: tuple[tuple[str, int], ...] = ()
     structural_mismatch_worlds: tuple[tuple[str, int], ...] = ()
     structural_mismatch_examples: tuple[StructuralMismatchExample, ...] = ()
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
 
 
 def public_observation_signature(view: dict[str, Any]) -> str:
@@ -297,6 +301,20 @@ def particle_member_lineage(
     return lineage
 
 
+def compose_branch_member_lineage(
+    particle: BeliefParticle,
+    *,
+    child_state: dict[str, Any],
+    raw_lineage: object,
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Compose worker branch lineage onto the particle's stable roster identity."""
+    return _compose_branch_member_lineage(
+        particle,
+        child_state=child_state,
+        raw_lineage=raw_lineage,
+    )
+
+
 def _particle_key(particle: BeliefParticle) -> str:
     return json.dumps(
         {
@@ -353,30 +371,127 @@ def _id(value: object) -> str:
 def _public_action_fingerprint(
     view: dict[str, Any] | None,
 ) -> tuple[tuple[int | None, int, str, int | None], ...]:
+    """Collect fresh public opponent command evidence, including prevented moves.
+
+    `opponent_last_actions` contains direct public move events. A move prevented
+    before execution may instead appear only in `public_execution_delta` as a
+    channel-visible `cant` record with `attempted_move`. Both are public
+    evidence; neither consults the sealed/live opponent command.
+    """
     if not isinstance(view, dict):
         return ()
+
+    by_slot: dict[
+        tuple[int | None, int],
+        tuple[str, int | None] | None,
+    ] = {}
+
+    def add(
+        *,
+        turn: int | None,
+        slot: int,
+        move: object,
+        target: int | None,
+    ) -> None:
+        if slot <= 0:
+            return
+        move_id = _id(move)
+        if not move_id:
+            return
+        key = (turn, slot)
+        previous = by_slot.get(key)
+        if key not in by_slot:
+            by_slot[key] = (move_id, target)
+            return
+        if previous is None:
+            return
+        previous_move, previous_target = previous
+        if previous_move != move_id:
+            # Multiple incompatible public actions from one slot (for example
+            # called/nested move effects) are not one selected command.
+            by_slot[key] = None
+            return
+        if (
+            previous_target is not None
+            and target is not None
+            and previous_target != target
+        ):
+            by_slot[key] = None
+            return
+        by_slot[key] = (
+            move_id,
+            previous_target if previous_target is not None else target,
+        )
+
     values = view.get("opponent_last_actions")
-    if not isinstance(values, list):
-        return ()
+    if isinstance(values, list):
+        for value in values:
+            if not isinstance(value, dict):
+                continue
+            turn = value.get("turn")
+            slot = value.get("slot")
+            target = value.get("target")
+            if turn is not None and not isinstance(turn, int):
+                continue
+            if not isinstance(slot, int):
+                continue
+            if target is not None and not isinstance(target, int):
+                continue
+            add(
+                turn=turn,
+                slot=slot,
+                move=value.get("move"),
+                target=target,
+            )
+
+    execution = view.get("public_execution_delta")
+    if isinstance(execution, dict):
+        turn = execution.get("turn")
+        if turn is not None and not isinstance(turn, int):
+            turn = None
+        actions = execution.get("actions")
+        if isinstance(actions, list):
+            for action in actions:
+                if not isinstance(action, dict):
+                    continue
+                if action.get("side") != "opponent":
+                    continue
+                slot = action.get("slot")
+                if not isinstance(slot, int):
+                    continue
+                outcome = action.get("outcome")
+                move = None
+                if (
+                    outcome == "executed"
+                    and action.get("source") == "selected"
+                ):
+                    move = action.get("move")
+                elif outcome == "prevented":
+                    move = action.get("attempted_move")
+                if not isinstance(move, str) or not move:
+                    continue
+                # Execution evidence intentionally carries no raw animation
+                # target. Preserve a more specific target from opponent_last_actions
+                # when one exists.
+                add(turn=turn, slot=slot, move=move, target=None)
 
     actions = []
-    for value in values:
-        if not isinstance(value, dict):
+    for (turn, slot), value in by_slot.items():
+        if value is None:
             continue
-        turn = value.get("turn")
-        slot = value.get("slot")
-        move = value.get("move")
-        target = value.get("target")
-        if turn is not None and not isinstance(turn, int):
-            continue
-        if not isinstance(slot, int) or slot <= 0 or not isinstance(move, str):
-            continue
-        if target is not None and not isinstance(target, int):
-            continue
-        move_id = _id(move)
-        if move_id:
-            actions.append((turn, slot, move_id, target))
-    return tuple(sorted(actions))
+        move_id, target = value
+        actions.append((turn, slot, move_id, target))
+    return tuple(
+        sorted(
+            actions,
+            key=lambda value: (
+                -1 if value[0] is None else value[0],
+                value[1],
+                value[2],
+                -99 if value[3] is None else value[3],
+            ),
+        )
+    )
 
 
 def _observed_opponent_actions(
@@ -480,6 +595,18 @@ def _observed_joint_move_candidates(
     return tuple(
         ", ".join(commands)
         for commands in product(*per_slot)
+    )
+
+
+def observed_joint_move_candidates(
+    actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[str, ...]:
+    """Return joint opponent commands derivable entirely from fresh public move events."""
+    return _observed_joint_move_candidates(
+        actual_public_view,
+        previous_public_view=previous_public_view,
     )
 
 
