@@ -949,7 +949,7 @@ def test_concrete_witness_seed_windows_do_not_create_negative_authority(
                         "opponent_last_actions": [],
                         "opponent": {
                             "active": [
-                                {"species": "A"},
+                                {"species": "C"},
                                 {"species": "B"},
                             ]
                         },
