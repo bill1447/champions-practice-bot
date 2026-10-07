@@ -370,56 +370,58 @@ def _id(value: object) -> str:
 
 def _public_action_fingerprint(
     view: dict[str, Any] | None,
-) -> tuple[tuple[int | None, int, str, int | None], ...]:
-    """Collect fresh public opponent command evidence, including prevented moves.
+) -> tuple[tuple[int | None, int, str, str, int | None], ...]:
+    """Collect fresh public opponent command evidence.
 
-    `opponent_last_actions` contains direct public move events. A move prevented
-    before execution may instead appear only in `public_execution_delta` as a
-    channel-visible `cant` record with `attempted_move`. Both are public
-    evidence; neither consults the sealed/live opponent command.
+    Direct selected moves and pre-resolution selected switches come from the
+    channel-sanitized opponent action ledger. A move prevented before execution
+    may appear only in public_execution_delta as a visible cant/attempted_move.
+    No sealed submitted command is consulted.
     """
     if not isinstance(view, dict):
         return ()
 
     by_slot: dict[
         tuple[int | None, int],
-        tuple[str, int | None] | None,
+        tuple[str, str, int | None] | None,
     ] = {}
 
-    def add(
+    def add_action(
         *,
         turn: int | None,
         slot: int,
-        move: object,
-        target: int | None,
+        kind: str,
+        value: object,
+        target: int | None = None,
     ) -> None:
-        if slot <= 0:
+        if slot <= 0 or kind not in {"move", "switch"}:
             return
-        move_id = _id(move)
-        if not move_id:
+        action_value = _id(value)
+        if not action_value:
             return
         key = (turn, slot)
+        incoming = (kind, action_value, target)
         previous = by_slot.get(key)
         if key not in by_slot:
-            by_slot[key] = (move_id, target)
+            by_slot[key] = incoming
             return
         if previous is None:
             return
-        previous_move, previous_target = previous
-        if previous_move != move_id:
-            # Multiple incompatible public actions from one slot (for example
-            # called/nested move effects) are not one selected command.
+        previous_kind, previous_value, previous_target = previous
+        if previous_kind != kind or previous_value != action_value:
             by_slot[key] = None
             return
         if (
-            previous_target is not None
+            kind == "move"
+            and previous_target is not None
             and target is not None
             and previous_target != target
         ):
             by_slot[key] = None
             return
         by_slot[key] = (
-            move_id,
+            kind,
+            action_value,
             previous_target if previous_target is not None else target,
         )
 
@@ -437,10 +439,21 @@ def _public_action_fingerprint(
                 continue
             if target is not None and not isinstance(target, int):
                 continue
-            add(
+
+            switch_species = value.get("switch_species")
+            if isinstance(switch_species, str) and switch_species:
+                add_action(
+                    turn=turn,
+                    slot=slot,
+                    kind="switch",
+                    value=switch_species,
+                )
+                continue
+            add_action(
                 turn=turn,
                 slot=slot,
-                move=value.get("move"),
+                kind="move",
+                value=value.get("move"),
                 target=target,
             )
 
@@ -470,17 +483,20 @@ def _public_action_fingerprint(
                     move = action.get("attempted_move")
                 if not isinstance(move, str) or not move:
                     continue
-                # Execution evidence intentionally carries no raw animation
-                # target. Preserve a more specific target from opponent_last_actions
-                # when one exists.
-                add(turn=turn, slot=slot, move=move, target=None)
+                add_action(
+                    turn=turn,
+                    slot=slot,
+                    kind="move",
+                    value=move,
+                    target=None,
+                )
 
     actions = []
     for (turn, slot), value in by_slot.items():
         if value is None:
             continue
-        move_id, target = value
-        actions.append((turn, slot, move_id, target))
+        kind, action_value, target = value
+        actions.append((turn, slot, kind, action_value, target))
     return tuple(
         sorted(
             actions,
@@ -488,7 +504,8 @@ def _public_action_fingerprint(
                 -1 if value[0] is None else value[0],
                 value[1],
                 value[2],
-                -99 if value[3] is None else value[3],
+                value[3],
+                -99 if value[4] is None else value[4],
             ),
         )
     )
@@ -498,43 +515,108 @@ def _observed_opponent_actions(
     view: dict[str, Any],
     *,
     previous_public_view: dict[str, Any] | None = None,
-) -> tuple[tuple[int, str, int | None], ...]:
+) -> tuple[tuple[int, str, str, int | None], ...]:
     current = _public_action_fingerprint(view)
     if previous_public_view is not None:
         previous = _public_action_fingerprint(previous_public_view)
         if current == previous:
             return ()
-    return tuple((slot, move_id, target) for _, slot, move_id, target in current)
+    return tuple(
+        (slot, kind, value, target)
+        for _, slot, kind, value, target in current
+    )
+
+
+def observed_public_actions(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[tuple[int, str, str, int | None], ...]:
+    """Return fresh public semantic opponent actions by active slot."""
+    return _observed_opponent_actions(
+        view,
+        previous_public_view=previous_public_view,
+    )
+
+
+def _state_party_species(
+    state: dict[str, Any],
+    *,
+    side: str,
+    party_slot: int,
+) -> str | None:
+    if side not in {"p1", "p2"} or party_slot <= 0:
+        return None
+    sides = state.get("sides")
+    side_index = 0 if side == "p1" else 1
+    if (
+        not isinstance(sides, list)
+        or len(sides) <= side_index
+        or not isinstance(sides[side_index], dict)
+    ):
+        return None
+    pokemon = sides[side_index].get("pokemon")
+    if not isinstance(pokemon, list) or party_slot > len(pokemon):
+        return None
+    member = pokemon[party_slot - 1]
+    if not isinstance(member, dict):
+        return None
+    set_data = member.get("set")
+    if not isinstance(set_data, dict):
+        return None
+    species = set_data.get("species")
+    return _id(species) if isinstance(species, str) and species else None
 
 
 def _choice_matches_observed_actions(
     choice: str,
-    actions: tuple[tuple[int, str, int | None], ...],
+    actions: tuple[tuple[int, str, str, int | None], ...],
+    *,
+    state: dict[str, Any] | None = None,
+    side: str | None = None,
 ) -> bool:
     commands = [command.strip().split() for command in choice.split(",")]
-    for slot, move_id, observed_target in actions:
+    for slot, kind, action_value, observed_target in actions:
         if slot > len(commands):
             return False
         tokens = commands[slot - 1]
-        if len(tokens) < 2 or tokens[0] != "move":
-            return False
-        if _id(tokens[1]) != move_id:
+        if len(tokens) < 2:
             return False
 
-        command_target = next(
-            (
-                int(token)
-                for token in tokens[2:]
-                if token.lstrip("+-").isdigit()
-            ),
-            None,
-        )
-        if (
-            observed_target is not None
-            and command_target is not None
-            and command_target != observed_target
-        ):
-            return False
+        if kind == "move":
+            if tokens[0] != "move" or _id(tokens[1]) != action_value:
+                return False
+            command_target = next(
+                (
+                    int(token)
+                    for token in tokens[2:]
+                    if token.lstrip("+-").isdigit()
+                ),
+                None,
+            )
+            if (
+                observed_target is not None
+                and command_target is not None
+                and command_target != observed_target
+            ):
+                return False
+            continue
+
+        if kind == "switch":
+            if tokens[0] != "switch" or not tokens[1].isdigit():
+                return False
+            if state is None or side is None:
+                return False
+            species = _state_party_species(
+                state,
+                side=side,
+                party_slot=int(tokens[1]),
+            )
+            if species != action_value:
+                return False
+            continue
+
+        return False
     return True
 
 
@@ -543,6 +625,9 @@ def _filter_responses_by_public_actions(
     actual_public_view: dict[str, Any],
     *,
     previous_public_view: dict[str, Any] | None = None,
+    state: dict[str, Any] | None = None,
+    side: str | None = None,
+    fail_open: bool = True,
 ) -> tuple[str, ...]:
     actions = _observed_opponent_actions(
         actual_public_view,
@@ -553,11 +638,56 @@ def _filter_responses_by_public_actions(
     filtered = tuple(
         response
         for response in responses
-        if _choice_matches_observed_actions(response, actions)
+        if _choice_matches_observed_actions(
+            response,
+            actions,
+            state=state,
+            side=side,
+        )
     )
-    # Public action parsing is an optimization, not a posterior-deletion rule.
-    # If the parsed evidence cannot be reconciled with the legal set, fail open.
-    return filtered or responses
+    if filtered or not fail_open:
+        return filtered
+    # Public parsing is an optimization, not a posterior-deletion rule. Species
+    # disguises and other ambiguous projections may prevent exact switch-index
+    # resolution; in that case preserve the candidate set.
+    return responses
+
+
+def filter_choices_by_public_actions(
+    responses: tuple[str, ...],
+    actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+    state: dict[str, Any] | None = None,
+    side: str | None = None,
+    fail_open: bool = True,
+) -> tuple[str, ...]:
+    """Filter exact commands against fresh public move/switch evidence."""
+    return _filter_responses_by_public_actions(
+        responses,
+        actual_public_view,
+        previous_public_view=previous_public_view,
+        state=state,
+        side=side,
+        fail_open=fail_open,
+    )
+
+
+def _public_actions_cover_active_slots(
+    actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> bool:
+    actions = _observed_opponent_actions(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
+    opponent = actual_public_view.get("opponent")
+    active = opponent.get("active") if isinstance(opponent, dict) else None
+    if not isinstance(active, list) or not active:
+        return False
+    expected_slots = set(range(1, len(active) + 1))
+    return {slot for slot, _, _, _ in actions} == expected_slots
 
 
 def _observed_joint_move_candidates(
@@ -569,16 +699,16 @@ def _observed_joint_move_candidates(
         actual_public_view,
         previous_public_view=previous_public_view,
     )
-    opponent = actual_public_view.get("opponent")
-    active = opponent.get("active") if isinstance(opponent, dict) else None
-    if not isinstance(active, list) or not active:
+    if not _public_actions_cover_active_slots(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    ):
         return ()
-    expected_slots = set(range(1, len(active) + 1))
-    if {slot for slot, _, _ in actions} != expected_slots:
+    if any(kind != "move" for _, kind, _, _ in actions):
         return ()
 
     per_slot: list[tuple[str, ...]] = []
-    for slot, move_id, target in actions:
+    for slot, _kind, move_id, target in actions:
         bases = [f"move {move_id}"]
         if target is not None and target != -slot:
             bases.append(f"move {move_id} {target:+d}")
@@ -603,7 +733,7 @@ def observed_joint_move_candidates(
     *,
     previous_public_view: dict[str, Any] | None = None,
 ) -> tuple[str, ...]:
-    """Return joint opponent commands derivable entirely from fresh public move events."""
+    """Return bounded joint commands when every public action is a move."""
     return _observed_joint_move_candidates(
         actual_public_view,
         previous_public_view=previous_public_view,
@@ -615,12 +745,24 @@ def public_opponent_moves_fully_observed(
     *,
     previous_public_view: dict[str, Any] | None = None,
 ) -> bool:
-    """Return whether every opponent slot produced a fresh direct public move event."""
+    """Return whether every opponent slot has a fresh selected move."""
     return bool(
         _observed_joint_move_candidates(
             view,
             previous_public_view=previous_public_view,
         )
+    )
+
+
+def public_opponent_actions_fully_observed(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> bool:
+    """Return whether every opponent slot has fresh public move/switch evidence."""
+    return _public_actions_cover_active_slots(
+        view,
+        previous_public_view=previous_public_view,
     )
 
 
