@@ -1029,7 +1029,7 @@ class BeliefDecisionEngine:
             return BeliefParticle(
                 state=state,
                 weight=particle.weight,
-                world_id=particle.world_id,
+                world_id=world_id,
                 history_id=(
                     f"{particle.history_id}|public-witness:sha256:{witness_id}"
                 ).strip("|"),
