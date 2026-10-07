@@ -443,6 +443,28 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
             "ERROR: called move was confused with learned moveset disclosure"
         )
 
+    wrong_only = condition_particles(
+        worker,
+        particles=(
+            BeliefParticle(
+                state,
+                1.0,
+                world_id="called-execution",
+                history_id="before-sleep-talk",
+            ),
+        ),
+        ai_side="p2",
+        ai_choice=ai_choice,
+        actual_public_view=actual["view"],
+        previous_public_view=before,
+        rng_seeds=(wrong_seed,),
+        previews=previews,
+    )
+    if wrong_only.particles or wrong_only.matched != 0:
+        raise SystemExit(
+            "ERROR: the known wrong called-move branch matched public execution evidence"
+        )
+
     engine = BeliefDecisionEngine(
         ".",
         battle_format=CHAMPIONS_FORMAT,
@@ -470,18 +492,33 @@ def _called_move_regression(worker: ShowdownSearchWorker) -> None:
         ),
         view=actual["view"],
     )
-    if observed.matched_branches != 0:
-        raise SystemExit(
-            "ERROR: persistent engine accepted a publicly wrong called-move branch"
-        )
-    if not engine.degraded or not engine.pending_observations:
-        raise SystemExit(
-            "ERROR: persistent engine declared wrong called-move history healthy"
-        )
-    if engine.particles != (original,):
-        raise SystemExit(
-            "ERROR: persistent engine replaced last-good particles after mismatch"
-        )
+
+    # PR #164 may reject the deliberately wrong first sample and recover by
+    # finding a later concrete Showdown witness for the correct called-move
+    # history. Either pending recovery or exact recovery is valid. Installing
+    # the known wrong no-Defense-Curl state is not.
+    if observed.matched_branches == 0:
+        if not engine.degraded or not engine.pending_observations:
+            raise SystemExit(
+                "ERROR: persistent engine declared unmatched called-move history healthy"
+            )
+        if engine.particles != (original,):
+            raise SystemExit(
+                "ERROR: persistent engine replaced last-good particles without a witness"
+            )
+    else:
+        if engine.degraded or engine.pending_observations:
+            raise SystemExit(
+                "ERROR: persistent engine found a valid called-move witness but remained degraded"
+            )
+        if not engine.particles:
+            raise SystemExit(
+                "ERROR: persistent engine reported called-move recovery without particles"
+            )
+        if any(not _has_defense_curl(particle.state) for particle in engine.particles):
+            raise SystemExit(
+                "ERROR: persistent recovery installed a publicly wrong called-move history"
+            )
 
 
 def main() -> None:
@@ -493,7 +530,7 @@ def main() -> None:
     print("Copycat/lastMove contradiction rejected: YES")
     print("Sleep Talk called-move contradiction rejected: YES")
     print("Called move kept separate from learned moveset disclosure: YES")
-    print("Persistent engine fails closed on forced wrong called history: YES")
+    print("Forced wrong called history rejected or exactly recovered: YES")
     print("RESULT: public execution evidence preserves mechanics-relevant history")
 
 
