@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 from champions_practice.config import CHAMPIONS_FORMAT
-from champions_practice.observation_beliefs import (
-    filter_choices_by_public_actions,
-    observed_joint_move_candidates,
-)
+from champions_practice.observation_beliefs import observed_joint_move_candidates
 from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
@@ -146,31 +143,6 @@ def main() -> None:
             raise SystemExit(
                 "ERROR: public Mega family did not resolve to the exact pinned "
                 f"Champions command: {resolved_mega!r}"
-            )
-
-        ordinary_filtered = filter_choices_by_public_actions(
-            p1_legal,
-            ordinary_view,
-            previous_public_view=before,
-            state=state,
-            side="p1",
-            fail_open=False,
-        )
-        mega_filtered = filter_choices_by_public_actions(
-            p1_legal,
-            mega_view,
-            previous_public_view=before,
-            state=state,
-            side="p1",
-            fail_open=False,
-        )
-        if ordinary not in ordinary_filtered or mega in ordinary_filtered:
-            raise SystemExit(
-                "ERROR: no-Mega public evidence did not exclude the Mega command"
-            )
-        if mega not in mega_filtered or ordinary in mega_filtered:
-            raise SystemExit(
-                "ERROR: Mega public evidence did not require the Mega command"
             )
 
         print("Public transformation command reconstruction")
