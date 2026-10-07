@@ -2775,6 +2775,10 @@ class BeliefDecisionEngine:
                         view,
                     )
                 )
+                # Window 0 belonged to the initial conditioning attempt. Any
+                # retry must search a fresh concrete-witness window. This is
+                # search scheduling only; the miss itself has no authority.
+                self.pending_recovery_witness_window = 1
                 self.degraded = True
                 generated = 0
                 matched = 0
@@ -2797,6 +2801,10 @@ class BeliefDecisionEngine:
                         view,
                     )
                 )
+                # Window 0 belonged to the initial conditioning attempt. Any
+                # retry must search a fresh concrete-witness window. This is
+                # search scheduling only; the miss itself has no authority.
+                self.pending_recovery_witness_window = 1
                 self.degraded = True
                 generated = 0 if update is None else update.generated
                 matched = 0 if update is None else update.matched
@@ -2829,6 +2837,10 @@ class BeliefDecisionEngine:
                         view,
                     )
                 )
+                # Window 0 belonged to the initial conditioning attempt. Any
+                # retry must search a fresh concrete-witness window. This is
+                # search scheduling only; the miss itself has no authority.
+                self.pending_recovery_witness_window = 1
                 self.degraded = True
                 generated = update.generated
                 matched = update.matched
