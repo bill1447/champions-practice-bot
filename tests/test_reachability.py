@@ -354,6 +354,7 @@ def _finite_response(
             "state": {"node": "child"},
             "view": _valid_public_view({"turn": 2, "marker": "target"}),
             "member_lineage": {"p1": [0, 1, 2, 3], "p2": [0, 1, 2, 3]},
+            "rng_seed": "sodium,finite-test-witness",
             "random_path": [
                 {
                     "kind": "chance",
