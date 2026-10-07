@@ -926,7 +926,7 @@ class BeliefDecisionEngine:
     ) -> ParticleUpdate:
         """Recover public transitions with concrete Showdown witnesses first.
 
-        Once both opponent moves are public, positive reachability does not need
+        Once every opponent action slot is public, positive reachability does not need
         exhaustive stochastic coverage: one concrete Showdown seed is a genuine
         sequential witness. Search those witnesses round-robin across worlds
         using the same deterministic seed stream as collapse diagnostics, and
