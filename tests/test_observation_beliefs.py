@@ -1896,8 +1896,77 @@ def test_public_mega_event_requires_mega_compatible_command() -> None:
         "move protect megay, move woodhammer +1",
     }
 
-def test_partial_public_actions_do_not_apply_transform_pruning() -> None:
+def test_partial_public_gardevoir_move_excludes_unseen_mega_modifier() -> None:
     actual = _public_transform_test_view(None)
+    actual["opponent_last_actions"] = [
+        {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+    ]
+
+    responses = (
+        "move protect, move trickroom",
+        "move protect mega, move trickroom",
+        "move protect, move followme",
+    )
+
+    assert filter_choices_by_public_actions(
+        responses,
+        actual,
+        fail_open=False,
+    ) == (
+        "move protect, move trickroom",
+        "move protect, move followme",
+    )
+
+
+def test_partial_public_gardevoir_mega_requires_mega_modifier() -> None:
+    actual = _public_transform_test_view(
+        ["-mega", "p1a", "gardevoir", "gardevoirite"]
+    )
+    actual["opponent_last_actions"] = [
+        {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+    ]
+
+    responses = (
+        "move protect, move trickroom",
+        "move protect mega, move trickroom",
+        "move protect megax, move followme",
+        "move protect ultra, move followme",
+    )
+
+    assert filter_choices_by_public_actions(
+        responses,
+        actual,
+        fail_open=False,
+    ) == (
+        "move protect mega, move trickroom",
+        "move protect megax, move followme",
+    )
+
+
+def test_partial_non_mega_species_keeps_legacy_fail_open_behavior() -> None:
+    actual = _public_transform_test_view(None)
+    actual["opponent"]["active"][0]["species"] = "Sneasler"
+    actual["opponent_last_actions"] = [
+        {"turn": 3, "slot": 1, "move": "protect", "target": -1},
+    ]
+
+    responses = (
+        "move protect, move trickroom",
+        "move protect mega, move trickroom",
+    )
+
+    assert filter_choices_by_public_actions(
+        responses,
+        actual,
+        fail_open=False,
+    ) == responses
+
+
+def test_partial_transform_alignment_ambiguity_fails_open() -> None:
+    actual = _public_transform_test_view(
+        ["-mega", "p1a", "gardevoir", "gardevoirite"],
+        event_turn=2,
+    )
     actual["opponent_last_actions"] = [
         {"turn": 3, "slot": 1, "move": "protect", "target": -1},
     ]
