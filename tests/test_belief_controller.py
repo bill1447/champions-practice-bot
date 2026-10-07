@@ -698,6 +698,7 @@ def test_finite_public_transition_can_witness_and_exhaustively_exclude_worlds(
         previous_view={"turn": 1, "opponent_last_actions": []},
         preexcluded_worlds=set(),
         deadline=None,
+        witness_rounds=0,
     )
 
     assert len(update.particles) == 1
@@ -769,6 +770,7 @@ def test_finite_public_transition_never_excludes_unresolved_world(
         previous_view={"turn": 1, "opponent_last_actions": []},
         preexcluded_worlds=set(),
         deadline=None,
+        witness_rounds=0,
     )
 
     assert update.particles == ()
