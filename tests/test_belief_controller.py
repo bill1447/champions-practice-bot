@@ -618,6 +618,92 @@ def _finite_particle_state(label: str) -> dict:
     }
 
 
+def test_public_command_witness_seed_is_replayed_across_worlds(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    expected = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+            {"turn": 1, "slot": 2, "move": "trickroom", "target": None},
+        ],
+        "opponent": {"active": [{"species": "A"}, {"species": "B"}]},
+    }
+    particles = (
+        BeliefParticle(
+            _finite_particle_state("a"),
+            0.4,
+            world_id="world-a",
+            history_id="a",
+            p1_member_lineage=(0,),
+            p2_member_lineage=(0,),
+        ),
+        BeliefParticle(
+            _finite_particle_state("b"),
+            0.6,
+            world_id="world-b",
+            history_id="b",
+            p1_member_lineage=(0,),
+            p2_member_lineage=(0,),
+        ),
+    )
+
+    class Worker:
+        def __init__(self) -> None:
+            self.seeds: list[str] = []
+
+        def validate_choices(self, *, state, side, candidates):
+            assert side == "p1"
+            return [candidates[0]]
+
+        def branch_many(self, *, state, branches):
+            self.seeds.extend(branch["rng_seed"] for branch in branches)
+            return [
+                {
+                    "state": _finite_particle_state(state["label"] + "-child"),
+                    "view": expected,
+                    "member_lineage": {"p1": [0], "p2": [0]},
+                }
+                for _branch in branches
+            ]
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        lambda *args, **kwargs: (_ for _ in ()).throw(
+            AssertionError("finite tree should not run after all worlds are witnessed")
+        ),
+    )
+    worker = Worker()
+
+    update = engine._condition_finite_public_transition(
+        worker,
+        particles=particles,
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=1,
+    )
+
+    assert len(update.particles) == 2
+    assert {particle.world_id for particle in update.particles} == {
+        "world-a",
+        "world-b",
+    }
+    assert sorted(particle.weight for particle in update.particles) == [0.4, 0.6]
+    assert update.finite_reachability_witnesses == 2
+    assert update.finite_reachability_unresolved == 0
+    assert len(worker.seeds) == 2
+    assert worker.seeds[0] == worker.seeds[1]
+
+
 def test_finite_public_transition_can_witness_and_exhaustively_exclude_worlds(
     monkeypatch,
 ) -> None:
