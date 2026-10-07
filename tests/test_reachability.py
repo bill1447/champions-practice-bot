@@ -6,12 +6,14 @@ import math
 import pytest
 
 from champions_practice.reachability import (
+    FINITE_TRANSITION_RANDOMNESS_DOMAIN,
     PUBLIC_OBSERVATION_SCHEMA_VERSION,
     PublicReachabilityStep,
     ReachabilityCoverage,
     ReachabilityResult,
     ReachabilityStatus,
     evaluate_deterministic_public_transition,
+    finite_public_transition_reachability,
     public_reachability_observation_issue,
     witness_public_observation_sequence,
 )
@@ -319,6 +321,127 @@ def _public_step(view, *, seeds=("seed-a",), p1_choice="move a", p2_choice="move
         expected_public_view=_valid_public_view(view),
         rng_seeds=seeds,
     )
+
+
+class _FakeFiniteTransitionWorker:
+    def __init__(self, response):
+        self.response = response
+        self.calls = []
+
+    def enumerate_finite_transition(self, **kwargs):
+        self.calls.append(kwargs)
+        return copy.deepcopy(self.response)
+
+
+def _finite_response(
+    *,
+    witnessed: bool = False,
+    exhaustive: bool = False,
+    leaves: int = 4,
+    reason: str | None = None,
+):
+    response = {
+        "domain": FINITE_TRANSITION_RANDOMNESS_DOMAIN,
+        "exhaustive": exhaustive,
+        "witnessed": witnessed,
+        "leaves_examined": leaves,
+        "decision_nodes": 7,
+        "max_depth": 3,
+        "reason": reason,
+    }
+    if witnessed:
+        response["witness"] = {
+            "state": {"node": "child"},
+            "view": _valid_public_view({"turn": 2, "marker": "target"}),
+            "member_lineage": {"p1": [0, 1, 2, 3], "p2": [0, 1, 2, 3]},
+            "random_path": [
+                {
+                    "kind": "chance",
+                    "value": True,
+                    "metadata": {"numerator": 1, "denominator": 2},
+                }
+            ],
+        }
+    return response
+
+
+def test_finite_transition_witness_has_positive_authority_and_child_state():
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(witnessed=True, leaves=3)
+    )
+    expected = _valid_public_view({"turn": 2, "marker": "target"})
+
+    probe = finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=expected,
+        max_leaves=4096,
+    )
+
+    assert probe.evidence.status is ReachabilityStatus.WITNESSED
+    assert probe.evidence.establishes_reachability
+    assert not probe.evidence.establishes_impossibility
+    assert probe.child_state == {"node": "child"}
+    assert probe.member_lineage == {
+        "p1": [0, 1, 2, 3],
+        "p2": [0, 1, 2, 3],
+    }
+    assert probe.leaves_examined == 3
+    assert probe.random_path
+    assert worker.calls[0]["expected_public_view"] == expected
+
+
+def test_finite_transition_exhaustive_miss_is_negative_authority():
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(exhaustive=True, leaves=96)
+    )
+
+    probe = finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=_valid_public_view({"turn": 2}),
+    )
+
+    assert probe.evidence.status is ReachabilityStatus.EXHAUSTIVELY_DISPROVED
+    assert probe.evidence.establishes_impossibility
+    assert probe.evidence.coverage is not None
+    assert probe.evidence.coverage.randomness_exhaustive
+    assert probe.evidence.coverage.sequential_context_complete
+    assert probe.evidence.coverage.randomness_domains == (
+        FINITE_TRANSITION_RANDOMNESS_DOMAIN,
+    )
+    assert probe.child_state is None
+
+
+def test_finite_transition_budget_exhaustion_remains_unresolved():
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(
+            exhaustive=False,
+            leaves=128,
+            reason="finite stochastic branch budget exhausted",
+        )
+    )
+
+    probe = finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=_valid_public_view({"turn": 2}),
+    )
+
+    assert probe.evidence.status is ReachabilityStatus.UNRESOLVED
+    assert not probe.evidence.establishes_impossibility
+    assert not probe.evidence.establishes_reachability
+    assert probe.evidence.coverage is not None
+    assert not probe.evidence.coverage.randomness_exhaustive
 
 
 def test_showdown_witness_probe_preserves_sequential_parentage():
