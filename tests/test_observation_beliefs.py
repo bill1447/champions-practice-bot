@@ -1875,7 +1875,10 @@ def test_public_no_mega_event_excludes_transform_modifiers() -> None:
 
     candidates = observed_joint_move_candidates(actual)
 
-    assert candidates == ("move protect, move woodhammer +1",)
+    assert set(candidates) == {
+        "move protect, move woodhammer",
+        "move protect, move woodhammer +1",
+    }
     assert filter_choices_by_public_actions(
         (
             "move protect, move woodhammer +1",
@@ -1897,8 +1900,11 @@ def test_public_mega_event_requires_mega_compatible_command() -> None:
     candidates = observed_joint_move_candidates(actual)
 
     assert set(candidates) == {
+        "move protect mega, move woodhammer",
         "move protect mega, move woodhammer +1",
+        "move protect megax, move woodhammer",
         "move protect megax, move woodhammer +1",
+        "move protect megay, move woodhammer",
         "move protect megay, move woodhammer +1",
     }
     assert filter_choices_by_public_actions(
@@ -1923,9 +1929,10 @@ def test_public_burst_event_requires_ultra_command() -> None:
         ["-burst", "p1a", "necrozmaduskmane", "ultranecroziumz"]
     )
 
-    assert observed_joint_move_candidates(actual) == (
+    assert set(observed_joint_move_candidates(actual)) == {
+        "move protect ultra, move woodhammer",
         "move protect ultra, move woodhammer +1",
-    )
+    }
 
 
 def test_player_side_mega_does_not_invent_opponent_mega() -> None:
@@ -1933,9 +1940,10 @@ def test_player_side_mega_does_not_invent_opponent_mega() -> None:
         ["-mega", "p2a", "gardevoir", "gardevoirite"]
     )
 
-    assert observed_joint_move_candidates(actual) == (
+    assert set(observed_joint_move_candidates(actual)) == {
+        "move protect, move woodhammer",
         "move protect, move woodhammer +1",
-    )
+    }
 
 
 def test_ambiguous_transform_alignment_fails_open() -> None:
