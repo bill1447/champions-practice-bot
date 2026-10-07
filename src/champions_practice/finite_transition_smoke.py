@@ -1,4 +1,4 @@
-"""Pinned-Showdown smoke for finite stochastic transition reachability."""
+"""Pinned-Showdown smoke for bounded finite stochastic transition reachability."""
 
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from champions_practice.teams import SMOKE_TEAM
 P1_PREVIEW = "team 2135"
 P2_PREVIEW = "team 2135"
 P1_CHOICE = "move protect, move trickroom"
-P2_CHOICE = "move direclaw +2, move imprison"
+P2_CHOICE = "move closecombat +2, move imprison"
 RNG_SEED = "sodium,0123456789abcdef0123456789abcdef"
 PREVIEWS = {
     "p1": [
