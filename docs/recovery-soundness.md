@@ -43,8 +43,28 @@ It then emulates the live controller's current one-transition update semantics:
 - otherwise the last-good particles are retained and the controller enters degraded recovery.
 
 This closes the measured conditioning false-exclusion channel in which a wrong world could
-receive a lucky sampled match while the true world received none. The controller still needs
-mechanics-authoritative exhaustive evidence before any starting world may be removed.
+receive a lucky sampled match while the true world received none.
+
+### 3. Finite stochastic transition reachability
+
+When ordinary sampled conditioning cannot install a posterior and both opponent move slots
+were freshly observed from the public Showdown channel, production may escalate to the
+finite-transition enumerator. The enumerator replays the exact hypothetical state and the
+publicly reconstructible joint command while branching Showdown's finite random-call domains.
+
+The authority rule remains fail-closed:
+
+- one exact finite-transition witness may advance that hidden world;
+- a world is excluded only if every retained particle and every public command candidate is
+  exhaustively disproved by a completed finite random-call tree;
+- branch-budget exhaustion, unsupported/unbounded random calls, timeout, or incomplete public
+  command evidence remain unresolved and retain the last-good belief;
+- the sealed opponent command is never supplied as live belief authority.
+
+This layer is broader than the isolated 16-bucket damage randomizer: it follows the complete
+transition's finite random calls, including categorical outcomes such as secondary effects,
+while remaining bounded. The isolated damage-roll domain still carries no transition authority
+by itself.
 
 ## Primary metric
 
