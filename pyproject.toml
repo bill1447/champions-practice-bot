@@ -25,6 +25,7 @@ champions-policy-tools = "champions_practice.semantic_policy_tools:main"
 champions-teams = "champions_practice.team_corpus:main"
 champions-recovery-corpus = "champions_practice.recovery_corpus:main"
 champions-strength-league = "champions_practice.strength_league:main"
+champions-structural-collapse = "champions_practice.structural_collapse_probe:main"
 
 [build-system]
 requires = ["hatchling"]

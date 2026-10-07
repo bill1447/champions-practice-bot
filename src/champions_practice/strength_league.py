@@ -242,6 +242,8 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
     ]
     fallback_reasons: Counter[str] = Counter()
     recovery_reasons: Counter[str] = Counter()
+    structural_mismatch_paths: Counter[str] = Counter()
+    structural_mismatch_worlds: Counter[str] = Counter()
     recovery_events = [
         event
         for game in games
@@ -253,6 +255,10 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
         reason = event.get("reason")
         if isinstance(reason, str):
             recovery_reasons[reason] += 1
+        for path, count in event.get("structural_mismatch_paths", ()):
+            structural_mismatch_paths[str(path)] += int(count)
+        for world_id, count in event.get("structural_mismatch_worlds", ()):
+            structural_mismatch_worlds[str(world_id)] += int(count)
 
     total_decisions = sum(game.decisions for game in games)
     search_decisions = sum(game.search_decisions for game in games)
@@ -312,6 +318,14 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
                 event.get("reason") == "conditioning-error"
                 for event in recovery_events
             ),
+            "top_structural_mismatch_paths": [
+                [path, count]
+                for path, count in structural_mismatch_paths.most_common(16)
+            ],
+            "top_structural_mismatch_worlds": [
+                [world_id, count]
+                for world_id, count in structural_mismatch_worlds.most_common(16)
+            ],
         },
         "decision_seconds": {
             "mean": fmean(decision_seconds) if decision_seconds else None,

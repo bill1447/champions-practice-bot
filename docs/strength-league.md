@@ -130,3 +130,36 @@ actual play.
 ## Recovery diagnostics
 
 League reports record recovery-event reasons, sampled matches and unresolved worlds, unsupported public evidence, exhaustive exclusions, and retained last-good candidates. Finite sampled misses are diagnostic only and cannot eliminate a belief world.
+
+
+## Structural-collapse diagnostics
+
+When belief conditioning degrades because every simulated continuation structurally
+disagrees with the live public observation, each recovery event records bounded
+diagnostics instead of only a mismatch count:
+
+- the most frequent normalized public-view mismatch paths;
+- mismatch counts by source belief world;
+- representative actual-versus-simulated values;
+- the opponent command and RNG seed for each representative branch.
+
+The league summary aggregates the most frequent paths and worlds across games.
+
+For a faster deterministic reproduction of the first structural collapse from the
+frozen league fixture, run:
+
+```powershell
+.\structural-collapse-probe.ps1
+```
+
+The default probe uses league seed `15601`, game index `0`, and the same
+8-second decision/conditioning budgets. It stops at the first structural recovery
+event and writes:
+
+```text
+runs/structural-collapse/latest-report.json
+```
+
+Use `-GameIndex N` to reproduce a different frozen league game. The probe is a
+diagnostic harness only; mismatch paths and examples do not gain exclusion
+authority from being recorded.
