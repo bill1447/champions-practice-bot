@@ -791,8 +791,57 @@ def test_deterministic_probe_requires_rng_draw_metadata():
 
 
 def test_reachability_schema_version_is_explicit_and_stable():
-    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v9"
+    assert PUBLIC_OBSERVATION_SCHEMA_VERSION == "showdown-player-view-v10"
     assert public_reachability_observation_issue(_valid_public_view()) is None
+
+def test_selected_switch_action_is_valid_v10_public_evidence():
+    view = _valid_public_view()
+    view["turn"] = 3
+    view["opponent_last_actions"] = [
+        {"turn": 2, "slot": 1, "move": "protect", "target": -1},
+        {"turn": 2, "slot": 2, "switch_species": "rillaboom"},
+    ]
+    view["public_execution_delta"] = {
+        "turn": 2,
+        "actions": [
+            {
+                "side": "opponent",
+                "slot": 1,
+                "outcome": "executed",
+                "move": "protect",
+                "source": "selected",
+                "provenance": [],
+                "effects": [],
+            }
+        ],
+    }
+
+    assert public_reachability_observation_issue(view) is None
+
+
+@pytest.mark.parametrize(
+    "switch_action",
+    (
+        {"turn": 2, "slot": 2, "switch_species": "definitelynotaspecies"},
+        {
+            "turn": 2,
+            "slot": 2,
+            "switch_species": "rillaboom",
+            "move": "protect",
+        },
+        {"turn": 2, "slot": 2, "switch_species": "rillaboom", "target": None},
+    ),
+)
+def test_malformed_selected_switch_action_fails_closed(switch_action):
+    view = _valid_public_view()
+    view["turn"] = 3
+    view["opponent_last_actions"] = [switch_action]
+
+    issue = public_reachability_observation_issue(view)
+
+    assert issue is not None
+    assert "opponent_last_actions" in issue
+
 
 
 @pytest.mark.parametrize(
