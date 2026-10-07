@@ -1832,6 +1832,7 @@ def test_forced_wait_token_is_non_empty() -> None:
     assert FORCED_WAIT_CHOICE
     assert FORCED_WAIT_CHOICE.strip()
 
+
 def _public_transform_test_view(
     event: list[str] | None,
     *,
