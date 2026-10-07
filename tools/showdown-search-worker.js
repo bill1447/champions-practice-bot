@@ -2,6 +2,7 @@
 
 const readline = require("readline");
 const path = require("path");
+const { createHash } = require("node:crypto");
 const { isDeepStrictEqual } = require("node:util");
 
 const root = path.resolve(__dirname, "..");
@@ -15,6 +16,7 @@ const { TeamValidator } = require(
   path.join(showdownRoot, "dist", "sim", "team-validator"),
 );
 const { State } = require(path.join(showdownRoot, "dist", "sim", "state"));
+const { PRNG } = require(path.join(showdownRoot, "dist", "sim", "prng"));
 
 const sessions = new Map();
 const sessionPreviewSpecies = new Map();
@@ -2129,6 +2131,88 @@ function resolveFiniteTransitionPath(
   }
 }
 
+const FINITE_WITNESS_SEED_ATTEMPTS = 65536;
+
+function finiteWitnessSeed(path, attempt) {
+  const digest = createHash("sha256")
+    .update(stableJson(path))
+    .update("|")
+    .update(String(attempt))
+    .digest("hex");
+  return `sodium,${digest}`;
+}
+
+function finitePathMatchesSeed(path, seed) {
+  const prng = new PRNG(seed);
+  for (const decision of path) {
+    if (!decision || typeof decision !== "object") return false;
+    if (decision.kind === "random") {
+      const metadata = decision.metadata || {};
+      const from = metadata.from;
+      const to = metadata.to;
+      if (!Number.isSafeInteger(from)) return false;
+      const actual = (
+        to === null
+          ? prng.random(from)
+          : prng.random(from, to)
+      );
+      if (!Object.is(actual, decision.value)) return false;
+      continue;
+    }
+    if (decision.kind === "chance") {
+      const metadata = decision.metadata || {};
+      const actual = prng.randomChance(
+        metadata.numerator,
+        metadata.denominator,
+      );
+      if (!Object.is(actual, decision.value)) return false;
+      continue;
+    }
+    return false;
+  }
+  return true;
+}
+
+function concreteFiniteWitness(
+  state,
+  p1Choice,
+  p2Choice,
+  viewSide,
+  previews,
+  path,
+  wanted,
+) {
+  for (let attempt = 0; attempt < FINITE_WITNESS_SEED_ATTEMPTS; attempt++) {
+    const seed = finiteWitnessSeed(path, attempt);
+    if (!finitePathMatchesSeed(path, seed)) continue;
+
+    const resolved = resolveBranch(
+      state,
+      p1Choice,
+      p2Choice,
+      true,
+      seed,
+      viewSide,
+      previews,
+      false,
+    );
+    const observed = stableJson(
+      normalizedPublicObservationForReachability(resolved.view),
+    );
+    if (observed !== wanted) {
+      continue;
+    }
+    return {
+      state: resolved.state,
+      view: resolved.view,
+      member_lineage: resolved.member_lineage,
+      rng_seed: seed,
+      random_path: path,
+    };
+  }
+  return null;
+}
+
 function enumerateFiniteTransitionReachability(request) {
   if (!request.state) {
     throw new Error("finite transition reachability requires a serialized state");
@@ -2164,6 +2248,7 @@ function enumerateFiniteTransitionReachability(request) {
   let leavesExamined = 0;
   let decisionNodes = 0;
   let maxDepth = 0;
+  let syntheticMatches = 0;
 
   while (pending.length) {
     const path = pending.pop();
@@ -2221,20 +2306,27 @@ function enumerateFiniteTransitionReachability(request) {
       normalizedPublicObservationForReachability(result.view),
     );
     if (observed === wanted) {
-      return {
-        domain: FINITE_TRANSITION_DOMAIN,
-        exhaustive: false,
-        witnessed: true,
-        leaves_examined: leavesExamined,
-        decision_nodes: decisionNodes,
-        max_depth: maxDepth,
-        witness: {
-          state: result.state,
-          view: result.view,
-          member_lineage: result.member_lineage,
-          random_path: path,
-        },
-      };
+      syntheticMatches++;
+      const witness = concreteFiniteWitness(
+        request.state,
+        request.p1_choice,
+        request.p2_choice,
+        request.view_side,
+        request.previews ?? null,
+        path,
+        wanted,
+      );
+      if (witness !== null) {
+        return {
+          domain: FINITE_TRANSITION_DOMAIN,
+          exhaustive: false,
+          witnessed: true,
+          leaves_examined: leavesExamined,
+          decision_nodes: decisionNodes,
+          max_depth: maxDepth,
+          witness,
+        };
+      }
     }
     if (leavesExamined >= maxLeaves && pending.length) {
       return {
@@ -2247,6 +2339,21 @@ function enumerateFiniteTransitionReachability(request) {
         reason: "finite stochastic leaf budget exhausted",
       };
     }
+  }
+
+  if (syntheticMatches > 0) {
+    return {
+      domain: FINITE_TRANSITION_DOMAIN,
+      exhaustive: false,
+      witnessed: false,
+      leaves_examined: leavesExamined,
+      decision_nodes: decisionNodes,
+      max_depth: maxDepth,
+      reason: (
+        "finite outcome tree matched public evidence but no concrete Showdown " +
+        "PRNG seed witness was found within the bounded seed search"
+      ),
+    };
   }
 
   return {
