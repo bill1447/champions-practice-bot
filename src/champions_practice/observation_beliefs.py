@@ -297,6 +297,20 @@ def particle_member_lineage(
     return lineage
 
 
+def compose_branch_member_lineage(
+    particle: BeliefParticle,
+    *,
+    child_state: dict[str, Any],
+    raw_lineage: object,
+) -> tuple[tuple[int, ...], tuple[int, ...]]:
+    """Compose worker branch lineage onto the particle's stable roster identity."""
+    return _compose_branch_member_lineage(
+        particle,
+        child_state=child_state,
+        raw_lineage=raw_lineage,
+    )
+
+
 def _particle_key(particle: BeliefParticle) -> str:
     return json.dumps(
         {
@@ -480,6 +494,18 @@ def _observed_joint_move_candidates(
     return tuple(
         ", ".join(commands)
         for commands in product(*per_slot)
+    )
+
+
+def observed_joint_move_candidates(
+    actual_public_view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[str, ...]:
+    """Return joint opponent commands derivable entirely from fresh public move events."""
+    return _observed_joint_move_candidates(
+        actual_public_view,
+        previous_public_view=previous_public_view,
     )
 
 
