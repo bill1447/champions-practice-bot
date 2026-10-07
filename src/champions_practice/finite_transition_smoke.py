@@ -14,10 +14,10 @@ from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
 
-P1_PREVIEW = "team 2135"
-P2_PREVIEW = "team 2135"
+P1_PREVIEW = "team 5132"
+P2_PREVIEW = "team 5132"
 P1_CHOICE = "move protect, move trickroom"
-P2_CHOICE = "move closecombat +2, move imprison"
+P2_CHOICE = "move woodhammer +2, move imprison"
 RNG_SEED = "sodium,0123456789abcdef0123456789abcdef"
 # Avoid mirror speed ties in this isolated transition smoke. The production
 # regression below keeps the exact mirror fixture; this one is deliberately
