@@ -1930,6 +1930,336 @@ function branchBattle(request) {
   );
 }
 
+
+const FINITE_TRANSITION_DOMAIN = "showdown-finite-random-calls-v1";
+
+function stableJson(value) {
+  if (Array.isArray(value)) {
+    return "[" + value.map((item) => stableJson(item)).join(",") + "]";
+  }
+  if (value !== null && typeof value === "object") {
+    const keys = Object.keys(value).sort();
+    return "{" + keys.map(
+      (key) => JSON.stringify(key) + ":" + stableJson(value[key]),
+    ).join(",") + "}";
+  }
+  return JSON.stringify(value);
+}
+
+function normalizedPublicObservationForReachability(view) {
+  const normalized = cloneJson(view);
+  delete normalized.opponent_last_actions;
+  const player = normalized.player;
+  const opponent = normalized.opponent;
+  const playerName = player && typeof player === "object" ? player.name : null;
+  const opponentName = opponent && typeof opponent === "object" ? opponent.name : null;
+
+  if (typeof normalized.winner === "string") {
+    if (normalized.winner === playerName) normalized.winner = "player";
+    else if (normalized.winner === opponentName) normalized.winner = "opponent";
+  }
+  if (player && typeof player === "object") delete player.name;
+  if (opponent && typeof opponent === "object") delete opponent.name;
+  if (
+    normalized.request &&
+    typeof normalized.request === "object" &&
+    normalized.request.side &&
+    typeof normalized.request.side === "object"
+  ) {
+    delete normalized.request.side.name;
+  }
+  return normalized;
+}
+
+class NeedFiniteRandomDecision extends Error {
+  constructor(kind, options, metadata) {
+    super("finite stochastic transition requires another random decision");
+    this.kind = kind;
+    this.options = options;
+    this.metadata = metadata;
+  }
+}
+
+class UnsupportedFiniteRandomDecision extends Error {}
+
+function finiteRandomOptions(from, to) {
+  if (from === undefined) {
+    throw new UnsupportedFiniteRandomDecision(
+      "PRNG.random() without a finite integer range is unsupported",
+    );
+  }
+  const lower = to === undefined ? 0 : Math.floor(from);
+  const upper = to === undefined ? Math.floor(from) : Math.floor(to);
+  if (
+    !Number.isSafeInteger(lower) ||
+    !Number.isSafeInteger(upper) ||
+    upper <= lower
+  ) {
+    throw new UnsupportedFiniteRandomDecision(
+      "PRNG.random received a non-finite or empty integer domain",
+    );
+  }
+  const size = upper - lower;
+  if (size > 256) {
+    throw new UnsupportedFiniteRandomDecision(
+      `PRNG.random domain of ${size} outcomes exceeds finite enumeration limit`,
+    );
+  }
+  return Array.from({ length: size }, (_, index) => lower + index);
+}
+
+function resolveFiniteTransitionPath(
+  state,
+  p1Choice,
+  p2Choice,
+  viewSide,
+  previews,
+  path,
+) {
+  const battle = Battle.fromJSON(JSON.stringify(state));
+  battle.restart(() => {});
+  const parentPokemon = {
+    p1: [...battle.p1.pokemon],
+    p2: [...battle.p2.pokemon],
+  };
+  let pathIndex = 0;
+
+  function choose(kind, options, metadata) {
+    if (pathIndex >= path.length) {
+      throw new NeedFiniteRandomDecision(kind, options, metadata);
+    }
+    const supplied = path[pathIndex++];
+    if (
+      !supplied ||
+      supplied.kind !== kind ||
+      !options.some((value) => Object.is(value, supplied.value))
+    ) {
+      throw new Error("finite stochastic decision path no longer matches runtime");
+    }
+    return supplied.value;
+  }
+
+  const prng = battle.prng;
+  const lowLevel = prng.rng;
+  lowLevel.next = () => {
+    throw new UnsupportedFiniteRandomDecision(
+      "pinned runtime consumed randomness outside PRNG.random/randomChance",
+    );
+  };
+  prng.random = (from, to) => {
+    const options = finiteRandomOptions(from, to);
+    return choose(
+      "random",
+      options,
+      { from: from ?? null, to: to ?? null },
+    );
+  };
+  prng.randomChance = (numerator, denominator) => {
+    if (
+      !Number.isSafeInteger(numerator) ||
+      !Number.isSafeInteger(denominator) ||
+      numerator < 0 ||
+      denominator <= 0
+    ) {
+      throw new UnsupportedFiniteRandomDecision(
+        "PRNG.randomChance received an invalid finite domain",
+      );
+    }
+    const options = [];
+    if (numerator > 0) options.push(true);
+    if (numerator < denominator) options.push(false);
+    if (!options.length) options.push(true);
+    return choose(
+      "chance",
+      options,
+      { numerator, denominator },
+    );
+  };
+
+  try {
+    const exactP1Choice = exactChoiceForShowdown(battle, "p1", p1Choice);
+    const exactP2Choice = exactChoiceForShowdown(battle, "p2", p2Choice);
+    battle.makeChoices(exactP1Choice, exactP2Choice);
+    if (pathIndex !== path.length) {
+      throw new Error("finite stochastic decision path contains unused decisions");
+    }
+
+    const memberLineage = {
+      p1: battle.p1.pokemon.map((pokemon) => parentPokemon.p1.indexOf(pokemon)),
+      p2: battle.p2.pokemon.map((pokemon) => parentPokemon.p2.indexOf(pokemon)),
+    };
+    if (
+      memberLineage.p1.some((index) => index < 0) ||
+      memberLineage.p2.some((index) => index < 0) ||
+      new Set(memberLineage.p1).size !== memberLineage.p1.length ||
+      new Set(memberLineage.p2).size !== memberLineage.p2.length
+    ) {
+      throw new Error("Could not derive finite-transition member lineage");
+    }
+    const effectivePreviews = previews || {
+      p1: battle.p1.pokemon.map((mon) => mon.set.species),
+      p2: battle.p2.pokemon.map((mon) => mon.set.species),
+    };
+    return {
+      complete: true,
+      state: battle.toJSON(),
+      member_lineage: memberLineage,
+      view: playerView(battle, viewSide, effectivePreviews),
+    };
+  } catch (error) {
+    if (error instanceof NeedFiniteRandomDecision) {
+      return {
+        complete: false,
+        decision: {
+          kind: error.kind,
+          options: error.options,
+          metadata: error.metadata,
+        },
+      };
+    }
+    if (error instanceof UnsupportedFiniteRandomDecision) {
+      return {
+        unsupported: true,
+        reason: error.message,
+      };
+    }
+    throw error;
+  } finally {
+    battle.destroy();
+  }
+}
+
+function enumerateFiniteTransitionReachability(request) {
+  if (!request.state) {
+    throw new Error("finite transition reachability requires a serialized state");
+  }
+  if (request.view_side !== "p1" && request.view_side !== "p2") {
+    throw new Error("finite transition reachability requires view_side p1 or p2");
+  }
+  if (
+    typeof request.p1_choice !== "string" ||
+    typeof request.p2_choice !== "string"
+  ) {
+    throw new Error("finite transition reachability requires exact action strings");
+  }
+  if (
+    !request.expected_public_view ||
+    typeof request.expected_public_view !== "object"
+  ) {
+    throw new Error("finite transition reachability requires an expected public view");
+  }
+  const maxLeaves = request.max_leaves ?? 4096;
+  if (
+    !Number.isSafeInteger(maxLeaves) ||
+    maxLeaves < 1 ||
+    maxLeaves > 10000
+  ) {
+    throw new Error("finite transition max_leaves must be 1-10000");
+  }
+
+  const wanted = stableJson(
+    normalizedPublicObservationForReachability(request.expected_public_view),
+  );
+  const pending = [[]];
+  let leavesExamined = 0;
+  let decisionNodes = 0;
+  let maxDepth = 0;
+
+  while (pending.length) {
+    const path = pending.pop();
+    const result = resolveFiniteTransitionPath(
+      request.state,
+      request.p1_choice,
+      request.p2_choice,
+      request.view_side,
+      request.previews ?? null,
+      path,
+    );
+    maxDepth = Math.max(maxDepth, path.length);
+
+    if (result.unsupported) {
+      return {
+        domain: FINITE_TRANSITION_DOMAIN,
+        exhaustive: false,
+        witnessed: false,
+        leaves_examined: leavesExamined,
+        decision_nodes: decisionNodes,
+        max_depth: maxDepth,
+        reason: result.reason,
+      };
+    }
+
+    if (!result.complete) {
+      decisionNodes++;
+      const decision = result.decision;
+      for (let index = decision.options.length - 1; index >= 0; index--) {
+        pending.push([
+          ...path,
+          {
+            kind: decision.kind,
+            value: decision.options[index],
+            metadata: decision.metadata,
+          },
+        ]);
+      }
+      if (pending.length + leavesExamined > maxLeaves) {
+        return {
+          domain: FINITE_TRANSITION_DOMAIN,
+          exhaustive: false,
+          witnessed: false,
+          leaves_examined: leavesExamined,
+          decision_nodes: decisionNodes,
+          max_depth: maxDepth,
+          reason: "finite stochastic branch budget exhausted",
+        };
+      }
+      continue;
+    }
+
+    leavesExamined++;
+    const observed = stableJson(
+      normalizedPublicObservationForReachability(result.view),
+    );
+    if (observed === wanted) {
+      return {
+        domain: FINITE_TRANSITION_DOMAIN,
+        exhaustive: false,
+        witnessed: true,
+        leaves_examined: leavesExamined,
+        decision_nodes: decisionNodes,
+        max_depth: maxDepth,
+        witness: {
+          state: result.state,
+          view: result.view,
+          member_lineage: result.member_lineage,
+          random_path: path,
+        },
+      };
+    }
+    if (leavesExamined >= maxLeaves && pending.length) {
+      return {
+        domain: FINITE_TRANSITION_DOMAIN,
+        exhaustive: false,
+        witnessed: false,
+        leaves_examined: leavesExamined,
+        decision_nodes: decisionNodes,
+        max_depth: maxDepth,
+        reason: "finite stochastic leaf budget exhausted",
+      };
+    }
+  }
+
+  return {
+    domain: FINITE_TRANSITION_DOMAIN,
+    exhaustive: true,
+    witnessed: false,
+    leaves_examined: leavesExamined,
+    decision_nodes: decisionNodes,
+    max_depth: maxDepth,
+    reason: null,
+  };
+}
+
 function branchMany(request) {
   if (!request.state) {
     throw new Error("branch_many requires a serialized battle state");
@@ -2219,6 +2549,8 @@ function handle(request) {
       return branchMany(request);
     case "enumerate_damage_rolls":
       return enumerateDamageRolls(request);
+    case "enumerate_finite_transition":
+      return enumerateFiniteTransitionReachability(request);
     case "legal_choices":
       return legalChoices(request);
     case "validate_choices":
