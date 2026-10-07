@@ -1274,47 +1274,82 @@ class BeliefDecisionEngine:
             and not unsupported_public_evidence
             and (deadline is None or perf_counter() < deadline - 0.5)
         ):
+            finite_source_particles = tuple(
+                particle
+                for index, particle in enumerate(particles)
+                if _particle_world_key(particle, index) in unresolved
+            )
             finite = self._condition_finite_public_transition(
                 worker,
-                particles=particles,
+                particles=finite_source_particles,
                 ai_choice=ai_choice,
                 view=view,
                 previous_view=previous_view,
-                preexcluded_worlds=exhaustive_exclusions,
+                preexcluded_worlds=set(),
                 deadline=deadline,
             )
             exhaustive_exclusions.update(
                 finite.exhaustively_excluded_world_ids
             )
-            if finite.particles:
-                return ParticleUpdate(
-                    particles=finite.particles,
-                    generated=generated + finite.generated,
-                    matched=matched + finite.matched,
-                    deduplicated=deduplicated + finite.deduplicated,
-                    stochastic_only_mismatches=stochastic_only_mismatches,
-                    structural_mismatches=structural_mismatches,
-                    matched_world_ids=finite.matched_world_ids,
-                    sampled_unresolved_world_ids=(),
-                    exhaustively_excluded_world_ids=tuple(
-                        sorted(exhaustive_exclusions)
-                    ),
-                    unsupported_public_evidence=tuple(
-                        sorted(unsupported_public_evidence)
-                    ),
-                    finite_reachability_witnesses=(
-                        finite.finite_reachability_witnesses
-                    ),
-                    finite_reachability_disproofs=(
-                        finite.finite_reachability_disproofs
-                    ),
-                    finite_reachability_unresolved=0,
-                    finite_reachability_leaves=(
-                        finite.finite_reachability_leaves
-                    ),
-                    **update_kwargs(),
+            finite_matched_worlds = set(finite.matched_world_ids)
+            combined_matched_worlds = (
+                sampled_matched_worlds | finite_matched_worlds
+            )
+            installable_worlds = required_worlds - exhaustive_exclusions
+
+            if (
+                finite.particles
+                and installable_worlds.issubset(combined_matched_worlds)
+            ):
+                authoritative_particles = tuple(
+                    particle
+                    for index, particle in enumerate(particles)
+                    if _particle_world_key(particle, index)
+                    not in exhaustive_exclusions
                 )
-            unresolved = set(finite.sampled_unresolved_world_ids)
+                merged = merge_sampled_world_witnesses(
+                    authoritative_particles,
+                    (
+                        *tuple(witnessed_particles),
+                        *finite.particles,
+                    ),
+                )
+                if merged:
+                    return ParticleUpdate(
+                        particles=merged,
+                        generated=generated + finite.generated,
+                        matched=matched + finite.matched,
+                        deduplicated=deduplicated + finite.deduplicated,
+                        stochastic_only_mismatches=stochastic_only_mismatches,
+                        structural_mismatches=structural_mismatches,
+                        matched_world_ids=tuple(
+                            sorted(combined_matched_worlds)
+                        ),
+                        sampled_unresolved_world_ids=(),
+                        exhaustively_excluded_world_ids=tuple(
+                            sorted(exhaustive_exclusions)
+                        ),
+                        unsupported_public_evidence=tuple(
+                            sorted(unsupported_public_evidence)
+                        ),
+                        finite_reachability_witnesses=(
+                            finite.finite_reachability_witnesses
+                        ),
+                        finite_reachability_disproofs=(
+                            finite.finite_reachability_disproofs
+                        ),
+                        finite_reachability_unresolved=0,
+                        finite_reachability_leaves=(
+                            finite.finite_reachability_leaves
+                        ),
+                        **update_kwargs(),
+                    )
+
+            unresolved = (
+                required_worlds
+                - combined_matched_worlds
+                - exhaustive_exclusions
+            )
             return ParticleUpdate(
                 (),
                 generated + finite.generated,
@@ -1322,7 +1357,9 @@ class BeliefDecisionEngine:
                 deduplicated + finite.deduplicated,
                 stochastic_only_mismatches,
                 structural_mismatches,
-                matched_world_ids=finite.matched_world_ids,
+                matched_world_ids=tuple(
+                    sorted(combined_matched_worlds)
+                ),
                 sampled_unresolved_world_ids=tuple(sorted(unresolved)),
                 exhaustively_excluded_world_ids=tuple(
                     sorted(exhaustive_exclusions)
@@ -2900,17 +2937,17 @@ class _BeliefBattleCoordinator:
             degraded=update.degraded,
             terminal=terminal,
             winner=public_view.get("winner"),
-            finite_reachability_witnesses=(
-                update.finite_reachability_witnesses
+            finite_reachability_witnesses=getattr(
+                update, "finite_reachability_witnesses", 0
             ),
-            finite_reachability_disproofs=(
-                update.finite_reachability_disproofs
+            finite_reachability_disproofs=getattr(
+                update, "finite_reachability_disproofs", 0
             ),
-            finite_reachability_unresolved=(
-                update.finite_reachability_unresolved
+            finite_reachability_unresolved=getattr(
+                update, "finite_reachability_unresolved", 0
             ),
-            finite_reachability_leaves=(
-                update.finite_reachability_leaves
+            finite_reachability_leaves=getattr(
+                update, "finite_reachability_leaves", 0
             ),
             collapse_diagnostic=collapse_diagnostic,
             recovery_diagnostic=getattr(update, "recovery_diagnostic", None),
