@@ -66,6 +66,10 @@ The authority rule remains fail-closed:
   a public species label is never treated as a universal private switch number;
 - source-driven switches, `drag`, `replace`, and ambiguous/disguised switch projections are
   not promoted to exhaustive command authority;
+- move modifiers such as Mega Evolution and Ultra Burst are constrained only when the
+  recognized public mechanics ledger is aligned to the selected-action turn; an aligned
+  ledger with no transformation event excludes invented transformation modifiers, while a
+  missing or misaligned ledger fails open;
 - the sealed opponent command is never supplied as live belief authority.
 
 This layer is broader than the isolated 16-bucket damage randomizer: it follows the complete
