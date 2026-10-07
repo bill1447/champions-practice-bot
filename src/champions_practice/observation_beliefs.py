@@ -542,15 +542,24 @@ _TRANSFORMATION_COMMANDS = ("mega", "megax", "megay", "ultra")
 _MEGA_COMMANDS = ("mega", "megax", "megay")
 
 
-def _public_view_side_id(view: dict[str, Any]) -> str | None:
-    request = view.get("request")
-    if not isinstance(request, dict):
-        return None
-    side = request.get("side")
-    if not isinstance(side, dict):
-        return None
-    side_id = side.get("id")
-    return side_id if side_id in {"p1", "p2"} else None
+def _public_view_side_id(
+    view: dict[str, Any],
+    *,
+    fallback_view: dict[str, Any] | None = None,
+) -> str | None:
+    for candidate in (view, fallback_view):
+        if not isinstance(candidate, dict):
+            continue
+        request = candidate.get("request")
+        if not isinstance(request, dict):
+            continue
+        side = request.get("side")
+        if not isinstance(side, dict):
+            continue
+        side_id = side.get("id")
+        if side_id in {"p1", "p2"}:
+            return side_id
+    return None
 
 
 def _public_opponent_transform_requirements(
@@ -578,7 +587,10 @@ def _public_opponent_transform_requirements(
         return None
     action_turn = next(iter(turns))
 
-    view_side = _public_view_side_id(view)
+    view_side = _public_view_side_id(
+        view,
+        fallback_view=previous_public_view,
+    )
     if view_side is None:
         return None
     opponent_side = "p2" if view_side == "p1" else "p1"
