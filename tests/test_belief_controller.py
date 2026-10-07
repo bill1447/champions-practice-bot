@@ -1293,6 +1293,214 @@ def test_pending_rng_retry_uses_public_observation_only() -> None:
     )
 
 
+
+def test_pending_rng_retry_resumes_completed_prefix() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    initial = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    turn_two = BeliefParticle(
+        {"turn": 2},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1|turn-2",
+    )
+    turn_three = BeliefParticle(
+        {"turn": 3},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1|turn-2|turn-3",
+    )
+    engine.particles = (initial,)
+    engine.recovery_authority_root_particles = (initial,)
+    engine.recovery_authority_root_public_view = {"turn": 1}
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+        ("move two", {"turn": 2}, {"turn": 3}),
+    ]
+    calls: list[int] = []
+    turn_three_attempts = 0
+
+    def fake_condition(worker, **kwargs):
+        nonlocal turn_three_attempts
+        turn = kwargs["view"]["turn"]
+        calls.append(turn)
+        callback = kwargs["progress_callback"]
+        if turn == 2:
+            callback((turn_two,), ())
+            return ParticleUpdate((turn_two,), 1, 1, 0)
+        turn_three_attempts += 1
+        if turn_three_attempts == 1:
+            return ParticleUpdate(
+                (),
+                1,
+                0,
+                0,
+                sampled_unresolved_world_ids=("world-1",),
+            )
+        callback((turn_three,), ())
+        return ParticleUpdate((turn_three,), 1, 1, 0)
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert calls == [2, 3]
+    assert engine.pending_recovery_prefix_count == 1
+    assert engine.pending_recovery_prefix_particles[0].state["turn"] == 2
+    assert len(engine.pending_observations) == 2
+
+    assert engine._retry_pending_with_more_rng() is True
+    assert calls == [2, 3, 3]
+    assert engine.particles[0].state["turn"] == 3
+    assert engine.pending_observations == []
+    assert engine.pending_recovery_prefix_count == 0
+    assert engine.degraded is False
+
+
+def test_pending_rng_retry_reuses_per_world_witnesses() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    world_one = BeliefParticle(
+        {"turn": 1, "world": 1},
+        0.5,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    world_two = BeliefParticle(
+        {"turn": 1, "world": 2},
+        0.5,
+        world_id="world-2",
+        history_id="rng-2",
+    )
+    witness_one = BeliefParticle(
+        {"turn": 2, "world": 1},
+        0.5,
+        world_id="world-1",
+        history_id="rng-1|witness",
+    )
+    witness_two = BeliefParticle(
+        {"turn": 2, "world": 2},
+        0.5,
+        world_id="world-2",
+        history_id="rng-2|witness",
+    )
+    engine.particles = (world_one, world_two)
+    engine.recovery_authority_root_particles = (world_one, world_two)
+    engine.recovery_authority_root_public_view = {"turn": 1}
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+    ]
+    attempted_worlds: list[tuple[str, ...]] = []
+    attempts = 0
+
+    def fake_condition(worker, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        attempted_worlds.append(
+            tuple(particle.world_id for particle in kwargs["particles"])
+        )
+        callback = kwargs["progress_callback"]
+        if attempts == 1:
+            callback((witness_one,), ())
+            return ParticleUpdate(
+                (),
+                1,
+                1,
+                0,
+                matched_world_ids=("world-1",),
+                sampled_unresolved_world_ids=("world-2",),
+            )
+        callback((witness_two,), ())
+        return ParticleUpdate(
+            (),
+            1,
+            1,
+            0,
+            matched_world_ids=("world-2",),
+        )
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert attempted_worlds == [("world-1", "world-2")]
+    assert {
+        particle.world_id
+        for particle in engine.pending_recovery_witnesses
+    } == {"world-1"}
+
+    assert engine._retry_pending_with_more_rng() is True
+    assert attempted_worlds == [
+        ("world-1", "world-2"),
+        ("world-2",),
+    ]
+    assert {
+        particle.state["world"]
+        for particle in engine.particles
+    } == {1, 2}
+    assert engine.pending_observations == []
+
+
+def test_pending_rng_retry_sampled_miss_never_advances_progress() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+    ]
+
+    def fake_condition(worker, **kwargs):
+        return ParticleUpdate(
+            (),
+            4,
+            0,
+            0,
+            sampled_unresolved_world_ids=("world-1",),
+        )
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert engine.pending_recovery_prefix_count == 0
+    assert engine.pending_recovery_witnesses == ()
+    assert engine.pending_recovery_excluded_world_ids == ()
+    assert engine.particles == (particle,)
+    assert len(engine.pending_observations) == 1
+
+
 class _CollapseDiagnosticWorker:
     def __init__(self, *, human_choice_legal=True, exact_on_second=True) -> None:
         self.human_choice_legal = human_choice_legal
