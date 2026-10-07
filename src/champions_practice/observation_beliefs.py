@@ -511,20 +511,128 @@ def _public_action_fingerprint(
     )
 
 
-def _observed_opponent_actions(
+def _fresh_public_action_fingerprint(
     view: dict[str, Any],
     *,
     previous_public_view: dict[str, Any] | None = None,
-) -> tuple[tuple[int, str, str, int | None], ...]:
+) -> tuple[tuple[int | None, int, str, str, int | None], ...]:
     current = _public_action_fingerprint(view)
     if previous_public_view is not None:
         previous = _public_action_fingerprint(previous_public_view)
         if current == previous:
             return ()
+    return current
+
+
+def _observed_opponent_actions(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> tuple[tuple[int, str, str, int | None], ...]:
     return tuple(
         (slot, kind, value, target)
-        for _, slot, kind, value, target in current
+        for _, slot, kind, value, target in _fresh_public_action_fingerprint(
+            view,
+            previous_public_view=previous_public_view,
+        )
     )
+
+
+_TRANSFORMATION_COMMANDS = ("mega", "megax", "megay", "ultra")
+_MEGA_COMMANDS = ("mega", "megax", "megay")
+
+
+def _public_view_side_id(
+    view: dict[str, Any],
+    *,
+    fallback_view: dict[str, Any] | None = None,
+) -> str | None:
+    for candidate in (view, fallback_view):
+        if not isinstance(candidate, dict):
+            continue
+        request = candidate.get("request")
+        if not isinstance(request, dict):
+            continue
+        side = request.get("side")
+        if not isinstance(side, dict):
+            continue
+        side_id = side.get("id")
+        if side_id in {"p1", "p2"}:
+            return side_id
+    return None
+
+
+def _public_opponent_transform_requirements(
+    view: dict[str, Any],
+    *,
+    previous_public_view: dict[str, Any] | None = None,
+) -> dict[int, tuple[str, ...]] | None:
+    """Return public command-modifier requirements by opponent active slot.
+
+    An empty mapping is authoritative evidence that no opponent slot transformed
+    on the observed action turn. None means the public projection cannot safely
+    align transformation events with that turn, so callers must fail open.
+
+    -mega proves Mega Evolution but does not itself prove which Showdown command
+    token selected it in every supported ruleset. Keep mega/megax/megay as a
+    public-equivalent family and let the particle-local legal-choice validator
+    resolve the exact command. -burst maps to ultra.
+    """
+    actions = _fresh_public_action_fingerprint(
+        view,
+        previous_public_view=previous_public_view,
+    )
+    turns = {turn for turn, *_ in actions if turn is not None}
+    if len(turns) != 1:
+        return None
+    action_turn = next(iter(turns))
+
+    view_side = _public_view_side_id(
+        view,
+        fallback_view=previous_public_view,
+    )
+    if view_side is None:
+        return None
+    opponent_side = "p2" if view_side == "p1" else "p1"
+
+    delta = view.get("public_event_delta")
+    if not isinstance(delta, dict):
+        return None
+    if delta.get("turn") != action_turn:
+        return None
+    unsupported = delta.get("unsupported")
+    if unsupported not in (None, []) and unsupported != ():
+        return None
+    events = delta.get("events")
+    if not isinstance(events, list):
+        return None
+
+    requirements: dict[int, tuple[str, ...]] = {}
+    for event in events:
+        if not isinstance(event, list) or not event:
+            continue
+        event_name = event[0]
+        if event_name not in {"-mega", "-burst"}:
+            continue
+        if len(event) < 2 or not isinstance(event[1], str):
+            return None
+        actor = event[1]
+        if len(actor) != 3 or actor[:2] not in {"p1", "p2"}:
+            return None
+        slot_letter = actor[2]
+        if not ("a" <= slot_letter <= "z"):
+            return None
+        if actor[:2] != opponent_side:
+            continue
+
+        slot = ord(slot_letter) - ord("a") + 1
+        allowed = _MEGA_COMMANDS if event_name == "-mega" else ("ultra",)
+        previous = requirements.get(slot)
+        if previous is not None and previous != allowed:
+            return None
+        requirements[slot] = allowed
+
+    return requirements
 
 
 def observed_public_actions(
@@ -707,6 +815,11 @@ def _observed_joint_move_candidates(
     if any(kind != "move" for _, kind, _, _ in actions):
         return ()
 
+    transform_requirements = _public_opponent_transform_requirements(
+        actual_public_view,
+        previous_public_view=previous_public_view,
+    )
+
     per_slot: list[tuple[str, ...]] = []
     for slot, _kind, move_id, target in actions:
         bases = [f"move {move_id}"]
@@ -715,11 +828,19 @@ def _observed_joint_move_candidates(
 
         variants = []
         for base in bases:
-            variants.append(base)
-            variants.extend(
-                f"{base} {event}"
-                for event in ("mega", "megax", "megay", "ultra")
-            )
+            if transform_requirements is None:
+                variants.append(base)
+                variants.extend(
+                    f"{base} {event}"
+                    for event in _TRANSFORMATION_COMMANDS
+                )
+                continue
+
+            allowed = transform_requirements.get(slot, ())
+            if not allowed:
+                variants.append(base)
+                continue
+            variants.extend(f"{base} {event}" for event in allowed)
         per_slot.append(tuple(dict.fromkeys(variants)))
 
     return tuple(
