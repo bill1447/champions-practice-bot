@@ -616,10 +616,13 @@ def main(argv: list[str] | None = None) -> None:
             "oracle-PRNG replay "
             f"{candidate['oracle_prng_replay_matches_public']}"
         )
-    print(
-        "Report:         "
-        f"{Path(__file__).resolve().parents[2] / 'runs' / 'transition-drift' / 'latest-report.json'}"
+    report_path = (
+        Path(__file__).resolve().parents[2]
+        / "runs"
+        / "transition-drift"
+        / "latest-report.json"
     )
+    print(f"Report:         {report_path}")
 
 
 if __name__ == "__main__":
