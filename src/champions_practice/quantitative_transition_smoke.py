@@ -530,6 +530,11 @@ def _hitcount_regression(worker: ShowdownSearchWorker) -> tuple[int, int, int, i
         view=actual["view"],
     )
 
+    # PR #164 may recover from the deliberately wrong first sample by finding a
+    # later concrete Showdown witness. Both valid outcomes preserve authority:
+    # either recovery remains pending with the last-good particle, or it installs
+    # only an exact two-hit witness. It must never install the known five-hit
+    # history.
     if observed.matched_branches == 0:
         if not engine.degraded or not engine.pending_observations:
             raise SystemExit(
