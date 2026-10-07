@@ -193,15 +193,15 @@ class BeliefRecoveryDiagnostic:
     structural_mismatch_paths: tuple[tuple[str, int], ...]
     structural_mismatch_worlds: tuple[tuple[str, int], ...]
     structural_mismatch_examples: tuple[StructuralMismatchExample, ...]
-    finite_reachability_witnesses: int
-    finite_reachability_disproofs: int
-    finite_reachability_unresolved: int
-    finite_reachability_leaves: int
     sampled_matched_worlds: int
     sampled_unresolved_worlds: int
     exhaustively_excluded_worlds: int
     recovery_candidates_remaining: int
     recovery_worlds_remaining: int
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     unsupported_public_evidence: tuple[str, ...] = ()
     error: str | None = None
 
@@ -1107,12 +1107,13 @@ class BeliefDecisionEngine:
         witnessed_particles: list[BeliefParticle] = []
         exhaustive_exclusions: set[str] = set()
         unsupported_public_evidence: set[str] = set()
+        finite_public_actions = public_opponent_moves_fully_observed(
+            view,
+            previous_public_view=previous_view,
+        )
         multiplier = (
             self.observed_action_rng_multiplier
-            if public_opponent_moves_fully_observed(
-                view,
-                previous_public_view=previous_view,
-            )
+            if finite_public_actions
             else 1
         )
 
@@ -1251,14 +1252,25 @@ class BeliefDecisionEngine:
                             **update_kwargs(),
                         )
 
+            # Once a complete public joint command is available, a full sampled
+            # pass with zero world witnesses has already served its screening
+            # purpose. Do not spend the remaining conditioning budget repeating
+            # the same probabilistic miss; reserve it for finite Showdown
+            # reachability below. Partial sampled coverage still gets later
+            # batches because those witnesses can cheaply complete the posterior.
+            if (
+                finite_public_actions
+                and not sampled_matched_worlds
+                and structural_mismatches > 0
+                and not unsupported_public_evidence
+            ):
+                break
+
         unresolved = required_worlds - sampled_matched_worlds - exhaustive_exclusions
 
         if (
             unresolved
-            and public_opponent_moves_fully_observed(
-                view,
-                previous_public_view=previous_view,
-            )
+            and finite_public_actions
             and not unsupported_public_evidence
             and (deadline is None or perf_counter() < deadline - 0.5)
         ):
