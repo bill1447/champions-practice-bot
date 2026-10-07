@@ -241,6 +241,10 @@ class SealedTurnResult:
     degraded: bool
     terminal: bool
     winner: str | None
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     collapse_diagnostic: BeliefCollapseDiagnostic | None = None
     recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
@@ -272,6 +276,10 @@ class BeliefTurnUpdate:
     conditioning_seconds: float
     conditioning_over_budget: bool
     degraded: bool
+    finite_reachability_witnesses: int = 0
+    finite_reachability_disproofs: int = 0
+    finite_reachability_unresolved: int = 0
+    finite_reachability_leaves: int = 0
     recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
 
@@ -2384,6 +2392,26 @@ class BeliefDecisionEngine:
             conditioning_seconds=conditioning_seconds,
             conditioning_over_budget=timed_out,
             degraded=self.degraded,
+            finite_reachability_witnesses=(
+                update.finite_reachability_witnesses
+                if update is not None
+                else 0
+            ),
+            finite_reachability_disproofs=(
+                update.finite_reachability_disproofs
+                if update is not None
+                else 0
+            ),
+            finite_reachability_unresolved=(
+                update.finite_reachability_unresolved
+                if update is not None
+                else 0
+            ),
+            finite_reachability_leaves=(
+                update.finite_reachability_leaves
+                if update is not None
+                else 0
+            ),
             recovery_diagnostic=recovery_diagnostic,
         )
 
@@ -2860,6 +2888,18 @@ class _BeliefBattleCoordinator:
             degraded=update.degraded,
             terminal=terminal,
             winner=public_view.get("winner"),
+            finite_reachability_witnesses=(
+                update.finite_reachability_witnesses
+            ),
+            finite_reachability_disproofs=(
+                update.finite_reachability_disproofs
+            ),
+            finite_reachability_unresolved=(
+                update.finite_reachability_unresolved
+            ),
+            finite_reachability_leaves=(
+                update.finite_reachability_leaves
+            ),
             collapse_diagnostic=collapse_diagnostic,
             recovery_diagnostic=getattr(update, "recovery_diagnostic", None),
         )
