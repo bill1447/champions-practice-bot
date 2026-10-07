@@ -682,7 +682,6 @@ def _choice_matches_observed_actions(
     *,
     state: dict[str, Any] | None = None,
     side: str | None = None,
-    transform_requirements: dict[int, tuple[str, ...]] | None = None,
 ) -> bool:
     commands = [command.strip().split() for command in choice.split(",")]
     for slot, kind, action_value, observed_target in actions:
@@ -709,24 +708,6 @@ def _choice_matches_observed_actions(
                 and command_target != observed_target
             ):
                 return False
-
-            if transform_requirements is not None:
-                transform_tokens = [
-                    token
-                    for token in tokens[2:]
-                    if token in _TRANSFORMATION_COMMANDS
-                ]
-                if len(transform_tokens) > 1:
-                    return False
-                command_transform = (
-                    transform_tokens[0] if transform_tokens else None
-                )
-                allowed = transform_requirements.get(slot, ())
-                if allowed:
-                    if command_transform not in allowed:
-                        return False
-                elif command_transform is not None:
-                    return False
             continue
 
         if kind == "switch":
@@ -762,10 +743,6 @@ def _filter_responses_by_public_actions(
     )
     if not actions:
         return responses
-    transform_requirements = _public_opponent_transform_requirements(
-        actual_public_view,
-        previous_public_view=previous_public_view,
-    )
     filtered = tuple(
         response
         for response in responses
@@ -774,7 +751,6 @@ def _filter_responses_by_public_actions(
             actions,
             state=state,
             side=side,
-            transform_requirements=transform_requirements,
         )
     )
     if filtered or not fail_open:
