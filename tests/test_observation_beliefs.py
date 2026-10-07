@@ -5,7 +5,9 @@ from champions_practice.observation_beliefs import (
     classify_public_observation_mismatch,
     condition_particles,
     is_stochastic_observation_path,
+    observed_joint_move_candidates,
     public_observation_signature,
+    public_opponent_moves_fully_observed,
     resample_particles,
     resample_particles_by_world,
 )
@@ -1236,6 +1238,92 @@ def test_incomplete_public_action_never_uses_unrevealed_submitted_command() -> N
         "move psychic +1, move protect",
         "move psychic +1, move closecombat +1",
     }
+
+
+def test_prevented_public_action_completes_joint_command_evidence() -> None:
+    previous = {
+        "turn": 1,
+        "opponent_last_actions": [],
+        "public_execution_delta": {"turn": None, "actions": []},
+    }
+    actual = {
+        "turn": 2,
+        "opponent": {"active": [{"species": "Sneasler"}, {"species": "Indeedee-F"}]},
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": -1},
+        ],
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "opponent",
+                    "slot": 1,
+                    "outcome": "executed",
+                    "move": "protect",
+                    "source": "selected",
+                    "provenance": [],
+                    "effects": [],
+                },
+                {
+                    "side": "opponent",
+                    "slot": 2,
+                    "outcome": "prevented",
+                    "reason": "move:imprison",
+                    "attempted_move": "trickroom",
+                    "effects": [],
+                },
+            ],
+        },
+    }
+
+    candidates = observed_joint_move_candidates(
+        actual,
+        previous_public_view=previous,
+    )
+
+    assert "move protect, move trickroom" in candidates
+    assert public_opponent_moves_fully_observed(
+        actual,
+        previous_public_view=previous,
+    )
+
+
+def test_called_execution_does_not_invent_selected_command_evidence() -> None:
+    previous = {
+        "turn": 1,
+        "opponent_last_actions": [],
+        "public_execution_delta": {"turn": None, "actions": []},
+    }
+    actual = {
+        "turn": 2,
+        "opponent": {"active": [{"species": "Sneasler"}, {"species": "Indeedee-F"}]},
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": -1},
+        ],
+        "public_execution_delta": {
+            "turn": 1,
+            "actions": [
+                {
+                    "side": "opponent",
+                    "slot": 2,
+                    "outcome": "executed",
+                    "move": "psychic",
+                    "source": "called",
+                    "provenance": ["[from]:move:instruct"],
+                    "effects": [],
+                },
+            ],
+        },
+    }
+
+    assert observed_joint_move_candidates(
+        actual,
+        previous_public_view=previous,
+    ) == ()
+    assert not public_opponent_moves_fully_observed(
+        actual,
+        previous_public_view=previous,
+    )
 
 
 def test_fully_public_execution_can_condition_the_revealed_command() -> None:
