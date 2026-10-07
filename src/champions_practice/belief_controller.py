@@ -921,6 +921,7 @@ class BeliefDecisionEngine:
         preexcluded_worlds: set[str],
         deadline: float | None,
         max_leaves: int = 256,
+        witness_rounds: int = 64,
     ) -> ParticleUpdate:
         """Recover public transitions with concrete Showdown witnesses first.
 
@@ -1081,7 +1082,7 @@ class BeliefDecisionEngine:
         # small; a seed that witnesses one world is immediately replayed across
         # every other unresolved world before generating more randomness.
         rounds = 0
-        while rounds < 64:
+        while rounds < witness_rounds:
             unresolved = [
                 world_id
                 for world_id in world_order
@@ -1444,6 +1445,7 @@ class BeliefDecisionEngine:
         if (
             unresolved
             and finite_public_actions
+            and not sampled_matched_worlds
             and not unsupported_public_evidence
             and (deadline is None or perf_counter() < deadline - 0.5)
         ):
