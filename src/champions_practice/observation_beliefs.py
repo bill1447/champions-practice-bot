@@ -1394,7 +1394,17 @@ def condition_particles(
     opponent_choices: dict[str, tuple[str, ...]] | None = None,
     rng_seeds: tuple[str | None, ...] = (None,),
     previews: dict[str, list[str]] | None = None,
+    damage_probe_limit: int = 1,
 ) -> ParticleUpdate:
+    # A damage-roll witness is an optional positive-evidence probe, not a
+    # prerequisite for ordinary exact sampled conditioning. Its bounded work
+    # must never scale silently with particles * responses * RNG samples.
+    if (
+        isinstance(damage_probe_limit, bool)
+        or not isinstance(damage_probe_limit, int)
+        or damage_probe_limit < 0
+    ):
+        raise ValueError("damage_probe_limit must be a nonnegative integer")
     if ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
     if ai_choice == "":
@@ -1439,6 +1449,7 @@ def condition_particles(
     structural_example_keys: set[tuple[str, str]] = set()
     matched_source_world_ids: set[str] = set()
     damage_probed_responses: set[tuple[int, str]] = set()
+    damage_probes_used = 0
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
@@ -1546,12 +1557,14 @@ def condition_particles(
                 # a *concrete* replay whose complete public view is exact.
                 damage_key = (particle_index, response)
                 if (
-                    damage_key not in damage_probed_responses
+                    damage_probes_used < damage_probe_limit
+                    and damage_key not in damage_probed_responses
                     and _has_aligned_public_damage_difference(
                         actual_public_view, view
                     )
                 ):
                     damage_probed_responses.add(damage_key)
+                    damage_probes_used += 1
                     witness, examined = _find_exact_damage_bucket_witness(
                         worker,
                         state=particle.state,
