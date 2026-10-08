@@ -30,6 +30,7 @@ def _game(
     finite_reachability_unresolved: int = 0,
     finite_reachability_leaves: int = 0,
     recovery_events: tuple[dict, ...] = (),
+    recovery_retry_events: tuple[dict, ...] = (),
 ) -> GameResult:
     winner = {
         "bot-win": "League Bot",
@@ -62,6 +63,7 @@ def _game(
         finite_reachability_unresolved=finite_reachability_unresolved,
         finite_reachability_leaves=finite_reachability_leaves,
         recovery_events=recovery_events,
+        recovery_retry_events=recovery_retry_events,
     )
 
 
@@ -145,16 +147,18 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
                         ("world-a", 5),
                         ("world-b", 4),
                     ),
-                    "recovery_retry": {
-                        "worker_attempts": 2,
-                        "returned_updates": 1,
-                        "deadline_timeouts": 1,
-                        "finite_progress_callbacks": 3,
-                        "finite_progress_changes": 2,
-                        "seed_cursor_advanced": True,
-                        "continuation_changed": True,
-                        "continuation_persisted": True,
-                    },
+                },
+            ),
+            recovery_retry_events=(
+                {
+                    "worker_attempts": 2,
+                    "returned_updates": 1,
+                    "deadline_timeouts": 1,
+                    "finite_progress_callbacks": 3,
+                    "finite_progress_changes": 2,
+                    "seed_cursor_advanced": True,
+                    "continuation_changed": True,
+                    "continuation_persisted": True,
                 },
             ),
         ),
