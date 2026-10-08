@@ -132,6 +132,52 @@ def main() -> None:
                 "ERROR: finite transition witness did not match target public view"
             )
 
+        # Force the same finite tree through tiny positive-only chunks.
+        # The first chunk must return an opaque frontier; later chunks may
+        # witness the known public outcome but can never gain negative authority.
+        resumed = finite_public_transition_reachability(
+            worker,
+            state=state,
+            side="p2",
+            p1_choice=P1_CHOICE,
+            p2_choice=P2_CHOICE,
+            expected_public_view=expected,
+            previews=PREVIEWS,
+            max_leaves=1,
+        )
+        if resumed.continuation_token is None:
+            raise SystemExit(
+                "ERROR: bounded finite transition did not return a resumable frontier"
+            )
+        continuation = resumed.continuation_token
+        resumed_witness = None
+        for _ in range(32):
+            resumed = finite_public_transition_reachability(
+                worker,
+                state=state,
+                side="p2",
+                p1_choice=P1_CHOICE,
+                p2_choice=P2_CHOICE,
+                expected_public_view=expected,
+                previews=PREVIEWS,
+                max_leaves=1,
+                continuation_token=continuation,
+            )
+            if resumed.evidence.status is ReachabilityStatus.WITNESSED:
+                resumed_witness = resumed
+                break
+            if resumed.evidence.establishes_impossibility:
+                raise SystemExit(
+                    "ERROR: resumed finite frontier gained negative authority"
+                )
+            continuation = resumed.continuation_token
+            if continuation is None:
+                break
+        if resumed_witness is None:
+            raise SystemExit(
+                "ERROR: resumed finite frontier did not recover known outcome"
+            )
+
         impossible = copy.deepcopy(expected)
         impossible["field"]["weather"] = "raindance"
         disproof = finite_public_transition_reachability(
