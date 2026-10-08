@@ -9,7 +9,10 @@ mechanics proofs before any future rebase may use them as hard constraints.
 
 from __future__ import annotations
 
+import copy
 import json
+import math
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -140,10 +143,52 @@ class PublicConstraintLedger:
         )
 
 
+_OWN_SPEED_SCHEMA_ISSUE = re.compile(
+    r"^\\$\\.player\\.(?:team|active_details)\\[\\d+\\]\\.speed:"
+)
+
+
 def _validate_public_view(view: dict[str, Any]) -> None:
     issue = public_reachability_observation_issue(view)
-    if issue is not None:
-        raise ValueError(f"public constraint ledger rejected non-public view: {issue}")
+    if issue is None:
+        return
+
+    # Pinned live Showdown occasionally exposes own Pokemon.speed outside
+    # the stricter non-negative-integer reachability witness contract. That
+    # field is *our* producer-visible value, not an opponent hidden stat.
+    # Do not mutate it, weaken the reachability validator, or let its
+    # presentation shape disable passive evidence recording. Only a finite
+    # number gets a schema-only substitution; all other fields must still
+    # pass the exact original validator.
+    if _OWN_SPEED_SCHEMA_ISSUE.match(issue):
+        schema_projection = copy.deepcopy(view)
+        player = schema_projection.get("player")
+        if isinstance(player, dict):
+            changed = False
+            for key in ("team", "active_details"):
+                entries = player.get(key)
+                if not isinstance(entries, list):
+                    continue
+                for entry in entries:
+                    if not isinstance(entry, dict):
+                        continue
+                    speed = entry.get("speed")
+                    if (
+                        isinstance(speed, (int, float))
+                        and not isinstance(speed, bool)
+                        and math.isfinite(speed)
+                        and not (isinstance(speed, int) and speed >= 0)
+                    ):
+                        entry["speed"] = 0
+                        changed = True
+            if changed:
+                remainder = public_reachability_observation_issue(
+                    schema_projection
+                )
+                if remainder is None:
+                    return
+                issue = remainder
+    raise ValueError(f"public constraint ledger rejected non-public view: {issue}")
 
 
 def _new_records(
