@@ -74,6 +74,11 @@ def main() -> None:
         if TURN_ONE.p2_choice not in worker.legal_choices(state=root, side="p2"):
             raise SystemExit("ERROR: AI cannot play fixed test turn")
 
+        previews = {
+            "p1": list(opening["opponent"]["preview_species"]),
+            "p2": [mon["species"] for mon in opening["player"]["team"]],
+        }
+
         # Search a small explicitly bounded set of hypothetical RNG branches
         # for a public HP bucket containing >=2 native exact integer HP values.
         # The state for each attempt is entirely Showdown-produced, not built
@@ -88,6 +93,7 @@ def main() -> None:
                     "p2_choice": TURN_ONE.p2_choice,
                     "include_state": True,
                     "view_side": "p2",
+                    "previews": previews,
                     "rng_seed": f"sodium,{index:08x}000000020000000300000004",
                 }],
             )[0]
