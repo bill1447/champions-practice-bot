@@ -144,7 +144,7 @@ class PublicConstraintLedger:
 
 
 _OWN_SPEED_SCHEMA_ISSUE = re.compile(
-    r"^\\$\\.player\\.(?:team|active_details)\\[\\d+\\]\\.speed:"
+    r"^\$\.player\.(?:team|active_details)\[\d+\]\.speed:"
 )
 
 
