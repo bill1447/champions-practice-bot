@@ -307,6 +307,10 @@ Current-state rebasing creates epistemic hypotheses for present tactical search;
 claim that every synthesized state has a uniquely proven historical RNG ancestry.
 
 
+PR #183 (proposed) isolates public-prior candidate generation and strict dual
+projection checks from live belief search. It does not claim to synthesize
+mechanically complete midgame states or improve the 8-game strength league.
+
 PR #181 (merged) added bounded exact damage-bucket positive-witness searches. The frozen
 8-game league remained at 15 fallback decisions (20 -> 19 degraded turns) with
 Protect + Wood Hammer backlog cases intact. PR #182 must be evaluated as a
@@ -452,9 +456,18 @@ Phase exit criteria:
    intentionally cannot admit or eliminate live belief particles. Producer
    mismatches quarantine passive recording with a visible diagnostic, never
    interrupting live play or silently granting rebase authority.
-8. Build current-state belief re-synthesis that can discard failed ancestry, generate multiple
-   mechanically valid present-tense worlds from those constraints and approved priors, and
-   return to the current decision turn without replaying an unbounded historical backlog.
+8. **PR #183 — isolated public-prior proposal and projection gate:** Generate a
+   bounded, identity-labeled set of public-prior hypotheses directly from the
+   current constraint ledger, without consulting stale particle ancestry or
+   hidden live states. Obtain fresh pinned-Showdown opening roots and check
+   exact own choosing-side request plus full public-observation projection.
+   An exact opening projection is necessary but *never* live-admission authority.
+   Fresh openings are explicitly rejected as midgame states, and unavailable
+   compatible catalog priors stay unresolved rather than becoming impossibility.
+   **Still required:** a mechanics-safe present-turn constructor that preserves
+   current PP, locks, timers, damage/HP constraints, member identity, forms and
+   historical public evidence; independent pinned-runtime differential validation.
+   Only then may a current-state rebase replace historical ancestry in live play.
 9. Require every synthesized world to reproduce the authoritative own-side request and the
    interval-aware public projection before admission. Add hard regressions proving that private
    truth cannot influence rebase output, ambiguous evidence widens rather than overconstrains
