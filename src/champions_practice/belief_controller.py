@@ -181,6 +181,44 @@ class BeliefCollapseDiagnostic:
 
 
 @dataclass(frozen=True)
+class FiniteSeedCursorDiagnostic:
+    path_sha256: str
+    next_attempt: int
+
+
+@dataclass(frozen=True)
+class FiniteFrontierDiagnostic:
+    world_id: str
+    history_id: str
+    human_choice: str
+    token_sha256: str | None
+    schema: str | None
+    pending_paths: int
+    materialization_jobs: int
+    seed_cursors: tuple[FiniteSeedCursorDiagnostic, ...] = ()
+    exhausted: bool = False
+    parse_error: str | None = None
+
+
+@dataclass(frozen=True)
+class RecoveryRetryDiagnostic:
+    pending_observations: int
+    prefix_count_before: int
+    prefix_count_after: int
+    worker_attempts: int
+    returned_updates: int
+    deadline_timeouts: int
+    finite_progress_callbacks: int
+    finite_progress_changes: int
+    seed_cursor_advanced: bool
+    continuation_changed: bool
+    continuation_persisted: bool
+    elapsed_seconds: float
+    frontiers_before: tuple[FiniteFrontierDiagnostic, ...] = ()
+    frontiers_after: tuple[FiniteFrontierDiagnostic, ...] = ()
+
+
+@dataclass(frozen=True)
 class BeliefRecoveryDiagnostic:
     reason: str
     observation_turn: int
@@ -205,6 +243,7 @@ class BeliefRecoveryDiagnostic:
     finite_reachability_unresolved: int = 0
     finite_reachability_leaves: int = 0
     unsupported_public_evidence: tuple[str, ...] = ()
+    recovery_retry: RecoveryRetryDiagnostic | None = None
     error: str | None = None
 
 
@@ -321,6 +360,141 @@ def _particle_history_key(particle: BeliefParticle) -> str:
             separators=(",", ":"),
         ).encode("utf-8")
     ).hexdigest()
+
+
+def _finite_frontier_diagnostics(
+    frontiers: dict[tuple[str, str, str], str],
+) -> tuple[FiniteFrontierDiagnostic, ...]:
+    diagnostics: list[FiniteFrontierDiagnostic] = []
+    for (world_id, history_id, human_choice), token in sorted(
+        frontiers.items()
+    ):
+        if token == _FINITE_FRONTIER_EXHAUSTED:
+            diagnostics.append(
+                FiniteFrontierDiagnostic(
+                    world_id=world_id,
+                    history_id=history_id,
+                    human_choice=human_choice,
+                    token_sha256=None,
+                    schema=None,
+                    pending_paths=0,
+                    materialization_jobs=0,
+                    exhausted=True,
+                )
+            )
+            continue
+
+        token_sha256 = hashlib.sha256(token.encode("utf-8")).hexdigest()
+        schema: str | None = None
+        pending_paths = 0
+        materialization_jobs = 0
+        seed_cursors: list[FiniteSeedCursorDiagnostic] = []
+        parse_error: str | None = None
+        try:
+            payload = json.loads(token)
+            if not isinstance(payload, dict):
+                raise ValueError("continuation payload is not an object")
+            raw_schema = payload.get("schema")
+            if isinstance(raw_schema, str):
+                schema = raw_schema
+            pending = payload.get("pending")
+            if isinstance(pending, list):
+                pending_paths = len(pending)
+            materializations = payload.get("materializations")
+            if isinstance(materializations, list):
+                materialization_jobs = len(materializations)
+                for materialization in materializations:
+                    if not isinstance(materialization, dict):
+                        continue
+                    path = materialization.get("path")
+                    next_attempt = materialization.get("next_attempt")
+                    if (
+                        not isinstance(path, list)
+                        or isinstance(next_attempt, bool)
+                        or not isinstance(next_attempt, int)
+                        or next_attempt < 0
+                    ):
+                        continue
+                    path_sha256 = hashlib.sha256(
+                        json.dumps(
+                            path,
+                            sort_keys=True,
+                            separators=(",", ":"),
+                        ).encode("utf-8")
+                    ).hexdigest()
+                    seed_cursors.append(
+                        FiniteSeedCursorDiagnostic(
+                            path_sha256=path_sha256,
+                            next_attempt=next_attempt,
+                        )
+                    )
+        except (TypeError, ValueError, json.JSONDecodeError) as error:
+            parse_error = f"{type(error).__name__}: {error}"
+
+        diagnostics.append(
+            FiniteFrontierDiagnostic(
+                world_id=world_id,
+                history_id=history_id,
+                human_choice=human_choice,
+                token_sha256=token_sha256,
+                schema=schema,
+                pending_paths=pending_paths,
+                materialization_jobs=materialization_jobs,
+                seed_cursors=tuple(seed_cursors),
+                parse_error=parse_error,
+            )
+        )
+    return tuple(diagnostics)
+
+
+def _finite_cursor_map(
+    diagnostics: tuple[FiniteFrontierDiagnostic, ...],
+) -> dict[tuple[str, str, str, str], int]:
+    cursors: dict[tuple[str, str, str, str], int] = {}
+    for frontier in diagnostics:
+        for cursor in frontier.seed_cursors:
+            cursors[
+                (
+                    frontier.world_id,
+                    frontier.history_id,
+                    frontier.human_choice,
+                    cursor.path_sha256,
+                )
+            ] = cursor.next_attempt
+    return cursors
+
+
+def _finite_cursor_advanced(
+    before: tuple[FiniteFrontierDiagnostic, ...],
+    after: tuple[FiniteFrontierDiagnostic, ...],
+) -> bool:
+    before_cursors = _finite_cursor_map(before)
+    after_cursors = _finite_cursor_map(after)
+    return any(
+        next_attempt > before_cursors.get(key, 0)
+        for key, next_attempt in after_cursors.items()
+    )
+
+
+def _finite_frontier_changed(
+    before: tuple[FiniteFrontierDiagnostic, ...],
+    after: tuple[FiniteFrontierDiagnostic, ...],
+) -> bool:
+    def fingerprints(
+        values: tuple[FiniteFrontierDiagnostic, ...],
+    ) -> tuple[tuple[str, str, str, str | None, bool], ...]:
+        return tuple(
+            (
+                value.world_id,
+                value.history_id,
+                value.human_choice,
+                value.token_sha256,
+                value.exhausted,
+            )
+            for value in values
+        )
+
+    return fingerprints(before) != fingerprints(after)
 
 
 def _observation_action_strings(view: dict) -> tuple[str, ...]:
