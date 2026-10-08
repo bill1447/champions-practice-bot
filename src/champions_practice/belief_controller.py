@@ -1986,6 +1986,8 @@ class BeliefDecisionEngine:
         later retry spends its budget only on unresolved worlds, unfinished
         finite witness frontiers, and observations after the completed prefix.
         """
+        retry_started = perf_counter()
+        self.last_recovery_retry_diagnostic = None
         if not self.pending_observations:
             self._clear_pending_recovery_progress()
             return bool(self.particles)
@@ -2022,6 +2024,15 @@ class BeliefDecisionEngine:
             for world_id, history_id, human_choice, token
             in self.pending_recovery_finite_frontiers
         }
+        retry_prefix_count_before = prefix_count
+        frontiers_before = _finite_frontier_diagnostics(
+            dict(finite_frontier_cache)
+        )
+        worker_attempts = 0
+        returned_updates = 0
+        deadline_timeouts = 0
+        finite_progress_callbacks = 0
+        finite_progress_changes = 0
 
         def witness_key(particle: BeliefParticle) -> tuple[str, str]:
             return particle.world_id, _particle_history_key(particle)
@@ -2043,13 +2054,21 @@ class BeliefDecisionEngine:
             continuation: str | None,
             exhausted: bool,
         ) -> None:
+            nonlocal finite_progress_callbacks, finite_progress_changes
             with progress_lock:
+                finite_progress_callbacks += 1
+                previous = finite_frontier_cache.get(key)
                 if exhausted:
-                    finite_frontier_cache[key] = _FINITE_FRONTIER_EXHAUSTED
+                    updated = _FINITE_FRONTIER_EXHAUSTED
+                    finite_frontier_cache[key] = updated
                 elif continuation is None:
+                    updated = None
                     finite_frontier_cache.pop(key, None)
                 else:
-                    finite_frontier_cache[key] = continuation
+                    updated = continuation
+                    finite_frontier_cache[key] = updated
+                if previous != updated:
+                    finite_progress_changes += 1
 
         def snapshot_progress() -> tuple[
             tuple[BeliefParticle, ...],
@@ -2080,10 +2099,44 @@ class BeliefDecisionEngine:
                 for key, token in sorted(finite_frontiers.items())
             )
 
+        def finalize_retry(completed: bool) -> bool:
+            persisted = {
+                (world_id, history_id, human_choice): token
+                for world_id, history_id, human_choice, token
+                in self.pending_recovery_finite_frontiers
+            }
+            frontiers_after = _finite_frontier_diagnostics(persisted)
+            self.last_recovery_retry_diagnostic = RecoveryRetryDiagnostic(
+                pending_observations=len(pending),
+                prefix_count_before=retry_prefix_count_before,
+                prefix_count_after=self.pending_recovery_prefix_count,
+                worker_attempts=worker_attempts,
+                returned_updates=returned_updates,
+                deadline_timeouts=deadline_timeouts,
+                finite_progress_callbacks=finite_progress_callbacks,
+                finite_progress_changes=finite_progress_changes,
+                seed_cursor_advanced=_finite_cursor_advanced(
+                    frontiers_before,
+                    frontiers_after,
+                ),
+                continuation_changed=_finite_frontier_changed(
+                    frontiers_before,
+                    frontiers_after,
+                ),
+                continuation_persisted=any(
+                    token != _FINITE_FRONTIER_EXHAUSTED
+                    for token in persisted.values()
+                ),
+                elapsed_seconds=perf_counter() - retry_started,
+                frontiers_before=frontiers_before,
+                frontiers_after=frontiers_after,
+            )
+            return completed
+
         while prefix_count < len(pending):
             if perf_counter() >= recovery_deadline - 0.5:
                 save_progress()
-                return False
+                return finalize_retry(False)
 
             ai_choice, previous_view, view = pending[prefix_count]
             required_worlds = set(_particle_world_keys(prefix_particles))
@@ -2146,7 +2199,7 @@ class BeliefDecisionEngine:
             )
             if not attempt_particles:
                 save_progress()
-                return False
+                return finalize_retry(False)
 
             witness_seed_window = self.pending_recovery_witness_window
             # Search scheduling only: advancing this cursor never excludes a
@@ -2168,11 +2221,15 @@ class BeliefDecisionEngine:
                     finite_progress_callback=record_finite_progress,
                 )
 
+            worker_attempts += 1
             update, timed_out = self._run_until_deadline(
                 recover_one,
                 deadline=recovery_deadline,
             )
+            if timed_out:
+                deadline_timeouts += 1
             if update is not None:
+                returned_updates += 1
                 record_progress(
                     tuple(update.particles),
                     tuple(update.exhaustively_excluded_world_ids),
@@ -2183,18 +2240,18 @@ class BeliefDecisionEngine:
 
             save_progress()
             if timed_out or update is None or not update.particles:
-                return False
+                return finalize_retry(False)
 
             # A nonempty update that did not complete the current observation
             # is still only positive progress. Keep it cached and retry later.
-            return False
+            return finalize_retry(False)
 
         self.particles = prefix_particles
         self._promote_pending_to_recovery_authority(pending)
         self.pending_observations.clear()
         self._clear_pending_recovery_progress()
         self.degraded = False
-        return True
+        return finalize_retry(True)
 
     def diagnose_collapse(
         self,
@@ -3036,6 +3093,7 @@ class BeliefDecisionEngine:
                 particles_before=starting_particles,
                 update=None,
                 recovery_candidates=self.particles,
+                recovery_retry=self.last_recovery_retry_diagnostic,
             )
         else:
             def run_conditioning(worker: HypotheticalSearchWorker):
