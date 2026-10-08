@@ -246,6 +246,7 @@ class ReachabilityWorker(Protocol):
         previews: dict[str, list[str]] | None = None,
         max_leaves: int = 4096,
         continuation_token: str | None = None,
+        witness_seed_window_attempts: int = 4096,
     ) -> dict[str, Any]: ...
 
 
@@ -3789,6 +3790,7 @@ def finite_public_transition_reachability(
     previews: dict[str, list[str]] | None = None,
     max_leaves: int = 4096,
     continuation_token: str | None = None,
+    witness_seed_window_attempts: int = 4096,
 ) -> FiniteTransitionReachability:
     """Enumerate one transition's finite Showdown random-call outcome tree.
 
@@ -3822,6 +3824,15 @@ def finite_public_transition_reachability(
     ):
         raise ValueError(
             "finite continuation must be a bounded non-empty string"
+        )
+    if (
+        isinstance(witness_seed_window_attempts, bool)
+        or not isinstance(witness_seed_window_attempts, int)
+        or witness_seed_window_attempts < 1
+        or witness_seed_window_attempts > 4096
+    ):
+        raise ValueError(
+            "witness_seed_window_attempts must be an integer from 1 through 4096"
         )
 
     schema_issue = public_reachability_observation_issue(expected_public_view)
@@ -3862,6 +3873,7 @@ def finite_public_transition_reachability(
                 expected_public_view
             ),
             "max_leaves": max_leaves,
+            "witness_seed_window_attempts": witness_seed_window_attempts,
         }
     )
 
@@ -3875,6 +3887,7 @@ def finite_public_transition_reachability(
             previews=previews,
             max_leaves=max_leaves,
             continuation_token=continuation_token,
+            witness_seed_window_attempts=witness_seed_window_attempts,
         )
     except TimeoutError:
         return FiniteTransitionReachability(

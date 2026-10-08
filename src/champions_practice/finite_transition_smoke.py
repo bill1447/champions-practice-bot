@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.observation_beliefs import public_observation_signature
@@ -144,14 +145,72 @@ def main() -> None:
             expected_public_view=expected,
             previews=PREVIEWS,
             max_leaves=1,
+            witness_seed_window_attempts=1,
         )
         if resumed.continuation_token is None:
             raise SystemExit(
                 "ERROR: bounded finite transition did not return a resumable frontier"
             )
         continuation = resumed.continuation_token
+
+        # Continuation v2 must preserve a concrete-seed cursor independently
+        # from the DFS frontier. Inject a deliberately non-realizable positive
+        # materialization job into this test-only token and prove one bounded
+        # retry advances its cursor without gaining negative authority.
+        token_payload = json.loads(continuation)
+        if token_payload.get("schema") != "showdown-finite-frontier-v2":
+            raise SystemExit("ERROR: finite continuation schema is not v2")
+        token_payload["pending"] = []
+        token_payload["materializations"] = [
+            {
+                "path": [
+                    {
+                        "kind": "test-never-matches",
+                        "value": False,
+                        "metadata": {},
+                    }
+                ],
+                "next_attempt": 0,
+            }
+        ]
+        cursor_probe = finite_public_transition_reachability(
+            worker,
+            state=state,
+            side="p2",
+            p1_choice=P1_CHOICE,
+            p2_choice=P2_CHOICE,
+            expected_public_view=expected,
+            previews=PREVIEWS,
+            max_leaves=1,
+            continuation_token=json.dumps(
+                token_payload,
+                separators=(",", ":"),
+            ),
+            witness_seed_window_attempts=1,
+        )
+        if cursor_probe.evidence.establishes_impossibility:
+            raise SystemExit(
+                "ERROR: seed materialization cursor gained negative authority"
+            )
+        if cursor_probe.continuation_token is None:
+            raise SystemExit(
+                "ERROR: seed materialization cursor was not resumable"
+            )
+        cursor_payload = json.loads(cursor_probe.continuation_token)
+        cursor_jobs = cursor_payload.get("materializations", [])
+        test_jobs = [
+            job
+            for job in cursor_jobs
+            if job.get("path")
+            and job["path"][0].get("kind") == "test-never-matches"
+        ]
+        if len(test_jobs) != 1 or test_jobs[0].get("next_attempt") != 1:
+            raise SystemExit(
+                "ERROR: finite seed materialization cursor did not advance"
+            )
+
         resumed_witness = None
-        for _ in range(32):
+        for _ in range(128):
             resumed = finite_public_transition_reachability(
                 worker,
                 state=state,
@@ -162,6 +221,7 @@ def main() -> None:
                 previews=PREVIEWS,
                 max_leaves=1,
                 continuation_token=continuation,
+                witness_seed_window_attempts=1,
             )
             if resumed.evidence.status is ReachabilityStatus.WITNESSED:
                 resumed_witness = resumed
