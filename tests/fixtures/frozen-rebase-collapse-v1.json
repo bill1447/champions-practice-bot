@@ -1,0 +1,87 @@
+{
+  "schema": "frozen-collapse-targets-v1",
+  "source": {
+    "origin": "user-supplied-offline-strength-league-v1",
+    "run_id": "ab063ad1a10843de3768",
+    "report_sha256": "a1d4834be917d69f36763846d5ffc8d6bffead739560450333d2822af806d75a",
+    "git_commit": "3eeccfbc593d1899196f480f2e1107fea3f0e374",
+    "pinned_showdown_revision": "a5df8274e85b0889bf2a9b3422a08b39732374fc",
+    "fixture_id": "current-roster-mirror-v1",
+    "seed": 15601
+  },
+  "baseline": {
+    "games": 8,
+    "decisions": 85,
+    "fallback_decisions": 15,
+    "degraded_turns": 19,
+    "recovery_events": 19,
+    "zero_sampled_matches": 3,
+    "pending_backlog_events": 16,
+    "deadline_timeouts": 1
+  },
+  "cases": [
+    {
+      "game_index": 0,
+      "game_number": 1,
+      "initial_collapse_turn": 5,
+      "initial_actions": [
+        "struggle",
+        "protect"
+      ],
+      "degraded_turns": 3,
+      "fallback_decisions": 1,
+      "observation_turns": [
+        5,
+        6,
+        7
+      ]
+    },
+    {
+      "game_index": 1,
+      "game_number": 2,
+      "initial_collapse_turn": 8,
+      "initial_actions": [
+        "protect",
+        "woodhammer"
+      ],
+      "degraded_turns": 8,
+      "fallback_decisions": 7,
+      "observation_turns": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        14
+      ]
+    },
+    {
+      "game_index": 7,
+      "game_number": 8,
+      "initial_collapse_turn": 8,
+      "initial_actions": [
+        "protect",
+        "woodhammer"
+      ],
+      "degraded_turns": 8,
+      "fallback_decisions": 7,
+      "observation_turns": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        14
+      ]
+    }
+  ],
+  "limitations": [
+    "Historical league report does not include choosing-side public views or trusted current-turn oracle states.",
+    "A recovery event alone cannot prove or disprove reconstruction, true-world survival, timing, or retention.",
+    "The listed cases are targets for an independent runtime challenge, not passing test witnesses."
+  ]
+}
