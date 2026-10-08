@@ -2025,9 +2025,7 @@ class BeliefDecisionEngine:
             in self.pending_recovery_finite_frontiers
         }
         retry_prefix_count_before = prefix_count
-        frontiers_before = _finite_frontier_diagnostics(
-            dict(finite_frontier_cache)
-        )
+        frontier_tokens_before = dict(finite_frontier_cache)
         worker_attempts = 0
         returned_updates = 0
         deadline_timeouts = 0
@@ -2105,6 +2103,9 @@ class BeliefDecisionEngine:
                 for world_id, history_id, human_choice, token
                 in self.pending_recovery_finite_frontiers
             }
+            frontiers_before = _finite_frontier_diagnostics(
+                frontier_tokens_before
+            )
             frontiers_after = _finite_frontier_diagnostics(persisted)
             self.last_recovery_retry_diagnostic = RecoveryRetryDiagnostic(
                 pending_observations=len(pending),
