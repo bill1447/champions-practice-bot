@@ -96,208 +96,266 @@ jobs:
           }
           Write-Host "Verified loopback-only listener: $($Addresses -join ', ')"
 
+      # After setup has succeeded, run every independent check even if one fails.
+      # Do NOT use continue-on-error: GitHub must preserve the failing job status.
+      - name: Confirm test prerequisites
+        id: test_prerequisites
+        shell: pwsh
+        run: Write-Host "Pinned Showdown and test environment ready"
+
       - name: Lint
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m ruff check src tests
 
       - name: Unit tests
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m pytest
 
       - name: Public replay trajectory extraction smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\replay-trajectory-smoke.ps1
 
       - name: Pinned Showdown replay legal-menu adapter smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\replay-policy-menu-smoke.ps1
 
       - name: Pinned Showdown replay semantic audit smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\replay-semantic-audit-smoke.ps1
 
       - name: Validate Champions team
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\validate-team.ps1
 
       - name: Exact Showdown state fork smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\fork-smoke.ps1
 
       - name: Python to Showdown search bridge smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\bridge-smoke.ps1
 
       - name: Pinned Showdown team corpus validation smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\team-corpus-smoke.ps1
 
       - name: Persistent battle session smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\session-smoke.ps1
 
       - name: Public-information belief privacy smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\belief-smoke.ps1
 
       - name: Sequential observation-conditioning smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\observation-conditioning-smoke.ps1
 
       - name: Independent-RNG observation-conditioning smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\rng-observation-smoke.ps1
 
       - name: Persistent public opponent ledger smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\public-ledger-smoke.ps1
 
       - name: Authoritative public event conditioning smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\public-event-conditioning-smoke.ps1
 
       - name: Public sethp projection consistency smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\sethp-projection-smoke.ps1
 
       - name: Isolated mechanics-authoritative recovery boundary smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-boundary-smoke.ps1
 
       - name: Typed recovery mutation authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-mutation-authority-smoke.ps1
 
       - name: Pre-opening static recovery authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-opening-authority-smoke.ps1
 
       - name: Recovery RNG sampling authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-sampling-inconclusive-smoke.ps1
 
       - name: Stable recovery member-lineage smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-member-lineage-smoke.ps1
 
       - name: Static recovery prefix authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-history-authority-smoke.ps1
 
       - name: Bounded opponent stat-point recovery smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-stat-proposal-smoke.ps1
 
 
       - name: Mechanics-authoritative reachability authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\reachability-smoke.ps1
 
       - name: Offline true-world recovery soundness smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-soundness-smoke.ps1
 
       - name: Deterministic exact-team recovery corpus smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recovery-corpus-smoke.ps1
 
       - name: Finite Showdown damage-roll domain smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
       - name: Pinned damage-roll conditioning witness smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.damage_witness_smoke
 
       - name: Finite stochastic transition reachability smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\finite-transition-smoke.ps1
 
       - name: Finite stochastic belief conditioning smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\finite-conditioning-smoke.ps1
 
       - name: Quantitative public transition authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1
 
       - name: Public selected-switch action smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\public-switch-action-smoke.ps1
 
       - name: Public transformation command reconstruction smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\public-transformation-action-smoke.ps1
 
       - name: Public action execution evidence smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\execution-evidence-smoke.ps1
 
       - name: Ordered both-side execution authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\execution-authority-smoke.ps1
 
       - name: Persistent belief battle controller smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\belief-controller-smoke.ps1
 
       - name: Sealed forced-switch and terminal smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\sealed-transition-smoke.ps1
 
       - name: Revival Blessing request and conditioning smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\revival-blessing-smoke.ps1
 
       - name: Exact forced-wait authority smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\forced-wait-authority-smoke.ps1
 
       - name: Production-like damaging-turn conditioning smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\damage-conditioning-smoke.ps1
 
       - name: Absolute deadline lifecycle smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\timeout-lifecycle-smoke.ps1
 
       - name: Worker startup, transport, and ownership hardening smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\worker-lifecycle-hardening-smoke.ps1
 
       - name: Belief-aware exact search smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\belief-search-smoke.ps1
 
       - name: Executable strategic benchmark smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\strategic-benchmark-smoke.ps1
 
       - name: Exact one-ply search smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\exact-search-smoke.ps1
 
       - name: Hidden-state legality oracle smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\legality-oracle-smoke.ps1
 
       - name: Public structural target legality smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\public-structural-legality-smoke.ps1
 
       - name: Persistent-session legal action smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\legal-actions-smoke.ps1
 
       - name: Bounded exact recommendation smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\recommendation-smoke.ps1
 
       - name: Full Champions battle smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\battle-smoke.ps1
 
       - name: Heuristic opponent smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\ai-smoke.ps1
 
