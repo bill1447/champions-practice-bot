@@ -557,6 +557,55 @@ def test_exhausted_positive_frontier_remains_unresolved():
     assert not probe.evidence.establishes_impossibility
 
 
+def test_finite_transition_forwards_seed_materialization_window():
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(
+            exhaustive=False,
+            leaves=8,
+            reason="finite seed materialization pending",
+        )
+    )
+
+    finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=_valid_public_view({"turn": 2}),
+        witness_seed_window_attempts=17,
+    )
+
+    assert worker.calls[0]["witness_seed_window_attempts"] == 17
+
+
+@pytest.mark.parametrize("window", [0, 4097, True])
+def test_finite_transition_rejects_invalid_seed_materialization_window(window):
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(
+            exhaustive=False,
+            leaves=1,
+            reason="unreachable",
+        )
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="witness_seed_window_attempts",
+    ):
+        finite_public_transition_reachability(
+            worker,
+            state={"node": "root"},
+            side="p2",
+            p1_choice="move protect, move trickroom",
+            p2_choice="move direclaw +1, move imprison",
+            expected_public_view=_valid_public_view({"turn": 2}),
+            witness_seed_window_attempts=window,
+        )
+
+    assert worker.calls == []
+
+
 def test_showdown_witness_probe_preserves_sequential_parentage():
     first = {"turn": 2, "marker": "first"}
     second = {"turn": 3, "marker": "second"}
