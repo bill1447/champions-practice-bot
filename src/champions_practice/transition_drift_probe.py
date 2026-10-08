@@ -39,7 +39,7 @@ from champions_practice.strength_league import (
 )
 
 
-PROBE_SCHEMA = "transition-state-drift-probe-v2"
+PROBE_SCHEMA = "transition-state-drift-probe-v3"
 
 _BATTLE_MECHANICS_KEYS = (
     "turn",
@@ -243,6 +243,49 @@ def _previews_from_state(state: dict[str, Any]) -> dict[str, list[str]]:
     return previews
 
 
+def _public_preview_species(
+    view: dict[str, Any],
+    *,
+    role: str,
+) -> list[str] | None:
+    side = view.get(role)
+    if not isinstance(side, dict):
+        return None
+    preview = side.get("preview_species")
+    if not isinstance(preview, list) or not preview:
+        return None
+    if not all(isinstance(species, str) and species for species in preview):
+        return None
+    return list(preview)
+
+
+def _previews_from_public_views(
+    *,
+    conditioning_view: dict[str, Any],
+    human_view: dict[str, Any],
+    fallback_state: dict[str, Any],
+) -> dict[str, list[str]]:
+    """Recover the full six-species preview ledger from public observations.
+
+    A serialized in-battle state contains only the four brought Pokemon, so it
+    cannot reconstruct the original team preview by itself.
+    """
+    previews = _previews_from_state(fallback_state)
+    p1_preview = _public_preview_species(
+        conditioning_view,
+        role="opponent",
+    )
+    p2_preview = _public_preview_species(
+        human_view,
+        role="opponent",
+    )
+    if p1_preview is not None:
+        previews["p1"] = p1_preview
+    if p2_preview is not None:
+        previews["p2"] = p2_preview
+    return previews
+
+
 def _replay(
     worker: ShowdownSearchWorker,
     *,
@@ -435,7 +478,11 @@ def run_transition_drift_probe(
                     "oracle post-turn p2 view omitted conditioning observation"
                 )
 
-            previews = _previews_from_state(oracle_pre_state)
+            previews = _previews_from_public_views(
+                conditioning_view=conditioning_public_view,
+                human_view=result.public_view,
+                fallback_state=oracle_pre_state,
+            )
             oracle_replay = _replay(
                 worker,
                 state=oracle_pre_state,
