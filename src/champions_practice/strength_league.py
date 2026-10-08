@@ -117,6 +117,7 @@ class GameResult:
     finite_reachability_unresolved: int = 0
     finite_reachability_leaves: int = 0
     recovery_events: tuple[dict[str, Any], ...] = ()
+    recovery_retry_events: tuple[dict[str, Any], ...] = ()
 
 
 def _sha256_text(value: str) -> str:
@@ -255,9 +256,8 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
     ]
     recovery_retries = [
         retry
-        for event in recovery_events
-        for retry in (event.get("recovery_retry"),)
-        if isinstance(retry, dict)
+        for game in games
+        for retry in game.recovery_retry_events
     ]
     for game in games:
         fallback_reasons.update(dict(game.fallback_reasons))
@@ -444,6 +444,7 @@ def run_game(
     decision_seconds: list[float] = []
     conditioning_seconds: list[float] = []
     recovery_events: list[dict[str, Any]] = []
+    recovery_retry_events: list[dict[str, Any]] = []
     fallback_reasons: Counter[str] = Counter()
     search_decisions = 0
     forced_wait_decisions = 0
@@ -523,6 +524,13 @@ def run_game(
             )
             if result.recovery_diagnostic is not None:
                 recovery_events.append(asdict(result.recovery_diagnostic))
+            if result.recovery_retry_diagnostic is not None:
+                recovery_retry_events.append(
+                    {
+                        "decision_index": len(decision_seconds) - 1,
+                        **asdict(result.recovery_retry_diagnostic),
+                    }
+                )
             branch_count += int(decision.branch_count)
             if decision.mode == "belief-search":
                 search_decisions += 1
@@ -573,6 +581,7 @@ def run_game(
             finite_reachability_unresolved=finite_reachability_unresolved,
             finite_reachability_leaves=finite_reachability_leaves,
             recovery_events=tuple(recovery_events),
+            recovery_retry_events=tuple(recovery_retry_events),
         )
 
 
