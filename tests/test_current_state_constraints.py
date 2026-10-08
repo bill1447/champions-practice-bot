@@ -169,3 +169,49 @@ def test_invalid_public_view_rejected_by_producer_authority(monkeypatch):
     )
     with pytest.raises(ValueError, match="non-public view"):
         PublicConstraintLedger.from_public_view(view())
+
+
+
+@pytest.mark.parametrize("observed_speed", [-1, 2.5])
+def test_producer_numeric_own_speed_exception_does_not_change_evidence(
+    monkeypatch, observed_speed
+):
+    current = view()
+    current["player"]["team"] = [{"speed": observed_speed}]
+    current["player"]["active_details"] = [{"speed": observed_speed}]
+
+    def strict_speed_validator(item):
+        values = (
+            item["player"]["team"][0]["speed"],
+            item["player"]["active_details"][0]["speed"],
+        )
+        return (
+            "$.player.active_details[0].speed: must be a non-negative integer"
+            if any(not isinstance(speed, int) or speed < 0 for speed in values)
+            else None
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.current_state_constraints."
+        "public_reachability_observation_issue",
+        strict_speed_validator,
+    )
+    ledger = PublicConstraintLedger.from_public_view(current)
+    assert current["player"]["team"][0]["speed"] == observed_speed
+    assert f'"speed":{observed_speed}' in ledger.current_signature
+    assert ledger.matches_current_public_projection(current)
+
+
+def test_producer_own_speed_exception_does_not_admit_non_numeric_private_data(
+    monkeypatch,
+):
+    current = view()
+    current["player"]["team"] = [{"speed": "private-truth"}]
+    current["player"]["active_details"] = [{"speed": "private-truth"}]
+    monkeypatch.setattr(
+        "champions_practice.current_state_constraints."
+        "public_reachability_observation_issue",
+        lambda _: "$.player.active_details[0].speed: must be a non-negative integer",
+    )
+    with pytest.raises(ValueError, match="speed"):
+        PublicConstraintLedger.from_public_view(current)
