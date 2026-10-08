@@ -153,6 +153,7 @@ def advance_rolling_public_checkpoints(
     current_view: dict[str, Any],
     previous_ledger: PublicConstraintLedger,
     current_ledger: PublicConstraintLedger,
+    previous_prior_batch: CurrentStateProposalBatch,
     prior_batch: CurrentStateProposalBatch,
     checkpoints: tuple[PublicRebaseCheckpoint, ...],
     known_own_choice: str,
@@ -188,8 +189,10 @@ def advance_rolling_public_checkpoints(
     if (
         prior_batch.source_turn != current_ledger.current_turn
         or prior_batch.source_signature != current_ledger.current_signature
+        or previous_prior_batch.source_turn != previous_ledger.current_turn
+        or previous_prior_batch.source_signature != previous_ledger.current_signature
     ):
-        raise ValueError("stale current-turn public prior batch")
+        raise ValueError("stale current or previous public prior batch")
 
     if (
         current_ledger.current_turn != previous_ledger.current_turn + 1
@@ -206,7 +209,11 @@ def advance_rolling_public_checkpoints(
             (), len(checkpoints), 0, 0, 0, 0, "incomplete-public-opponent-actions",
         )
 
-    known_priors = {p.proposal_id: p for p in prior_batch.proposals}
+    known_previous = {p.proposal_id: p for p in previous_prior_batch.proposals}
+    # #183 IDs are deliberately tied to the exact public snapshot, so map
+    # yesterday's certified prior to today's identical team set by its
+    # canonical team text. Never silently reuse a stale proposal ID.
+    known_current_by_team = {p.team_text: p for p in prior_batch.proposals}
     parents = accepted = rejected = branches = mismatches = 0
     successors: list[PublicRebaseCheckpoint] = []
     previews = _previews(current_ledger, current_view)
@@ -214,14 +221,18 @@ def advance_rolling_public_checkpoints(
         if branches >= max_branches or len(successors) >= max_witnesses:
             break
 
-        proposal = known_priors.get(checkpoint.proposal_id)
+        previous_proposal = known_previous.get(checkpoint.proposal_id)
+        proposal = (
+            known_current_by_team.get(previous_proposal.team_text)
+            if previous_proposal is not None else None
+        )
         if (
             checkpoint.live_admission_authorized
             or checkpoint.turn != previous_ledger.current_turn
             or checkpoint.signature != previous_ledger.current_signature
             or proposal is None
             or not _valid_checkpoint_state(
-                worker, state=checkpoint.state, proposal=proposal,
+                worker, state=checkpoint.state, proposal=previous_proposal,
                 ledger=previous_ledger, view=previous_view,
             )
         ):
@@ -275,7 +286,7 @@ def advance_rolling_public_checkpoints(
                 ):
                     raise RuntimeError("pinned state roundtrip violated projection/prior")
                 successors.append(PublicRebaseCheckpoint(
-                    proposal_id=checkpoint.proposal_id,
+                    proposal_id=proposal.proposal_id,
                     turn=current_ledger.current_turn,
                     signature=current_ledger.current_signature,
                     state=state,
