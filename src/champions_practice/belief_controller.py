@@ -961,6 +961,14 @@ class BeliefDecisionEngine:
         max_leaves: int = 256,
         witness_rounds: int = 64,
         witness_seed_window: int = 0,
+        finite_continuations: dict[
+            tuple[str, str, str],
+            str,
+        ] | None = None,
+        finite_progress_callback: Callable[
+            [tuple[str, str, str], str | None, bool],
+            None,
+        ] | None = None,
     ) -> ParticleUpdate:
         """Recover public transitions with concrete Showdown witnesses first.
 
@@ -1231,11 +1239,27 @@ class BeliefDecisionEngine:
                         continue
 
                     particle_all_disproved = True
+                    particle_key = _particle_history_key(particle)
                     for human_choice in choices:
                         if deadline is not None and perf_counter() >= deadline - 0.75:
                             world_unresolved = True
                             particle_all_disproved = False
                             break
+                        progress_key = (
+                            world_id,
+                            particle_key,
+                            human_choice,
+                        )
+                        continuation = (
+                            finite_continuations.get(progress_key)
+                            if finite_continuations is not None
+                            else None
+                        )
+                        if continuation == _FINITE_FRONTIER_EXHAUSTED:
+                            particle_all_disproved = False
+                            world_unresolved = True
+                            continue
+
                         probe = finite_public_transition_reachability(
                             worker,
                             state=particle.state,
@@ -1245,9 +1269,16 @@ class BeliefDecisionEngine:
                             expected_public_view=view,
                             previews=self.previews,
                             max_leaves=max_leaves,
+                            continuation_token=continuation,
                         )
                         finite_leaves += probe.leaves_examined
                         if probe.evidence.establishes_reachability:
+                            if finite_progress_callback is not None:
+                                finite_progress_callback(
+                                    progress_key,
+                                    None,
+                                    False,
+                                )
                             assert probe.child_state is not None
                             assert probe.member_lineage is not None
                             p1_lineage, p2_lineage = compose_branch_member_lineage(
@@ -1269,8 +1300,31 @@ class BeliefDecisionEngine:
                             saw_conclusive_probe = True
                             break
                         if probe.evidence.establishes_impossibility:
+                            if continuation is not None:
+                                raise RuntimeError(
+                                    "resumed finite search produced negative authority"
+                                )
+                            if finite_progress_callback is not None:
+                                finite_progress_callback(
+                                    progress_key,
+                                    None,
+                                    False,
+                                )
                             saw_conclusive_probe = True
                             continue
+                        if finite_progress_callback is not None:
+                            if probe.continuation_token is not None:
+                                finite_progress_callback(
+                                    progress_key,
+                                    probe.continuation_token,
+                                    False,
+                                )
+                            elif probe.positive_frontier_exhausted:
+                                finite_progress_callback(
+                                    progress_key,
+                                    None,
+                                    True,
+                                )
                         particle_all_disproved = False
                         world_unresolved = True
 
