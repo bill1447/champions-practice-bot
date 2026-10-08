@@ -1835,18 +1835,17 @@ class BeliefDecisionEngine:
         progress_lock = RLock()
         witness_cache: dict[tuple[str, str], BeliefParticle] = {}
         excluded_worlds = set(self.pending_recovery_excluded_world_ids)
+        finite_frontier_cache: dict[
+            tuple[str, str, str],
+            str,
+        ] = {
+            (world_id, history_id, human_choice): token
+            for world_id, history_id, human_choice, token
+            in self.pending_recovery_finite_frontiers
+        }
 
         def witness_key(particle: BeliefParticle) -> tuple[str, str]:
-            history = particle.history_id
-            if not history:
-                history = hashlib.sha256(
-                    json.dumps(
-                        particle.state,
-                        sort_keys=True,
-                        separators=(",", ":"),
-                    ).encode("utf-8")
-                ).hexdigest()
-            return particle.world_id, history
+            return particle.world_id, _particle_history_key(particle)
 
         for particle in self.pending_recovery_witnesses:
             witness_cache[witness_key(particle)] = particle
@@ -1860,6 +1859,19 @@ class BeliefDecisionEngine:
                     witness_cache.setdefault(witness_key(particle), particle)
                 excluded_worlds.update(exclusions)
 
+        def record_finite_progress(
+            key: tuple[str, str, str],
+            continuation: str | None,
+            exhausted: bool,
+        ) -> None:
+            with progress_lock:
+                if exhausted:
+                    finite_frontier_cache[key] = _FINITE_FRONTIER_EXHAUSTED
+                elif continuation is None:
+                    finite_frontier_cache.pop(key, None)
+                else:
+                    finite_frontier_cache[key] = continuation
+
         def snapshot_progress() -> tuple[
             tuple[BeliefParticle, ...],
             tuple[str, ...],
@@ -1870,12 +1882,24 @@ class BeliefDecisionEngine:
                     tuple(sorted(excluded_worlds)),
                 )
 
+        def snapshot_finite_frontiers() -> dict[
+            tuple[str, str, str],
+            str,
+        ]:
+            with progress_lock:
+                return dict(finite_frontier_cache)
+
         def save_progress() -> None:
             witnesses, exclusions = snapshot_progress()
+            finite_frontiers = snapshot_finite_frontiers()
             self.pending_recovery_prefix_particles = prefix_particles
             self.pending_recovery_prefix_count = prefix_count
             self.pending_recovery_witnesses = witnesses
             self.pending_recovery_excluded_world_ids = exclusions
+            self.pending_recovery_finite_frontiers = tuple(
+                (*key, token)
+                for key, token in sorted(finite_frontiers.items())
+            )
 
         while prefix_count < len(pending):
             if perf_counter() >= recovery_deadline - 0.5:
@@ -1919,11 +1943,13 @@ class BeliefDecisionEngine:
                 with progress_lock:
                     witness_cache.clear()
                     excluded_worlds.clear()
+                    finite_frontier_cache.clear()
                 self.pending_recovery_prefix_particles = prefix_particles
                 self.pending_recovery_prefix_count = prefix_count
                 self.pending_recovery_witnesses = ()
                 self.pending_recovery_excluded_world_ids = ()
                 self.pending_recovery_witness_window = 0
+                self.pending_recovery_finite_frontiers = ()
                 return True
 
             if (
@@ -1959,6 +1985,8 @@ class BeliefDecisionEngine:
                     deadline=recovery_deadline,
                     witness_seed_window=witness_seed_window,
                     progress_callback=record_progress,
+                    finite_continuations=snapshot_finite_frontiers(),
+                    finite_progress_callback=record_finite_progress,
                 )
 
             update, timed_out = self._run_until_deadline(
