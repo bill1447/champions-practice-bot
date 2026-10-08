@@ -2250,17 +2250,19 @@ function concreteFiniteWitnessWindow(
   path,
   wanted,
   startAttempt,
+  attemptCount,
 ) {
   if (
     !Number.isSafeInteger(startAttempt) ||
     startAttempt < 0 ||
-    startAttempt > (
-      Number.MAX_SAFE_INTEGER - FINITE_WITNESS_SEED_WINDOW_ATTEMPTS
-    )
+    !Number.isSafeInteger(attemptCount) ||
+    attemptCount < 1 ||
+    attemptCount > FINITE_WITNESS_SEED_WINDOW_ATTEMPTS ||
+    startAttempt > (Number.MAX_SAFE_INTEGER - attemptCount)
   ) {
     throw new Error("finite witness seed cursor is outside the safe integer range");
   }
-  const endAttempt = startAttempt + FINITE_WITNESS_SEED_WINDOW_ATTEMPTS;
+  const endAttempt = startAttempt + attemptCount;
   for (let attempt = startAttempt; attempt < endAttempt; attempt++) {
     const seed = finiteWitnessSeed(path, attempt);
     if (!finitePathMatchesSeed(path, seed)) continue;
@@ -2298,7 +2300,11 @@ function concreteFiniteWitnessWindow(
   };
 }
 
-function finiteContinuationContext(request, wanted) {
+function finiteContinuationContext(
+  request,
+  wanted,
+  witnessSeedWindowAttempts,
+) {
   return createHash("sha256")
     .update(stableJson({
       domain: FINITE_TRANSITION_DOMAIN,
@@ -2308,6 +2314,7 @@ function finiteContinuationContext(request, wanted) {
       view_side: request.view_side,
       previews: request.previews ?? null,
       wanted,
+      witness_seed_window_attempts: witnessSeedWindowAttempts,
     }))
     .digest("hex");
 }
@@ -2455,10 +2462,28 @@ function enumerateFiniteTransitionReachability(request) {
     throw new Error("finite transition max_leaves must be 1-10000");
   }
 
+  const witnessSeedWindowAttempts = (
+    request.witness_seed_window_attempts ??
+    FINITE_WITNESS_SEED_WINDOW_ATTEMPTS
+  );
+  if (
+    !Number.isSafeInteger(witnessSeedWindowAttempts) ||
+    witnessSeedWindowAttempts < 1 ||
+    witnessSeedWindowAttempts > FINITE_WITNESS_SEED_WINDOW_ATTEMPTS
+  ) {
+    throw new Error(
+      "finite witness seed window attempts must be an integer from 1 through 4096",
+    );
+  }
+
   const wanted = stableJson(
     normalizedPublicObservationForReachability(request.expected_public_view),
   );
-  const continuationContext = finiteContinuationContext(request, wanted);
+  const continuationContext = finiteContinuationContext(
+    request,
+    wanted,
+    witnessSeedWindowAttempts,
+  );
   const resumed = request.continuation !== undefined && request.continuation !== null;
   const decoded = resumed
     ? decodeFiniteContinuation(request.continuation, continuationContext)
@@ -2484,6 +2509,7 @@ function enumerateFiniteTransitionReachability(request) {
       materialization.path,
       wanted,
       materialization.next_attempt,
+      witnessSeedWindowAttempts,
     );
     if (attempt.witness !== null) {
       return {
@@ -2587,6 +2613,7 @@ function enumerateFiniteTransitionReachability(request) {
           path,
           wanted,
           0,
+          witnessSeedWindowAttempts,
         );
         if (attempt.witness !== null) {
           return {
