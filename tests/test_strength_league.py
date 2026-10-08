@@ -30,6 +30,7 @@ def _game(
     finite_reachability_unresolved: int = 0,
     finite_reachability_leaves: int = 0,
     recovery_events: tuple[dict, ...] = (),
+    recovery_retry_events: tuple[dict, ...] = (),
 ) -> GameResult:
     winner = {
         "bot-win": "League Bot",
@@ -62,6 +63,7 @@ def _game(
         finite_reachability_unresolved=finite_reachability_unresolved,
         finite_reachability_leaves=finite_reachability_leaves,
         recovery_events=recovery_events,
+        recovery_retry_events=recovery_retry_events,
     )
 
 
@@ -147,6 +149,18 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
                     ),
                 },
             ),
+            recovery_retry_events=(
+                {
+                    "worker_attempts": 2,
+                    "returned_updates": 1,
+                    "deadline_timeouts": 1,
+                    "finite_progress_callbacks": 3,
+                    "finite_progress_changes": 2,
+                    "seed_cursor_advanced": True,
+                    "continuation_changed": True,
+                    "continuation_persisted": True,
+                },
+            ),
         ),
         _game(1, outcome="bot-loss", strategy_decisions=1),
         _game(2, outcome="draw"),
@@ -182,6 +196,15 @@ def test_summary_reports_gameplay_latency_and_failure_modes():
     assert summary["recovery"]["finite_reachability_disproofs"] == 1
     assert summary["recovery"]["finite_reachability_unresolved"] == 3
     assert summary["recovery"]["finite_reachability_leaves"] == 384
+    assert summary["recovery"]["retry_events"] == 1
+    assert summary["recovery"]["retry_worker_attempts"] == 2
+    assert summary["recovery"]["retry_returned_updates"] == 1
+    assert summary["recovery"]["retry_deadline_timeouts"] == 1
+    assert summary["recovery"]["retry_finite_progress_callbacks"] == 3
+    assert summary["recovery"]["retry_finite_progress_changes"] == 2
+    assert summary["recovery"]["retry_seed_cursor_advanced"] == 1
+    assert summary["recovery"]["retry_continuation_changed"] == 1
+    assert summary["recovery"]["retry_continuation_persisted"] == 1
     assert summary["recovery"]["top_structural_mismatch_paths"] == [
         ["$.request.active[0]", 7],
         ["$.public_event_delta.turn", 2],

@@ -1766,6 +1766,16 @@ def test_pending_retry_persists_finite_frontier_between_attempts() -> None:
     seen_frontiers: list[dict[tuple[str, str, str], str]] = []
     attempts = 0
     key = ("world-1", "rng-1", "move protect")
+    frontier_4096 = (
+        '{"schema":"showdown-finite-frontier-v2","context":"ctx",'
+        '"pending":[],"materializations":[{"path":[{"kind":"chance",'
+        '"value":true,"metadata":{"numerator":1,"denominator":2}}],'
+        '"next_attempt":4096}]}'
+    )
+    frontier_8192 = frontier_4096.replace(
+        '"next_attempt":4096',
+        '"next_attempt":8192',
+    )
 
     def fake_condition(worker, **kwargs):
         nonlocal attempts
@@ -1773,8 +1783,11 @@ def test_pending_retry_persists_finite_frontier_between_attempts() -> None:
         attempts += 1
         seen_frontiers.append(dict(kwargs["finite_continuations"]))
         callback = kwargs["finite_progress_callback"]
-        if attempts == 1:
-            callback(key, "frontier-1", False)
+        callback(
+            key,
+            frontier_4096 if attempts == 1 else frontier_8192,
+            False,
+        )
         return ParticleUpdate(
             (),
             4,
@@ -1791,16 +1804,82 @@ def test_pending_retry_persists_finite_frontier_between_attempts() -> None:
 
     assert engine._retry_pending_with_more_rng() is False
     assert engine.pending_recovery_finite_frontiers == (
-        ("world-1", "rng-1", "move protect", "frontier-1"),
+        ("world-1", "rng-1", "move protect", frontier_4096),
     )
+    first = engine.last_recovery_retry_diagnostic
+    assert first is not None
+    assert first.worker_attempts == 1
+    assert first.returned_updates == 1
+    assert first.deadline_timeouts == 0
+    assert first.finite_progress_callbacks == 1
+    assert first.finite_progress_changes == 1
+    assert first.seed_cursor_advanced is True
+    assert first.continuation_changed is True
+    assert first.continuation_persisted is True
+    assert first.frontiers_before == ()
+    assert first.frontiers_after[0].pending_paths == 0
+    assert first.frontiers_after[0].materialization_jobs == 1
+    assert first.frontiers_after[0].seed_cursors[0].next_attempt == 4096
 
     assert engine._retry_pending_with_more_rng() is False
     assert seen_frontiers == [
         {},
-        {key: "frontier-1"},
+        {key: frontier_4096},
     ]
+    second = engine.last_recovery_retry_diagnostic
+    assert second is not None
+    assert second.seed_cursor_advanced is True
+    assert second.frontiers_before[0].seed_cursors[0].next_attempt == 4096
+    assert second.frontiers_after[0].seed_cursors[0].next_attempt == 8192
     assert engine.particles == (particle,)
     assert engine.pending_recovery_excluded_world_ids == ()
+
+
+def test_pending_retry_telemetry_distinguishes_deadline_without_cursor_progress() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    frontier = (
+        '{"schema":"showdown-finite-frontier-v2","context":"ctx",'
+        '"pending":[],"materializations":[{"path":[{"kind":"chance",'
+        '"value":true,"metadata":{"numerator":1,"denominator":2}}],'
+        '"next_attempt":4096}]}'
+    )
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+    ]
+    engine.pending_recovery_finite_frontiers = (
+        ("world-1", "rng-1", "move protect", frontier),
+    )
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (None, True)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+
+    diagnostic = engine.last_recovery_retry_diagnostic
+    assert diagnostic is not None
+    assert diagnostic.worker_attempts == 1
+    assert diagnostic.returned_updates == 0
+    assert diagnostic.deadline_timeouts == 1
+    assert diagnostic.finite_progress_callbacks == 0
+    assert diagnostic.finite_progress_changes == 0
+    assert diagnostic.seed_cursor_advanced is False
+    assert diagnostic.continuation_changed is False
+    assert diagnostic.continuation_persisted is True
+    assert diagnostic.frontiers_before[0].seed_cursors[0].next_attempt == 4096
+    assert diagnostic.frontiers_after[0].seed_cursors[0].next_attempt == 4096
 
 
 def test_pending_rng_retry_sampled_miss_never_advances_progress() -> None:
