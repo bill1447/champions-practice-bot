@@ -160,3 +160,57 @@ def test_public_crit_must_be_present_in_exact_replayed_branch():
 
     assert result.matched == 0
     assert result.exhaustively_excluded_world_ids == ()
+
+
+def test_sampled_pass_can_disable_optional_damage_probes():
+    worker = DamageBucketWorker(observed_hp=134, legal_buckets=(7,))
+    result = condition_particles(
+        worker,
+        particles=(BeliefParticle({"hp": 177}, 1.0, world_id="world"),),
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view=_view(134),
+        rng_seeds=("sampled-seed",),
+        damage_probe_limit=0,
+    )
+
+    assert result.generated == 1
+    assert result.matched == 0
+    assert worker.probe_buckets == []
+    assert result.sampled_unresolved_world_ids == ("world",)
+    assert result.exhaustively_excluded_world_ids == ()
+
+
+def test_damage_probe_budget_is_global_across_particles():
+    worker = DamageBucketWorker(observed_hp=134, legal_buckets=(7,))
+    result = condition_particles(
+        worker,
+        particles=(
+            BeliefParticle({"hp": 177}, 0.5, world_id="a"),
+            BeliefParticle({"hp": 177}, 0.5, world_id="b"),
+        ),
+        ai_side="p2",
+        ai_choice="move protect",
+        actual_public_view=_view(134),
+        rng_seeds=("sampled-seed",),
+        damage_probe_limit=1,
+    )
+
+    assert result.generated == 18  # two ordinary samples plus one 16-way replay
+    assert worker.probe_buckets == list(range(16))
+    assert result.matched_world_ids == ("a",)
+    assert result.sampled_unresolved_world_ids == ("b",)
+    assert result.exhaustively_excluded_world_ids == ()
+
+
+@pytest.mark.parametrize("limit", [-1, True, 2.5])
+def test_damage_probe_budget_rejects_invalid_values(limit):
+    with pytest.raises(ValueError, match="damage_probe_limit"):
+        condition_particles(
+            object(),
+            particles=(BeliefParticle({"hp": 177}, 1.0),),
+            ai_side="p2",
+            ai_choice="move protect",
+            actual_public_view=_view(134),
+            damage_probe_limit=limit,
+        )
