@@ -73,6 +73,7 @@ FallbackSelector = Callable[[list[str]], str]
 T = TypeVar("T")
 
 _STATIC_RECOVERY_HISTORY_LIMIT = 512
+_FINITE_FRONTIER_EXHAUSTED = "<finite-positive-frontier-exhausted>"
 
 
 @dataclass(frozen=True)
@@ -304,6 +305,18 @@ def _particle_world_keys(
             }
         )
     )
+
+
+def _particle_history_key(particle: BeliefParticle) -> str:
+    if particle.history_id:
+        return particle.history_id
+    return hashlib.sha256(
+        json.dumps(
+            particle.state,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _observation_action_strings(view: dict) -> tuple[str, ...]:
