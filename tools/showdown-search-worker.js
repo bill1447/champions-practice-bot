@@ -92,12 +92,17 @@ function hpPercent(mon) {
   return Math.round((mon.hp / mon.maxhp) * 1000) / 10;
 }
 
+function championsPublicHpPercent(mon) {
+  if (!mon || !mon.maxhp || mon.hp <= 0) return 0;
+  return Math.floor(100 * mon.hp / mon.maxhp) || 1;
+}
+
 function publicActive(mon, identity) {
   if (!mon || !identity) return null;
   return {
     species: identity.visibleSpecies,
     base_species: identity.baseSpecies,
-    hp_percent: identity.hpPercent ?? hpPercent(mon),
+    hp_percent: identity.hpPercent ?? championsPublicHpPercent(mon),
     fainted: identity.fainted ?? mon.fainted,
     status: mon.status || null,
     boosts: { ...mon.boosts },
@@ -631,7 +636,10 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       return { hpPercent: 0, fainted: true };
     }
     const [hp, status] = text.split(" ");
-    const [current, maximum] = hp.split("/").map(Number);
+    const match = hp.match(/^(\d+)\/(\d+)([gry])?$/i);
+    if (!match) return {};
+    const current = Number(match[1]);
+    const maximum = Number(match[2]);
     if (!Number.isFinite(current) || !Number.isFinite(maximum) || maximum <= 0) {
       return {};
     }
