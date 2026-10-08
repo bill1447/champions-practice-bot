@@ -166,6 +166,12 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
         "player": {"active": [{"species": "Rillaboom"}]},
         "opponent": {"active": [{"species": "Gardevoir"}]},
     }
+    human_view = {
+        "turn": 8,
+        "phase": "move",
+        "player": {"active": [{"species": "Gardevoir"}]},
+        "opponent": {"active": [{"species": "Rillaboom"}]},
+    }
     oracle_pre = _state(prng="oracle", turn=7)
     particle_state = _state(prng="particle", turn=7)
     oracle_post = _state(prng="after", hp=82, turn=8)
@@ -184,6 +190,11 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
                 "state": deepcopy(oracle_post if self.after else oracle_pre),
                 "summary": {},
             }
+
+        def session_view(self, session_id, *, side):
+            assert session_id == "session-1"
+            assert side == "p2"
+            return {"view": deepcopy(expected_view)}
 
         def branch_many(self, *, state, branches):
             assert len(branches) == 1
@@ -241,7 +252,7 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
                     choice="move protect, move woodhammer +2",
                     mode="belief-search",
                 ),
-                public_view=deepcopy(expected_view),
+                public_view=deepcopy(human_view),
                 terminal=False,
             )
 
@@ -279,6 +290,8 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
     assert report["oracle_capture_after_ai_seal"] is True
     assert report["oracle_replay_matches_public"] is True
     assert report["classification"] == "rng-search-miss"
+    assert report["conditioning_public_view"] == expected_view
+    assert report["human_public_view"] == human_view
     assert report["true_world_candidate_count"] == 1
     candidate = report["true_world_candidates"][0]
     assert candidate["mechanics_diff_count"] == 0

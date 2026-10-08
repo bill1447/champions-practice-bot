@@ -39,7 +39,7 @@ from champions_practice.strength_league import (
 )
 
 
-PROBE_SCHEMA = "transition-state-drift-probe-v1"
+PROBE_SCHEMA = "transition-state-drift-probe-v2"
 
 _BATTLE_MECHANICS_KEYS = (
     "turn",
@@ -425,6 +425,15 @@ def run_transition_drift_probe(
             oracle_post_state = oracle_post_result.get("state")
             if not isinstance(oracle_post_state, dict):
                 raise RuntimeError("oracle post-turn snapshot omitted exact state")
+            conditioning_view_result = worker.session_view(
+                session_id,
+                side="p2",
+            )
+            conditioning_public_view = conditioning_view_result.get("view")
+            if not isinstance(conditioning_public_view, dict):
+                raise RuntimeError(
+                    "oracle post-turn p2 view omitted conditioning observation"
+                )
 
             previews = _previews_from_state(oracle_pre_state)
             oracle_replay = _replay(
@@ -436,7 +445,9 @@ def run_transition_drift_probe(
             )
             oracle_replay_view = oracle_replay["view"]
             oracle_replay_state = oracle_replay["state"]
-            actual_signature = public_observation_signature(result.public_view)
+            actual_signature = public_observation_signature(
+                conditioning_public_view
+            )
             oracle_replay_matches = (
                 public_observation_signature(oracle_replay_view)
                 == actual_signature
@@ -484,7 +495,7 @@ def run_transition_drift_probe(
                             []
                             if replay_matches
                             else _public_mismatch_examples(
-                                result.public_view,
+                                conditioning_public_view,
                                 replay["view"],
                             )
                         ),
@@ -533,12 +544,13 @@ def run_transition_drift_probe(
                     []
                     if oracle_replay_matches
                     else _public_mismatch_examples(
-                        result.public_view,
+                        conditioning_public_view,
                         oracle_replay_view,
                     )
                 ),
                 "true_world_candidates": candidates,
-                "public_view": result.public_view,
+                "conditioning_public_view": conditioning_public_view,
+                "human_public_view": result.public_view,
                 "recovery_diagnostic": asdict(diagnostic),
                 "collapse_diagnostic": (
                     asdict(result.collapse_diagnostic)
