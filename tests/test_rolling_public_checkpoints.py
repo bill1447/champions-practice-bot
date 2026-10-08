@@ -95,7 +95,11 @@ def fixture():
         ledger=new, current_view=after, priors=demo_public_priors(), limit=8,
     )
     assert batch.proposals
-    p = batch.proposals[0]
+    old_batch = build_current_state_set_proposals(
+        ledger=old, current_view=before, priors=demo_public_priors(), limit=8,
+    )
+    compatible_teams = {p.team_text for p in batch.proposals}
+    p = next(p for p in old_batch.proposals if p.team_text in compatible_teams)
     witness = PublicScaffoldWitness(
         proposal_id=p.proposal_id,
         opponent_choice="move closecombat +1, move psychic +2",
@@ -159,6 +163,7 @@ def launch(*, worker=None, tweak=None, **kwargs):
     report = advance_rolling_public_checkpoints(
         worker, previous_view=before, current_view=after,
         previous_ledger=old, current_ledger=new,
+        previous_prior_batch=batch_at(old, before),
         prior_batch=batch, checkpoints=(checkpoint,),
         known_own_choice=OWN, rng_seeds=(SEED,), **kwargs,
     )
@@ -215,6 +220,7 @@ def test_tampered_checkpoint_signature_rejected_without_branching():
     result = advance_rolling_public_checkpoints(
         worker, previous_view=before, current_view=after,
         previous_ledger=old, current_ledger=new,
+        previous_prior_batch=batch_at(old, before),
         prior_batch=batch, checkpoints=(wrong,),
         known_own_choice=OWN, rng_seeds=(SEED,),
     )
@@ -255,6 +261,7 @@ def test_lost_public_action_evidence_does_not_invent_opponent_command():
     report = advance_rolling_public_checkpoints(
         worker, previous_view=before, current_view=after,
         previous_ledger=old, current_ledger=new,
+        previous_prior_batch=batch_at(old, before),
         prior_batch=batch, checkpoints=(checkpoint,),
         known_own_choice=OWN, rng_seeds=(SEED,),
     )
@@ -275,6 +282,7 @@ def test_bounded_no_history_and_stale_current_snapshot_are_inconclusive():
         advance_rolling_public_checkpoints(
             worker, previous_view=before, current_view=out_of_order,
             previous_ledger=old, current_ledger=new,
+            previous_prior_batch=batch_at(old, before),
             prior_batch=batch, checkpoints=(),
             known_own_choice=OWN, rng_seeds=(SEED,),
         )
@@ -292,6 +300,7 @@ def test_invalid_budgets_rejected(parameter, invalid):
             FakeWorker(before, after),
             previous_view=before, current_view=after,
             previous_ledger=old, current_ledger=new,
+            previous_prior_batch=batch_at(old, before),
             prior_batch=batch, checkpoints=(),
             known_own_choice=OWN, rng_seeds=(SEED,),
             **{parameter: invalid},
