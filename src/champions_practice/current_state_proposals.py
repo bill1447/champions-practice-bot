@@ -70,6 +70,7 @@ class CurrentStateProposalBatch:
 
     proposals: tuple[CurrentStateSetProposal, ...]
     source_turn: int
+    source_signature: str
     candidates_considered: int
     rejected_missing_public_moves: int
     missing_prior: str | None = None
@@ -155,6 +156,7 @@ def build_current_state_set_proposals(
     except MissingPublicSetPrior as error:
         return CurrentStateProposalBatch(
             proposals=(), source_turn=ledger.current_turn,
+            source_signature=ledger.current_signature,
             candidates_considered=0, rejected_missing_public_moves=0,
             missing_prior=str(error),
         )
@@ -174,6 +176,7 @@ def build_current_state_set_proposals(
         ))
     return CurrentStateProposalBatch(
         proposals=tuple(proposals), source_turn=ledger.current_turn,
+        source_signature=ledger.current_signature,
         candidates_considered=len(worlds),
         rejected_missing_public_moves=0,
     )
@@ -201,8 +204,11 @@ def probe_fresh_prior_projections(
     if isinstance(max_probes, bool) or not isinstance(max_probes, int) or max_probes < 1:
         raise ValueError("max_probes must be a positive integer")
     _require_current_public_input(ledger, current_view)
-    if proposals.source_turn != ledger.current_turn:
-        raise ValueError("proposal batch is stale for current turn")
+    if (
+        proposals.source_turn != ledger.current_turn
+        or proposals.source_signature != ledger.current_signature
+    ):
+        raise ValueError("proposal batch is stale for current public snapshot")
     if not isinstance(seed, str) or not seed:
         raise ValueError("explicit hypothetical RNG seed is required")
     if not all(isinstance(item, str) and item for item in
