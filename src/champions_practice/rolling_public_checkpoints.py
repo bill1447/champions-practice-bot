@@ -214,7 +214,7 @@ def advance_rolling_public_checkpoints(
     # yesterday's certified prior to today's identical team set by its
     # canonical team text. Never silently reuse a stale proposal ID.
     known_current_by_team = {p.team_text: p for p in prior_batch.proposals}
-    parents = accepted = rejected = branches = mismatches = 0
+    parents = rejected = branches = mismatches = 0
     successors: list[PublicRebaseCheckpoint] = []
     previews = _previews(current_ledger, current_view)
     for checkpoint in checkpoints[:max_checkpoints]:
