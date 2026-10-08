@@ -264,6 +264,10 @@ class _EngineObservationSnapshot:
     pending_recovery_witnesses: tuple[BeliefParticle, ...]
     pending_recovery_excluded_world_ids: tuple[str, ...]
     pending_recovery_witness_window: int
+    pending_recovery_finite_frontiers: tuple[
+        tuple[str, str, str, str],
+        ...,
+    ]
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
     recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...]
     recovery_authority_root_public_view: dict | None
@@ -720,6 +724,10 @@ class BeliefDecisionEngine:
         self.pending_recovery_witnesses: tuple[BeliefParticle, ...] = ()
         self.pending_recovery_excluded_world_ids: tuple[str, ...] = ()
         self.pending_recovery_witness_window = 0
+        self.pending_recovery_finite_frontiers: tuple[
+            tuple[str, str, str, str],
+            ...,
+        ] = ()
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
@@ -859,6 +867,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_witnesses = ()
         self.pending_recovery_excluded_world_ids = ()
         self.pending_recovery_witness_window = 0
+        self.pending_recovery_finite_frontiers = ()
         self.degraded = not bool(self.particles)
         return view
 
@@ -1714,6 +1723,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_witnesses = ()
         self.pending_recovery_excluded_world_ids = ()
         self.pending_recovery_witness_window = 0
+        self.pending_recovery_finite_frontiers = ()
 
     def _retry_pending_with_more_rng(
         self,
