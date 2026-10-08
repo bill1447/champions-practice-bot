@@ -1411,6 +1411,14 @@ class BeliefDecisionEngine:
             [tuple[BeliefParticle, ...], tuple[str, ...]],
             None,
         ] | None = None,
+        finite_continuations: dict[
+            tuple[str, str, str],
+            str,
+        ] | None = None,
+        finite_progress_callback: Callable[
+            [tuple[str, str, str], str | None, bool],
+            None,
+        ] | None = None,
     ) -> ParticleUpdate:
         generated = 0
         matched = 0
@@ -1619,6 +1627,8 @@ class BeliefDecisionEngine:
                 preexcluded_worlds=set(),
                 deadline=deadline,
                 witness_seed_window=witness_seed_window,
+                finite_continuations=finite_continuations,
+                finite_progress_callback=finite_progress_callback,
             )
             report_progress(finite)
             exhaustive_exclusions.update(
