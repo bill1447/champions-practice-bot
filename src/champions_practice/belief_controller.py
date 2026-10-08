@@ -1707,7 +1707,7 @@ class BeliefDecisionEngine:
         # collapse explains itself rather than reporting only a count.
         sampling_batches = () if resume_finite_first else batches
         for sample_count in sampling_batches:
-            for _ in range(multiplier):
+            for sample_index in range(multiplier):
                 unresolved = (
                     required_worlds
                     - sampled_matched_worlds
@@ -1740,6 +1740,20 @@ class BeliefDecisionEngine:
                 seeds = tuple(
                     self._particle_seed() for _ in range(sample_count)
                 )
+                # Ordinary sampling must get its full cheap attempt before
+                # triggering expensive 16-way damage replay. Reserve at most
+                # one optional positive-witness probe for the last multiplier
+                # pass, and only when there is budget and zero sampled worlds.
+                # The remaining cases continue through existing finite recovery.
+                damage_probe_limit = int(
+                    finite_public_actions
+                    and sample_index == multiplier - 1
+                    and not sampled_matched_worlds
+                    and (
+                        deadline is None
+                        or perf_counter() < deadline - 2.0
+                    )
+                )
                 update = condition_particles(
                     worker,
                     particles=particles,
@@ -1749,6 +1763,7 @@ class BeliefDecisionEngine:
                     previous_public_view=previous_view,
                     rng_seeds=seeds,
                     previews=self.previews,
+                    damage_probe_limit=damage_probe_limit,
                 )
                 generated += update.generated
                 matched += update.matched
