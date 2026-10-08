@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import random
 from collections import Counter
 from dataclasses import dataclass
@@ -55,12 +56,51 @@ class ParticleUpdate:
     finite_reachability_leaves: int = 0
 
 
+def _champions_public_hp_bucket(value: object) -> object:
+    """Project an opponent HP percentage through pinned Champions visibility.
+
+    Pinned Champions Showdown exposes non-fainted opposing HP as
+    floor(100 * hp / maxhp), with a floor of 1 for any positive HP. Public
+    views should already contain that integer bucket. This normalization also
+    makes a precise fallback projection interval-aware without relaxing exact
+    own-side HP.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return value
+    numeric = float(value)
+    if not math.isfinite(numeric):
+        return value
+    if numeric <= 0:
+        return 0
+    return max(1, math.floor(numeric))
+
+
+def _normalize_opponent_public_hp(view: dict[str, Any]) -> None:
+    opponent = view.get("opponent")
+    if not isinstance(opponent, dict):
+        return
+    for key in ("active", "revealed"):
+        entries = opponent.get(key)
+        if not isinstance(entries, list):
+            continue
+        for entry in entries:
+            if not isinstance(entry, dict) or "hp_percent" not in entry:
+                continue
+            entry["hp_percent"] = _champions_public_hp_bucket(
+                entry["hp_percent"]
+            )
+
+
 def public_observation_signature(view: dict[str, Any]) -> str:
     """Return a stable signature for mechanically relevant public information.
 
     Reconstructed Showdown states may use different display names from the live
     session. Names do not affect the battle state, so normalize a winner to its
     player/opponent role and remove cosmetic names before comparing observations.
+
+    Opponent HP is compared at the pinned Champions public bucket rather than a
+    precise hidden percentage. Own-side HP, the authoritative request, and
+    quantitative public event conditions remain exact.
     """
     normalized = copy.deepcopy(view)
     # The selected opponent command history is evidence used to prune replay
@@ -71,6 +111,7 @@ def public_observation_signature(view: dict[str, Any]) -> str:
     # quantitative mechanics transitions even when later effects erase them from
     # the reduced final board.
     normalized.pop("opponent_last_actions", None)
+    _normalize_opponent_public_hp(normalized)
     player = normalized.get("player")
     opponent = normalized.get("opponent")
     player_name = player.get("name") if isinstance(player, dict) else None
@@ -230,9 +271,9 @@ def public_observation_mismatch_paths(
 def is_stochastic_observation_path(path: str) -> bool:
     """Return whether a mismatch is plausibly an outcome/RNG-dependent leaf.
 
-    This is classification only. PR #101 does not yet allow these mismatches to
-    survive conditioning; PR #102 can attach mechanics-authoritative reachability
-    checks to this boundary.
+    This is classification only. Interval-compatible opponent HP is normalized
+    before this boundary; other stochastic-only mismatches do not survive
+    conditioning merely because they are classified here.
     """
     leaf = path.rsplit(".", 1)[-1]
     if leaf in {"hp", "hp_percent", "condition", "status", "fainted"}:
