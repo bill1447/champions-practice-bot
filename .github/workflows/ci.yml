@@ -205,6 +205,10 @@ jobs:
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
+      - name: Pinned damage-roll conditioning witness smoke test
+        shell: pwsh
+        run: .\\.venv\\Scripts\\python.exe -m champions_practice.damage_witness_smoke
+
       - name: Finite stochastic transition reachability smoke test
         shell: pwsh
         run: .\finite-transition-smoke.ps1
