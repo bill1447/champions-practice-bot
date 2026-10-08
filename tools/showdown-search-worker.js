@@ -1790,6 +1790,88 @@ function validateRecoveryStatCandidate(request) {
   }
 }
 
+// #184: mechanics-native HP-only current-state hypothesis construction.
+// A same-turn Showdown-produced scaffold is required. This is an *isolated*
+// positive candidate operation, NOT proof that unseen history is reachable.
+// No live sessions, hidden truth, or arbitrary serialized-state patching.
+function materializeCurrentHpHypotheses(request) {
+  if (!request.state || !Array.isArray(request.public_hp_buckets) ||
+      request.public_hp_buckets.length !== 2) {
+    throw new Error("current HP hypotheses need state and two public active HP buckets");
+  }
+  const limit = request.limit;
+  if (!Number.isInteger(limit) || limit < 1 || limit > 8) {
+    throw new Error("current HP hypothesis limit must be 1 through 8");
+  }
+  const baseline = Battle.fromJSON(JSON.stringify(request.state));
+  baseline.restart(() => {});
+  const outcomes = [];
+  let examined = 0;
+  let reason = null;
+  try {
+    if (baseline.requestState !== "move" || baseline.ended) {
+      return { outcomes, examined, reason: "unsupported-current-phase" };
+    }
+    const p1 = baseline.p1;
+    const baselineShared = p1.active.map((mon) => mon?.getHealth().shared ?? null);
+    for (let slot = 0; slot < p1.active.length && outcomes.length < limit; slot++) {
+      const mon = p1.active[slot];
+      const bucket = request.public_hp_buckets[slot];
+      if (mon === null || mon === undefined || mon.fainted || mon.hp <= 0) {
+        continue;
+      }
+      if (!Number.isInteger(bucket) || bucket < 1 || bucket > 100) {
+        return { outcomes: [], examined, reason: "unsupported-public-hp-bucket" };
+      }
+      // Preserve the exact pinned Champions getHealth() shared producer
+      // representation, including the 20%/50% colors, not merely a rounded %.
+      if (championsPublicHpPercent(mon) !== bucket) {
+        return { outcomes: [], examined, reason: "scaffold-hp-bucket-mismatch" };
+      }
+      for (let hp = 1; hp <= mon.maxhp && outcomes.length < limit; hp++) {
+        if (hp === mon.hp || championsPublicHpPercent({hp, maxhp: mon.maxhp}) !== bucket) {
+          continue;
+        }
+        examined++;
+        const child = Battle.fromJSON(JSON.stringify(request.state));
+        child.restart(() => {});
+        try {
+          const target = child.p1.active[slot];
+          if (!target || target.fainted || target.hp <= 0 ||
+              target.species.id !== mon.species.id) {
+            throw new Error("HP hypothesis changed active member identity");
+          }
+          // Native pinned Showdown setter, not a serialized JSON mutation.
+          target.sethp(hp);
+          if (target.hp !== hp || target.getHealth().shared !== baselineShared[slot]) {
+            continue;
+          }
+          // Require the candidate to survive full native serialization and
+          // deserialization; public projection + exact request checked in Python.
+          const state = child.toJSON();
+          const restored = Battle.fromJSON(JSON.stringify(state));
+          restored.restart(() => {});
+          try {
+            if (restored.p1.active[slot]?.hp !== hp ||
+                restored.p1.active[slot]?.getHealth().shared !== baselineShared[slot]) {
+              throw new Error("HP hypothesis roundtrip changed pinned health");
+            }
+          } finally {
+            restored.destroy();
+          }
+          outcomes.push({ slot, hp, maxhp: target.maxhp, state });
+        } finally {
+          child.destroy();
+        }
+      }
+    }
+    if (!outcomes.length) reason = "no-other-compatible-hp";
+    return { outcomes, examined, reason };
+  } finally {
+    baseline.destroy();
+  }
+}
+
 function stateView(request) {
   if (!request.state) {
     throw new Error("state_view requires a serialized battle state");
@@ -3085,6 +3167,8 @@ function handle(request) {
       return validateRecoveryOpeningAuthority(request);
     case "validate_recovery_opening_stat_candidate":
       return validateRecoveryOpeningStatCandidate(request);
+    case "materialize_current_hp_hypotheses":
+      return materializeCurrentHpHypotheses(request);
     case "state_view":
       return stateView(request);
     case "session_start":
