@@ -27,6 +27,7 @@ from champions_practice.belief_worlds import (
     preview_choice_for_world,
 )
 from champions_practice.beliefs import build_public_opponent_belief
+from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.recovery import RecoveryOpeningAuthority
 from champions_practice.observation_beliefs import (
@@ -913,6 +914,9 @@ class BeliefDecisionEngine:
         self.previews: dict[str, list[str]] | None = None
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
+        # Shadow-only public evidence: never participates in live particle
+        # admission, elimination, candidate search, or fallback selection.
+        self.public_constraint_ledger: PublicConstraintLedger | None = None
         self.preview_mismatch_paths: tuple[str, ...] = ()
         self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
         self.pending_observations: list[
@@ -946,6 +950,8 @@ class BeliefDecisionEngine:
         ai_choice: str,
     ) -> dict:
         """Initialize belief particles from the sanitized p2 post-preview view."""
+        # Snapshot the trusted public view before constructing any hypotheses.
+        self.public_constraint_ledger = PublicConstraintLedger.from_public_view(view)
         self.last_public_view = view
         self.previews = {
             "p1": list(view["opponent"]["preview_species"]),
@@ -3127,6 +3133,10 @@ class BeliefDecisionEngine:
         starting_particles = self.particles
         particles_before = len(starting_particles)
         previous_view = self.last_public_view
+        if self.public_constraint_ledger is not None:
+            # Continues to accumulate during a pending historical backlog.
+            # A ledger validation failure cannot silently relax public truth.
+            self.public_constraint_ledger = self.public_constraint_ledger.advance(view)
         self.last_public_view = view
         recovery_retry_diagnostic = self.last_recovery_retry_diagnostic
         self.last_recovery_retry_diagnostic = None
