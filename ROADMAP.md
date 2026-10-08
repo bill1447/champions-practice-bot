@@ -311,7 +311,7 @@ PR #183 (merged) isolates public-prior candidate generation and strict dual
 projection checks from live belief search. It does not claim to synthesize
 mechanically complete midgame states or improve the 8-game strength league.
 
-PR #184 (proposed) starts native current-turn construction *only* on an already
+PR #184 (merged) starts native current-turn construction *only* on an already
 Showdown-produced, same-turn, public- and request-matching hypothetical scaffold.
 It explores the pinned Champions exact-HP interval for a living active opponent
 using the simulator's own setter, and rejects any altered PP, Choice/Protect
@@ -322,11 +322,26 @@ admission authority: an interval-compatible HP value does not prove a complete
 stochastic ancestry.
 
 This is a deliberately narrow proof of construction, not yet the general
-collapse rebase. The remaining hard problem is generating the *first* such
-midgame scaffold from current public evidence and mechanically complete
-constraints without requiring an old posterior. Multi-parameter reconstruction
-must not simply copy unknown PP, volatile histories, or item state into arbitrary
-fresh opening roots; unsupported areas remain unresolved.
+collapse rebase. Multi-parameter reconstruction must not simply copy unknown
+PP, volatile histories, or item state into arbitrary fresh opening roots;
+unsupported areas remain unresolved.
+
+PR #185 (isolated first-scaffold bootstrap) provides a bounded first
+current-turn witness for the **one publicly observed turn after preview**:
+fresh approved #183 team priors, a validated opening public view, the #182
+opening-to-current ledger, an independently known own command, and full public
+opponent-action coverage generate new pinned Showdown roots and native
+transitions. Retain only sequential witnesses matching both the exact
+current choosing-side request and complete current public observation.
+The true-world fixture is checked independently from the candidate
+acceptance logic. The search is neither complete nor evidence for exclusion.
+No live particle admission is enabled. Crucially this does NOT yet produce
+the first scaffold from arbitrary late-game public state after a long
+history, and it does not erase the need to derive historical constraints
+for PP, Protect/Choice locks, damage, item consumption, field timers and
+member identity. Do not extend this into unbounded old-history replay:
+later work must reconstruct bounded current state from retained,
+mechanically justified constraints.
 
 PR #181 (merged) added bounded exact damage-bucket positive-witness searches. The frozen
 8-game league remained at 15 fallback decisions (20 -> 19 degraded turns) with
@@ -462,7 +477,7 @@ Phase exit criteria:
 6. Implement interval-aware HP acceptance alone, using the pinned Champions `getHealth`
    producer semantics, and rerun the frozen collapse benchmark before any rebase machinery.
    Record its independent effect on fallbacks/degraded turns.
-7. **In progress — PR #182 recording gate:** introduce a particle-independent
+7. **Foundation merged — PR #182 recording gate:** introduce a particle-independent
    current-state ledger of validated public snapshots, exact own-side requests,
    cumulative revealed move/item/ability facts and historical channel-visible
    mechanics/execution evidence. Include damage/HP, order, resource, form and
@@ -473,7 +488,8 @@ Phase exit criteria:
    intentionally cannot admit or eliminate live belief particles. Producer
    mismatches quarantine passive recording with a visible diagnostic, never
    interrupting live play or silently granting rebase authority.
-8. **PR #183 — isolated public-prior proposal and projection gate:** Generate a
+8. **Foundation merged — PR #183 public-prior proposal/projection gate, PR #184
+   native HP variant gate, and PR #185 bounded one-turn first scaffold:** Generate a
    bounded, identity-labeled set of public-prior hypotheses directly from the
    current constraint ledger, without consulting stale particle ancestry or
    hidden live states. Obtain fresh pinned-Showdown opening roots and check
@@ -484,7 +500,10 @@ Phase exit criteria:
    **Still required:** a mechanics-safe present-turn constructor that preserves
    current PP, locks, timers, damage/HP constraints, member identity, forms and
    historical public evidence; independent pinned-runtime differential validation.
-   Only then may a current-state rebase replace historical ancestry in live play.
+   PR #185 adds only one-turn fresh-root public witness construction; the
+   general late-midgame first scaffold remains unresolved. Only after it and
+   independent mechanics validation may a current-state rebase replace
+   historical ancestry in live play.
 9. Require every synthesized world to reproduce the authoritative own-side request and the
    interval-aware public projection before admission. Add hard regressions proving that private
    truth cannot influence rebase output, ambiguous evidence widens rather than overconstrains
