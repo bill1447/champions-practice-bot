@@ -230,18 +230,71 @@ strategy pass. In particular:
 Playing-strength work now proceeds in parallel with the human-data pipeline below. Further
 hand-authored strategy expansion remains frozen unless gameplay exposes a concrete failure.
 
-## Phase 10.5 — Mechanics-authoritative reachability and recovery — in progress
+## Phase 10.5 — Mechanics-authoritative reachability and current-state belief rebase — in progress
 
 The live bot can already play complete games, but sampled exact replay is not sufficient to
 decide whether a hidden-world hypothesis is mechanically impossible. A real collapse showed
 that normal conditioning could sample zero matching branches while a larger RNG search later
-found an exact witness. The recovery target is therefore:
+found an exact witness.
 
-`Could this observed public transition occur under this hidden-world hypothesis?`
+The original recovery design therefore asked:
 
-rather than:
+`Could this observed public transition occur under this historical hidden-world hypothesis?`
 
-`Did one bounded set of sampled RNG seeds happen to reproduce it?`
+That question remains useful for authority tests, diagnostics, and short local recovery.
+However, complete-game evidence through PR #178 showed that making historical ancestry the
+live recovery objective is the wrong operational target. The bot can spend multiple future
+turns proving how an old transition could have occurred while new public observations continue
+to arrive. Even when the old witness is eventually found, recovery can remain several turns
+behind the actual battle.
+
+### Recovery architecture decision — rebase on current public reality
+
+For live play, the primary recovery question is now:
+
+`What current hidden worlds are compatible with everything the player can authoritatively
+observe now?`
+
+When normal conditioning collapses, the controller should preserve knowledge rather than
+ancestry:
+
+- retain authoritative public facts and any still-valid hidden constraints;
+- abandon failed historical particle ancestry and stale posterior weights;
+- synthesize fresh concrete current-state worlds consistent with the current public state,
+  public history needed for mechanics, exact pinned-Showdown legality, and approved priors;
+- reject only worlds that contradict authoritative evidence or proven mechanics;
+- represent genuine hidden uncertainty with multiple current hypotheses rather than forcing
+  one exact historical path;
+- return to normal tactical search from the current turn instead of accumulating an unbounded
+  queue of old transitions.
+
+Historical finite reachability remains valuable as a verifier, regression oracle, and bounded
+first attempt when cheap. It must no longer keep the live controller degraded merely because
+the exact ancestry of an old state has not been recovered.
+
+This pivot does not weaken the authority hierarchy. Pinned Showdown mechanics remain final
+mechanics authority, and partial stochastic search still cannot establish impossibility.
+Current-state rebasing creates epistemic hypotheses for present tactical search; it does not
+claim that every synthesized state has a uniquely proven historical RNG ancestry.
+
+### Public HP becomes a constraint, not an exact replay target
+
+The current public-observation signature still compares public HP fields exactly. The code
+already classifies HP/HP-percent differences as stochastic-only diagnostics, but those
+differences do not yet survive conditioning merely because they are mechanically compatible.
+
+The rebase design replaces that requirement with public HP constraints:
+
+- own-side HP remains exact whenever the player-authoritative request exposes the exact value;
+- opponent HP is represented by the interval of integer HP values consistent with the public
+  display/rounding and the candidate's possible max HP;
+- damage evidence narrows compatible current states through mechanics-authoritative ranges
+  rather than requiring one exact historical damage roll;
+- exact HP equality is required only when the public channel itself authoritatively exposes an
+  exact value.
+
+This prevents harmless stochastic HP differences from forcing expensive historical RNG
+reconstruction while preserving exact information where it is genuinely public.
 
 Foundation merged through PR #138:
 
@@ -274,6 +327,12 @@ the broader bot or future Showdown revisions.
 
 Current stochastic and recovery work:
 
+- PRs #172-#178 isolated the recurring live collapse to historical stochastic witness search,
+  proved that the retained true-world state can be mechanically compatible even when bounded
+  recovery cannot reproduce the exact public transition, made finite progress resumable, and
+  exposed that faster historical search still leaves the controller behind the current turn;
+- the next live-recovery implementation work is current-state constraint extraction and
+  re-synthesis, not additional optimization of the historical catch-up loop;
 - PR #139 established the first isolated finite stochastic primitive: the exact 16-bucket
   pinned-Showdown `Battle#randomizer` damage-roll domain;
 - primitive exhaustiveness remains distinct from complete-transition exhaustiveness;
@@ -296,14 +355,20 @@ Current stochastic and recovery work:
   other stochastic machinery only when measured failures show that the missing dimension
   matters.
 
-Primary recovery metric:
+Primary recovery metrics:
 
 `true-world survival rate = fraction of decision boundaries where the actual generated hidden
 world remains represented after public conditioning/recovery`
 
-The first target is effectively zero false exclusions on the covered offline corpus. Coverage
-and precision are secondary: an inconclusive/wider belief is acceptable where exclusion is
-not authoritative.
+and, for live collapse handling:
+
+`time-to-current-belief = bounded decision cycles required to return from collapse to a
+non-degraded current-turn belief state without a growing historical backlog`
+
+The first soundness target remains effectively zero false exclusions on the covered offline
+corpus. The operational target is that a collapse rebases to a healthy current-turn belief
+within roughly one decision cycle on covered hard cases. Coverage and precision are secondary:
+an inconclusive/wider belief is acceptable where exclusion is not authoritative.
 
 Phase exit criteria:
 
@@ -319,12 +384,21 @@ Phase exit criteria:
 5. **Infrastructure complete; measurement campaign pending:** use the deterministic exact-team
    corpus runner across a diverse game corpus and drive new stochastic support from measured
    false exclusions and inconclusive-coverage hotspots.
-6. Build an independent Showdown differential validator that does not reuse production
+6. Define a current-state public constraint ledger, including authoritative exact values,
+   opponent HP intervals, revealed moves/items/abilities/forms, field/side state, active/bench
+   identity, faint state, and mechanics-relevant recent public history.
+7. Build current-state belief re-synthesis that can discard failed ancestry, generate multiple
+   mechanically valid present-tense worlds from those constraints and approved priors, and
+   return to the current decision turn without replaying an unbounded historical backlog.
+8. Add hard regressions proving that private truth cannot influence rebase output, ambiguous
+   evidence widens rather than overconstrains beliefs, and exact own-side/public facts are never
+   silently relaxed.
+9. Build an independent Showdown differential validator that does not reuse production
    acceptance logic as its oracle.
-7. Demonstrate sound recovery on that diverse corpus, with private information unable to
-   influence pre-seal decisions.
-8. Only then allow mechanics-authoritative recovery to affect live particle admission or
-   elimination.
+10. Demonstrate both soundness and bounded time-to-current-belief on a diverse corpus and on
+    the existing Protect + Wood Hammer collapse fixtures.
+11. Only then allow rebased mechanics-authoritative beliefs to affect normal live particle
+    admission or elimination without an explicit degraded fallback.
 
 This phase is no longer a blocker on beginning human-data collection and policy learning.
 Those tracks should proceed in parallel.
@@ -533,10 +607,11 @@ Current sequence:
 
 **Simulator → public beliefs → bounded exact search → persistent beliefs → strategy
 → sealed playable demo → observation/reachability authority → first finite stochastic
-primitive → [parallel tracks: recovery soundness + human replay/team corpus]
+primitive → [parallel tracks: current-state belief rebase + human replay/team corpus]
+→ public constraint ledger + HP intervals → current-state re-synthesis
 → joint-action trajectory extraction → legal-menu adapter
 → player-side menu-context strategy → behavior-cloned policy prior
-→ bounded equilibrium/CFR prototype → independently validated recovery
+→ bounded equilibrium/CFR prototype → independently validated rebased recovery
 → learned value/teacher loop → targeted selective depth and review tools**
 
 Near-term implementation order:
@@ -564,4 +639,11 @@ Near-term implementation order:
     semantic projection onto Showdown's true choosing-side legal menu; exact search remains
     protected and authoritative;
 12. bounded CFR/Bayesian matrix-game prototype;
-13. additional stochastic mechanics only when measured soundness failures require them.
+13. **Recovery pivot:** define the current-state public constraint ledger, including opponent
+    HP intervals instead of exact historical HP replay targets;
+14. implement current-state belief re-synthesis and retire historical backlog catch-up as the
+    default live recovery path; keep finite historical reachability for bounded verification,
+    diagnostics, and regressions;
+15. validate rebased recovery for true-world survival, private-information isolation, and
+    bounded time-to-current-belief on the existing collapse fixtures and diverse team corpus;
+16. additional stochastic mechanics only when measured soundness failures require them.
