@@ -1796,16 +1796,18 @@ class BeliefDecisionEngine:
     ) -> bool:
         """Resume public-only recovery without discarding proven prefix work.
 
-        Recovery progress has two layers:
+        Recovery progress has three layers:
 
         * a completed prefix of pending observations, represented by exact
-          Showdown-produced particles after that prefix; and
+          Showdown-produced particles after that prefix;
         * concrete witnesses / exhaustive exclusions already established for
-          the next pending observation.
+          the next pending observation; and
+        * positive-only finite stochastic frontiers that can resume witness
+          search without granting partial traversal negative authority.
 
-        Neither a sampled miss nor a timeout advances either layer. A later
-        retry therefore spends its budget only on unresolved worlds and on
-        observations after the completed prefix.
+        Neither a sampled miss nor a timeout creates exclusion authority. A
+        later retry spends its budget only on unresolved worlds, unfinished
+        finite witness frontiers, and observations after the completed prefix.
         """
         if not self.pending_observations:
             self._clear_pending_recovery_progress()
