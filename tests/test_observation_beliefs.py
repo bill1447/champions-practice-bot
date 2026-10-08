@@ -150,6 +150,188 @@ def test_public_seen_roster_exhaustively_excludes_wrong_bring_four() -> None:
     assert update.particles[0].world_id == "good"
 
 
+def test_public_signature_uses_champions_opponent_hp_bucket() -> None:
+    actual = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 28,
+                    "fainted": False,
+                }
+            ],
+            "revealed": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 28,
+                    "fainted": False,
+                }
+            ],
+        },
+    }
+    same_public_bucket = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 28.9,
+                    "fainted": False,
+                }
+            ],
+            "revealed": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 28.1,
+                    "fainted": False,
+                }
+            ],
+        },
+    }
+    next_public_bucket = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 29.0,
+                    "fainted": False,
+                }
+            ],
+            "revealed": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 29,
+                    "fainted": False,
+                }
+            ],
+        },
+    }
+
+    assert public_observation_signature(actual) == public_observation_signature(
+        same_public_bucket
+    )
+    assert public_observation_signature(actual) != public_observation_signature(
+        next_public_bucket
+    )
+
+
+def test_public_signature_keeps_nonzero_champions_hp_at_one_percent() -> None:
+    actual = {
+        "opponent": {
+            "active": [{"hp_percent": 1, "fainted": False}],
+        },
+    }
+    precise_positive = {
+        "opponent": {
+            "active": [{"hp_percent": 0.9, "fainted": False}],
+        },
+    }
+
+    assert public_observation_signature(actual) == public_observation_signature(
+        precise_positive
+    )
+
+
+def test_public_signature_does_not_relax_own_side_hp() -> None:
+    actual = {
+        "player": {
+            "active_details": [
+                {"hp": 134, "maxhp": 207, "hp_percent": 64.7}
+            ],
+        },
+    }
+    simulated = {
+        "player": {
+            "active_details": [
+                {"hp": 131, "maxhp": 207, "hp_percent": 63.3}
+            ],
+        },
+    }
+
+    assert public_observation_signature(actual) != public_observation_signature(
+        simulated
+    )
+
+
+def test_public_signature_keeps_quantitative_event_hp_exact() -> None:
+    actual = {
+        "public_event_delta": {
+            "turn": 1,
+            "events": [["-damage", "p1a", "28/100"]],
+            "unsupported": [],
+        },
+    }
+    simulated = {
+        "public_event_delta": {
+            "turn": 1,
+            "events": [["-damage", "p1a", "29/100"]],
+            "unsupported": [],
+        },
+    }
+
+    assert public_observation_signature(actual) != public_observation_signature(
+        simulated
+    )
+
+
+def test_condition_particles_accepts_same_opponent_hp_bucket() -> None:
+    actual = {
+        "turn": 2,
+        "opponent": {
+            "active": [
+                {
+                    "species": "Rillaboom",
+                    "hp_percent": 28,
+                    "fainted": False,
+                }
+            ],
+        },
+    }
+    worker = FakeWorker(
+        [
+            {
+                "turn": 2,
+                "opponent": {
+                    "active": [
+                        {
+                            "species": "Rillaboom",
+                            "hp_percent": 28.9,
+                            "fainted": False,
+                        }
+                    ],
+                },
+            },
+            {
+                "turn": 2,
+                "opponent": {
+                    "active": [
+                        {
+                            "species": "Rillaboom",
+                            "hp_percent": 29.0,
+                            "fainted": False,
+                        }
+                    ],
+                },
+            },
+        ]
+    )
+
+    update = condition_particles(
+        worker,
+        particles=(BeliefParticle({"id": 1}, 1.0, world_id="w1"),),
+        ai_side="p2",
+        ai_choice="move x",
+        actual_public_view=actual,
+    )
+
+    assert update.generated == 2
+    assert update.matched == 1
+    assert len(update.particles) == 1
+    assert update.particles[0].weight == 1.0
+
+
 def test_public_signature_is_order_independent():
     left = {"turn": 2, "field": {"terrain": "grassyterrain", "weather": None}}
     right = {"field": {"weather": None, "terrain": "grassyterrain"}, "turn": 2}
