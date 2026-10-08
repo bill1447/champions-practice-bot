@@ -343,6 +343,22 @@ member identity. Do not extend this into unbounded old-history replay:
 later work must reconstruct bounded current state from retained,
 mechanically justified constraints.
 
+PR #186 (isolated rolling checkpoint gate) extends the #185 public-only
+first-turn witness to a second and later *adjacent* observed turn without
+replaying all history from preview on every step. Validate a prior-bound,
+Showdown-produced checkpoint against the previous complete public projection
+and exact own request; advance only the latest turn using our known command,
+pinned legal opponent choices constrained by positive public action evidence,
+and bounded sampled RNG. Rebind snapshot-scoped #183 prior IDs only through
+identical approved team sets, and require full native/public/request agreement
+again. Record finite search counts and independent offline true-world survival.
+No matching candidate remains UNRESOLVED and cannot be used to disprove worlds.
+No live admission/reweighting. This is not arbitrary late-game recovery when no
+compatible current-turn checkpoint was preserved: that is a remaining roadmap
+blocker, especially on the Protect + Wood Hammer collapses. Checkpoint rolling
+is a bounded alternative to repeatedly replaying the entire historical backlog,
+not a permission to perform unbounded catch-up.
+
 PR #181 (merged) added bounded exact damage-bucket positive-witness searches. The frozen
 8-game league remained at 15 fallback decisions (20 -> 19 degraded turns) with
 Protect + Wood Hammer backlog cases intact. PR #182 must be evaluated as a
@@ -500,8 +516,10 @@ Phase exit criteria:
    **Still required:** a mechanics-safe present-turn constructor that preserves
    current PP, locks, timers, damage/HP constraints, member identity, forms and
    historical public evidence; independent pinned-runtime differential validation.
-   PR #185 adds only one-turn fresh-root public witness construction; the
-   general late-midgame first scaffold remains unresolved. Only after it and
+   PR #185 adds the first one-turn fresh-root public witness; #186 permits
+   bounded *adjacent* turn rolling from already certified checkpoints, without
+   starting each update from preview. The general late-midgame first scaffold
+   without any retained checkpoint remains unresolved. Only after that and
    independent mechanics validation may a current-state rebase replace
    historical ancestry in live play.
 9. Require every synthesized world to reproduce the authoritative own-side request and the
