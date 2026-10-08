@@ -917,6 +917,7 @@ class BeliefDecisionEngine:
         # Shadow-only public evidence: never participates in live particle
         # admission, elimination, candidate search, or fallback selection.
         self.public_constraint_ledger: PublicConstraintLedger | None = None
+        self.public_constraint_ledger_issue: str | None = None
         self.preview_mismatch_paths: tuple[str, ...] = ()
         self.preview_mismatch_values: tuple[tuple[str, object, object], ...] = ()
         self.pending_observations: list[
@@ -943,6 +944,32 @@ class BeliefDecisionEngine:
         values = [self._rng.getrandbits(32) for _ in range(4)]
         return "sodium," + "".join(f"{value:08x}" for value in values)
 
+    def _record_public_constraints(self, view: dict, *, initialize: bool) -> None:
+        """Shadow recording must NEVER interrupt authoritative live decisions.
+
+        Producer/ledger contract differences quarantine the ledger and retain
+        an explicit reason. Quarantined evidence is forbidden from future rebase
+        admission; full validated history must be rebuilt or recording restarted
+        with an explicit authority reset, never silently skipped.
+        """
+        if initialize:
+            self.public_constraint_ledger = None
+            self.public_constraint_ledger_issue = None
+        elif self.public_constraint_ledger_issue is not None:
+            return
+        try:
+            if self.public_constraint_ledger is None:
+                self.public_constraint_ledger = PublicConstraintLedger.from_public_view(
+                    view
+                )
+            else:
+                self.public_constraint_ledger = self.public_constraint_ledger.advance(
+                    view
+                )
+        except ValueError as error:
+            self.public_constraint_ledger = None
+            self.public_constraint_ledger_issue = str(error)
+
     def initialize_preview(
         self,
         *,
@@ -950,8 +977,8 @@ class BeliefDecisionEngine:
         ai_choice: str,
     ) -> dict:
         """Initialize belief particles from the sanitized p2 post-preview view."""
-        # Snapshot the trusted public view before constructing any hypotheses.
-        self.public_constraint_ledger = PublicConstraintLedger.from_public_view(view)
+        # Recording is independent of (and cannot veto) real battle authority.
+        self._record_public_constraints(view, initialize=True)
         self.last_public_view = view
         self.previews = {
             "p1": list(view["opponent"]["preview_species"]),
@@ -3133,10 +3160,9 @@ class BeliefDecisionEngine:
         starting_particles = self.particles
         particles_before = len(starting_particles)
         previous_view = self.last_public_view
-        if self.public_constraint_ledger is not None:
-            # Continues to accumulate during a pending historical backlog.
-            # A ledger validation failure cannot silently relax public truth.
-            self.public_constraint_ledger = self.public_constraint_ledger.advance(view)
+        # Keeps recording during pending historical recovery, but quarantine
+        # any incompatible producer view without changing live tactical behavior.
+        self._record_public_constraints(view, initialize=False)
         self.last_public_view = view
         recovery_retry_diagnostic = self.last_recovery_retry_diagnostic
         self.last_recovery_retry_diagnostic = None
