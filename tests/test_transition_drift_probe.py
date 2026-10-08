@@ -12,6 +12,7 @@ from champions_practice.strength_league import LeagueConfig
 from champions_practice.transition_drift_probe import (
     _classification,
     _mechanics_projection,
+    _previews_from_public_views,
     _team_signature,
     run_transition_drift_probe,
 )
@@ -156,6 +157,37 @@ def test_classification_keeps_rng_miss_separate_from_state_drift() -> None:
     )
 
 
+def test_public_preview_ledger_overrides_four_member_battle_state() -> None:
+    state = _state(prng="oracle")
+    conditioning_view = {
+        "opponent": {
+            "preview_species": [
+                "Gardevoir",
+                "Indeedee-F",
+            ]
+        }
+    }
+    human_view = {
+        "opponent": {
+            "preview_species": [
+                "Rillaboom",
+                "Sneasler",
+            ]
+        }
+    }
+
+    previews = _previews_from_public_views(
+        conditioning_view=conditioning_view,
+        human_view=human_view,
+        fallback_state=state,
+    )
+
+    assert previews == {
+        "p1": ["Gardevoir", "Indeedee-F"],
+        "p2": ["Rillaboom", "Sneasler"],
+    }
+
+
 def test_probe_reads_oracle_only_after_ai_action_is_sealed(
     monkeypatch,
     tmp_path,
@@ -164,13 +196,19 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
         "turn": 8,
         "phase": "move",
         "player": {"active": [{"species": "Rillaboom"}]},
-        "opponent": {"active": [{"species": "Gardevoir"}]},
+        "opponent": {
+            "active": [{"species": "Gardevoir"}],
+            "preview_species": ["Gardevoir", "Indeedee-F"],
+        },
     }
     human_view = {
         "turn": 8,
         "phase": "move",
         "player": {"active": [{"species": "Gardevoir"}]},
-        "opponent": {"active": [{"species": "Rillaboom"}]},
+        "opponent": {
+            "active": [{"species": "Rillaboom"}],
+            "preview_species": ["Rillaboom", "Sneasler"],
+        },
     }
     oracle_pre = _state(prng="oracle", turn=7)
     particle_state = _state(prng="particle", turn=7)
@@ -198,6 +236,10 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
 
         def branch_many(self, *, state, branches):
             assert len(branches) == 1
+            assert branches[0]["previews"] == {
+                "p1": ["Gardevoir", "Indeedee-F"],
+                "p2": ["Rillaboom", "Sneasler"],
+            }
             return [
                 {
                     "state": deepcopy(oracle_post),
