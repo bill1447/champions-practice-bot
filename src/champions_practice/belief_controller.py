@@ -3099,6 +3099,9 @@ class _BeliefBattleCoordinator:
             pending_recovery_witness_window=(
                 self._engine.pending_recovery_witness_window
             ),
+            pending_recovery_finite_frontiers=(
+                self._engine.pending_recovery_finite_frontiers
+            ),
             recovery_authority_root_particles=(
                 self._engine.recovery_authority_root_particles
             ),
@@ -3138,6 +3141,9 @@ class _BeliefBattleCoordinator:
         )
         self._engine.pending_recovery_witness_window = (
             snapshot.pending_recovery_witness_window
+        )
+        self._engine.pending_recovery_finite_frontiers = (
+            snapshot.pending_recovery_finite_frontiers
         )
         self._engine.recovery_authority_root_particles = (
             snapshot.recovery_authority_root_particles
