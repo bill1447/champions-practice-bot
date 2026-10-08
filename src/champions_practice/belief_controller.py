@@ -1174,9 +1174,12 @@ class BeliefDecisionEngine:
 
         Once every opponent action slot is public, positive reachability does not need
         exhaustive stochastic coverage: one concrete Showdown seed is a genuine
-        sequential witness. Search those witnesses round-robin across worlds
-        using the same deterministic seed stream as collapse diagnostics, and
-        immediately replay any discovered seed across the other worlds.
+        sequential witness. Fresh searches examine those witnesses round-robin
+        across worlds using the same deterministic seed stream as collapse
+        diagnostics, and immediately replay any discovered seed across the other
+        worlds. Recovery callers that already own a resumable finite frontier may
+        set witness_rounds=0 so the saved systematic search gets the budget before
+        another probabilistic witness window.
 
         Only worlds still unresolved after concrete witness search are eligible
         for finite-tree negative authority. A world may be excluded only when
@@ -1696,9 +1699,12 @@ class BeliefDecisionEngine:
             }
 
         # A sampled witness may advance a hypothesis; a sampled miss may not
-        # eliminate one. Keep drawing bounded chunks until every still-authoritative
-        # starting world has a witness. Structural diagnostics accumulate across
-        # batches so a collapse explains itself rather than reporting only a count.
+        # eliminate one. Fresh observations draw bounded chunks until every
+        # still-authoritative starting world has a witness. Once recovery has a
+        # live finite continuation for these particles, skip this probabilistic
+        # prepass and spend the retry budget advancing that saved frontier.
+        # Structural diagnostics accumulate across fresh sampled batches so a
+        # collapse explains itself rather than reporting only a count.
         sampling_batches = () if resume_finite_first else batches
         for sample_count in sampling_batches:
             for _ in range(multiplier):
