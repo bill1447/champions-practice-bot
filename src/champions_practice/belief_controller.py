@@ -288,6 +288,7 @@ class SealedTurnResult:
     finite_reachability_leaves: int = 0
     collapse_diagnostic: BeliefCollapseDiagnostic | None = None
     recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
+    recovery_retry_diagnostic: RecoveryRetryDiagnostic | None = None
 
 
 @dataclass(frozen=True)
@@ -331,6 +332,7 @@ class BeliefTurnUpdate:
     finite_reachability_unresolved: int = 0
     finite_reachability_leaves: int = 0
     recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
+    recovery_retry_diagnostic: RecoveryRetryDiagnostic | None = None
 
 
 def _particle_world_key(particle: BeliefParticle, index: int) -> str:
@@ -3067,6 +3069,8 @@ class BeliefDecisionEngine:
         particles_before = len(starting_particles)
         previous_view = self.last_public_view
         self.last_public_view = view
+        recovery_retry_diagnostic = self.last_recovery_retry_diagnostic
+        self.last_recovery_retry_diagnostic = None
 
         conditioning_started = perf_counter()
         conditioning_deadline = (
@@ -3094,7 +3098,7 @@ class BeliefDecisionEngine:
                 particles_before=starting_particles,
                 update=None,
                 recovery_candidates=self.particles,
-                recovery_retry=self.last_recovery_retry_diagnostic,
+                recovery_retry=recovery_retry_diagnostic,
             )
         else:
             def run_conditioning(worker: HypotheticalSearchWorker):
@@ -3242,6 +3246,7 @@ class BeliefDecisionEngine:
                 else 0
             ),
             recovery_diagnostic=recovery_diagnostic,
+            recovery_retry_diagnostic=recovery_retry_diagnostic,
         )
 
 
@@ -3767,6 +3772,11 @@ class _BeliefBattleCoordinator:
             ),
             collapse_diagnostic=collapse_diagnostic,
             recovery_diagnostic=getattr(update, "recovery_diagnostic", None),
+            recovery_retry_diagnostic=getattr(
+                update,
+                "recovery_retry_diagnostic",
+                None,
+            ),
         )
 
     def commit_human_action(
