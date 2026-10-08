@@ -463,6 +463,100 @@ def test_finite_transition_budget_exhaustion_remains_unresolved():
     assert not probe.evidence.coverage.randomness_exhaustive
 
 
+def test_finite_transition_budget_exhaustion_can_return_positive_continuation():
+    raw = _finite_response(
+        exhaustive=False,
+        leaves=128,
+        reason="finite stochastic branch budget exhausted",
+    )
+    raw["continuation"] = "opaque-finite-frontier"
+    raw["frontier_exhausted"] = False
+    worker = _FakeFiniteTransitionWorker(raw)
+
+    probe = finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=_valid_public_view({"turn": 2}),
+    )
+
+    assert probe.evidence.status is ReachabilityStatus.UNRESOLVED
+    assert not probe.evidence.establishes_impossibility
+    assert probe.continuation_token == "opaque-finite-frontier"
+    assert probe.positive_frontier_exhausted is False
+
+
+def test_resumed_finite_transition_can_witness_positive_outcome():
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(witnessed=True, leaves=3)
+    )
+
+    probe = finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=_valid_public_view(
+            {"turn": 2, "marker": "target"}
+        ),
+        continuation_token="opaque-finite-frontier",
+    )
+
+    assert probe.evidence.status is ReachabilityStatus.WITNESSED
+    assert probe.evidence.establishes_reachability
+    assert not probe.evidence.establishes_impossibility
+    assert worker.calls[0]["continuation_token"] == "opaque-finite-frontier"
+
+
+def test_resumed_finite_transition_cannot_establish_negative_authority():
+    worker = _FakeFiniteTransitionWorker(
+        _finite_response(exhaustive=True, leaves=96)
+    )
+
+    with pytest.raises(
+        RuntimeError,
+        match="resumed finite transition may not establish negative authority",
+    ):
+        finite_public_transition_reachability(
+            worker,
+            state={"node": "root"},
+            side="p2",
+            p1_choice="move protect, move trickroom",
+            p2_choice="move direclaw +1, move imprison",
+            expected_public_view=_valid_public_view({"turn": 2}),
+            continuation_token="opaque-finite-frontier",
+        )
+
+
+def test_exhausted_positive_frontier_remains_unresolved():
+    raw = _finite_response(
+        exhaustive=False,
+        leaves=64,
+        reason="resumed finite witness frontier exhausted",
+    )
+    raw["continuation"] = None
+    raw["frontier_exhausted"] = True
+    worker = _FakeFiniteTransitionWorker(raw)
+
+    probe = finite_public_transition_reachability(
+        worker,
+        state={"node": "root"},
+        side="p2",
+        p1_choice="move protect, move trickroom",
+        p2_choice="move direclaw +1, move imprison",
+        expected_public_view=_valid_public_view({"turn": 2}),
+        continuation_token="opaque-finite-frontier",
+    )
+
+    assert probe.evidence.status is ReachabilityStatus.UNRESOLVED
+    assert probe.positive_frontier_exhausted is True
+    assert probe.continuation_token is None
+    assert not probe.evidence.establishes_impossibility
+
+
 def test_showdown_witness_probe_preserves_sequential_parentage():
     first = {"turn": 2, "marker": "first"}
     second = {"turn": 3, "marker": "second"}
