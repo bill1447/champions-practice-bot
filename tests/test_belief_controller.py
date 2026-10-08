@@ -904,6 +904,133 @@ def test_finite_public_transition_can_witness_and_exhaustively_exclude_worlds(
     assert update.finite_reachability_leaves == 18
 
 
+def test_finite_public_transition_resumes_positive_frontier(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        _finite_particle_state("a"),
+        1.0,
+        world_id="world-a",
+        history_id="history-a",
+        p1_member_lineage=(0,),
+        p2_member_lineage=(0,),
+    )
+    expected = {
+        "turn": 2,
+        "opponent_last_actions": [
+            {"turn": 1, "slot": 1, "move": "protect", "target": None},
+            {"turn": 1, "slot": 2, "move": "trickroom", "target": None},
+        ],
+        "opponent": {"active": [{"species": "A"}, {"species": "B"}]},
+    }
+
+    class Worker:
+        def validate_choices(self, *, state, side, candidates):
+            del state
+            assert side == "p1"
+            return [candidates[0]]
+
+    continuations_seen: list[str | None] = []
+
+    def fake_probe(worker, *, continuation_token=None, **kwargs):
+        del worker, kwargs
+        continuations_seen.append(continuation_token)
+        if continuation_token is None:
+            return FiniteTransitionReachability(
+                evidence=ReachabilityResult.unresolved(
+                    reason="finite stochastic branch budget exhausted",
+                    coverage=ReachabilityCoverage(
+                        sequential_context_fingerprint="sha256:resume-test",
+                        transitions_covered=1,
+                        outcomes_examined=32,
+                        randomness_domains=(
+                            "showdown-finite-random-calls-v1",
+                        ),
+                        randomness_exhaustive=False,
+                        sequential_context_complete=True,
+                    ),
+                ),
+                leaves_examined=32,
+                decision_nodes=12,
+                max_depth=4,
+                continuation_token="frontier-1",
+            )
+        assert continuation_token == "frontier-1"
+        child = _finite_particle_state("a-child")
+        return FiniteTransitionReachability(
+            evidence=ReachabilityResult.witnessed(
+                coverage=_finite_coverage(exhaustive=False),
+                witness_ids=("sha256:resumed-witness",),
+            ),
+            leaves_examined=11,
+            decision_nodes=5,
+            max_depth=4,
+            child_state=child,
+            public_view=expected,
+            member_lineage={"p1": [0], "p2": [0]},
+            rng_seed="sodium,resumed-finite-witness",
+            random_path=({"kind": "chance", "value": True},),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.finite_public_transition_reachability",
+        fake_probe,
+    )
+
+    progress: dict[tuple[str, str, str], str] = {}
+
+    def record_progress(key, continuation, exhausted):
+        assert exhausted is False
+        if continuation is None:
+            progress.pop(key, None)
+        else:
+            progress[key] = continuation
+
+    first = engine._condition_finite_public_transition(
+        Worker(),
+        particles=(particle,),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=0,
+        finite_continuations={},
+        finite_progress_callback=record_progress,
+    )
+
+    assert first.particles == ()
+    assert first.exhaustively_excluded_world_ids == ()
+    assert first.finite_reachability_disproofs == 0
+    assert progress
+    assert set(progress.values()) == {"frontier-1"}
+
+    second = engine._condition_finite_public_transition(
+        Worker(),
+        particles=(particle,),
+        ai_choice="move direclaw +1, move imprison",
+        view=expected,
+        previous_view={"turn": 1, "opponent_last_actions": []},
+        preexcluded_worlds=set(),
+        deadline=None,
+        witness_rounds=0,
+        finite_continuations=dict(progress),
+        finite_progress_callback=record_progress,
+    )
+
+    assert continuations_seen == [None, "frontier-1"]
+    assert len(second.particles) == 1
+    assert second.particles[0].state["label"] == "a-child"
+    assert second.finite_reachability_witnesses == 1
+    assert second.finite_reachability_disproofs == 0
+
+
 def test_concrete_witness_seed_windows_do_not_create_negative_authority(
     monkeypatch,
 ) -> None:
@@ -1617,6 +1744,63 @@ def test_pending_rng_retry_advances_only_the_witness_search_window() -> None:
     assert engine.pending_recovery_excluded_world_ids == ()
     assert engine.particles == (particle,)
     assert len(engine.pending_observations) == 1
+
+
+def test_pending_retry_persists_finite_frontier_between_attempts() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+    ]
+    seen_frontiers: list[dict[tuple[str, str, str], str]] = []
+    attempts = 0
+    key = ("world-1", "rng-1", "move protect")
+
+    def fake_condition(worker, **kwargs):
+        nonlocal attempts
+        del worker
+        attempts += 1
+        seen_frontiers.append(dict(kwargs["finite_continuations"]))
+        callback = kwargs["finite_progress_callback"]
+        if attempts == 1:
+            callback(key, "frontier-1", False)
+        return ParticleUpdate(
+            (),
+            4,
+            0,
+            0,
+            sampled_unresolved_world_ids=("world-1",),
+        )
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert engine.pending_recovery_finite_frontiers == (
+        ("world-1", "rng-1", "move protect", "frontier-1"),
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert seen_frontiers == [
+        {},
+        {key: "frontier-1"},
+    ]
+    assert engine.particles == (particle,)
+    assert engine.pending_recovery_excluded_world_ids == ()
 
 
 def test_pending_rng_retry_sampled_miss_never_advances_progress() -> None:
