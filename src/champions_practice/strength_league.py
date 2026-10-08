@@ -253,6 +253,12 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
         for game in games
         for event in game.recovery_events
     ]
+    recovery_retries = [
+        retry
+        for event in recovery_events
+        for retry in (event.get("recovery_retry"),)
+        if isinstance(retry, dict)
+    ]
     for game in games:
         fallback_reasons.update(dict(game.fallback_reasons))
     for event in recovery_events:
@@ -321,6 +327,39 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
             "conditioning_errors": sum(
                 event.get("reason") == "conditioning-error"
                 for event in recovery_events
+            ),
+            "retry_events": len(recovery_retries),
+            "retry_worker_attempts": sum(
+                int(retry.get("worker_attempts", 0))
+                for retry in recovery_retries
+            ),
+            "retry_returned_updates": sum(
+                int(retry.get("returned_updates", 0))
+                for retry in recovery_retries
+            ),
+            "retry_deadline_timeouts": sum(
+                int(retry.get("deadline_timeouts", 0))
+                for retry in recovery_retries
+            ),
+            "retry_finite_progress_callbacks": sum(
+                int(retry.get("finite_progress_callbacks", 0))
+                for retry in recovery_retries
+            ),
+            "retry_finite_progress_changes": sum(
+                int(retry.get("finite_progress_changes", 0))
+                for retry in recovery_retries
+            ),
+            "retry_seed_cursor_advanced": sum(
+                bool(retry.get("seed_cursor_advanced"))
+                for retry in recovery_retries
+            ),
+            "retry_continuation_changed": sum(
+                bool(retry.get("continuation_changed"))
+                for retry in recovery_retries
+            ),
+            "retry_continuation_persisted": sum(
+                bool(retry.get("continuation_persisted"))
+                for retry in recovery_retries
             ),
             "finite_reachability_witnesses": sum(
                 game.finite_reachability_witnesses for game in games
