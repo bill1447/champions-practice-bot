@@ -239,6 +239,11 @@ jobs:
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
+      - name: Rolling public current-turn checkpoint and true-world smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.rolling_public_checkpoints_smoke
+
       - name: Public-only first current-turn scaffold bootstrap smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
