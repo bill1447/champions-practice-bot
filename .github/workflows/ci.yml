@@ -239,6 +239,11 @@ jobs:
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
+      - name: Public-only first current-turn scaffold bootstrap smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.public_scaffold_bootstrap_smoke
+
       - name: Native pinned current-turn HP reconstruction smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
