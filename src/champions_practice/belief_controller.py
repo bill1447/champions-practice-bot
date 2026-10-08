@@ -73,6 +73,7 @@ FallbackSelector = Callable[[list[str]], str]
 T = TypeVar("T")
 
 _STATIC_RECOVERY_HISTORY_LIMIT = 512
+_FINITE_FRONTIER_EXHAUSTED = "<finite-positive-frontier-exhausted>"
 
 
 @dataclass(frozen=True)
@@ -263,6 +264,10 @@ class _EngineObservationSnapshot:
     pending_recovery_witnesses: tuple[BeliefParticle, ...]
     pending_recovery_excluded_world_ids: tuple[str, ...]
     pending_recovery_witness_window: int
+    pending_recovery_finite_frontiers: tuple[
+        tuple[str, str, str, str],
+        ...,
+    ]
     recovery_authority_root_particles: tuple[BeliefParticle, ...]
     recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...]
     recovery_authority_root_public_view: dict | None
@@ -304,6 +309,18 @@ def _particle_world_keys(
             }
         )
     )
+
+
+def _particle_history_key(particle: BeliefParticle) -> str:
+    if particle.history_id:
+        return particle.history_id
+    return hashlib.sha256(
+        json.dumps(
+            particle.state,
+            sort_keys=True,
+            separators=(",", ":"),
+        ).encode("utf-8")
+    ).hexdigest()
 
 
 def _observation_action_strings(view: dict) -> tuple[str, ...]:
@@ -707,6 +724,10 @@ class BeliefDecisionEngine:
         self.pending_recovery_witnesses: tuple[BeliefParticle, ...] = ()
         self.pending_recovery_excluded_world_ids: tuple[str, ...] = ()
         self.pending_recovery_witness_window = 0
+        self.pending_recovery_finite_frontiers: tuple[
+            tuple[str, str, str, str],
+            ...,
+        ] = ()
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
@@ -846,6 +867,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_witnesses = ()
         self.pending_recovery_excluded_world_ids = ()
         self.pending_recovery_witness_window = 0
+        self.pending_recovery_finite_frontiers = ()
         self.degraded = not bool(self.particles)
         return view
 
@@ -939,6 +961,14 @@ class BeliefDecisionEngine:
         max_leaves: int = 256,
         witness_rounds: int = 64,
         witness_seed_window: int = 0,
+        finite_continuations: dict[
+            tuple[str, str, str],
+            str,
+        ] | None = None,
+        finite_progress_callback: Callable[
+            [tuple[str, str, str], str | None, bool],
+            None,
+        ] | None = None,
     ) -> ParticleUpdate:
         """Recover public transitions with concrete Showdown witnesses first.
 
@@ -1209,11 +1239,27 @@ class BeliefDecisionEngine:
                         continue
 
                     particle_all_disproved = True
+                    particle_key = _particle_history_key(particle)
                     for human_choice in choices:
                         if deadline is not None and perf_counter() >= deadline - 0.75:
                             world_unresolved = True
                             particle_all_disproved = False
                             break
+                        progress_key = (
+                            world_id,
+                            particle_key,
+                            human_choice,
+                        )
+                        continuation = (
+                            finite_continuations.get(progress_key)
+                            if finite_continuations is not None
+                            else None
+                        )
+                        if continuation == _FINITE_FRONTIER_EXHAUSTED:
+                            particle_all_disproved = False
+                            world_unresolved = True
+                            continue
+
                         probe = finite_public_transition_reachability(
                             worker,
                             state=particle.state,
@@ -1223,9 +1269,16 @@ class BeliefDecisionEngine:
                             expected_public_view=view,
                             previews=self.previews,
                             max_leaves=max_leaves,
+                            continuation_token=continuation,
                         )
                         finite_leaves += probe.leaves_examined
                         if probe.evidence.establishes_reachability:
+                            if finite_progress_callback is not None:
+                                finite_progress_callback(
+                                    progress_key,
+                                    None,
+                                    False,
+                                )
                             assert probe.child_state is not None
                             assert probe.member_lineage is not None
                             p1_lineage, p2_lineage = compose_branch_member_lineage(
@@ -1247,8 +1300,31 @@ class BeliefDecisionEngine:
                             saw_conclusive_probe = True
                             break
                         if probe.evidence.establishes_impossibility:
+                            if continuation is not None:
+                                raise RuntimeError(
+                                    "resumed finite search produced negative authority"
+                                )
+                            if finite_progress_callback is not None:
+                                finite_progress_callback(
+                                    progress_key,
+                                    None,
+                                    False,
+                                )
                             saw_conclusive_probe = True
                             continue
+                        if finite_progress_callback is not None:
+                            if probe.continuation_token is not None:
+                                finite_progress_callback(
+                                    progress_key,
+                                    probe.continuation_token,
+                                    False,
+                                )
+                            elif probe.positive_frontier_exhausted:
+                                finite_progress_callback(
+                                    progress_key,
+                                    None,
+                                    True,
+                                )
                         particle_all_disproved = False
                         world_unresolved = True
 
@@ -1333,6 +1409,14 @@ class BeliefDecisionEngine:
         witness_seed_window: int = 0,
         progress_callback: Callable[
             [tuple[BeliefParticle, ...], tuple[str, ...]],
+            None,
+        ] | None = None,
+        finite_continuations: dict[
+            tuple[str, str, str],
+            str,
+        ] | None = None,
+        finite_progress_callback: Callable[
+            [tuple[str, str, str], str | None, bool],
             None,
         ] | None = None,
     ) -> ParticleUpdate:
@@ -1543,6 +1627,8 @@ class BeliefDecisionEngine:
                 preexcluded_worlds=set(),
                 deadline=deadline,
                 witness_seed_window=witness_seed_window,
+                finite_continuations=finite_continuations,
+                finite_progress_callback=finite_progress_callback,
             )
             report_progress(finite)
             exhaustive_exclusions.update(
@@ -1701,6 +1787,7 @@ class BeliefDecisionEngine:
         self.pending_recovery_witnesses = ()
         self.pending_recovery_excluded_world_ids = ()
         self.pending_recovery_witness_window = 0
+        self.pending_recovery_finite_frontiers = ()
 
     def _retry_pending_with_more_rng(
         self,
@@ -1709,16 +1796,18 @@ class BeliefDecisionEngine:
     ) -> bool:
         """Resume public-only recovery without discarding proven prefix work.
 
-        Recovery progress has two layers:
+        Recovery progress has three layers:
 
         * a completed prefix of pending observations, represented by exact
-          Showdown-produced particles after that prefix; and
+          Showdown-produced particles after that prefix;
         * concrete witnesses / exhaustive exclusions already established for
-          the next pending observation.
+          the next pending observation; and
+        * positive-only finite stochastic frontiers that can resume witness
+          search without granting partial traversal negative authority.
 
-        Neither a sampled miss nor a timeout advances either layer. A later
-        retry therefore spends its budget only on unresolved worlds and on
-        observations after the completed prefix.
+        Neither a sampled miss nor a timeout creates exclusion authority. A
+        later retry spends its budget only on unresolved worlds, unfinished
+        finite witness frontiers, and observations after the completed prefix.
         """
         if not self.pending_observations:
             self._clear_pending_recovery_progress()
@@ -1748,18 +1837,17 @@ class BeliefDecisionEngine:
         progress_lock = RLock()
         witness_cache: dict[tuple[str, str], BeliefParticle] = {}
         excluded_worlds = set(self.pending_recovery_excluded_world_ids)
+        finite_frontier_cache: dict[
+            tuple[str, str, str],
+            str,
+        ] = {
+            (world_id, history_id, human_choice): token
+            for world_id, history_id, human_choice, token
+            in self.pending_recovery_finite_frontiers
+        }
 
         def witness_key(particle: BeliefParticle) -> tuple[str, str]:
-            history = particle.history_id
-            if not history:
-                history = hashlib.sha256(
-                    json.dumps(
-                        particle.state,
-                        sort_keys=True,
-                        separators=(",", ":"),
-                    ).encode("utf-8")
-                ).hexdigest()
-            return particle.world_id, history
+            return particle.world_id, _particle_history_key(particle)
 
         for particle in self.pending_recovery_witnesses:
             witness_cache[witness_key(particle)] = particle
@@ -1773,6 +1861,19 @@ class BeliefDecisionEngine:
                     witness_cache.setdefault(witness_key(particle), particle)
                 excluded_worlds.update(exclusions)
 
+        def record_finite_progress(
+            key: tuple[str, str, str],
+            continuation: str | None,
+            exhausted: bool,
+        ) -> None:
+            with progress_lock:
+                if exhausted:
+                    finite_frontier_cache[key] = _FINITE_FRONTIER_EXHAUSTED
+                elif continuation is None:
+                    finite_frontier_cache.pop(key, None)
+                else:
+                    finite_frontier_cache[key] = continuation
+
         def snapshot_progress() -> tuple[
             tuple[BeliefParticle, ...],
             tuple[str, ...],
@@ -1783,12 +1884,24 @@ class BeliefDecisionEngine:
                     tuple(sorted(excluded_worlds)),
                 )
 
+        def snapshot_finite_frontiers() -> dict[
+            tuple[str, str, str],
+            str,
+        ]:
+            with progress_lock:
+                return dict(finite_frontier_cache)
+
         def save_progress() -> None:
             witnesses, exclusions = snapshot_progress()
+            finite_frontiers = snapshot_finite_frontiers()
             self.pending_recovery_prefix_particles = prefix_particles
             self.pending_recovery_prefix_count = prefix_count
             self.pending_recovery_witnesses = witnesses
             self.pending_recovery_excluded_world_ids = exclusions
+            self.pending_recovery_finite_frontiers = tuple(
+                (*key, token)
+                for key, token in sorted(finite_frontiers.items())
+            )
 
         while prefix_count < len(pending):
             if perf_counter() >= recovery_deadline - 0.5:
@@ -1832,11 +1945,13 @@ class BeliefDecisionEngine:
                 with progress_lock:
                     witness_cache.clear()
                     excluded_worlds.clear()
+                    finite_frontier_cache.clear()
                 self.pending_recovery_prefix_particles = prefix_particles
                 self.pending_recovery_prefix_count = prefix_count
                 self.pending_recovery_witnesses = ()
                 self.pending_recovery_excluded_world_ids = ()
                 self.pending_recovery_witness_window = 0
+                self.pending_recovery_finite_frontiers = ()
                 return True
 
             if (
@@ -1872,6 +1987,8 @@ class BeliefDecisionEngine:
                     deadline=recovery_deadline,
                     witness_seed_window=witness_seed_window,
                     progress_callback=record_progress,
+                    finite_continuations=snapshot_finite_frontiers(),
+                    finite_progress_callback=record_finite_progress,
                 )
 
             update, timed_out = self._run_until_deadline(
@@ -2984,6 +3101,9 @@ class _BeliefBattleCoordinator:
             pending_recovery_witness_window=(
                 self._engine.pending_recovery_witness_window
             ),
+            pending_recovery_finite_frontiers=(
+                self._engine.pending_recovery_finite_frontiers
+            ),
             recovery_authority_root_particles=(
                 self._engine.recovery_authority_root_particles
             ),
@@ -3023,6 +3143,9 @@ class _BeliefBattleCoordinator:
         )
         self._engine.pending_recovery_witness_window = (
             snapshot.pending_recovery_witness_window
+        )
+        self._engine.pending_recovery_finite_frontiers = (
+            snapshot.pending_recovery_finite_frontiers
         )
         self._engine.recovery_authority_root_particles = (
             snapshot.recovery_authority_root_particles

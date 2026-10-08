@@ -245,6 +245,7 @@ class ReachabilityWorker(Protocol):
         expected_public_view: dict[str, Any],
         previews: dict[str, list[str]] | None = None,
         max_leaves: int = 4096,
+        continuation_token: str | None = None,
     ) -> dict[str, Any]: ...
 
 
@@ -264,6 +265,8 @@ class FiniteTransitionReachability:
     member_lineage: dict[str, list[int]] | None = None
     rng_seed: str | None = None
     random_path: tuple[dict[str, Any], ...] = ()
+    continuation_token: str | None = None
+    positive_frontier_exhausted: bool = False
 
     def __post_init__(self) -> None:
         for label, value in (
@@ -273,6 +276,30 @@ class FiniteTransitionReachability:
         ):
             if isinstance(value, bool) or not isinstance(value, int) or value < 0:
                 raise ValueError(f"{label} must be a non-negative integer")
+        if self.continuation_token is not None:
+            if (
+                not isinstance(self.continuation_token, str)
+                or not self.continuation_token
+                or len(self.continuation_token.encode("utf-8")) > 4 * 1024 * 1024
+            ):
+                raise ValueError("finite continuation token is invalid or oversized")
+            if self.evidence.status is not ReachabilityStatus.UNRESOLVED:
+                raise ValueError(
+                    "only unresolved finite reachability may carry continuation"
+                )
+            if self.positive_frontier_exhausted:
+                raise ValueError(
+                    "finite continuation cannot also mark its frontier exhausted"
+                )
+        if not isinstance(self.positive_frontier_exhausted, bool):
+            raise ValueError("positive_frontier_exhausted must be boolean")
+        if (
+            self.positive_frontier_exhausted
+            and self.evidence.status is not ReachabilityStatus.UNRESOLVED
+        ):
+            raise ValueError(
+                "only unresolved finite reachability may exhaust a positive frontier"
+            )
         if self.evidence.establishes_reachability:
             if (
                 not isinstance(self.child_state, dict)
@@ -3761,6 +3788,7 @@ def finite_public_transition_reachability(
     expected_public_view: dict[str, Any],
     previews: dict[str, list[str]] | None = None,
     max_leaves: int = 4096,
+    continuation_token: str | None = None,
 ) -> FiniteTransitionReachability:
     """Enumerate one transition's finite Showdown random-call outcome tree.
 
@@ -3787,6 +3815,14 @@ def finite_public_transition_reachability(
         or max_leaves > 10000
     ):
         raise ValueError("max_leaves must be an integer from 1 through 10000")
+    if continuation_token is not None and (
+        not isinstance(continuation_token, str)
+        or not continuation_token
+        or len(continuation_token.encode("utf-8")) > 4 * 1024 * 1024
+    ):
+        raise ValueError(
+            "finite continuation must be a bounded non-empty string"
+        )
 
     schema_issue = public_reachability_observation_issue(expected_public_view)
     if schema_issue:
@@ -3838,6 +3874,7 @@ def finite_public_transition_reachability(
             expected_public_view=expected_public_view,
             previews=previews,
             max_leaves=max_leaves,
+            continuation_token=continuation_token,
         )
     except TimeoutError:
         return FiniteTransitionReachability(
@@ -3880,6 +3917,33 @@ def finite_public_transition_reachability(
         raise RuntimeError("finite transition worker returned invalid authority flags")
     if exhaustive and witnessed:
         raise RuntimeError("finite transition witness must return before exhaustive completion")
+    if continuation_token is not None and exhaustive:
+        raise RuntimeError(
+            "resumed finite transition may not establish negative authority"
+        )
+
+    raw_continuation = raw.get("continuation")
+    if raw_continuation is not None and (
+        not isinstance(raw_continuation, str)
+        or not raw_continuation
+        or len(raw_continuation.encode("utf-8")) > 4 * 1024 * 1024
+    ):
+        raise RuntimeError("finite transition worker returned invalid continuation")
+    frontier_exhausted = raw.get("frontier_exhausted", False)
+    if not isinstance(frontier_exhausted, bool):
+        raise RuntimeError(
+            "finite transition worker returned invalid frontier_exhausted flag"
+        )
+    if raw_continuation is not None and frontier_exhausted:
+        raise RuntimeError(
+            "finite transition frontier cannot be both resumable and exhausted"
+        )
+    if (witnessed or exhaustive) and (
+        raw_continuation is not None or frontier_exhausted
+    ):
+        raise RuntimeError(
+            "conclusive finite transition cannot carry continuation state"
+        )
 
     counts: dict[str, int] = {}
     for key in ("leaves_examined", "decision_nodes", "max_depth"):
@@ -3980,4 +4044,6 @@ def finite_public_transition_reachability(
         leaves_examined=counts["leaves_examined"],
         decision_nodes=counts["decision_nodes"],
         max_depth=counts["max_depth"],
+        continuation_token=raw_continuation,
+        positive_frontier_exhausted=frontier_exhausted,
     )
