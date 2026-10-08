@@ -441,6 +441,7 @@ class HypotheticalSearchWorker:
         previews: dict[str, list[str]] | None = None,
         max_leaves: int = 4096,
         continuation_token: str | None = None,
+        witness_seed_window_attempts: int = 4096,
     ) -> dict[str, Any]:
         return self.__worker.enumerate_finite_transition(
             state=state,
@@ -451,6 +452,7 @@ class HypotheticalSearchWorker:
             previews=previews,
             max_leaves=max_leaves,
             continuation_token=continuation_token,
+            witness_seed_window_attempts=witness_seed_window_attempts,
         )
 
     def state_view(
@@ -1263,6 +1265,7 @@ class ShowdownSearchWorker:
         previews: dict[str, list[str]] | None = None,
         max_leaves: int = 4096,
         continuation_token: str | None = None,
+        witness_seed_window_attempts: int = 4096,
     ) -> dict[str, Any]:
         """Enumerate a bounded finite Showdown transition RNG tree."""
         if not isinstance(state, dict) or not state:
@@ -1290,6 +1293,15 @@ class ShowdownSearchWorker:
             raise ValueError(
                 "finite transition continuation must be a bounded non-empty string"
             )
+        if (
+            isinstance(witness_seed_window_attempts, bool)
+            or not isinstance(witness_seed_window_attempts, int)
+            or witness_seed_window_attempts < 1
+            or witness_seed_window_attempts > 4096
+        ):
+            raise ValueError(
+                "witness_seed_window_attempts must be an integer from 1 through 4096"
+            )
         result = self.request(
             "enumerate_finite_transition",
             state=state,
@@ -1300,6 +1312,7 @@ class ShowdownSearchWorker:
             previews=previews,
             max_leaves=max_leaves,
             continuation=continuation_token,
+            witness_seed_window_attempts=witness_seed_window_attempts,
         )
         if not isinstance(result, dict):
             raise RuntimeError(
