@@ -597,6 +597,149 @@ def test_observed_action_rng_multiplier_uses_incremental_chunks(
     assert update.matched == 1
 
 
+def test_adaptive_resumes_live_finite_frontier_before_sampling(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=3,
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    key = ("world-1", "rng-1", "move protect")
+    finite_calls: list[dict] = []
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_actions_fully_observed",
+        lambda *args, **kwargs: True,
+    )
+
+    def unexpected_sampling(*args, **kwargs):
+        del args, kwargs
+        pytest.fail("resumable finite frontier repeated sampled prepass")
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        unexpected_sampling,
+    )
+
+    def fake_finite(worker, **kwargs):
+        del worker
+        finite_calls.append(kwargs)
+        return ParticleUpdate(
+            (),
+            generated=7,
+            matched=0,
+            deduplicated=0,
+            sampled_unresolved_world_ids=("world-1",),
+            finite_reachability_unresolved=1,
+            finite_reachability_leaves=7,
+        )
+
+    engine._condition_finite_public_transition = fake_finite
+
+    update = engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(particle,),
+        ai_choice="move protect",
+        view={"turn": 2},
+        previous_view={"turn": 1},
+        batches=(2, 4),
+        witness_seed_window=9,
+        finite_continuations={key: "opaque-live-frontier"},
+    )
+
+    assert len(finite_calls) == 1
+    assert finite_calls[0]["witness_rounds"] == 0
+    assert finite_calls[0]["witness_seed_window"] == 9
+    assert finite_calls[0]["finite_continuations"] == {
+        key: "opaque-live-frontier"
+    }
+    assert update.generated == 7
+    assert update.finite_reachability_leaves == 7
+    assert update.sampled_unresolved_world_ids == ("world-1",)
+
+
+def test_adaptive_does_not_prioritize_irrelevant_finite_frontier(
+    monkeypatch,
+) -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+        observed_action_rng_multiplier=1,
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    sampled_calls: list[int] = []
+    finite_rounds: list[int] = []
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.public_opponent_actions_fully_observed",
+        lambda *args, **kwargs: True,
+    )
+
+    def fake_sampling(*args, rng_seeds, **kwargs):
+        del args, kwargs
+        sampled_calls.append(len(rng_seeds))
+        return ParticleUpdate(
+            (),
+            generated=len(rng_seeds),
+            matched=0,
+            deduplicated=0,
+            structural_mismatches=1,
+            sampled_unresolved_world_ids=("world-1",),
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.condition_particles",
+        fake_sampling,
+    )
+
+    def fake_finite(worker, **kwargs):
+        del worker
+        finite_rounds.append(kwargs["witness_rounds"])
+        return ParticleUpdate(
+            (),
+            generated=1,
+            matched=0,
+            deduplicated=0,
+            sampled_unresolved_world_ids=("world-1",),
+            finite_reachability_unresolved=1,
+            finite_reachability_leaves=1,
+        )
+
+    engine._condition_finite_public_transition = fake_finite
+
+    engine._condition_adaptive(
+        SimpleNamespace(),
+        particles=(particle,),
+        ai_choice="move protect",
+        view={"turn": 2},
+        previous_view={"turn": 1},
+        batches=(2,),
+        finite_continuations={
+            ("world-1", "different-history", "move protect"):
+                "opaque-stale-frontier"
+        },
+    )
+
+    assert sampled_calls == [2]
+    assert finite_rounds == [64]
+
+
 def _finite_coverage(*, exhaustive: bool) -> ReachabilityCoverage:
     return ReachabilityCoverage(
         sequential_context_fingerprint="sha256:finite-test",
@@ -1744,6 +1887,58 @@ def test_pending_rng_retry_advances_only_the_witness_search_window() -> None:
     assert engine.pending_recovery_excluded_world_ids == ()
     assert engine.particles == (particle,)
     assert len(engine.pending_observations) == 1
+
+
+def test_pending_retry_preserves_seed_window_while_finite_frontier_is_live() -> None:
+    engine = BeliefDecisionEngine(
+        ".",
+        battle_format="test",
+        ai_team="team",
+        opponent_priors={},
+    )
+    particle = BeliefParticle(
+        {"turn": 1},
+        1.0,
+        world_id="world-1",
+        history_id="rng-1",
+    )
+    key = ("world-1", "rng-1", "move protect")
+    engine.particles = (particle,)
+    engine.pending_observations = [
+        ("move one", {"turn": 1}, {"turn": 2}),
+    ]
+    engine.pending_recovery_witness_window = 5
+    engine.pending_recovery_finite_frontiers = (
+        (*key, "opaque-live-frontier"),
+    )
+    windows: list[int] = []
+
+    def fake_condition(worker, **kwargs):
+        del worker
+        windows.append(kwargs["witness_seed_window"])
+        assert kwargs["finite_continuations"] == {
+            key: "opaque-live-frontier"
+        }
+        return ParticleUpdate(
+            (),
+            4,
+            0,
+            0,
+            sampled_unresolved_world_ids=("world-1",),
+        )
+
+    engine._condition_adaptive = fake_condition
+    engine._run_until_deadline = (
+        lambda operation, *, deadline, cleanup_reserve_seconds=0.25:
+        (operation(SimpleNamespace()), False)
+    )
+
+    assert engine._retry_pending_with_more_rng() is False
+    assert windows == [5]
+    assert engine.pending_recovery_witness_window == 5
+    assert engine.pending_recovery_finite_frontiers == (
+        (*key, "opaque-live-frontier"),
+    )
 
 
 def test_pending_retry_persists_finite_frontier_between_attempts() -> None:

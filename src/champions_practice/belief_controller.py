@@ -364,6 +364,27 @@ def _particle_history_key(particle: BeliefParticle) -> str:
     ).hexdigest()
 
 
+def _has_resumable_finite_frontier(
+    particles: tuple[BeliefParticle, ...],
+    finite_continuations: dict[tuple[str, str, str], str] | None,
+) -> bool:
+    if not finite_continuations:
+        return False
+    particle_keys = {
+        (
+            _particle_world_key(particle, index),
+            _particle_history_key(particle),
+        )
+        for index, particle in enumerate(particles)
+    }
+    return any(
+        token != _FINITE_FRONTIER_EXHAUSTED
+        and (world_id, history_id) in particle_keys
+        for (world_id, history_id, _human_choice), token
+        in finite_continuations.items()
+    )
+
+
 def _finite_frontier_diagnostics(
     frontiers: dict[tuple[str, str, str], str],
 ) -> tuple[FiniteFrontierDiagnostic, ...]:
@@ -1153,9 +1174,12 @@ class BeliefDecisionEngine:
 
         Once every opponent action slot is public, positive reachability does not need
         exhaustive stochastic coverage: one concrete Showdown seed is a genuine
-        sequential witness. Search those witnesses round-robin across worlds
-        using the same deterministic seed stream as collapse diagnostics, and
-        immediately replay any discovered seed across the other worlds.
+        sequential witness. Fresh searches examine those witnesses round-robin
+        across worlds using the same deterministic seed stream as collapse
+        diagnostics, and immediately replay any discovered seed across the other
+        worlds. Recovery callers that already own a resumable finite frontier may
+        set witness_rounds=0 so the saved systematic search gets the budget before
+        another probabilistic witness window.
 
         Only worlds still unresolved after concrete witness search are eligible
         for finite-tree negative authority. A world may be excluded only when
@@ -1622,6 +1646,13 @@ class BeliefDecisionEngine:
             if finite_public_actions
             else 1
         )
+        resume_finite_first = (
+            finite_public_actions
+            and _has_resumable_finite_frontier(
+                particles,
+                finite_continuations,
+            )
+        )
 
         def report_progress(update: ParticleUpdate) -> None:
             if progress_callback is None:
@@ -1668,10 +1699,14 @@ class BeliefDecisionEngine:
             }
 
         # A sampled witness may advance a hypothesis; a sampled miss may not
-        # eliminate one. Keep drawing bounded chunks until every still-authoritative
-        # starting world has a witness. Structural diagnostics accumulate across
-        # batches so a collapse explains itself rather than reporting only a count.
-        for sample_count in batches:
+        # eliminate one. Fresh observations draw bounded chunks until every
+        # still-authoritative starting world has a witness. Once recovery has a
+        # live finite continuation for these particles, skip this probabilistic
+        # prepass and spend the retry budget advancing that saved frontier.
+        # Structural diagnostics accumulate across fresh sampled batches so a
+        # collapse explains itself rather than reporting only a count.
+        sampling_batches = () if resume_finite_first else batches
+        for sample_count in sampling_batches:
             for _ in range(multiplier):
                 unresolved = (
                     required_worlds
@@ -1806,6 +1841,7 @@ class BeliefDecisionEngine:
                 preexcluded_worlds=set(),
                 deadline=deadline,
                 witness_seed_window=witness_seed_window,
+                witness_rounds=0 if resume_finite_first else 64,
                 finite_continuations=finite_continuations,
                 finite_progress_callback=finite_progress_callback,
             )
@@ -2204,10 +2240,18 @@ class BeliefDecisionEngine:
                 save_progress()
                 return finalize_retry(False)
 
+            finite_snapshot = snapshot_finite_frontiers()
+            resume_finite_first = _has_resumable_finite_frontier(
+                attempt_particles,
+                finite_snapshot,
+            )
             witness_seed_window = self.pending_recovery_witness_window
             # Search scheduling only: advancing this cursor never excludes a
-            # world or changes belief mass. A failed window has no authority.
-            self.pending_recovery_witness_window += 1
+            # world or changes belief mass. If a live finite frontier already
+            # exists, preserve the concrete-seed window for a future retry and
+            # spend this budget advancing the systematic finite search instead.
+            if not resume_finite_first:
+                self.pending_recovery_witness_window += 1
 
             def recover_one(worker: HypotheticalSearchWorker) -> ParticleUpdate:
                 return self._condition_adaptive(
@@ -2220,7 +2264,7 @@ class BeliefDecisionEngine:
                     deadline=recovery_deadline,
                     witness_seed_window=witness_seed_window,
                     progress_callback=record_progress,
-                    finite_continuations=snapshot_finite_frontiers(),
+                    finite_continuations=finite_snapshot,
                     finite_progress_callback=record_finite_progress,
                 )
 
