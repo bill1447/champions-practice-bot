@@ -157,7 +157,11 @@ def _new_records(
     # fabricated second observation.
     for kind in ("public_event_delta", "public_execution_delta"):
         value = view[kind]
-        if not value["events"] if kind == "public_event_delta" else not value["actions"]:
+        if kind == "public_event_delta":
+            nonempty = bool(value["events"] or value["unsupported"])
+        else:
+            nonempty = bool(value["actions"])
+        if not nonempty:
             continue
         record = PublicEvidenceRecord(kind, value["turn"], _canonical(value))
         key = (record.kind, record.source_turn, record.payload)
