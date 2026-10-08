@@ -198,6 +198,7 @@ def test_probe_reads_oracle_only_after_ai_action_is_sealed(
 
         def branch_many(self, *, state, branches):
             assert len(branches) == 1
+            return [
                 {
                     "state": deepcopy(oracle_post),
                     "view": deepcopy(expected_view),
