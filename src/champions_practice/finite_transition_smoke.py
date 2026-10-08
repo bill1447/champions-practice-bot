@@ -160,6 +160,7 @@ def main() -> None:
         token_payload = json.loads(continuation)
         if token_payload.get("schema") != "showdown-finite-frontier-v2":
             raise SystemExit("ERROR: finite continuation schema is not v2")
+        token_payload["pending"] = []
         token_payload["materializations"] = [
             {
                 "path": [
