@@ -25,7 +25,6 @@ from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.belief_worlds import (
     MissingPublicSetPrior,
     PublicBeliefWorld,
-    PublicSetCandidate,
     PublicSetPriorCatalog,
     materialize_public_belief_worlds,
     preview_choice_for_world,
