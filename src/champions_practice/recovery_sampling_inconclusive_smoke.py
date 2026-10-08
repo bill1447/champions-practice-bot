@@ -102,6 +102,23 @@ def main() -> None:
         )
         wanted = public_observation_signature(actual_view)
 
+        # A different sampled damage roll is no longer necessarily a miss:
+        # PR #181 can witness another legal Battle#randomizer bucket. Exercise
+        # the sampling-exhaustion contract with a genuinely different *non-
+        # damage* public event (crit, status secondary, etc.) that adjusting the
+        # randomizer bucket cannot correct.
+        def nondamage_events(view: dict) -> tuple[tuple[str, ...], ...]:
+            delta = view.get("public_event_delta")
+            events = delta.get("events") if isinstance(delta, dict) else None
+            if not isinstance(events, list):
+                raise SystemExit("ERROR: sampling fixture omitted event ledger")
+            return tuple(
+                tuple(event)
+                for event in events
+                if isinstance(event, list) and event and event[0] != "-damage"
+            )
+
+        actual_nondamage_events = nondamage_events(actual_view)
         miss_seed = None
         for first in range(1, 129):
             seed = f"{first},2,3,4"
@@ -113,12 +130,15 @@ def main() -> None:
                 seed=seed,
                 previews=previews,
             )
-            if public_observation_signature(sampled_view) != wanted:
+            if (
+                public_observation_signature(sampled_view) != wanted
+                and nondamage_events(sampled_view) != actual_nondamage_events
+            ):
                 miss_seed = seed
                 break
         if miss_seed is None:
             raise SystemExit(
-                "ERROR: sampling fixture could not find a non-witness RNG seed"
+                "ERROR: sampling fixture could not find a non-damage RNG miss"
             )
 
         root_particle = BeliefParticle(

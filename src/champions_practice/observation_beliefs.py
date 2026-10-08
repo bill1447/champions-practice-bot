@@ -1164,6 +1164,76 @@ def _unsupported_public_transition_evidence(
     return tuple(value for value in values if isinstance(value, str) and value)
 
 
+
+def _has_aligned_public_damage_difference(
+    actual_view: dict[str, Any],
+    simulated_view: dict[str, Any],
+) -> bool:
+    """Require public evidence for an actual damage-roll disagreement.
+
+    This only gates an extra positive-witness search. A failed or skipped probe
+    cannot establish mechanical impossibility, and no reduced-view mismatch is
+    ever accepted without a complete exact Showdown successor witness.
+    """
+    actual_delta = actual_view.get("public_event_delta")
+    simulated_delta = simulated_view.get("public_event_delta")
+    if not isinstance(actual_delta, dict) or not isinstance(simulated_delta, dict):
+        return False
+    if actual_delta.get("turn") != simulated_delta.get("turn"):
+        return False
+    actual_events = actual_delta.get("events")
+    simulated_events = simulated_delta.get("events")
+    if not isinstance(actual_events, list) or not isinstance(simulated_events, list):
+        return False
+    return any(
+        isinstance(actual, list)
+        and isinstance(simulated, list)
+        and len(actual) >= 3
+        and len(simulated) >= 3
+        and actual[0] == simulated[0] == "-damage"
+        and actual[1] == simulated[1]
+        and actual[2] != simulated[2]
+        for actual, simulated in zip(actual_events, simulated_events)
+    )
+
+
+def _find_exact_damage_bucket_witness(
+    worker: ShowdownSearchWorker,
+    *,
+    state: dict[str, Any],
+    branch: dict[str, Any],
+    wanted: str,
+) -> tuple[dict[str, Any] | None, int]:
+    """Probe the pinned 16 discrete randomizer buckets for one exact successor.
+
+    Non-damage RNG decisions remain on the supplied sampled path; hence a miss
+    is INCONCLUSIVE, not an exhaustive disproof of the hidden world. A hit is
+    admitted only when the entire sanitized observation matches, including
+    ordered events, crits, hit counts, HP, and the exact request.
+    """
+    probes = [{**branch, "damage_bucket": bucket} for bucket in range(16)]
+    outcomes = worker.branch_many(state=state, branches=probes)
+    if len(outcomes) != len(probes):
+        raise RuntimeError("damage-roll probe returned incomplete branch results")
+    for bucket, outcome in enumerate(outcomes):
+        if (
+            outcome.get("damage_bucket") != bucket
+            or not isinstance(outcome.get("damage_roll_calls"), int)
+            or isinstance(outcome.get("damage_roll_calls"), bool)
+            or outcome["damage_roll_calls"] < 1
+        ):
+            continue
+        child = outcome.get("state")
+        if not isinstance(child, dict):
+            raise RuntimeError("damage-roll witness omitted exact successor state")
+        view = outcome.get("view")
+        if not isinstance(view, dict):
+            raise RuntimeError("damage-roll witness omitted public projection")
+        if public_observation_signature(view) == wanted:
+            return outcome, len(outcomes)
+    return None, len(outcomes)
+
+
 def _source_world_id(particle: BeliefParticle, index: int) -> str:
     """Stable source-hypothesis label for sampled-conditioning diagnostics."""
     return particle.world_id or particle.history_id or f"particle-{index}"
@@ -1324,7 +1394,17 @@ def condition_particles(
     opponent_choices: dict[str, tuple[str, ...]] | None = None,
     rng_seeds: tuple[str | None, ...] = (None,),
     previews: dict[str, list[str]] | None = None,
+    damage_probe_limit: int = 1,
 ) -> ParticleUpdate:
+    # A damage-roll witness is an optional positive-evidence probe, not a
+    # prerequisite for ordinary exact sampled conditioning. Its bounded work
+    # must never scale silently with particles * responses * RNG samples.
+    if (
+        isinstance(damage_probe_limit, bool)
+        or not isinstance(damage_probe_limit, int)
+        or damage_probe_limit < 0
+    ):
+        raise ValueError("damage_probe_limit must be a nonnegative integer")
     if ai_side not in {"p1", "p2"}:
         raise ValueError("ai_side must be p1 or p2")
     if ai_choice == "":
@@ -1368,6 +1448,8 @@ def condition_particles(
     structural_mismatch_examples: list[StructuralMismatchExample] = []
     structural_example_keys: set[tuple[str, str]] = set()
     matched_source_world_ids: set[str] = set()
+    damage_probed_responses: set[tuple[int, str]] = set()
+    damage_probes_used = 0
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
@@ -1454,7 +1536,9 @@ def condition_particles(
 
         resolved = worker.branch_many(state=particle.state, branches=branches)
         generated += len(resolved)
-        for result, identity in zip(resolved, identities, strict=True):
+        for result, identity, original_branch in zip(
+            resolved, identities, branches, strict=True
+        ):
             response, rng_seed = identity
             state = result.get("state")
             if not isinstance(state, dict):
@@ -1467,6 +1551,54 @@ def condition_particles(
                     previews=previews,
                 )
             if public_observation_signature(view) != wanted:
+                # The first sampled damage value cannot disprove the world.
+                # Replay this exact action pair across the pinned finite
+                # randomizer domain once per particle/response. Install only
+                # a *concrete* replay whose complete public view is exact.
+                damage_key = (particle_index, response)
+                if (
+                    damage_probes_used < damage_probe_limit
+                    and damage_key not in damage_probed_responses
+                    and _has_aligned_public_damage_difference(
+                        actual_public_view, view
+                    )
+                ):
+                    damage_probed_responses.add(damage_key)
+                    damage_probes_used += 1
+                    witness, examined = _find_exact_damage_bucket_witness(
+                        worker,
+                        state=particle.state,
+                        branch=original_branch,
+                        wanted=wanted,
+                    )
+                    generated += examined
+                    if witness is not None:
+                        child_state = witness["state"]
+                        matched += 1
+                        matched_source_world_ids.add(source_world_id)
+                        rng_label = "native" if rng_seed is None else rng_seed
+                        bucket = witness["damage_bucket"]
+                        history = (
+                            f"{particle.history_id}|{response}|"
+                            f"{rng_label}|damage-bucket-{bucket}"
+                        ).strip("|")
+                        p1_lineage, p2_lineage = _compose_branch_member_lineage(
+                            particle,
+                            child_state=child_state,
+                            raw_lineage=witness.get("member_lineage"),
+                        )
+                        survivors.append(
+                            BeliefParticle(
+                                state=child_state,
+                                weight=branch_weight,
+                                world_id=particle.world_id,
+                                history_id=history,
+                                p1_member_lineage=p1_lineage,
+                                p2_member_lineage=p2_lineage,
+                            )
+                        )
+                        continue
+
                 kind, paths = classify_public_observation_mismatch(
                     actual_public_view,
                     view,

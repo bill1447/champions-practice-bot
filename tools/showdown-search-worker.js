@@ -1910,6 +1910,7 @@ function resolveBranch(
   viewSide = null,
   previews = null,
   includeRngDrawCount = false,
+  damageBucket = null,
 ) {
   if (!state) {
     throw new Error("branch requires a serialized battle state");
@@ -1939,6 +1940,53 @@ function resolveBranch(
     rng.next = () => {
       rngDrawCount++;
       return originalNext();
+    };
+  }
+
+  // This is a positive-witness probe, not a full transition RNG enumeration.
+  // Re-run exact pinned mechanics, forcing only the first Battle#randomizer
+  // bucket while consuming its normal PRNG draw. All other randomness keeps its
+  // sampled path. PR #139 separately verified the pinned random(16) domain.
+  let damageRollCalls = 0;
+  if (damageBucket !== null) {
+    if (
+      !Number.isInteger(damageBucket) ||
+      damageBucket < 0 ||
+      damageBucket >= DAMAGE_ROLL_BUCKETS
+    ) {
+      battle.destroy();
+      throw new Error("damage_bucket must be a pinned Battle#randomizer bucket");
+    }
+    const originalRandomizer = battle.randomizer.bind(battle);
+    const originalRandom = battle.random.bind(battle);
+    battle.randomizer = (baseDamage) => {
+      damageRollCalls++;
+      if (damageRollCalls !== 1) return originalRandomizer(baseDamage);
+      let bucketDraws = 0;
+      battle.random = (from, to) => {
+        const sampled = originalRandom(from, to);
+        if (from !== DAMAGE_ROLL_BUCKETS || to !== undefined) {
+          throw new Error("Pinned Battle#randomizer changed its random-call domain");
+        }
+        bucketDraws++;
+        if (bucketDraws !== 1) {
+          throw new Error("Pinned Battle#randomizer used multiple random calls");
+        }
+        if (!Number.isInteger(sampled) || sampled < 0 ||
+            sampled >= DAMAGE_ROLL_BUCKETS) {
+          throw new Error("Pinned Battle#randomizer sampled invalid bucket");
+        }
+        return damageBucket;
+      };
+      try {
+        const damage = originalRandomizer(baseDamage);
+        if (bucketDraws !== 1) {
+          throw new Error("Pinned Battle#randomizer consumed no random(16) call");
+        }
+        return damage;
+      } finally {
+        battle.random = originalRandom;
+      }
     };
   }
 
@@ -1987,6 +2035,10 @@ function resolveBranch(
   }
   if (includeRngDrawCount) {
     response.rng_draw_count = rngDrawCount;
+  }
+  if (damageBucket !== null) {
+    response.damage_roll_calls = damageRollCalls;
+    response.damage_bucket = damageBucket;
   }
   battle.destroy();
   return response;
@@ -2752,6 +2804,7 @@ function branchMany(request) {
             branch.view_side ?? null,
             branch.previews ?? null,
             branch.include_rng_draw_count === true,
+            branch.damage_bucket ?? null,
           ),
         };
       } catch (error) {
