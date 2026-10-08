@@ -306,6 +306,13 @@ mechanics authority, and partial stochastic search still cannot establish imposs
 Current-state rebasing creates epistemic hypotheses for present tactical search; it does not
 claim that every synthesized state has a uniquely proven historical RNG ancestry.
 
+
+PR #181 (merged) added bounded exact damage-bucket positive-witness searches. The frozen
+8-game league remained at 15 fallback decisions (20 -> 19 degraded turns) with
+Protect + Wood Hammer backlog cases intact. PR #182 must be evaluated as a
+public-evidence recording foundation only: it cannot claim recovery improvement
+until a separately gated current-state synthesizer is built and validated.
+
 ### First implementation gate — HP intervals before rebase
 
 The current public-observation signature still compares public HP fields exactly. The code
@@ -434,10 +441,15 @@ Phase exit criteria:
 6. Implement interval-aware HP acceptance alone, using the pinned Champions `getHealth`
    producer semantics, and rerun the frozen collapse benchmark before any rebase machinery.
    Record its independent effect on fallbacks/degraded turns.
-7. Define a particle-independent current-state constraint ledger containing both direct public
-   facts and derived historical constraints: speed/stat bounds, damage-derived intervals,
-   item/ability/move eliminations or confirmations, PP/resource state, consumption, forms,
-   field/side state, active/bench identity, faint state, and mechanics-relevant recent history.
+7. **In progress — PR #182 recording gate:** introduce a particle-independent
+   current-state ledger of validated public snapshots, exact own-side requests,
+   cumulative revealed move/item/ability facts and historical channel-visible
+   mechanics/execution evidence. Include damage/HP, order, resource, form and
+   consumption *observations* without prematurely asserting speed/stat bounds,
+   move exclusions, exact opponent PP, or damage-derived stat intervals. Those
+   derived hard constraints still need separate pinned-mechanics justification
+   and evidence semantics before rebase filtering may use them. The ledger
+   intentionally cannot admit or eliminate live belief particles.
 8. Build current-state belief re-synthesis that can discard failed ancestry, generate multiple
    mechanically valid present-tense worlds from those constraints and approved priors, and
    return to the current decision turn without replaying an unbounded historical backlog.
@@ -698,9 +710,11 @@ Near-term implementation order:
 13. **Recovery gate 1 — HP only:** implement pinned-Champions interval-aware public HP
     acceptance without rebase and rerun the frozen 8-battle collapse benchmark. Preserve that
     result as the HP-only baseline.
-14. **Recovery gate 2 — constraint ledger:** accumulate direct and derived public constraints
-    independently of particles, including speed/stat bounds, item/ability/move evidence,
-    PP/resource/consumption state, forms, and mechanics-relevant recent history.
+14. **Recovery gate 2 — constraint ledger (PR #182 foundation):** persist validated
+    direct public facts and historical evidence independently of particles.
+    Mechanics-derived hard bounds, identity-sensitive state, PP and exclusions
+    require separate proof before they can filter worlds; do not treat raw
+    event/order evidence as an already-proven inequality.
 15. **Recovery gate 3 — current-state rebase:** synthesize current worlds from approved priors
     filtered through the ledger; require authoritative own-side-request equality and
     interval-aware public-projection equality before admission.
