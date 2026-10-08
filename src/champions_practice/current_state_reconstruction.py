@@ -18,6 +18,7 @@ from __future__ import annotations
 import copy
 import json
 import math
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -100,6 +101,60 @@ def _buckets(view: dict[str, Any]) -> tuple[int | None, int | None]:
     return result[0], result[1]
 
 
+def _id(value: object) -> str:
+    return "".join(ch for ch in str(value or "").lower() if ch.isalnum())
+
+
+def _set_signature(
+    species: object, item: object, ability: object, nature: object,
+    moves: object, evs: object,
+) -> tuple | None:
+    if not isinstance(moves, (list, tuple)) or not isinstance(evs, dict):
+        return None
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in evs.values()):
+        return None
+    return (
+        _id(species), _id(item), _id(ability), _id(nature),
+        tuple(sorted(_id(move) for move in moves)),
+        tuple(sorted((_id(stat), points) for stat, points in evs.items() if points)),
+    )
+
+
+def _matches_approved_prior(state: dict, proposal: object) -> bool:
+    """Check native stored opening sets; no unlabelled scaffold impersonation."""
+    try:
+        members = state["sides"][0]["pokemon"]
+        expected = proposal.world.sets
+    except (KeyError, IndexError, TypeError, AttributeError):
+        return False
+    if not isinstance(members, list) or len(members) != len(expected):
+        return False
+    actual = Counter()
+    for member in members:
+        if not isinstance(member, dict):
+            return False
+        initial = member.get("set")
+        if not isinstance(initial, dict):
+            return False
+        sig = _set_signature(
+            initial.get("species"), initial.get("item"), initial.get("ability"),
+            initial.get("nature"), initial.get("moves"), initial.get("evs"),
+        )
+        if sig is None:
+            return False
+        actual[sig] += 1
+    desired = Counter()
+    for candidate in expected:
+        sig = _set_signature(
+            candidate.species, candidate.item, candidate.ability,
+            candidate.nature, candidate.moves, dict(candidate.stat_points),
+        )
+        if sig is None:
+            return False
+        desired[sig] += 1
+    return actual == desired
+
+
 def _native_hp_only_change(original: dict, candidate: dict) -> bool:
     """Fail closed on any hidden/internal mutation except one p1 HP integer.
 
@@ -166,7 +221,9 @@ def reconstruct_current_hp_hypotheses(
         or prior_batch.source_signature != ledger.current_signature
     ):
         raise ValueError("current HP reconstruction received stale prior batch")
-    known_ids = {candidate.proposal_id for candidate in prior_batch.proposals}
+    approved_proposals = {
+        candidate.proposal_id: candidate for candidate in prior_batch.proposals
+    }
     previews = {
         "p1": list(ledger.preview_species),
         "p2": [member["species"] for member in current_view["player"]["team"]],
@@ -177,7 +234,8 @@ def reconstruct_current_hp_hypotheses(
 
     for scaffold in scaffolds[:max_scaffolds]:
         examined += 1
-        if scaffold.proposal_id not in known_ids:
+        approved = approved_proposals.get(scaffold.proposal_id)
+        if approved is None or not _matches_approved_prior(scaffold.state, approved):
             rejected += 1
             continue
         # Full Showdown-projection and exact request are *preconditions*.
