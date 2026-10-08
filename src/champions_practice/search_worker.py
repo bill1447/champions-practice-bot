@@ -430,6 +430,20 @@ class HypotheticalSearchWorker:
             base_damage=base_damage,
         )
 
+    def materialize_current_hp_hypotheses(
+        self,
+        *,
+        state: dict[str, Any],
+        public_hp_buckets: tuple[int | None, int | None],
+        limit: int = 8,
+    ) -> dict[str, Any]:
+        """Positive-only pinned constructor; cannot access live sessions."""
+        return self.__worker.materialize_current_hp_hypotheses(
+            state=state,
+            public_hp_buckets=public_hp_buckets,
+            limit=limit,
+        )
+
     def enumerate_finite_transition(
         self,
         *,
@@ -1225,6 +1239,53 @@ class ShowdownSearchWorker:
         if not isinstance(resolved, list):
             raise RuntimeError("Showdown worker returned invalid branch_many results")
         return resolved
+
+    def materialize_current_hp_hypotheses(
+        self,
+        *,
+        state: dict[str, Any],
+        public_hp_buckets: tuple[int | None, int | None],
+        limit: int = 8,
+    ) -> dict[str, Any]:
+        """Bounded mechanics-native exact-HP alternatives from one hypothetical state."""
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 8:
+            raise ValueError("current HP hypothesis limit must be 1 through 8")
+        if not isinstance(public_hp_buckets, tuple) or len(public_hp_buckets) != 2:
+            raise ValueError("current HP buckets must be a two-slot tuple")
+        result = self.request(
+            "materialize_current_hp_hypotheses",
+            state=state,
+            public_hp_buckets=list(public_hp_buckets),
+            limit=limit,
+        )
+        outcomes = result.get("outcomes")
+        examined = result.get("examined")
+        reason = result.get("reason")
+        if (
+            not isinstance(outcomes, list)
+            or len(outcomes) > limit
+            or isinstance(examined, bool)
+            or not isinstance(examined, int)
+            or examined < len(outcomes)
+            or (reason is not None and not isinstance(reason, str))
+        ):
+            raise RuntimeError("Showdown worker returned invalid current HP hypotheses")
+        for entry in outcomes:
+            if (
+                not isinstance(entry, dict)
+                or set(entry) != {"slot", "hp", "maxhp", "state"}
+                or not isinstance(entry["slot"], int)
+                or isinstance(entry["slot"], bool)
+                or entry["slot"] not in (0, 1)
+                or not isinstance(entry["hp"], int)
+                or isinstance(entry["hp"], bool)
+                or not isinstance(entry["maxhp"], int)
+                or isinstance(entry["maxhp"], bool)
+                or not 1 <= entry["hp"] <= entry["maxhp"]
+                or not isinstance(entry["state"], dict)
+            ):
+                raise RuntimeError("Showdown worker returned invalid HP candidate state")
+        return {"outcomes": outcomes, "examined": examined, "reason": reason}
 
     def enumerate_damage_rolls(
         self,

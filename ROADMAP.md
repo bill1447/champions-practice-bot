@@ -307,9 +307,26 @@ Current-state rebasing creates epistemic hypotheses for present tactical search;
 claim that every synthesized state has a uniquely proven historical RNG ancestry.
 
 
-PR #183 (proposed) isolates public-prior candidate generation and strict dual
+PR #183 (merged) isolates public-prior candidate generation and strict dual
 projection checks from live belief search. It does not claim to synthesize
 mechanically complete midgame states or improve the 8-game strength league.
+
+PR #184 (proposed) starts native current-turn construction *only* on an already
+Showdown-produced, same-turn, public- and request-matching hypothetical scaffold.
+It explores the pinned Champions exact-HP interval for a living active opponent
+using the simulator's own setter, and rejects any altered PP, Choice/Protect
+history, field/side effects, party identity, status, items, event log, or own
+request. Full native serialize/deserialize and full public/request projection
+must both succeed. The positive-only hypotheses retain explicit zero live
+admission authority: an interval-compatible HP value does not prove a complete
+stochastic ancestry.
+
+This is a deliberately narrow proof of construction, not yet the general
+collapse rebase. The remaining hard problem is generating the *first* such
+midgame scaffold from current public evidence and mechanically complete
+constraints without requiring an old posterior. Multi-parameter reconstruction
+must not simply copy unknown PP, volatile histories, or item state into arbitrary
+fresh opening roots; unsupported areas remain unresolved.
 
 PR #181 (merged) added bounded exact damage-bucket positive-witness searches. The frozen
 8-game league remained at 15 fallback decisions (20 -> 19 degraded turns) with
