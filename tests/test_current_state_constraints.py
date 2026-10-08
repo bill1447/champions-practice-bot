@@ -215,3 +215,36 @@ def test_producer_own_speed_exception_does_not_admit_non_numeric_private_data(
     )
     with pytest.raises(ValueError, match="speed"):
         PublicConstraintLedger.from_public_view(current)
+
+
+
+def test_invalid_shadow_ledger_quarantines_without_interrupting_live_controller(
+    monkeypatch,
+):
+    from champions_practice.belief_controller import BeliefDecisionEngine
+
+    engine = BeliefDecisionEngine.__new__(BeliefDecisionEngine)
+    engine.public_constraint_ledger = None
+    engine.public_constraint_ledger_issue = None
+    monkeypatch.setattr(
+        "champions_practice.current_state_constraints."
+        "public_reachability_observation_issue",
+        lambda _: "$.player.team[0].speed: unsupported producer value",
+    )
+
+    # Recording failure is diagnostic, not a battle-affecting exception.
+    engine._record_public_constraints(view(), initialize=True)
+    assert engine.public_constraint_ledger is None
+    assert "unsupported producer value" in engine.public_constraint_ledger_issue
+    engine._record_public_constraints(view(turn=2), initialize=False)
+    assert engine.public_constraint_ledger is None
+
+    # Only an explicit new root can clear the quarantine.
+    monkeypatch.setattr(
+        "champions_practice.current_state_constraints."
+        "public_reachability_observation_issue",
+        lambda _: None,
+    )
+    engine._record_public_constraints(view(), initialize=True)
+    assert engine.public_constraint_ledger is not None
+    assert engine.public_constraint_ledger_issue is None
