@@ -449,7 +449,9 @@ Phase exit criteria:
    move exclusions, exact opponent PP, or damage-derived stat intervals. Those
    derived hard constraints still need separate pinned-mechanics justification
    and evidence semantics before rebase filtering may use them. The ledger
-   intentionally cannot admit or eliminate live belief particles.
+   intentionally cannot admit or eliminate live belief particles. Producer
+   mismatches quarantine passive recording with a visible diagnostic, never
+   interrupting live play or silently granting rebase authority.
 8. Build current-state belief re-synthesis that can discard failed ancestry, generate multiple
    mechanically valid present-tense worlds from those constraints and approved priors, and
    return to the current decision turn without replaying an unbounded historical backlog.
