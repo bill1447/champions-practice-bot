@@ -235,3 +235,15 @@ def test_invalid_generator_budget_rejected(limit):
             ledger=ledger, current_view=view,
             priors=demo_public_priors(), limit=limit,
         )
+
+
+
+def test_same_turn_revised_public_snapshot_invalidates_old_proposals():
+    view, ledger, batch = prepare()
+    changed = copy.deepcopy(view)
+    changed["request"]["request"] = "different-own-menu"
+    revised = ledger.advance(changed)
+    worker = FakeWorker(changed)
+    with pytest.raises(ValueError, match="stale"):
+        _probe(worker, changed, revised, batch)
+    assert worker.created == 0
