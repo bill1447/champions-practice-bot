@@ -1999,6 +1999,9 @@ function branchBattle(request) {
 
 
 const FINITE_TRANSITION_DOMAIN = "showdown-finite-random-calls-v1";
+const FINITE_CONTINUATION_SCHEMA = "showdown-finite-frontier-v1";
+const FINITE_MAX_FRONTIER_PATHS = 10000;
+const FINITE_MAX_CONTINUATION_BYTES = 4 * 1024 * 1024;
 
 function stableJson(value) {
   if (Array.isArray(value)) {
@@ -2278,6 +2281,89 @@ function concreteFiniteWitness(
   return null;
 }
 
+function finiteContinuationContext(request, wanted) {
+  return createHash("sha256")
+    .update(stableJson({
+      domain: FINITE_TRANSITION_DOMAIN,
+      state: request.state,
+      p1_choice: request.p1_choice,
+      p2_choice: request.p2_choice,
+      view_side: request.view_side,
+      previews: request.previews ?? null,
+      wanted,
+    }))
+    .digest("hex");
+}
+
+function encodeFiniteContinuation(context, pending) {
+  if (!Array.isArray(pending) || pending.length === 0) return null;
+  if (pending.length > FINITE_MAX_FRONTIER_PATHS) return null;
+  const token = JSON.stringify({
+    schema: FINITE_CONTINUATION_SCHEMA,
+    context,
+    pending,
+  });
+  if (Buffer.byteLength(token, "utf8") > FINITE_MAX_CONTINUATION_BYTES) {
+    return null;
+  }
+  return token;
+}
+
+function decodeFiniteContinuation(token, expectedContext) {
+  if (typeof token !== "string" || !token.length) {
+    throw new Error("finite continuation must be a non-empty string");
+  }
+  if (Buffer.byteLength(token, "utf8") > FINITE_MAX_CONTINUATION_BYTES) {
+    throw new Error("finite continuation exceeds the bounded payload size");
+  }
+  let decoded;
+  try {
+    decoded = JSON.parse(token);
+  } catch {
+    throw new Error("finite continuation is not valid JSON");
+  }
+  if (
+    !decoded ||
+    typeof decoded !== "object" ||
+    decoded.schema !== FINITE_CONTINUATION_SCHEMA ||
+    decoded.context !== expectedContext ||
+    !Array.isArray(decoded.pending) ||
+    decoded.pending.length === 0 ||
+    decoded.pending.length > FINITE_MAX_FRONTIER_PATHS
+  ) {
+    throw new Error("finite continuation does not match this transition context");
+  }
+  for (const path of decoded.pending) {
+    if (!Array.isArray(path)) {
+      throw new Error("finite continuation contains an invalid decision path");
+    }
+  }
+  return cloneJson(decoded.pending);
+}
+
+function finiteUnresolvedResponse({
+  leavesExamined,
+  decisionNodes,
+  maxDepth,
+  reason,
+  context,
+  pending,
+  frontierExhausted = false,
+}) {
+  const continuation = encodeFiniteContinuation(context, pending);
+  return {
+    domain: FINITE_TRANSITION_DOMAIN,
+    exhaustive: false,
+    witnessed: false,
+    leaves_examined: leavesExamined,
+    decision_nodes: decisionNodes,
+    max_depth: maxDepth,
+    reason,
+    continuation,
+    frontier_exhausted: frontierExhausted && continuation === null,
+  };
+}
+
 function enumerateFiniteTransitionReachability(request) {
   if (!request.state) {
     throw new Error("finite transition reachability requires a serialized state");
@@ -2309,7 +2395,11 @@ function enumerateFiniteTransitionReachability(request) {
   const wanted = stableJson(
     normalizedPublicObservationForReachability(request.expected_public_view),
   );
-  const pending = [[]];
+  const continuationContext = finiteContinuationContext(request, wanted);
+  const resumed = request.continuation !== undefined && request.continuation !== null;
+  const pending = resumed
+    ? decodeFiniteContinuation(request.continuation, continuationContext)
+    : [[]];
   let leavesExamined = 0;
   let decisionNodes = 0;
   let maxDepth = 0;
@@ -2328,15 +2418,15 @@ function enumerateFiniteTransitionReachability(request) {
     maxDepth = Math.max(maxDepth, path.length);
 
     if (result.unsupported) {
-      return {
-        domain: FINITE_TRANSITION_DOMAIN,
-        exhaustive: false,
-        witnessed: false,
-        leaves_examined: leavesExamined,
-        decision_nodes: decisionNodes,
-        max_depth: maxDepth,
+      return finiteUnresolvedResponse({
+        leavesExamined,
+        decisionNodes,
+        maxDepth,
         reason: result.reason,
-      };
+        context: continuationContext,
+        pending,
+        frontierExhausted: pending.length === 0,
+      });
     }
 
     if (!result.complete) {
@@ -2352,16 +2442,25 @@ function enumerateFiniteTransitionReachability(request) {
           },
         ]);
       }
-      if (pending.length + leavesExamined > maxLeaves) {
-        return {
-          domain: FINITE_TRANSITION_DOMAIN,
-          exhaustive: false,
-          witnessed: false,
-          leaves_examined: leavesExamined,
-          decision_nodes: decisionNodes,
-          max_depth: maxDepth,
+      if (
+        pending.length > FINITE_MAX_FRONTIER_PATHS ||
+        pending.length + leavesExamined > maxLeaves
+      ) {
+        const response = finiteUnresolvedResponse({
+          leavesExamined,
+          decisionNodes,
+          maxDepth,
           reason: "finite stochastic branch budget exhausted",
-        };
+          context: continuationContext,
+          pending,
+        });
+        if (response.continuation === null) {
+          response.reason = (
+            "finite stochastic frontier exceeded bounded continuation capacity"
+          );
+          response.frontier_exhausted = true;
+        }
+        return response;
       }
       continue;
     }
@@ -2390,19 +2489,20 @@ function enumerateFiniteTransitionReachability(request) {
           decision_nodes: decisionNodes,
           max_depth: maxDepth,
           witness,
+          continuation: null,
+          frontier_exhausted: false,
         };
       }
     }
     if (leavesExamined >= maxLeaves && pending.length) {
-      return {
-        domain: FINITE_TRANSITION_DOMAIN,
-        exhaustive: false,
-        witnessed: false,
-        leaves_examined: leavesExamined,
-        decision_nodes: decisionNodes,
-        max_depth: maxDepth,
+      return finiteUnresolvedResponse({
+        leavesExamined,
+        decisionNodes,
+        maxDepth,
         reason: "finite stochastic leaf budget exhausted",
-      };
+        context: continuationContext,
+        pending,
+      });
     }
   }
 
@@ -2418,6 +2518,25 @@ function enumerateFiniteTransitionReachability(request) {
         "finite outcome tree matched public evidence but no concrete Showdown " +
         "PRNG seed witness was found within the bounded seed search"
       ),
+      continuation: null,
+      frontier_exhausted: true,
+    };
+  }
+
+  if (resumed) {
+    return {
+      domain: FINITE_TRANSITION_DOMAIN,
+      exhaustive: false,
+      witnessed: false,
+      leaves_examined: leavesExamined,
+      decision_nodes: decisionNodes,
+      max_depth: maxDepth,
+      reason: (
+        "resumed finite witness frontier exhausted without a concrete witness; " +
+        "resumed coverage is positive-only"
+      ),
+      continuation: null,
+      frontier_exhausted: true,
     };
   }
 
@@ -2429,6 +2548,8 @@ function enumerateFiniteTransitionReachability(request) {
     decision_nodes: decisionNodes,
     max_depth: maxDepth,
     reason: null,
+    continuation: null,
+    frontier_exhausted: false,
   };
 }
 
