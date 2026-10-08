@@ -515,6 +515,7 @@ def _recovery_diagnostic(
     particles_before: tuple[BeliefParticle, ...],
     update: ParticleUpdate | None,
     recovery_candidates: tuple[BeliefParticle, ...],
+    recovery_retry: RecoveryRetryDiagnostic | None = None,
     error: str | None = None,
 ) -> BeliefRecoveryDiagnostic:
     signature = public_observation_signature(view)
@@ -574,6 +575,7 @@ def _recovery_diagnostic(
         unsupported_public_evidence=(
             update.unsupported_public_evidence if update is not None else ()
         ),
+        recovery_retry=recovery_retry,
         error=error,
     )
 
@@ -902,6 +904,7 @@ class BeliefDecisionEngine:
             tuple[str, str, str, str],
             ...,
         ] = ()
+        self.last_recovery_retry_diagnostic: RecoveryRetryDiagnostic | None = None
         self.recovery_authority_root_particles: tuple[BeliefParticle, ...] = ()
         self.recovery_opening_authorities: tuple[RecoveryOpeningAuthority, ...] = ()
         self.recovery_authority_root_public_view: dict | None = None
