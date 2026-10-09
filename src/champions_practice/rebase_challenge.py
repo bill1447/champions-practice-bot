@@ -328,9 +328,15 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
         opening_view = reference_worker.session_view(
             oracle_session_id, side="p2",
         )["view"]
-        if not _public_signature_match(opening_view, battle.public_state()):
+        # The facade exposes the *human* p1 view here; the reconstruction
+        # deliberately uses the choosing AI's p2 view above. Compare like
+        # with like, never p1 with p2 (different requests and team secrets).
+        oracle_human_opening = reference_worker.session_view(
+            oracle_session_id, side="p1",
+        )["view"]
+        if not _public_signature_match(oracle_human_opening, battle.public_state()):
             raise RuntimeError(
-                "independent oracle already diverges at the initial public turn"
+                "independent oracle diverges from human-side opening public view"
             )
         prior_view = opening_view
         prior_ledger = PublicConstraintLedger.from_public_view(opening_view)
