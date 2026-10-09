@@ -3909,3 +3909,113 @@ def test_demo_facade_exposes_no_direct_decision_or_live_session_handles(
     ):
         assert not hasattr(facade, forbidden)
     assert not hasattr(facade, "__dict__")
+
+
+def test_degraded_live_decision_never_retries_historical_backlog():
+    engine = BeliefDecisionEngine(
+        ".", battle_format="test", ai_team="own", opponent_priors={},
+    )
+    engine.degraded = True
+    engine.pending_observations = [("move a", {"turn": 1}, {"turn": 2})]
+    engine._retry_pending_with_more_rng = lambda **_: (_ for _ in ()).throw(
+        AssertionError("historical retry must not run on live decision")
+    )
+    engine._try_first_turn_public_rebase = lambda **_: False
+
+    result = engine.choose_ai_action(legal_live=["move protect"])
+    assert result.mode == "fallback"
+    assert result.choice == "move protect"
+    assert result.fallback_reason == "public-rebase-unresolved"
+    assert engine.pending_observations == []
+    assert engine.particles == ()
+    assert engine.recovery_authority_history_complete is False
+
+
+def test_fresh_public_rebase_skips_midgame_without_any_worker():
+    engine = BeliefDecisionEngine(
+        ".", battle_format="test", ai_team="own", opponent_priors={},
+    )
+    engine.degraded = True
+    engine.pending_observations = [("move a", {"turn": 8}, {"turn": 9})]
+    engine._run_until_deadline = lambda *_a, **_k: (_ for _ in ()).throw(
+        AssertionError("an unsupported late turn must not simulate the past")
+    )
+    assert not engine._try_first_turn_public_rebase(deadline=float("inf"))
+    assert engine.degraded
+    assert len(engine.pending_observations) == 1
+
+
+def test_fresh_public_rebase_requires_independently_certified_native_witness(
+    monkeypatch,
+):
+    from champions_practice.current_state_proposals import CurrentStateProposalBatch
+    from champions_practice.public_scaffold_bootstrap import PublicScaffoldBootstrapReport
+    from champions_practice.public_scaffold_bootstrap import PublicScaffoldWitness
+    from champions_practice.rolling_public_checkpoints import PublicRebaseCheckpoint
+    from champions_practice.observation_beliefs import public_observation_signature
+
+    opening = {"turn": 1}
+    current = {"turn": 2}
+    engine = BeliefDecisionEngine(
+        ".", battle_format="test", ai_team="own", opponent_priors={},
+    )
+    engine.public_constraint_ledger = SimpleNamespace(
+        current_turn=2, current_signature=public_observation_signature(current),
+    )
+    engine._public_ai_preview_choice = "team 12"
+    engine.recovery_authority_root_public_view = opening
+    engine.pending_observations = [("move protect", opening, current)]
+    engine.degraded = True
+
+    proposal = SimpleNamespace(proposal_id="public-prior:valid", weight=1.0)
+    batch = CurrentStateProposalBatch(
+        proposals=(proposal,),
+        source_turn=2, source_signature=public_observation_signature(current),
+        candidates_considered=1, rejected_missing_public_moves=0,
+    )
+    native_state = {"sides": [{"pokemon": [{}]}, {"pokemon": [{}]}], "turn": 2}
+    witness = PublicScaffoldWitness(
+        proposal_id=proposal.proposal_id, opponent_choice="move protect",
+        own_choice="move protect", rng_seed="sodium,00000001000000020000000300000004",
+        state=native_state,
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.build_current_state_set_proposals",
+        lambda **_kw: batch,
+    )
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.bootstrap_public_current_scaffolds",
+        lambda *_a, **_kw: PublicScaffoldBootstrapReport(
+            witnesses=(witness,), fresh_roots=1, simulated_branches=2,
+            observation_mismatches=0, unsupported_reason=None,
+        ),
+    )
+    allow = {"valid": False}
+
+    def certificate(_worker, *, witness, ledger, current_view, prior_batch):
+        if not allow["valid"]:
+            return None
+        return PublicRebaseCheckpoint(
+            proposal_id=witness.proposal_id, turn=2,
+            signature=ledger.current_signature, state=witness.state,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.validate_public_bootstrap_checkpoint",
+        certificate,
+    )
+    engine._run_until_deadline = lambda operation, *, deadline: (
+        operation(SimpleNamespace()), False,
+    )
+    assert not engine._try_first_turn_public_rebase(deadline=float("inf"))
+    assert engine.degraded
+    assert len(engine.pending_observations) == 1
+
+    # Explicitly permit a fresh attempt after a new diagnostic condition.
+    engine._public_rebase_attempted_signatures.clear()
+    allow["valid"] = True
+    assert engine._try_first_turn_public_rebase(deadline=float("inf"))
+    assert engine.particles[0].state == native_state
+    assert not engine.degraded
+    assert engine.pending_observations == []
+    assert engine.recovery_authority_history_complete is False
