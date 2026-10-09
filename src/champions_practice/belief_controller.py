@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections import Counter
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 from copy import deepcopy
+from contextvars import copy_context
 from dataclasses import dataclass
 from enum import Enum
 import hashlib
@@ -1148,7 +1149,10 @@ class BeliefDecisionEngine:
                     )
 
         executor = ThreadPoolExecutor(max_workers=1)
-        future = executor.submit(run_lifecycle)
+        # Carry offline-only audit context into the bounded worker thread.
+        # Normal calls retain their empty context and unchanged decisions.
+        context = copy_context()
+        future = executor.submit(context.run, run_lifecycle)
         timed_out = False
         result: T | None = None
         try:
