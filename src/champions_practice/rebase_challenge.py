@@ -44,7 +44,10 @@ from champions_practice.rolling_public_checkpoints import (
     advance_rolling_public_checkpoints,
     validate_public_bootstrap_checkpoint,
 )
-from champions_practice.search_worker import HypotheticalSearchWorker
+from champions_practice.search_worker import (
+    HypotheticalSearchWorker,
+    ShowdownSearchWorker,
+)
 from champions_practice.strength_league import (
     LeagueConfig, _baseline_choice, _particle_seed,
     _resolve_preview_choice, _sodium_seed,
@@ -293,7 +296,7 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             worker_startup_timeout_seconds=config.worker_startup_timeout_seconds,
             particle_seed=_particle_seed(config.seed, game_index),
         ) as battle,
-        HypotheticalSearchWorker() as reference_worker,
+        ShowdownSearchWorker(startup_timeout_seconds=30.0) as reference_worker,
         HypotheticalSearchWorker() as reconstruction_worker,
     ):
         battle.start(
@@ -305,16 +308,26 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             battle.legal_human_choices(), DEMO_AI_PREVIEW_CHOICE,
         )
         battle.commit_preview(human_choice=baseline_preview)
-        # Offline oracle, isolated from _public_only_step. This is never read
-        # from SealedBattleFacade's private worker/session.
-        oracle_state = reference_worker.create_state(
+        # Separate offline oracle has its OWN pinned session, completely
+        # independent of the sealed facade's session/worker. Native session
+        # execution must match native live execution: branch_many uses a
+        # hypothetical RNG path that is not the same as session_choose.
+        # The oracle's private snapshot NEVER reaches _public_only_step.
+        started_oracle = reference_worker.start_session(
             battle_format=CHAMPIONS_FORMAT,
             p1_team=DEMO_HUMAN_TEAM, p2_team=DEMO_AI_TEAM,
-            p1_preview=baseline_preview, p2_preview=DEMO_AI_PREVIEW_CHOICE,
             p1_name="League Baseline", p2_name="League Bot",
             seed=session_seed,
         )
-        opening_view = reference_worker.state_view(state=oracle_state, side="p2")
+        oracle_session_id = started_oracle["session_id"]
+        reference_worker.choose_session(
+            oracle_session_id,
+            p1_choice=baseline_preview,
+            p2_choice=DEMO_AI_PREVIEW_CHOICE,
+        )
+        opening_view = reference_worker.session_view(
+            oracle_session_id, side="p2",
+        )["view"]
         previews = {
             "p1": list(opening_view["opponent"]["preview_species"]),
             "p2": [x["species"] for x in opening_view["player"]["team"]],
@@ -335,20 +348,21 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             result = battle.commit_human_action(
                 token=ready.token, human_choice=human_choice,
             )
-            oracle_branch = reference_worker.branch_many(
-                state=oracle_state, branches=[{
-                    "p1_choice": human_choice,
-                    "p2_choice": result.decision.choice,
-                    "include_state": True,
-                    "view_side": "p2",
-                    "previews": previews,
-                }],
-            )[0]
-            oracle_state = oracle_branch["state"]
-            current_view = result.public_view
-            oracle_valid = _public_signature_match(
-                oracle_branch["view"], current_view,
+            reference_worker.choose_session(
+                oracle_session_id,
+                p1_choice=human_choice,
+                p2_choice=result.decision.choice,
             )
+            # The evaluator alone owns this second worker's oracle state.
+            # No function reconstructing public-only scaffolds receives it.
+            oracle_view = reference_worker.session_view(
+                oracle_session_id, side="p2",
+            )["view"]
+            oracle_state = reference_worker.session_snapshot(
+                oracle_session_id,
+            )["state"]
+            current_view = result.public_view
+            oracle_valid = _public_signature_match(oracle_view, current_view)
             if not oracle_valid:
                 # No truth inference from a non-identical replay.
                 rows.append({
