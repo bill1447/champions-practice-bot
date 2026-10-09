@@ -1690,6 +1690,7 @@ def condition_particles(
                 branches.append(branch)
                 identities.append((response, rng_seed))
 
+        matched_before_particle = matched
         resolved = worker.branch_many(state=particle.state, branches=branches)
         observed_branch_views: list[dict[str, Any]] = []
         generated += len(resolved)
@@ -1846,12 +1847,7 @@ def condition_particles(
             _REJECTION_AUDIT.get() is not None
             and endpoint_probes_used == 0
             and branches
-            and not any(
-                entry.get("stage") == "sampled-branch"
-                and entry.get("particle") == particle_index
-                and entry.get("outcome") == "exact-public-match"
-                for entry in (_REJECTION_AUDIT.get() or [])
-            )
+            and matched == matched_before_particle
         ):
             endpoint_probes_used += 1
             compatible, endpoint_results = _endpoint_hp_envelope(
