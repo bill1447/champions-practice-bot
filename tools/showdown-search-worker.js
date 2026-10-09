@@ -2154,6 +2154,26 @@ function materializePresentHypotheses(request) {
       }
     }
 
+    // Unburden's speed multiplier is a VOLATILE, not inferred from the
+    // absence of an item alone. The fresh opening may consume Psychic Seed
+    // on the initial switch-in and acquire Unburden, whereas the real own
+    // Pokemon may have switched out (which clears that volatile) and then
+    // returned without an item. Both cases are mechanically possible from
+    // present public facts; our OWN cached speed disambiguates this one case.
+    // Never change a set/stat or write a made-up speed directly. Use the
+    // pinned volatile removal and require the derived speed to match exactly.
+    for (const observed of view.player.active_details) {
+      if (!observed || !Number.isInteger(observed.speed)) continue;
+      const mon = find(own, observed.species);
+      if (!mon || !mon.isActive || asId(mon.ability) !== "unburden" ||
+          mon.item || !mon.volatiles["unburden"]) continue;
+      if (mon.getActionSpeed() === observed.speed) continue;
+      mon.removeVolatile("unburden");
+      if (mon.getActionSpeed() !== observed.speed) {
+        return why("own-unburden-speed-unresolved");
+      }
+    }
+
     original.turn = view.turn;
     original.updateSpeed();
     original.makeRequest("move");

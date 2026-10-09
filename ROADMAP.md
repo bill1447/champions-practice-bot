@@ -100,6 +100,33 @@ It must retain exact own request, public faint and legal choices. Do not
 claim all `unsupported-opponent-active` rejections are fixed unless the
 next report confirms that specific reduction.
 
+### Phase 10.10 — own Unburden speed lifecycle (#201)
+
+After #200, the same eight-game synthetic-spread fixture was **8-0**,
+with **67 tactical searches / 88 decisions** and only five fallbacks:
+four exact `$.player.active_details[0].speed` mismatches and one unsupported
+phase. The source report does not identify which speed-changing mechanism
+caused all four mismatches; investigate them individually rather than bypassing
+the strict own-state projection gate.
+
+Pinned Showdown stores Unburden's post-item Speed multiplier as a volatile.
+A freshly constructed opening may consume Sneasler's Psychic Seed and create
+that volatile even when the *current* Sneasler has since switched out and
+returned without its item. Pinned switch-out clears the volatile. PR #201
+reconciles only this precise own-side ambiguity: if the active own Pokemon
+has Unburden, holds no item, and an opening-root Unburden volatile would give
+a different Speed from the authoritative own observation, remove the
+volatile using Showdown's native method **only if** the resulting native
+action Speed matches the observation exactly; otherwise reject.
+
+A pinned controlled match must verify both cases: stay in with the original
+Unburden multiplier, and switch out/back without the multiplier. It must
+build new proposals from the sanitized public view, admit hypotheses that
+preserve the exact own player projection/request/legal choices, and verify
+the distinct native volatile states. This is a specific native state fix,
+not a generic waiver of speed validation. Inspect remaining fallback paths
+on the next strength report before concluding the four are all resolved.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,
