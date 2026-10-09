@@ -434,6 +434,30 @@ legally without burning further decision cycles. General from-present native
 state synthesis and independently proven HP/stat constraints remain the next
 substantive recovery gate.
 
+### Phase 10.5 — bounded native present-turn hypotheses (#196)
+
+The next experimental live rebase path constructs a **fresh pinned-Showdown
+Battle** from public-prior sets, moves native active members to the observed
+slots, and installs only supported present HP/status/boost/effect/request
+facts via native operations. It does not read prior particles, live hidden
+session state, oracle data, or the historical retry queue. Opponent current
+HP is selected from exact producer-compatible integer endpoints, *not* from
+historical RNG roll sampling. Candidate admission requires independent
+approved-set identity, pinned serialization roundtrip, exact own request/team
+and action-menu agreement, current field/side effects, and opponent active
+HP/boost/status constraints. Search uses only positive candidates; no
+sampled failure may exclude an unrepresented opponent world.
+
+This is a deliberately strict subset, **not universal turn-eight recovery**:
+unsupported switches/forms/volatiles/unknown PP and remaining timer domains
+must return unresolved and permit a legal fallback. Native construction
+proves structural mechanics compatibility and current public agreement, not
+that one historical trajectory created the chosen latent PP/timer hypotheses.
+Until the synthetic three-spread fixture and independent turn-eight oracle
+confirm material increases in search usage, do not claim the Phase 10.5 gate
+passed. Retain the former ~95.1% degraded-decision rate as a reference,
+not as a projected improvement.
+
 ### First implementation gate — HP intervals before rebase
 
 Status after PRs #180, #192, and #193: **this gate is NOT complete**. PR #180

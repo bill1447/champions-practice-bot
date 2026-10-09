@@ -444,6 +444,15 @@ class HypotheticalSearchWorker:
             limit=limit,
         )
 
+    def materialize_present_hypotheses(
+        self, *, state: dict[str, Any], current_view: dict[str, Any],
+        limit: int = 4,
+    ) -> dict[str, Any]:
+        """Bounded public-only pinned-native current-state hypothesis builder."""
+        return self.__worker.materialize_present_hypotheses(
+            state=state, current_view=current_view, limit=limit,
+        )
+
     def enumerate_finite_transition(
         self,
         *,
@@ -1286,6 +1295,43 @@ class ShowdownSearchWorker:
             ):
                 raise RuntimeError("Showdown worker returned invalid HP candidate state")
         return {"outcomes": outcomes, "examined": examined, "reason": reason}
+
+    def materialize_present_hypotheses(
+        self, *, state: dict[str, Any], current_view: dict[str, Any],
+        limit: int = 4,
+    ) -> dict[str, Any]:
+        """Pinned-native positive present hypotheses; no live-session access.
+
+        Root creation and public provenance are verified by the caller.
+        A valid candidate is not a historical transition witness.
+        """
+        if not isinstance(state, dict) or not state:
+            raise ValueError("present hypothesis requires fresh root state")
+        if not isinstance(current_view, dict) or not current_view:
+            raise ValueError("present hypothesis requires public observations")
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 4:
+            raise ValueError("present hypothesis limit must be 1..4")
+        result = self.request(
+            "materialize_present_hypotheses",
+            state=state, current_view=current_view, limit=limit,
+        )
+        if not isinstance(result, dict) or not isinstance(result.get("outcomes"), list):
+            raise RuntimeError("pinned Showdown returned invalid present hypotheses")
+        if len(result["outcomes"]) > limit:
+            raise RuntimeError("pinned Showdown exceeded present-hypothesis limit")
+        if result.get("reason") is not None and not isinstance(result["reason"], str):
+            raise RuntimeError("pinned Showdown returned invalid present failure")
+        for entry in result["outcomes"]:
+            if (
+                not isinstance(entry, dict)
+                or not isinstance(entry.get("state"), dict)
+                or not isinstance(entry.get("hp"), list)
+                or len(entry["hp"]) != 2
+                or any(isinstance(h, bool) or not isinstance(h, int) or h < 1
+                       for h in entry["hp"])
+            ):
+                raise RuntimeError("pinned Showdown returned invalid present state")
+        return result
 
     def enumerate_damage_rolls(
         self,
