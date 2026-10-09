@@ -8,6 +8,7 @@ Pokemon, no reserve, and a fainted occupied slot during a move request.
 
 from __future__ import annotations
 
+from champions_practice.belief_controller import _pin_known_team_genders
 from champions_practice.belief_worlds import PublicSetCandidate
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
@@ -115,10 +116,14 @@ def main() -> None:
             # Full positive public-ledger provenance, no private snapshot or
             # opponent hidden command enters build_present_rebase.
             ledger = PublicConstraintLedger.from_public_view(view)
+            # Match the production controller: random gender rolls from a
+            # separate fresh Showdown root must not change the known own
+            # request.details (e.g. Chandelure's M/F flag).
+            pinned_ai_team = _pin_known_team_genders(GHOST_TEAM, view["request"])
             report = build_present_rebase(
                 worker, ledger=ledger, current_view=view,
                 priors=public_priors(), battle_format=CHAMPIONS_FORMAT,
-                ai_team=GHOST_TEAM, ai_preview_choice=PREVIEW,
+                ai_team=pinned_ai_team, ai_preview_choice=PREVIEW,
                 legal_live=tuple(legal), max_roots=2, max_particles=4,
             )
             if not report.particles:
