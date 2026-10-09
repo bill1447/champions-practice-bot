@@ -1946,7 +1946,9 @@ function materializePresentHypotheses(request) {
     const own = original.p2;
     // Finish native switch-in events so abilities, weather, terrain, item
     // activation and speed are represented by the actual pinned engine.
-    original.queue.list = original.queue.list.filter((action) => action.choice !== "runSwitch");
+    // Clear queued switch-in events before executing them once on the fresh
+    // native model. Never fabricate a historical turn's action queue.
+    original.queue.clear();
     for (const mon of [...foe.active, ...own.active]) {
       if (mon && !mon.isStarted) original.actions.runSwitch(mon);
     }
