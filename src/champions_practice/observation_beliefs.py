@@ -103,6 +103,7 @@ class ParticleUpdate:
     finite_reachability_disproofs: int = 0
     finite_reachability_unresolved: int = 0
     finite_reachability_leaves: int = 0
+    sampled_hp_compatible_world_ids: tuple[str, ...] = ()
 
 
 def _champions_public_hp_bucket(value: object) -> object:
@@ -1572,6 +1573,7 @@ def condition_particles(
     matched_source_world_ids: set[str] = set()
     damage_probed_responses: set[tuple[int, str]] = set()
     damage_probes_used = 0
+    hp_compatible_world_ids: set[str] = set()
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
@@ -1661,6 +1663,7 @@ def condition_particles(
                 identities.append((response, rng_seed))
 
         resolved = worker.branch_many(state=particle.state, branches=branches)
+        observed_branch_views: list[dict[str, Any]] = []
         generated += len(resolved)
         for result, identity, original_branch in zip(
             resolved, identities, branches, strict=True
@@ -1676,6 +1679,7 @@ def condition_particles(
                     side=ai_side,
                     previews=previews,
                 )
+            observed_branch_views.append(view)
             if public_observation_signature(view) != wanted:
                 mismatch_kind, mismatch_paths = classify_public_observation_mismatch(actual_public_view, view)
                 if _REJECTION_AUDIT.get() is not None:
@@ -1805,6 +1809,10 @@ def condition_particles(
                 )
             )
 
+        if _sampled_hp_envelope_compatible(actual_public_view, tuple(observed_branch_views)):
+            hp_compatible_world_ids.add(source_world_id)
+            _audit_rejection(stage='hp-envelope', world=source_world_id, outcome='sampled-compatible-unresolved')
+
     merged: dict[str, BeliefParticle] = {}
     for particle in survivors:
         key = _particle_key(particle)
@@ -1840,6 +1848,7 @@ def condition_particles(
             )
         ),
         exhaustively_excluded_world_ids=roster_excluded_world_ids,
+        sampled_hp_compatible_world_ids=tuple(sorted(hp_compatible_world_ids - matched_source_world_ids)),
         structural_mismatch_paths=_top_counter_items(
             structural_mismatch_paths
         ),
