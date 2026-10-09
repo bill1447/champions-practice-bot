@@ -264,6 +264,11 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.selected_prior_smoke
 
+      - name: Pinned fainted-opponent active-slot current-state admission smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.fainted_active_present_smoke
+
       - name: Isolated current-state prior proposal and projection smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh

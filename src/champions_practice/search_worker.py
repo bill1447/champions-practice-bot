@@ -1321,16 +1321,46 @@ class ShowdownSearchWorker:
             raise RuntimeError("pinned Showdown exceeded present-hypothesis limit")
         if result.get("reason") is not None and not isinstance(result["reason"], str):
             raise RuntimeError("pinned Showdown returned invalid present failure")
+        # A native fainted active slot legitimately has exact HP zero.
+        # Require the public faint/0% observation before accepting that value;
+        # otherwise the result is malformed and must never become a belief.
+        observed_active = current_view.get("opponent", {}).get("active")
         for entry in result["outcomes"]:
             if (
                 not isinstance(entry, dict)
                 or not isinstance(entry.get("state"), dict)
                 or not isinstance(entry.get("hp"), list)
                 or len(entry["hp"]) != 2
-                or any(isinstance(h, bool) or not isinstance(h, int) or h < 1
-                       for h in entry["hp"])
+                or not isinstance(observed_active, list)
+                or len(observed_active) != 2
             ):
                 raise RuntimeError("pinned Showdown returned invalid present state")
+            try:
+                native_members = entry["state"]["sides"][0]["pokemon"]
+            except (KeyError, IndexError, TypeError):
+                raise RuntimeError("pinned Showdown returned invalid present state") from None
+            if not isinstance(native_members, list) or len(native_members) < 2:
+                raise RuntimeError("pinned Showdown returned invalid present state")
+            for slot, hp in enumerate(entry["hp"]):
+                observed = observed_active[slot]
+                native = native_members[slot]
+                if (
+                    isinstance(hp, bool) or not isinstance(hp, int) or hp < 0
+                    or not isinstance(observed, dict)
+                    or not isinstance(native, dict)
+                    or native.get("hp") != hp
+                ):
+                    raise RuntimeError("pinned Showdown returned invalid present state")
+                if hp == 0:
+                    if (
+                        observed.get("fainted") is not True
+                        or observed.get("hp_percent") != 0
+                        or native.get("fainted") is not True
+                        or native.get("isActive") is not False
+                    ):
+                        raise RuntimeError("pinned Showdown returned invalid present state")
+                elif observed.get("fainted") is True:
+                    raise RuntimeError("pinned Showdown returned invalid present state")
         return result
 
     def enumerate_damage_rolls(

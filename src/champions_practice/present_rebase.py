@@ -107,7 +107,15 @@ def _positive_mechanics_rejection(
         for slot, observed in enumerate(active):
             prefix = f"$.opponent.active[{slot}]"
             native = opponent[slot]
-            if not observed or not native or not native["isActive"]:
+            if not observed or not native:
+                return f"{prefix}.native_active"
+            # Pinned Showdown keeps a fainted member in the active slot until
+            # it is replaced, but clears its isActive flag on faintMessages().
+            # Accept that exact native state only for a public faint with 0 HP.
+            if observed["fainted"]:
+                if native["isActive"] or native["hp"] != 0 or not native["fainted"]:
+                    return f"{prefix}.native_fainted"
+            elif not native["isActive"] or native["fainted"] or native["hp"] <= 0:
                 return f"{prefix}.native_active"
             if _sid(native["set"]["species"]) != _sid(observed["base_species"]):
                 return f"{prefix}.base_species"

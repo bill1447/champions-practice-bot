@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from champions_practice.search_worker import (
+    ShowdownSearchWorker,
     verify_showdown_checkout,
     write_showdown_build_stamp,
 )
@@ -118,3 +119,73 @@ def test_showdown_runtime_verification_rejects_modified_built_dist(
 
     with pytest.raises(RuntimeError, match="built runtime hash mismatch"):
         verify_showdown_checkout(root)
+
+
+def _present_faint_result():
+    return {
+        "outcomes": [{
+            "state": {"sides": [
+                {"pokemon": [
+                    {"hp": 0, "fainted": True, "isActive": False},
+                    {"hp": 110, "fainted": False, "isActive": True},
+                ]},
+                {"pokemon": []},
+            ]},
+            "hp": [0, 110],
+        }],
+        "reason": None,
+    }
+
+
+def test_present_hp_validator_admits_publicly_fainted_native_slot(monkeypatch):
+    worker = object.__new__(ShowdownSearchWorker)
+    result = _present_faint_result()
+    monkeypatch.setattr(worker, "request", lambda *args, **kwargs: result)
+    public = {"opponent": {"active": [
+        {"fainted": True, "hp_percent": 0},
+        {"fainted": False, "hp_percent": 88},
+    ]}}
+    admitted = worker.materialize_present_hypotheses(
+        state={"fresh": True}, current_view=public, limit=4,
+    )
+    assert admitted["outcomes"][0]["hp"] == [0, 110]
+
+
+@pytest.mark.parametrize("mutation", [
+    "public-living", "public-positive-hp", "native-living", "native-active",
+    "native-positive-hp", "reported-negative-hp", "reported-bool-hp",
+    "reported-mismatched-hp", "living-declared-faint",
+])
+def test_present_hp_validator_rejects_false_zero_hp_authority(
+    monkeypatch, mutation,
+):
+    worker = object.__new__(ShowdownSearchWorker)
+    result = _present_faint_result()
+    public = {"opponent": {"active": [
+        {"fainted": True, "hp_percent": 0},
+        {"fainted": False, "hp_percent": 88},
+    ]}}
+    mon = result["outcomes"][0]["state"]["sides"][0]["pokemon"][0]
+    if mutation == "public-living":
+        public["opponent"]["active"][0]["fainted"] = False
+    elif mutation == "public-positive-hp":
+        public["opponent"]["active"][0]["hp_percent"] = 1
+    elif mutation == "native-living":
+        mon["fainted"] = False
+    elif mutation == "native-active":
+        mon["isActive"] = True
+    elif mutation == "native-positive-hp":
+        mon["hp"] = 1
+    elif mutation == "reported-negative-hp":
+        result["outcomes"][0]["hp"][0] = -1
+    elif mutation == "reported-bool-hp":
+        result["outcomes"][0]["hp"][0] = False
+    elif mutation == "reported-mismatched-hp":
+        result["outcomes"][0]["hp"][0] = 1
+    elif mutation == "living-declared-faint":
+        public["opponent"]["active"][1]["fainted"] = True
+    monkeypatch.setattr(worker, "request", lambda *args, **kwargs: result)
+    with pytest.raises(RuntimeError, match="invalid present state"):
+        worker.materialize_present_hypotheses(
+            state={"fresh": True}, current_view=public, limit=4,
+        )

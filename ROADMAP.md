@@ -75,6 +75,31 @@ constructor can still reject active-position, status, field, or exact
 own-request hypotheses. Prove a **real turn-eight** admitted state and search
 before rerunning the eight-game strength league or declaring recovery solved.
 
+### Phase 10.9 — keep search after an opponent faints (#200)
+
+In the post-#199 eight-game synthetic league the bot went **8-0** and used
+tactical search on **53/104** decisions, but **29/35** residual fallbacks
+were grouped as `unsupported-opponent-active`. That single reason also
+covered missing identities, invalid living HP and valid zero-HP fainted
+active-slot observations, so the league alone does not prove a single cause.
+
+Pinned Showdown `Pokemon.faint()` plus `Battle.faintMessages()` changes
+`pokemon.isActive` to false even if the Pokemon remains in
+`side.active[slot]` pending replacement or without reserves.
+The native present-state worker now materializes a **publicly fainted**
+opponent slot with exact HP 0 using the pinned faint APIs. A living slot
+still needs strictly positive compatible HP; contradictory 0/non-faint
+or positive/faint public facts remain rejected. Python native validation
+admits the exact inactive/fainted/zero-HP serialized state only if the
+public slot is fainted, while preserving exact request and legal-menu gates.
+
+A new pinned Showdown smoke produces an opponent with three self-KOs
+and no remaining reserve, then attempts a new public-only native
+midgame hypothesis with one living and one fainted opponent slot.
+It must retain exact own request, public faint and legal choices. Do not
+claim all `unsupported-opponent-active` rejections are fixed unless the
+next report confirms that specific reduction.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,

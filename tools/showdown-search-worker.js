@@ -2040,32 +2040,51 @@ function materializePresentHypotheses(request) {
     // Opponent observations are public constraints. Exact HP is an unknown,
     // so branch over at most two compatible integers per active Pokemon.
     const hpSlots = [];
-    for (const observed of view.opponent.active) {
+    for (let slot = 0; slot < view.opponent.active.length; slot++) {
+      const observed = view.opponent.active[slot];
+      if (!observed || !observed.base_species || typeof observed.fainted !== "boolean") {
+        return why("unsupported-opponent-active", `$.opponent.active[${slot}]`);
+      }
       const mon = find(foe, observed.base_species);
-      if (!mon || !mon.isActive || observed.fainted ||
-          !Number.isInteger(observed.hp_percent) ||
-          observed.hp_percent < 1 || observed.hp_percent > 100 ||
-          asId(observed.species) !== asId(mon.species.name)) {
-        return why("unsupported-opponent-active");
+      if (!mon || !mon.isActive || asId(observed.species) !== asId(mon.species.name)) {
+        return why("unsupported-opponent-active", `$.opponent.active[${slot}].species`);
       }
-      const hp = [];
-      for (let n = 1; n <= mon.maxhp; n++) {
-        if (championsPublicHpPercent({ hp: n, maxhp: mon.maxhp }) === observed.hp_percent) hp.push(n);
-      }
-      if (!hp.length) return why("no-compatible-opponent-hp");
-      hpSlots.push([...new Set([hp[0], hp[hp.length - 1]])]);
-      if (observed.status && mon.status !== observed.status) {
-        if (!mon.setStatus(observed.status, mon, null, true)) {
-          return why("unsupported-opponent-status");
+      if (observed.fainted) {
+        // Pinned faintMessages() retains a fainted mon in side.active[slot]
+        // when no replacement is available, but clears Pokemon.isActive.
+        // Zero HP is then an exact PUBLIC fact, not a speculative HP roll.
+        if (observed.hp_percent !== 0) {
+          return why("contradictory-fainted-opponent-hp",
+            `$.opponent.active[${slot}].hp_percent`);
         }
-      } else if (!observed.status && mon.status) {
-        mon.clearStatus();
+        mon.faint();
+        hpSlots.push([0]);
+      } else {
+        if (!Number.isInteger(observed.hp_percent) ||
+            observed.hp_percent < 1 || observed.hp_percent > 100) {
+          return why("unsupported-living-opponent-hp",
+            `$.opponent.active[${slot}].hp_percent`);
+        }
+        const hp = [];
+        for (let n = 1; n <= mon.maxhp; n++) {
+          if (championsPublicHpPercent({ hp: n, maxhp: mon.maxhp }) === observed.hp_percent) hp.push(n);
+        }
+        if (!hp.length) return why("no-compatible-opponent-hp");
+        hpSlots.push([...new Set([hp[0], hp[hp.length - 1]])]);
+        if (observed.status && mon.status !== observed.status) {
+          if (!mon.setStatus(observed.status, mon, null, true)) {
+            return why("unsupported-opponent-status");
+          }
+        } else if (!observed.status && mon.status) {
+          mon.clearStatus();
+        }
+        if (!observed.boosts ||
+            Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
+          return why("unsupported-opponent-boost");
+        }
+        mon.clearBoosts();
+        mon.setBoost(observed.boosts);
       }
-      if (!observed.boosts || Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
-        return why("unsupported-opponent-boost");
-      }
-      mon.clearBoosts();
-      mon.setBoost(observed.boosts);
     }
     for (const seen of view.opponent.revealed) {
       const mon = find(foe, seen.species);
@@ -2075,6 +2094,24 @@ function materializePresentHypotheses(request) {
     }
 
     original.faintMessages(false, false, false);
+    // Pinned Battle.checkFainted() is a separate native step after faint
+    // resolution: it assigns the canonical "fnt" status and switchFlag.
+    // Without it the public view's fainted slot has status "fnt" while
+    // this synthetic current turn has status null, failing exact admission.
+    original.checkFainted();
+    // The natural pinned turn-loop clears an unfulfillable forced switch:
+    // with no remaining reserve the fainted member stays in side.active.
+    // With a reserve available, this is a forced-switch request, NOT a move
+    // phase; do not misrepresent it as a valid current move state.
+    for (const side of [original.p1, original.p2]) {
+      if (!side.active.some((mon) => mon && mon.fainted)) continue;
+      if (original.canSwitch(side)) {
+        return why("fainted-slot-requires-forced-switch");
+      }
+      for (const mon of side.active) {
+        if (mon && mon.fainted) mon.switchFlag = false;
+      }
+    }
     // Derive persistent effects through native pinned setters. Their remaining
     // durations are unknown hypotheses, NEVER historical facts.
     const field = view.field || {};
@@ -2154,11 +2191,24 @@ function materializePresentHypotheses(request) {
     for (let slot = 0; slot < foeMembers.length; slot++) {
       const expected = view.opponent.active[slot];
       const got = foeMembers[slot];
-      if (!expected || !got || asId(expected.species) !== asId(got.species) ||
-          asId(expected.base_species) !== asId(got.base_species) ||
-          expected.status !== got.status ||
-          exact(expected.boosts) !== exact(got.boosts)) {
-        return why("current-opponent-mechanics-mismatch");
+      const path = `$.opponent.active[${slot}]`;
+      if (!expected || !got) {
+        return why("current-opponent-mechanics-mismatch", path);
+      }
+      // These checks remain exact: the path is diagnostic metadata, never
+      // an instruction to overwrite a mismatched current native mechanic.
+      if (asId(expected.species) !== asId(got.species)) {
+        return why("current-opponent-mechanics-mismatch", `${path}.species`);
+      }
+      if (asId(expected.base_species) !== asId(got.base_species)) {
+        return why("current-opponent-mechanics-mismatch", `${path}.base_species`);
+      }
+      if (expected.status !== got.status) {
+        return why("current-opponent-mechanics-mismatch", `${path}.status`);
+      }
+      if (exact(expected.boosts) !== exact(got.boosts)) {
+        return why("current-opponent-mechanics-mismatch",
+          firstMismatchPath(got.boosts, expected.boosts, `${path}.boosts`));
       }
     }
     // Preserve two HP endpoints independently, *without* claiming the

@@ -86,6 +86,37 @@ def test_native_positive_mechanics_gate_rejects_contradictory_public_hp_and_stat
     )
 
 
+def test_fainted_opponent_slot_is_not_a_living_active_pokemon():
+    view, state, ledger = sample()
+    observed = view["opponent"]["active"][0]
+    native = state["sides"][0]["pokemon"][0]
+    observed.update(hp_percent=0, fainted=True, status=None, boosts={})
+    native.update(hp=0, fainted=True, isActive=False, status="", boosts={})
+    assert _positive_mechanics_rejection(
+        state, view, current_view=view, ledger=ledger,
+        legal_live=("move protect",), hypothetical_legal=["move protect"],
+    ) is None
+
+    # No false authorization for a still-living or active native member.
+    native["isActive"] = True
+    assert _positive_mechanics_rejection(
+        state, view, current_view=view, ledger=ledger,
+        legal_live=(), hypothetical_legal=[],
+    ) == "$.opponent.active[0].native_fainted"
+    native["isActive"] = False
+    native["fainted"] = False
+    assert _positive_mechanics_rejection(
+        state, view, current_view=view, ledger=ledger,
+        legal_live=(), hypothetical_legal=[],
+    ) == "$.opponent.active[0].native_fainted"
+    native["fainted"] = True
+    native["hp"] = 1
+    assert _positive_mechanics_rejection(
+        state, view, current_view=view, ledger=ledger,
+        legal_live=(), hypothetical_legal=[],
+    ) == "$.opponent.active[0].native_fainted"
+
+
 def test_midgame_turn_eight_uses_only_fresh_public_set_and_native_state(monkeypatch):
     view, state, ledger = sample()
     proposal = SimpleNamespace(
