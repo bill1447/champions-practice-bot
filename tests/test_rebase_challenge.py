@@ -207,9 +207,6 @@ def test_offline_oracle_trace_exports_actions_and_both_native_snapshots(tmp_path
 
 def test_rejection_audit_is_opt_in_and_scoped():
     from champions_practice.observation_beliefs import _REJECTION_AUDIT, _audit_rejection
-    from champions_practice.rebase_challenge import _write_offline_oracle_trace
-    from pathlib import Path
-    import json
     sink = []
     _audit_rejection(stage="inactive")
     assert not sink
