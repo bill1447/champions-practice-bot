@@ -19,8 +19,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
 from time import perf_counter
 from typing import Any
