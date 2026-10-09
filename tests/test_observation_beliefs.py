@@ -2328,3 +2328,47 @@ def test_two_damage_endpoints_are_bounded_and_diagnostic_only():
         "min-normal", "max-crit",
     ]
     assert not any("state" in result for result in results)
+
+
+def test_damage_endpoints_are_opt_in_via_offline_rejection_audit():
+    from champions_practice.observation_beliefs import _REJECTION_AUDIT
+
+    class CountingWorker(FakeWorker):
+        def __init__(self):
+            super().__init__([
+                {"turn": 8, "opponent": {"hp_percent": 30}},
+                {"turn": 8, "opponent": {"hp_percent": 40}},
+            ])
+            self.branch_sizes = []
+
+        def branch_many(self, *, state, branches):
+            self.branch_sizes.append(len(branches))
+            return super().branch_many(state=state, branches=branches)
+
+    def run(worker):
+        return condition_particles(
+            worker,
+            particles=(BeliefParticle({"id": 1}, 1.0, world_id="w1"),),
+            ai_side="p2",
+            ai_choice="move a",
+            actual_public_view={"turn": 8, "opponent": {"hp_percent": 35}},
+            rng_seeds=("seed",),
+            damage_probe_limit=0,
+        )
+
+    normal = CountingWorker()
+    normal_update = run(normal)
+    assert normal.branch_sizes == [2]
+    assert normal_update.sampled_hp_compatible_world_ids == ()
+
+    audited = CountingWorker()
+    records = []
+    token = _REJECTION_AUDIT.set(records)
+    try:
+        audited_update = run(audited)
+    finally:
+        _REJECTION_AUDIT.reset(token)
+    assert audited.branch_sizes == [2, 2]
+    assert audited_update.matched == normal_update.matched
+    assert audited_update.particles == normal_update.particles
+    assert any(row.get("stage") == "damage-endpoints" for row in records)
