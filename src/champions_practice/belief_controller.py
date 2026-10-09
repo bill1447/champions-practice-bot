@@ -29,6 +29,9 @@ from champions_practice.belief_worlds import (
 )
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.current_state_constraints import PublicConstraintLedger
+from champions_practice.current_state_proposals import build_current_state_set_proposals
+from champions_practice.public_scaffold_bootstrap import bootstrap_public_current_scaffolds
+from champions_practice.rolling_public_checkpoints import validate_public_bootstrap_checkpoint
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
 from champions_practice.recovery import RecoveryOpeningAuthority
 from champions_practice.observation_beliefs import (
@@ -913,6 +916,9 @@ class BeliefDecisionEngine:
         self._rng = random.Random(particle_seed)
 
         self.previews: dict[str, list[str]] | None = None
+        # Fresh public-only rebasing never consumes stale recovery particles.
+        self._public_ai_preview_choice: str | None = None
+        self._public_rebase_attempted_signatures: set[str] = set()
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
         # Shadow-only public evidence: never participates in live particle
@@ -981,6 +987,8 @@ class BeliefDecisionEngine:
         # Recording is independent of (and cannot veto) real battle authority.
         self._record_public_constraints(view, initialize=True)
         self.last_public_view = view
+        self._public_ai_preview_choice = ai_choice
+        self._public_rebase_attempted_signatures.clear()
         self.previews = {
             "p1": list(view["opponent"]["preview_species"]),
             "p2": [pokemon["species"] for pokemon in view["player"]["team"]],
@@ -2616,6 +2624,103 @@ class BeliefDecisionEngine:
             fallback_reason=reason,
         )
 
+    def _try_first_turn_public_rebase(self, *, deadline: float) -> bool:
+        """Try one fresh public-prior witness; never replay a historical backlog.
+
+        The covered domain is strictly the first resolved turn after preview.
+        Later midgame positions lack a validated from-present native constructor.
+        No result is treated as an exhaustive explanation of opponent sets.
+        """
+        ledger = self.public_constraint_ledger
+        if (
+            ledger is None
+            or self.public_constraint_ledger_issue is not None
+            or len(self.pending_observations) != 1
+            or self._public_ai_preview_choice is None
+            or self.recovery_authority_root_public_view is None
+        ):
+            return False
+        own_choice, previous, current = self.pending_observations[0]
+        opening = self.recovery_authority_root_public_view
+        if (
+            not isinstance(previous, dict)
+            or not isinstance(current, dict)
+            or current.get("turn") != 2
+            or opening.get("turn") != 1
+            or public_observation_signature(previous)
+            != public_observation_signature(opening)
+            or ledger.current_turn != 2
+            or ledger.current_signature in self._public_rebase_attempted_signatures
+            or perf_counter() >= deadline - 1.0
+        ):
+            return False
+
+        # One opportunity per unique public observation. A failed RNG witness
+        # or missing catalog set is never proof the real world is impossible.
+        self._public_rebase_attempted_signatures.add(ledger.current_signature)
+        pinned_ai_team = _pin_known_team_genders(
+            self.ai_team, current.get("request", {}),
+        )
+        try:
+            batch = build_current_state_set_proposals(
+                ledger=ledger, current_view=current,
+                priors=self.opponent_priors, limit=min(self.world_limit, 4),
+            )
+            if not batch.proposals:
+                return False
+
+            def synthesize(worker: HypotheticalSearchWorker) -> tuple[BeliefParticle, ...]:
+                report = bootstrap_public_current_scaffolds(
+                    worker, opening_view=opening, current_view=current,
+                    ledger=ledger, prior_batch=batch,
+                    battle_format=self.battle_format, ai_team=pinned_ai_team,
+                    ai_preview_choice=self._public_ai_preview_choice,
+                    known_own_choice=own_choice,
+                    rng_seeds=(self._particle_seed(), self._particle_seed()),
+                    max_roots=4, max_opponent_choices=4,
+                    max_branches=16, max_witnesses=min(4, self.max_particles),
+                )
+                by_id = {p.proposal_id: p for p in batch.proposals}
+                accepted: list[BeliefParticle] = []
+                for witness in report.witnesses:
+                    checkpoint = validate_public_bootstrap_checkpoint(
+                        worker, witness=witness, ledger=ledger,
+                        current_view=current, prior_batch=batch,
+                    )
+                    if checkpoint is None:
+                        continue
+                    proposal = by_id[checkpoint.proposal_id]
+                    accepted.append(BeliefParticle(
+                        state=checkpoint.state,
+                        weight=proposal.weight,
+                        world_id=checkpoint.proposal_id,
+                        history_id="fresh-public-witness",
+                        p1_member_lineage=identity_member_lineage(checkpoint.state, "p1"),
+                        p2_member_lineage=identity_member_lineage(checkpoint.state, "p2"),
+                    ))
+                return tuple(accepted)
+
+            candidates, timed_out = self._run_until_deadline(
+                synthesize,
+                deadline=min(deadline - 0.5, perf_counter() + 3.5),
+            )
+        except (RuntimeError, ValueError, ShowdownRequestError):
+            return False
+
+        if timed_out or not candidates:
+            return False
+        # Only pinned-native, independently projected positive witnesses enter
+        # search. Other unrepresented worlds remain unresolved, not excluded.
+        self.particles = resample_particles_by_world(
+            candidates, limit=self.max_particles,
+            seed=int(current["turn"]) + 829,
+        )
+        self.pending_observations.clear()
+        self._clear_pending_recovery_progress()
+        self.recovery_authority_history_complete = False
+        self.degraded = False
+        return True
+
     def choose_ai_action(
         self,
         *,
@@ -2626,14 +2731,15 @@ class BeliefDecisionEngine:
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
         if self.degraded:
-            # This is continuation resampling from unchanged last-good particles.
-            # Mechanics-authoritative hidden-state reconstruction is isolated in
-            # recovery.py and is intentionally not wired into live decisions.
-            if not self._retry_pending_with_more_rng(deadline=decision_deadline):
+            # No historical backlog catch-up in live action selection.
+            # First-turn positive public witnesses are the only currently
+            # certified fresh rebase domain; later turns fail open to a legal
+            # fallback until native present-turn synthesis is validated.
+            if not self._try_first_turn_public_rebase(deadline=decision_deadline):
                 return self._fallback_decision(
                     legal_live,
                     started=started,
-                    reason="belief-recovery-pending",
+                    reason="public-rebase-unresolved",
                 )
         if not self.particles:
             return self._fallback_decision(
