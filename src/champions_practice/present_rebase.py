@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -36,7 +37,33 @@ def _sid(value: object) -> str:
     return "".join(c for c in str(value or "").lower() if c.isalnum())
 
 
-def _positive_mechanics_match(
+def _first_public_difference(actual: Any, expected: Any, path: str) -> str | None:
+    """First structural mismatch path only; never report private values.
+
+    Both arguments are either native hypothetical data or the sanitized public
+    observation. A mismatch does not prove the hypothesis mechanically impossible.
+    """
+    if isinstance(actual, dict) and isinstance(expected, dict):
+        for key in sorted(actual.keys() | expected.keys()):
+            child = f"{path}.{key}"
+            if key not in actual or key not in expected:
+                return child
+            difference = _first_public_difference(actual[key], expected[key], child)
+            if difference is not None:
+                return difference
+        return None
+    if isinstance(actual, (list, tuple)) and isinstance(expected, (list, tuple)):
+        for i, (left, right) in enumerate(zip(actual, expected)):
+            difference = _first_public_difference(left, right, f"{path}[{i}]")
+            if difference is not None:
+                return difference
+        if len(actual) != len(expected):
+            return f"{path}.length"
+        return None
+    return None if actual == expected else path
+
+
+def _positive_mechanics_rejection(
     state: dict[str, Any],
     projected: dict[str, Any],
     *,
@@ -44,49 +71,60 @@ def _positive_mechanics_match(
     ledger: PublicConstraintLedger,
     legal_live: tuple[str, ...],
     hypothetical_legal: list[str],
-) -> bool:
-    """Require positive present-mechanics evidence, not fabricated history.
+) -> str | None:
+    """Require positive current-state evidence with a precise rejection path.
 
-    The native projection's historical protocol fields necessarily differ
-    from the actual game. They are not copied over or used as authority.
-    Instead validate the entire own request/team, field, side conditions,
-    and native opponent active HP/boost/status; positive static move coverage
-    is separately checked against approved prior sets.
+    The pinned Showdown serializer keeps active Pokemon in the first roster
+    slots, including after switches (sim/battle-actions.ts and sim/state.ts).
+    Do NOT index the original team order or relax active-slot validation.
     """
-    if (
-        state.get("turn") != ledger.current_turn
-        or projected.get("turn") != ledger.current_turn
-        or projected.get("phase") != current_view.get("phase")
-        or _canonical(projected.get("request")) != ledger.own_request
-        or _canonical(projected.get("player")) != _canonical(current_view.get("player"))
-        or _canonical(projected.get("field")) != _canonical(current_view.get("field"))
-        or _canonical(projected.get("opponent", {}).get("side_conditions"))
-        != _canonical(current_view.get("opponent", {}).get("side_conditions"))
-        or (legal_live and set(hypothetical_legal) != set(legal_live))
-    ):
-        return False
+    checks = (
+        ("$.state.turn", state.get("turn"), ledger.current_turn),
+        ("$.projection.turn", projected.get("turn"), ledger.current_turn),
+        ("$.projection.phase", projected.get("phase"), current_view.get("phase")),
+        ("$.request", projected.get("request"), current_view.get("request")),
+        ("$.player", projected.get("player"), current_view.get("player")),
+        ("$.field", projected.get("field"), current_view.get("field")),
+        (
+            "$.opponent.side_conditions",
+            projected.get("opponent", {}).get("side_conditions"),
+            current_view.get("opponent", {}).get("side_conditions"),
+        ),
+    )
+    for path, actual, expected in checks:
+        # Preserve the original canonical-JSON admission standard. Python
+        # equality alone would treat True and 1 as equal.
+        if _canonical(actual) != _canonical(expected):
+            return _first_public_difference(actual, expected, path) or path
+    if legal_live and set(hypothetical_legal) != set(legal_live):
+        return "$.legal_choices"
 
     try:
         opponent = state["sides"][0]["pokemon"]
         active = current_view["opponent"]["active"]
         if len(active) != 2:
-            return False
+            return "$.opponent.active.length"
         for slot, observed in enumerate(active):
+            prefix = f"$.opponent.active[{slot}]"
             native = opponent[slot]
             if not observed or not native or not native["isActive"]:
-                return False
-            if (
-                _sid(native["set"]["species"]) != _sid(observed["base_species"])
-                or bool(native["fainted"]) != bool(observed["fainted"])
-                or (native["status"] or None) != observed["status"]
-                or native["boosts"] != observed["boosts"]
-            ):
-                return False
+                return f"{prefix}.native_active"
+            if _sid(native["set"]["species"]) != _sid(observed["base_species"]):
+                return f"{prefix}.base_species"
+            if bool(native["fainted"]) != bool(observed["fainted"]):
+                return f"{prefix}.fainted"
+            if (native["status"] or None) != observed["status"]:
+                return f"{prefix}.status"
+            difference = _first_public_difference(
+                native["boosts"], observed["boosts"], f"{prefix}.boosts",
+            )
+            if difference is not None:
+                return difference
             hp = native["hp"]
             maxhp = native["maxhp"]
             bucket = 0 if hp <= 0 else (100 * hp // maxhp or 1)
             if bucket != observed["hp_percent"]:
-                return False
+                return f"{prefix}.hp_percent"
 
         for observed in current_view["opponent"]["revealed"]:
             if not observed["fainted"]:
@@ -96,10 +134,26 @@ def _positive_mechanics_match(
                 if _sid(member["set"]["species"]) == _sid(observed["species"])
             ]
             if selected and any(not member["fainted"] for member in selected):
-                return False
-    except (KeyError, IndexError, TypeError, ZeroDivisionError):
-        return False
-    return True
+                return "$.opponent.revealed.fainted"
+    except (KeyError, IndexError, TypeError, ZeroDivisionError, AttributeError):
+        return "$.state.invalid-native-structure"
+    return None
+
+
+def _positive_mechanics_match(
+    state: dict[str, Any],
+    projected: dict[str, Any],
+    *,
+    current_view: dict[str, Any],
+    ledger: PublicConstraintLedger,
+    legal_live: tuple[str, ...],
+    hypothetical_legal: list[str],
+) -> bool:
+    """Compatibility predicate for native-state admission and existing tests."""
+    return _positive_mechanics_rejection(
+        state, projected, current_view=current_view, ledger=ledger,
+        legal_live=legal_live, hypothetical_legal=hypothetical_legal,
+    ) is None
 
 
 @dataclass(frozen=True)
@@ -111,6 +165,8 @@ class PresentRebaseReport:
     unresolved_reason: str | None
     historical_witnesses: int = 0
     exhaustively_excluded_worlds: int = 0
+    # Bounded per-proposal rejection reasons; no hidden truth or private values.
+    rejection_reasons: tuple[tuple[str, int], ...] = ()
 
 
 class PresentHypothesisWorker(Protocol):
@@ -175,6 +231,7 @@ def build_present_rebase(
     found: list[BeliefParticle] = []
     roots = native = 0
     unresolved: str | None = None
+    rejected: Counter[str] = Counter()
     for proposal in batch.proposals[:max_roots]:
         if len(found) >= max_particles:
             break
@@ -198,21 +255,30 @@ def build_present_rebase(
                 state=opening, current_view=current_view,
                 limit=min(4, max_particles - len(found)),
             )
-            unresolved = report.get("reason") or unresolved
+            if not report["outcomes"]:
+                reason = report.get("reason") or "native-produced-no-outcomes"
+                path = report.get("mismatch_path")
+                if isinstance(path, str) and path.startswith("$."):
+                    reason += ":" + path[:120]
+                rejected[reason] += 1
+                unresolved = reason
             for hypothesis in report["outcomes"]:
                 native += 1
                 state = hypothesis["state"]
                 if not _matches_approved_prior(state, proposal):
+                    rejected["positive-prior-set-mismatch"] += 1
                     continue
                 projected = worker.state_view(
                     state=state, side="p2", previews=previews,
                 )
                 commands = worker.legal_choices(state=state, side="p2")
-                if not _positive_mechanics_match(
+                mismatch = _positive_mechanics_rejection(
                     state, projected, current_view=current_view,
                     ledger=ledger, legal_live=legal_live,
                     hypothetical_legal=commands,
-                ):
+                )
+                if mismatch is not None:
+                    rejected["positive-current-mismatch:" + mismatch] += 1
                     continue
                 found.append(BeliefParticle(
                     state=state,
@@ -224,14 +290,21 @@ def build_present_rebase(
                 ))
                 if len(found) >= max_particles:
                     break
-        except (RuntimeError, ValueError, KeyError):
+        except (RuntimeError, ValueError, KeyError) as error:
             # A failed fresh proposal is unresolved, NOT negative world proof.
-            unresolved = "native-proposal-unresolved"
+            unresolved = "native-proposal-error:" + type(error).__name__
+            rejected[unresolved] += 1
             continue
+    reasons = tuple(sorted(rejected.items(), key=lambda item: (-item[1], item[0])))
+    # When all outcomes are rejected, report WHY rather than falsely claiming
+    # that all public-current possibilities have been exhausted.
+    if not found and reasons:
+        unresolved = reasons[0][0]
     return PresentRebaseReport(
         particles=tuple(found),
         roots_tried=roots,
         native_candidates=native,
         positive_matches=len(found),
         unresolved_reason=None if found else unresolved or "bounded-public-constructor-unresolved",
+        rejection_reasons=reasons,
     )

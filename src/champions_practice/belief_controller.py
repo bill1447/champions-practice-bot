@@ -2758,15 +2758,19 @@ class BeliefDecisionEngine:
         ledger = self.public_constraint_ledger
         view = self.last_public_view
         self.last_public_world_failure_reason = "missing-public-checkpoint"
-        if (
-            ledger is None
-            or self.public_constraint_ledger_issue is not None
-            or not isinstance(view, dict)
-            or view.get("turn", 0) < 3
-            or self._public_ai_preview_choice is None
-            or ledger.current_signature in self._public_rebase_attempted_signatures
-            or perf_counter() >= deadline - 1.0
-        ):
+        if ledger is None or self.public_constraint_ledger_issue is not None:
+            self.last_public_world_failure_reason = "public-ledger-unavailable"
+            return False
+        if not isinstance(view, dict) or view.get("turn", 0) < 2:
+            return False
+        if self._public_ai_preview_choice is None:
+            self.last_public_world_failure_reason = "missing-own-preview"
+            return False
+        if ledger.current_signature in self._public_rebase_attempted_signatures:
+            self.last_public_world_failure_reason = "snapshot-already-attempted"
+            return False
+        if perf_counter() >= deadline - 1.0:
+            self.last_public_world_failure_reason = "decision-budget-insufficient"
             return False
         # A failed proposal is never retried for the same public snapshot.
         self._public_rebase_attempted_signatures.add(ledger.current_signature)

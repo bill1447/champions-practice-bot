@@ -1892,9 +1892,34 @@ function materializePresentHypotheses(request) {
     return { outcomes: [], reason: "unsupported-current-public-phase" };
   }
 
-  const why = (reason) => ({ outcomes: [], reason });
+  const why = (reason, mismatchPath = null) => ({
+    outcomes: [], reason,
+    ...(mismatchPath ? { mismatch_path: mismatchPath } : {}),
+  });
   const asId = (value) => toId(value || "");
   const exact = (value) => JSON.stringify(value);
+  // Diagnostic only: reveal a FIELD PATH, never the live value or hidden state.
+  // Keep exact-JSON equality as the admission requirement.
+  function firstMismatchPath(actual, expected, path) {
+    if (exact(actual) === exact(expected)) return null;
+    if (Array.isArray(actual) && Array.isArray(expected)) {
+      for (let i = 0; i < Math.min(actual.length, expected.length); i++) {
+        const diff = firstMismatchPath(actual[i], expected[i], `${path}[${i}]`);
+        if (diff) return diff;
+      }
+      return actual.length !== expected.length ? `${path}.length` : path;
+    }
+    if (actual && expected && typeof actual === "object" &&
+        typeof expected === "object" && !Array.isArray(actual) && !Array.isArray(expected)) {
+      const keys = [...new Set([...Object.keys(actual), ...Object.keys(expected)])].sort();
+      for (const key of keys) {
+        if (!(key in actual) || !(key in expected)) return `${path}.${key}`;
+        const diff = firstMismatchPath(actual[key], expected[key], `${path}.${key}`);
+        if (diff) return diff;
+      }
+    }
+    return path;
+  }
   const ownRequested = JSON.stringify(view.request);
   const supportedBoosts = new Set(["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"]);
   const candidates = [];
@@ -2096,18 +2121,29 @@ function materializePresentHypotheses(request) {
     original.updateSpeed();
     original.makeRequest("move");
     const choices = original.p2.activeRequest;
-    if (exact(choices) !== ownRequested) return why("exact-own-request-mismatch");
+    if (exact(choices) !== ownRequested) {
+      return why("exact-own-request-mismatch",
+        firstMismatchPath(choices, view.request, "$.request"));
+    }
 
     const desiredOwn = view.player;
     const ownProjection = playerView(original, "p2", {
       p1: view.opponent.preview_species,
       p2: view.player.team.map((mon) => mon.species),
     });
-    if (exact(ownProjection.player) !== exact(desiredOwn) ||
-        exact(ownProjection.field) !== exact(field) ||
-        exact(ownProjection.opponent.side_conditions) !==
-          exact(view.opponent.side_conditions)) {
-      return why("current-public-mechanics-mismatch");
+    if (exact(ownProjection.player) !== exact(desiredOwn)) {
+      return why("current-public-mechanics-mismatch",
+        firstMismatchPath(ownProjection.player, desiredOwn, "$.player"));
+    }
+    if (exact(ownProjection.field) !== exact(field)) {
+      return why("current-public-mechanics-mismatch",
+        firstMismatchPath(ownProjection.field, field, "$.field"));
+    }
+    if (exact(ownProjection.opponent.side_conditions) !==
+        exact(view.opponent.side_conditions)) {
+      return why("current-public-mechanics-mismatch",
+        firstMismatchPath(ownProjection.opponent.side_conditions,
+          view.opponent.side_conditions, "$.opponent.side_conditions"));
     }
     const foeMembers = foe.active.map((mon) => mon && ({
       species: mon.species.name,

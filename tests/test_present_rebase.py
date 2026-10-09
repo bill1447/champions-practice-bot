@@ -10,6 +10,7 @@ import pytest
 from champions_practice.current_state_proposals import CurrentStateProposalBatch
 from champions_practice.present_rebase import (
     _positive_mechanics_match,
+    _positive_mechanics_rejection,
     build_present_rebase,
 )
 
@@ -168,6 +169,100 @@ def test_midgame_turn_eight_uses_only_fresh_public_set_and_native_state(monkeypa
     )
     assert rejected.particles == ()
     assert rejected.exhaustively_excluded_worlds == 0
+    assert rejected.native_candidates == 1
+    assert rejected.unresolved_reason == (
+        "positive-current-mismatch:$.opponent.active[0].status"
+    )
+    assert rejected.rejection_reasons == (
+        ("positive-current-mismatch:$.opponent.active[0].status", 1),
+    )
+
+
+def test_positive_gate_reports_exact_own_field_without_values():
+    view, state, ledger = sample()
+    projected = json.loads(json.dumps(view))
+    projected["player"]["team"][0]["speed"] = 122
+    view["player"]["team"][0]["speed"] = 121
+    assert _positive_mechanics_rejection(
+        state, projected, current_view=view, ledger=ledger,
+        legal_live=("move protect",), hypothetical_legal=["move protect"],
+    ) == "$.player.team[0].speed"
+    assert not _positive_mechanics_match(
+        state, projected, current_view=view, ledger=ledger,
+        legal_live=("move protect",), hypothetical_legal=["move protect"],
+    )
+
+
+def test_native_roster_active_slots_follow_pinned_switch_order():
+    view, state, ledger = sample()
+    # The pinned simulator moves switched-in Pokemon to the first two roster
+    # slots. A previously active member on the bench is not checked as active.
+    bench = {
+        "set": {"species": "Metagross"}, "hp": 150, "maxhp": 150,
+        "fainted": False, "isActive": False, "status": "",
+        "boosts": {"atk": 0},
+    }
+    state["sides"][0]["pokemon"].append(bench)
+    assert _positive_mechanics_match(
+        state, view, current_view=view, ledger=ledger,
+        legal_live=(), hypothetical_legal=[],
+    )
+    # A broken serializer that left the bench mon in slot one must not pass.
+    state["sides"][0]["pokemon"][0], state["sides"][0]["pokemon"][2] = (
+        state["sides"][0]["pokemon"][2], state["sides"][0]["pokemon"][0]
+    )
+    assert _positive_mechanics_rejection(
+        state, view, current_view=view, ledger=ledger,
+        legal_live=(), hypothetical_legal=[],
+    ) == "$.opponent.active[0].native_active"
+
+
+def test_native_constructor_rejection_keeps_first_mismatched_request_path(monkeypatch):
+    view, _, ledger = sample()
+    proposal = SimpleNamespace(
+        proposal_id="public-prior:snapshot", weight=1.0,
+        team_text="public team", world=SimpleNamespace(sets=()),
+    )
+    batch = CurrentStateProposalBatch(
+        proposals=(proposal,), source_turn=8,
+        source_signature=ledger.current_signature,
+        candidates_considered=1, rejected_missing_public_moves=0,
+    )
+    monkeypatch.setattr(
+        "champions_practice.present_rebase._require_current_public_input",
+        lambda _ledger, _view: None,
+    )
+    monkeypatch.setattr(
+        "champions_practice.present_rebase.build_current_state_set_proposals",
+        lambda **_kw: batch,
+    )
+    monkeypatch.setattr(
+        "champions_practice.present_rebase.preview_choice_for_world",
+        lambda *_a: "team 12",
+    )
+
+    class Worker:
+        def create_state(self, **kwargs):
+            return {"turn": 1}
+
+        def materialize_present_hypotheses(self, *, state, current_view, limit):
+            return {
+                "outcomes": [], "reason": "exact-own-request-mismatch",
+                "mismatch_path": "$.request.active[0].moves[0].pp",
+            }
+
+    report = build_present_rebase(
+        Worker(), ledger=ledger, current_view=view,
+        priors={}, battle_format="test", ai_team="own team",
+        ai_preview_choice="team 12",
+    )
+    assert report.roots_tried == 1
+    assert report.native_candidates == 0
+    assert report.unresolved_reason == (
+        "exact-own-request-mismatch:$.request.active[0].moves[0].pp"
+    )
+    assert report.rejection_reasons == ((report.unresolved_reason, 1),)
+    assert report.exhaustively_excluded_worlds == 0
 
 
 @pytest.mark.parametrize("limit", [0, -1, 9, True])
