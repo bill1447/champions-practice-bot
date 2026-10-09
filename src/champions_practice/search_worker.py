@@ -1337,9 +1337,13 @@ class ShowdownSearchWorker:
                 not isinstance(diag, dict)
                 or not required.issubset(diag)
                 or set(diag) - allowed
+                or type(diag["stage"]) is not str
                 or diag["stage"] not in {
                     "after-native-unburden-removal", "exact-own-projection"
                 }
+                or ("pre_removal_action_speed" in diag) != (
+                    diag["stage"] == "after-native-unburden-removal"
+                )
                 or type(diag["slot"]) is not int
                 or diag["slot"] not in (0, 1)
                 or not isinstance(diag["species"], str)
