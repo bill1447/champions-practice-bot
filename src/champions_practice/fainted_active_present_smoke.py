@@ -112,6 +112,12 @@ def main() -> None:
                     "ERROR: pinned public view has no occupied fainted opponent slot: "
                     f"dead={dead} alive={alive}"
                 )
+            # Normal pinned turn processing calls Battle.checkFainted(), which
+            # marks the still-occupied active slot with major status "fnt".
+            if active[dead[0]]["status"] != "fnt":
+                raise SystemExit(
+                    "ERROR: real pinned opponent faint has unexpected public status"
+                )
 
             # Full positive public-ledger provenance, no private snapshot or
             # opponent hidden command enters build_present_rebase.
@@ -145,6 +151,10 @@ def main() -> None:
                     raise SystemExit("ERROR: fainted slot disappeared from projection")
                 if not projection["opponent"]["active"][dead[0]]["fainted"]:
                     raise SystemExit("ERROR: fainted slot was resurrected")
+                if projection["opponent"]["active"][dead[0]]["status"] != "fnt":
+                    raise SystemExit("ERROR: fresh native faint lost pinned fnt status")
+                if particle.state["sides"][0]["pokemon"][dead[0]]["status"] != "fnt":
+                    raise SystemExit("ERROR: serialized native faint status not authoritative")
                 if not set(worker.legal_choices(state=particle.state, side="p2")) == set(legal):
                     raise SystemExit("ERROR: fainted-slot witness changed legal moves")
             print("RESULT: native fainted opponent slot admitted for exact search")
