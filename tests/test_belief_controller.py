@@ -3926,7 +3926,9 @@ def test_degraded_live_decision_never_retries_historical_backlog():
     assert result.mode == "fallback"
     assert result.choice == "move protect"
     assert result.fallback_reason == "public-rebase-unresolved"
-    assert len(engine.pending_observations) == 1
+    assert engine.pending_observations == []
+    assert engine.particles == ()
+    assert engine.recovery_authority_history_complete is False
 
 
 def test_fresh_public_rebase_skips_midgame_without_any_worker():
