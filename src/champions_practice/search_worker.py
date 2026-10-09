@@ -1321,6 +1321,58 @@ class ShowdownSearchWorker:
             raise RuntimeError("pinned Showdown exceeded present-hypothesis limit")
         if result.get("reason") is not None and not isinstance(result["reason"], str):
             raise RuntimeError("pinned Showdown returned invalid present failure")
+        # Whitelist ONLY own-side numeric speed diagnostics. Do not pass
+        # arbitrary worker objects to the public league report.
+        diag = result.get("own_speed_diagnostic")
+        if diag is not None:
+            required = {
+                "stage", "slot", "species", "observed_speed",
+                "native_cached_speed", "native_action_speed",
+                "native_stored_speed", "speed_boost", "status",
+                "ability", "item", "unburden_volatile", "trick_room",
+                "terrain", "weather",
+            }
+            allowed = required | {"pre_removal_action_speed"}
+            if (
+                not isinstance(diag, dict)
+                or not required.issubset(diag)
+                or set(diag) - allowed
+                or diag["stage"] not in {
+                    "after-native-unburden-removal", "exact-own-projection"
+                }
+                or type(diag["slot"]) is not int
+                or diag["slot"] not in (0, 1)
+                or not isinstance(diag["species"], str)
+                or not 1 <= len(diag["species"]) <= 64
+                or any(
+                    type(diag[k]) is not int or not 0 <= diag[k] <= 10000
+                    for k in (
+                        "observed_speed", "native_cached_speed",
+                        "native_action_speed", "native_stored_speed"
+                    )
+                )
+                or type(diag["speed_boost"]) is not int
+                or not -6 <= diag["speed_boost"] <= 6
+                or type(diag["unburden_volatile"]) is not bool
+                or type(diag["trick_room"]) is not bool
+                or any(
+                    diag[k] is not None and (
+                        not isinstance(diag[k], str)
+                        or len(diag[k]) > 64
+                    )
+                    for k in ("status", "ability", "item", "terrain", "weather")
+                )
+                or (
+                    "pre_removal_action_speed" in diag
+                    and (
+                        type(diag["pre_removal_action_speed"]) is not int
+                        or not 0 <= diag["pre_removal_action_speed"] <= 10000
+                    )
+                )
+            ):
+                raise RuntimeError("pinned Showdown returned invalid own speed diagnostic")
+            if result["outcomes"]:
+                raise RuntimeError("successful native worlds cannot carry speed failure diagnostics")
         # A native fainted active slot legitimately has exact HP zero.
         # Require the public faint/0% observation before accepting that value;
         # otherwise the result is malformed and must never become a belief.
