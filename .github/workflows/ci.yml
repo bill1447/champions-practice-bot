@@ -239,6 +239,11 @@ jobs:
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
+      - name: Real-collapse challenge independent oracle boundary smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.rebase_challenge_smoke
+
       - name: Rolling public current-turn checkpoint and true-world smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
