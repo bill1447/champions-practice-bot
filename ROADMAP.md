@@ -127,6 +127,38 @@ the distinct native volatile states. This is a specific native state fix,
 not a generic waiver of speed validation. Inspect remaining fallback paths
 on the next strength report before concluding the four are all resolved.
 
+### Phase 10.11 — own Speed forensic evidence, no inference relaxation (#202)
+
+The #201 eight-game synthetic-spread league stayed **8-0**, with
+**67 searches / 88 decisions**, **five fallbacks**, and **71,511** simulated
+branches. Four fallbacks remained Speed-related: three became
+`own-unburden-speed-unresolved` and one remained
+`current-public-mechanics-mismatch:$.player.active_details[0].speed`.
+The previous Unburden reset has not been proven to fix these actual failures.
+
+PR #202 is explicitly **diagnostic-first**. Rejected native current-world
+candidates now report a bounded, typed **own-side only** Speed snapshot:
+slot and species; exact observed Speed; native cached Speed; native
+freshly-calculated action Speed; stored Speed; Speed stage; status,
+ability, held item, Unburden volatile, Trick Room, terrain, weather,
+and, on attempted Unburden removal, pre-removal action Speed.
+This telemetry travels through the validated hypothetical worker,
+positive-only present-rebase report, fallback decision, and offline
+strength-league JSON in `summary.decisions.own_speed_diagnostics`
+and each game's `own_speed_diagnostics`, capped at two native attempts
+per rejected decision and eight records per game (32 summary maximum).
+
+Diagnostics are **not** supplied to tactics, prior admission, stat
+repair, hidden-opponent inference, or particle conditioning. They
+cannot authorize a world; all exact Showdown request/player/mechanics,
+serialization, and legal-choice checks remain unchanged. The pinned
+Unburden smoke adds a *negative* mutated-own-Speed control that must
+reject the candidate while emitting whitelisted evidence; unit tests
+reject any extra/private diagnostic field. The next controlled eight-game
+report must tell whether the mismatches are cached-vs-action, volatile,
+or a different effect, before deciding on a mechanics repair. The
+separate unsupported-phase fallback stays out of scope.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,
