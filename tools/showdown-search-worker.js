@@ -1892,10 +1892,32 @@ function materializePresentHypotheses(request) {
     return { outcomes: [], reason: "unsupported-current-public-phase" };
   }
 
-  const why = (reason, mismatchPath = null) => ({
+  const why = (reason, mismatchPath = null, ownSpeedDiagnostic = null) => ({
     outcomes: [], reason,
     ...(mismatchPath ? { mismatch_path: mismatchPath } : {}),
+    ...(ownSpeedDiagnostic ? { own_speed_diagnostic: ownSpeedDiagnostic } : {}),
   });
+  // Own-side diagnostic only, for offline league forensics. Never include
+  // an opponent set, private session, RNG witness or searched action.
+  function speedDiagnostic(mon, observed, slot, stage, preRemovalSpeed = null) {
+    return {
+      stage, slot, species: observed.species,
+      observed_speed: observed.speed,
+      native_cached_speed: mon.speed,
+      native_action_speed: mon.getActionSpeed(),
+      native_stored_speed: mon.storedStats.spe,
+      speed_boost: mon.boosts.spe,
+      status: mon.status || null,
+      ability: mon.ability || null,
+      item: mon.item || null,
+      unburden_volatile: !!mon.volatiles["unburden"],
+      trick_room: !!original.field.pseudoWeather["trickroom"],
+      terrain: original.field.terrain || null,
+      weather: original.field.weather || null,
+      ...(preRemovalSpeed === null ? {} :
+        { pre_removal_action_speed: preRemovalSpeed }),
+    };
+  }
   const asId = (value) => toId(value || "");
   const exact = (value) => JSON.stringify(value);
   // Diagnostic only: reveal a FIELD PATH, never the live value or hidden state.
@@ -2162,15 +2184,22 @@ function materializePresentHypotheses(request) {
     // present public facts; our OWN cached speed disambiguates this one case.
     // Never change a set/stat or write a made-up speed directly. Use the
     // pinned volatile removal and require the derived speed to match exactly.
-    for (const observed of view.player.active_details) {
+    for (let slot = 0; slot < view.player.active_details.length; slot++) {
+      const observed = view.player.active_details[slot];
       if (!observed || !Number.isInteger(observed.speed)) continue;
-      const mon = find(own, observed.species);
-      if (!mon || !mon.isActive || asId(mon.ability) !== "unburden" ||
+      const mon = own.active[slot];
+      if (!mon || !mon.isActive ||
+          asId(mon.species.name) !== asId(observed.species) ||
+          asId(mon.ability) !== "unburden" ||
           mon.item || !mon.volatiles["unburden"]) continue;
-      if (mon.getActionSpeed() === observed.speed) continue;
+      const beforeRemoval = mon.getActionSpeed();
+      if (beforeRemoval === observed.speed) continue;
       mon.removeVolatile("unburden");
       if (mon.getActionSpeed() !== observed.speed) {
-        return why("own-unburden-speed-unresolved");
+        return why("own-unburden-speed-unresolved",
+          `$.player.active_details[${slot}].speed`,
+          speedDiagnostic(mon, observed, slot,
+            "after-native-unburden-removal", beforeRemoval));
       }
     }
 
@@ -2189,8 +2218,20 @@ function materializePresentHypotheses(request) {
       p2: view.player.team.map((mon) => mon.species),
     });
     if (exact(ownProjection.player) !== exact(desiredOwn)) {
-      return why("current-public-mechanics-mismatch",
-        firstMismatchPath(ownProjection.player, desiredOwn, "$.player"));
+      const path = firstMismatchPath(ownProjection.player, desiredOwn, "$.player");
+      const speedMatch = /^\\$\\.player\\.(active_details|team)\\[(\\d+)\\]\\.speed$/.exec(path || "");
+      let diagnostic = null;
+      if (speedMatch) {
+        const slot = Number(speedMatch[2]);
+        const isActive = speedMatch[1] === "active_details";
+        const mon = (isActive ? own.active : own.pokemon)[slot];
+        const observed = (isActive ? desiredOwn.active_details : desiredOwn.team)[slot];
+        if (mon && observed && Number.isInteger(observed.speed)) {
+          diagnostic = speedDiagnostic(mon, observed, slot,
+            "exact-own-projection");
+        }
+      }
+      return why("current-public-mechanics-mismatch", path, diagnostic);
     }
     if (exact(ownProjection.field) !== exact(field)) {
       return why("current-public-mechanics-mismatch",
