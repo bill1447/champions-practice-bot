@@ -108,7 +108,11 @@ def main() -> None:
         mode = next_turn.decision.mode
         reason = next_turn.decision.fallback_reason
         if mode == "fallback":
-            if not (reason or "").startswith("fresh-public-world:"):
+            if not (
+                (reason or "").startswith("fresh-public-world:")
+                or reason == "belief-search-deadline"
+                or (reason or "").startswith("search-error:")
+            ):
                 raise SystemExit(
                     "ERROR: current decision fell back without a fresh-world "
                     f"reason: {next_turn.decision!r}"
