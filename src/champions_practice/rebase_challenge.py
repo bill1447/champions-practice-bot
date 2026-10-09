@@ -168,6 +168,23 @@ def _public_signature_match(first: dict, second: dict) -> bool:
     )
 
 
+def _verified_ai_public_projection(
+    *,
+    observed_human_view: dict,
+    independent_human_view: dict,
+    independent_ai_view: dict,
+) -> dict | None:
+    """Use only the oracle's AI-visible projection after a p1/p1 agreement.
+
+    The league facade returns a p1 view; it must NEVER be compared against
+    a p2 view or supplied to an AI-side reconstruction constructor.
+    Returns no reconstruction evidence when the independent oracle diverges.
+    """
+    if not _public_signature_match(observed_human_view, independent_human_view):
+        return None
+    return independent_ai_view
+
+
 @dataclass(frozen=True)
 class PublicRebaseStep:
     checkpoints: tuple[PublicRebaseCheckpoint, ...]
@@ -370,12 +387,15 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             oracle_human_view = reference_worker.session_view(
                 oracle_session_id, side="p1",
             )["view"]
-            current_view = reference_worker.session_view(
+            oracle_ai_view = reference_worker.session_view(
                 oracle_session_id, side="p2",
             )["view"]
-            oracle_valid = _public_signature_match(
-                oracle_human_view, result.public_view,
+            current_view = _verified_ai_public_projection(
+                observed_human_view=result.public_view,
+                independent_human_view=oracle_human_view,
+                independent_ai_view=oracle_ai_view,
             )
+            oracle_valid = current_view is not None
             oracle_state = reference_worker.session_snapshot(
                 oracle_session_id,
             )["state"]
@@ -383,7 +403,7 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
                 # No truth inference from a non-identical replay.
                 rows.append({
                     "decision_index": decision_index,
-                    "observation_turn": current_view.get("turn"),
+                    "observation_turn": result.public_view.get("turn"),
                     "oracle_valid": False,
                     "status": "UNSUPPORTED_ORACLE_PUBLIC_DIVERGENCE",
                     "verified_current_states": 0,
