@@ -2094,6 +2094,24 @@ function materializePresentHypotheses(request) {
     }
 
     original.faintMessages(false, false, false);
+    // Pinned Battle.checkFainted() is a separate native step after faint
+    // resolution: it assigns the canonical "fnt" status and switchFlag.
+    // Without it the public view's fainted slot has status "fnt" while
+    // this synthetic current turn has status null, failing exact admission.
+    original.checkFainted();
+    // The natural pinned turn-loop clears an unfulfillable forced switch:
+    // with no remaining reserve the fainted member stays in side.active.
+    // With a reserve available, this is a forced-switch request, NOT a move
+    // phase; do not misrepresent it as a valid current move state.
+    for (const side of [original.p1, original.p2]) {
+      if (!side.active.some((mon) => mon && mon.fainted)) continue;
+      if (original.canSwitch(side)) {
+        return why("fainted-slot-requires-forced-switch");
+      }
+      for (const mon of side.active) {
+        if (mon && mon.fainted) mon.switchFlag = false;
+      }
+    }
     // Derive persistent effects through native pinned setters. Their remaining
     // durations are unknown hypotheses, NEVER historical facts.
     const field = view.field || {};
