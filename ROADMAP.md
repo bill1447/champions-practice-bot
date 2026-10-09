@@ -407,14 +407,32 @@ until a separately gated current-state synthesizer is built and validated.
 1. Correct status claims and preserve frozen baseline identities (PR #194).
 2. Measure the separate synthetic spread-uncertainty fixture; report degraded,
    fallback, zero-match, and retry rates rather than just win/loss.
-3. Add a bounded retry circuit breaker that stops historical backlog after a
-   fixed number of unproductive attempts. A safe fallback is **not** a rebase.
+3. Stop historical backlog retries in live decisions immediately after collapse.
+   A safe fallback is **not** a rebase. First-turn fresh positive Showdown
+   witnesses may enter search only after both the public observation and exact
+   own request pass the independent checkpoint validator. Deep-midgame fresh
+   synthesis remains unimplemented and must never reuse stale snapshots.
 4. Derive pinned-mechanics, observable HP/damage and speed-order constraints in
    the ledger; incomplete domains remain unresolved, never excluded.
 5. Build and independently validate a present-turn Showdown state constructor
    before permitting any live use of an HP-compatible hypothesis.
 6. Profile worker and particle costs; add Protect-stall / cross-move RNG domains
    only when demonstrated necessary, not as an unbounded substitute for inference.
+
+### Fresh current-public rebase — initial covered domain only
+
+The first production entry point is limited to an observation exactly one
+resolved turn after a trusted public preview. It proposes fresh public-prior
+sets (not stale particles), obtains positive pinned-Showdown turn witnesses,
+and accepts only an independently checked native state matching the entire
+public projection and the exact own-side request. A bounded failed attempt
+never excludes any hidden set. The unproductive historical replay path is
+removed from live action selection but remains callable offline for forensic
+tests. Unknown midgame effects, PP, lock states, timers and missing prior
+coverage are *not* solved by this one-turn path; unsupported cases fall back
+legally without burning further decision cycles. General from-present native
+state synthesis and independently proven HP/stat constraints remain the next
+substantive recovery gate.
 
 ### First implementation gate — HP intervals before rebase
 
