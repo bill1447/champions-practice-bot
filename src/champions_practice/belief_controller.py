@@ -2717,6 +2717,12 @@ class BeliefDecisionEngine:
         )
         self.pending_observations.clear()
         self._clear_pending_recovery_progress()
+        # A successful fresh witness is independent of old ancestry. Public
+        # evidence remains in the particle-independent constraint ledger.
+        self.recovery_authority_root_particles = ()
+        self.recovery_opening_authorities = ()
+        self.recovery_authority_root_public_view = None
+        self.recovery_authority_history.clear()
         self.recovery_authority_history_complete = False
         self.degraded = False
         return True
@@ -2736,6 +2742,17 @@ class BeliefDecisionEngine:
             # certified fresh rebase domain; later turns fail open to a legal
             # fallback until native present-turn synthesis is validated.
             if not self._try_first_turn_public_rebase(deadline=decision_deadline):
+                # This is no longer a historical-retry queue. Drop stale
+                # hypothetical state and queued transitions; the independent
+                # public constraint ledger remains authoritative.
+                self.pending_observations.clear()
+                self._clear_pending_recovery_progress()
+                self.particles = ()
+                self.recovery_authority_root_particles = ()
+                self.recovery_opening_authorities = ()
+                self.recovery_authority_root_public_view = None
+                self.recovery_authority_history.clear()
+                self.recovery_authority_history_complete = False
                 return self._fallback_decision(
                     legal_live,
                     started=started,
@@ -3283,14 +3300,11 @@ class BeliefDecisionEngine:
         )
         recovery_diagnostic: BeliefRecoveryDiagnostic | None = None
 
-        if self.pending_observations:
-            self.pending_observations.append(
-                (
-                    decision.choice,
-                    previous_view,
-                    view,
-                )
-            )
+        if self.degraded or self.pending_observations:
+            # Once degraded, keep collecting public facts in the independent
+            # ledger but NEVER append another history item or condition stale
+            # pre-collapse particles. Only the first failure is eligible for
+            # the bounded one-turn positive witness at the next decision.
             update = None
             timed_out = False
             conditioning_seconds = perf_counter() - conditioning_started
@@ -3298,7 +3312,7 @@ class BeliefDecisionEngine:
             generated = 0
             matched = 0
             recovery_diagnostic = _recovery_diagnostic(
-                reason="pending-backlog",
+                reason="public-rebase-unresolved",
                 view=view,
                 particles_before=starting_particles,
                 update=None,
