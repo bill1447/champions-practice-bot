@@ -232,6 +232,18 @@ hand-authored strategy expansion remains frozen unless gameplay exposes a concre
 
 ## Phase 10.5 — Mechanics-authoritative reachability and current-state belief rebase — in progress
 
+Evaluation qualification (PR #194): the frozen `current-roster-mirror-v1`
+strength league uses identical fixed teams and deterministic
+`public-fallback-v1` action scoring (including favorable scores for Protect and
+Follow Me). Its 8-0 result is a legality/gameplay smoke test, **not** a human
+strength estimate, a random-legal-command baseline, or evidence of recovery
+under unknown competitive sets. The `synthetic-spread-uncertainty-v1` fixture
+adds three in-repository, synthetic nature/Stat Point variants per species and
+varies opponent truth across games without changing the bot's prior pool. It
+tests hidden spread uncertainty, **not** unknown move/item sets or a
+VGCPastes-sourced distribution; add a separately provenance-verified
+corpus-backed fixture before making general-set performance claims.
+
 The live bot can already play complete games, but sampled exact replay is not sufficient to
 decide whether a hidden-world hypothesis is mechanically impossible. A real collapse showed
 that normal conditioning could sample zero matching branches while a larger RNG search later
@@ -390,11 +402,32 @@ Protect + Wood Hammer backlog cases intact. PR #182 must be evaluated as a
 public-evidence recording foundation only: it cannot claim recovery improvement
 until a separately gated current-state synthesizer is built and validated.
 
+### Near-term recovery execution order
+
+1. Correct status claims and preserve frozen baseline identities (PR #194).
+2. Measure the separate synthetic spread-uncertainty fixture; report degraded,
+   fallback, zero-match, and retry rates rather than just win/loss.
+3. Add a bounded retry circuit breaker that stops historical backlog after a
+   fixed number of unproductive attempts. A safe fallback is **not** a rebase.
+4. Derive pinned-mechanics, observable HP/damage and speed-order constraints in
+   the ledger; incomplete domains remain unresolved, never excluded.
+5. Build and independently validate a present-turn Showdown state constructor
+   before permitting any live use of an HP-compatible hypothesis.
+6. Profile worker and particle costs; add Protect-stall / cross-move RNG domains
+   only when demonstrated necessary, not as an unbounded substitute for inference.
+
 ### First implementation gate — HP intervals before rebase
 
-The current public-observation signature still compares public HP fields exactly. The code
-already classifies HP/HP-percent differences as stochastic-only diagnostics, but those
-differences do not yet survive conditioning merely because they are mechanically compatible.
+Status after PRs #180, #192, and #193: **this gate is NOT complete**. PR #180
+correctly normalizes opposing displayed HP to the pinned Champions integer bucket,
+but that is not damage-derived interval acceptance and has not demonstrated
+improved collapse recovery. PR #192 adds a sampled HP-envelope diagnostic. PR #193
+adds offline-only min-normal / max-critical Showdown endpoint probes. Neither
+diagnostic installs a usable current state or grants negative exclusion authority.
+Two whole-turn endpoints are not exhaustive bounds when multiple actions, recoil,
+healing, Protect, or other stochastic events interact. Do not mark the gate complete
+until a mechanically supported interval constraint affects verified current-state
+inference and independent benchmark results establish its actual effect.
 
 Before current-state re-synthesis is implemented, land the HP-constraint change by itself and
 rerun the frozen collapse benchmark. Record the fallback/degraded-turn delta independently so
@@ -515,9 +548,12 @@ Phase exit criteria:
 5. **Infrastructure complete; measurement campaign pending:** use the deterministic exact-team
    corpus runner across a diverse game corpus and drive new stochastic support from measured
    false exclusions and inconclusive-coverage hotspots.
-6. Implement interval-aware HP acceptance alone, using the pinned Champions `getHealth`
-   producer semantics, and rerun the frozen collapse benchmark before any rebase machinery.
-   Record its independent effect on fallbacks/degraded turns.
+6. **Pending, foundation only (PRs #180, #192, #193):** complete pinned-Champions
+   interval-aware HP acceptance and derive sound per-action damage/stat bounds,
+   with explicit treatment of critical hits, recoil, healing, and observable
+   deterministic effects. Public HP bucket normalization and diagnostic
+   endpoint probes do not satisfy this gate. Rerun the frozen collapse benchmark;
+   record any measured change separately from the rebase work.
 7. **Foundation merged — PR #182 recording gate:** introduce a particle-independent
    current-state ledger of validated public snapshots, exact own-side requests,
    cumulative revealed move/item/ability facts and historical channel-visible
