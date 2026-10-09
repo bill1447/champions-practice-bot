@@ -920,6 +920,8 @@ class BeliefDecisionEngine:
         # Fresh public-only rebasing never consumes stale recovery particles.
         self._public_ai_preview_choice: str | None = None
         self._public_rebase_attempted_signatures: set[str] = set()
+        # Fresh per-decision worlds are disposable. Only the public ledger persists.
+        self.last_public_world_failure_reason: str | None = None
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
         # Shadow-only public evidence: never participates in live particle
@@ -2057,6 +2059,22 @@ class BeliefDecisionEngine:
                 view=view,
             )
 
+    def _discard_decision_hypotheses(self) -> None:
+        """Discard simulator hypotheses, NEVER the independent public ledger.
+
+        This is not collapse recovery. A new search decision will sample fresh
+        possible worlds from its own current public checkpoint. No old battle
+        trajectory, RNG seed, particle identity, or queued history is retained.
+        """
+        self.particles = ()
+        self.pending_observations.clear()
+        self._clear_pending_recovery_progress()
+        self.recovery_authority_root_particles = ()
+        self.recovery_opening_authorities = ()
+        self.recovery_authority_root_public_view = None
+        self.recovery_authority_history.clear()
+        self.recovery_authority_history_complete = False
+
     def _clear_pending_recovery_progress(self) -> None:
         self.pending_recovery_prefix_particles = ()
         self.pending_recovery_prefix_count = 0
@@ -2739,6 +2757,7 @@ class BeliefDecisionEngine:
         """
         ledger = self.public_constraint_ledger
         view = self.last_public_view
+        self.last_public_world_failure_reason = "missing-public-checkpoint"
         if (
             ledger is None
             or self.public_constraint_ledger_issue is not None
@@ -2772,11 +2791,18 @@ class BeliefDecisionEngine:
             result, timed_out = self._run_until_deadline(
                 run, deadline=min(deadline - 0.5, perf_counter() + 3.5),
             )
-        except (RuntimeError, ValueError, ShowdownRequestError):
+        except (RuntimeError, ValueError, ShowdownRequestError) as error:
+            self.last_public_world_failure_reason = type(error).__name__
             return False
         if timed_out or result is None or not result.particles:
+            self.last_public_world_failure_reason = (
+                "time-budget" if timed_out
+                else result.unresolved_reason if result is not None
+                else "no-worker-result"
+            ) or "no-compatible-public-world"
             return False
 
+        self.last_public_world_failure_reason = None
         self.particles = resample_particles_by_world(
             result.particles,
             limit=self.max_particles,
@@ -2801,8 +2827,29 @@ class BeliefDecisionEngine:
         decision_deadline = started + self.decision_budget_seconds
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
-        if self.degraded:
-            # No historical backlog catch-up in live action selection.
+        # PR #197: new public worlds for EVERY move-phase decision after turn one.
+        # A missing particle set is not an injury to be repaired. Prior particles
+        # are disposable even if last turn's search succeeded.
+        use_current_public_worlds = (
+            isinstance(self.last_public_view, dict)
+            and self.last_public_view.get("turn", 0) >= 2
+            and self._public_ai_preview_choice is not None
+        )
+        if use_current_public_worlds:
+            self._discard_decision_hypotheses()
+            if not self._try_present_public_rebase(
+                deadline=decision_deadline, legal_live=legal_live,
+            ):
+                self.degraded = True
+                return self._fallback_decision(
+                    legal_live, started=started,
+                    reason="fresh-public-world:" + (
+                        self.last_public_world_failure_reason or "unresolved"
+                    ),
+                )
+        elif self.degraded:
+            # Legacy recovery is retained for offline diagnostics / older
+            # harnesses without a post-preview public checkpoint.
             # First-turn positive public witnesses are the only currently
             # certified fresh rebase domain; later turns fail open to a legal
             # fallback until native present-turn synthesis is validated.
@@ -3365,6 +3412,26 @@ class BeliefDecisionEngine:
         self.last_recovery_retry_diagnostic = None
 
         conditioning_started = perf_counter()
+        if (
+            self._public_ai_preview_choice is not None
+            and isinstance(view, dict)
+            and view.get("turn", 0) >= 2
+        ):
+            # No historical conditioning or next-turn recovery backlog.
+            # Public constraints have already advanced above. A fresh batch
+            # will be built from that checkpoint when the next choice arrives.
+            self._discard_decision_hypotheses()
+            self.degraded = (
+                decision.mode == "fallback"
+                or self.public_constraint_ledger_issue is not None
+            )
+            return BeliefTurnUpdate(
+                decision=decision, public_view=view,
+                particles_before=particles_before, particles_after=0,
+                generated_branches=0, matched_branches=0,
+                conditioning_seconds=perf_counter() - conditioning_started,
+                conditioning_over_budget=False, degraded=self.degraded,
+            )
         conditioning_deadline = (
             conditioning_started + self.conditioning_budget_seconds
         )
