@@ -92,9 +92,10 @@ def _positive_mechanics_rejection(
         ),
     )
     for path, actual, expected in checks:
-        difference = _first_public_difference(actual, expected, path)
-        if difference is not None:
-            return difference
+        # Preserve the original canonical-JSON admission standard. Python
+        # equality alone would treat True and 1 as equal.
+        if _canonical(actual) != _canonical(expected):
+            return _first_public_difference(actual, expected, path) or path
     if legal_live and set(hypothetical_legal) != set(legal_live):
         return "$.legal_choices"
 
