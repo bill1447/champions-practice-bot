@@ -2260,3 +2260,34 @@ def test_offline_rejection_audit_records_prebranch_state_and_exact_values():
     assert mismatch["candidate_start_active"][0]["item"] == "sitrusberry"
     assert mismatch["candidate_start_active"][0]["boosts"]["atk"] == -1
     assert mismatch["candidate_start_active"][1]["hp"] == 147
+
+
+def test_sampled_hp_envelope_only_recognizes_hp_interval_without_authority():
+    from champions_practice.observation_beliefs import (
+        _sampled_hp_envelope_compatible,
+    )
+
+    actual = {
+        "turn": 8, "opponent": {"active": [
+            {"species": "Rillaboom", "hp_percent": 35},
+        ]},
+        "field": {"terrain": "grassyterrain"},
+    }
+    samples = (
+        {"turn": 8, "opponent": {"active": [
+            {"species": "Rillaboom", "hp_percent": 30},
+        ]}, "field": {"terrain": "grassyterrain"}},
+        {"turn": 8, "opponent": {"active": [
+            {"species": "Rillaboom", "hp_percent": 40},
+        ]}, "field": {"terrain": "grassyterrain"}},
+    )
+    assert _sampled_hp_envelope_compatible(actual, samples)
+    assert not _sampled_hp_envelope_compatible(
+        {**actual, "field": {"terrain": "psychicterrain"}}, samples,
+    )
+    assert not _sampled_hp_envelope_compatible(
+        {**actual, "opponent": {"active": [
+            {"species": "Rillaboom", "hp_percent": 41},
+        ]}}, samples,
+    )
+    assert not _sampled_hp_envelope_compatible(actual, ())
