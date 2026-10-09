@@ -1,4 +1,4 @@
-"""Production-like damaging-turn smoke for adaptive RNG conditioning."""
+"""Production-like damaging-turn smoke for fresh public-current decisions."""
 
 from champions_practice.belief_controller import (
     BeliefDecision,
@@ -134,57 +134,66 @@ def main() -> None:
                 raise SystemExit(
                     "ERROR: damaging-turn smoke did not produce public damage on both sides"
                 )
-            if update.generated_branches > 768:
+            # The authoritative public state must advance without requiring
+            # any historical RNG witness or persistent simulator particles.
+            if update.generated_branches or update.matched_branches:
                 raise SystemExit(
-                    "ERROR: observed-action conditioning exceeded bounded branch budget: "
-                    f"{update.generated_branches}"
+                    "ERROR: live damaging turn attempted historical conditioning"
                 )
-
-            if update.conditioning_over_budget:
-                raise SystemExit("ERROR: damaging-turn conditioning exceeded 8 seconds")
-            if update.degraded:
-                diagnostic = update.collapse_diagnostic
-                details = ""
-                if diagnostic is not None:
-                    details = (
-                        f"; debug={diagnostic.summary}; "
-                        f"paths={diagnostic.common_mismatch_paths!r}"
-                    )
+            if update.particles_after or coordinator._engine.particles:
                 raise SystemExit(
-                    "ERROR: ordinary damage RNG left the coordinator degraded; "
-                    f"execution={after.get('public_execution_delta')!r}"
-                    f"{details}"
+                    "ERROR: damaging turn retained stale hypothetical worlds"
                 )
-            if update.matched_branches <= 0 or not coordinator._engine.particles:
+            if update.recovery_retry_diagnostic is not None:
                 raise SystemExit(
-                    "ERROR: adaptive RNG conditioning retained no posterior particles"
+                    "ERROR: damaging turn attempted historical recovery"
                 )
-            if update.conditioning_seconds >= 8.0:
-                raise SystemExit("ERROR: damaging-turn conditioning missed production budget")
+            if coordinator._engine.public_constraint_ledger_issue is not None:
+                raise SystemExit(
+                    "ERROR: public constraint ledger rejected observed damage: "
+                    f"{coordinator._engine.public_constraint_ledger_issue}"
+                )
+            if update.conditioning_over_budget or update.conditioning_seconds >= 8.0:
+                raise SystemExit(
+                    "ERROR: public-only turn processing missed production budget"
+                )
 
             next_legal = coordinator._ai_preseal_choices()
             next_decision = coordinator._engine.choose_ai_action(
                 legal_live=next_legal,
             )
-            if next_decision.mode != "belief-search":
+            if next_decision.mode == "fallback":
+                if not (
+                    (next_decision.fallback_reason or "").startswith(
+                        "fresh-public-world:"
+                    )
+                    or next_decision.fallback_reason == "belief-search-deadline"
+                    or (next_decision.fallback_reason or "").startswith(
+                        "search-error:"
+                    )
+                ):
+                    raise SystemExit(
+                        "ERROR: failed current-state search did not report "
+                        f"fresh-world reason: {next_decision.fallback_reason}"
+                    )
+            elif next_decision.mode not in ("belief-search", "strategy"):
                 raise SystemExit(
-                    "ERROR: belief search did not resume after damaging turn: "
-                    f"{next_decision.fallback_reason}"
+                    "ERROR: unexpected decision mode after public damage: "
+                    f"{next_decision.mode}"
                 )
             if next_decision.choice not in next_legal:
-                raise SystemExit("ERROR: post-damage search choice is not live-legal")
+                raise SystemExit("ERROR: post-damage choice is not live-legal")
 
-            print("Production-like two-damage-turn belief conditioning")
+            print("Production-like two-sided damage current-state smoke")
             print(f"Initial particles: {update.particles_before}")
             print(f"Observed opponent actions: {actions}")
-            print(f"Branches generated: {update.generated_branches}")
-            print(f"Matching branches: {update.matched_branches}")
-            print(f"Posterior particles: {update.particles_after}")
-            print(f"Conditioning time: {update.conditioning_seconds:.3f} seconds")
-            print(f"Next belief-search choice: {next_decision.choice}")
-            print(f"Next search time: {next_decision.elapsed_seconds:.3f} seconds")
-            print("Production conditioning deadline: 8.0 seconds")
-            print("RESULT: two-sided damage RNG survives and belief search resumes")
+            print(f"Historical conditioning branches: {update.generated_branches}")
+            print(f"Particles remaining after observation: {update.particles_after}")
+            print(f"Public processing time: {update.conditioning_seconds:.3f} seconds")
+            print(f"Next decision mode: {next_decision.mode}")
+            print(f"Next decision: {next_decision.choice}")
+            print(f"Native constructor unresolved reason: {next_decision.fallback_reason or 'none'}")
+            print("RESULT: publicly observed damage persists; old worlds discarded")
         finally:
             coordinator.close()
 

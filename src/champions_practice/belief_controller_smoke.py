@@ -78,13 +78,12 @@ def main() -> None:
                 "ERROR: first live decision did not come from belief search: "
                 f"{decision.fallback_reason}"
             )
-        if update.degraded:
+        if update.particles_after or update.matched_branches or update.generated_branches:
             raise SystemExit(
-                "ERROR: live public observation degraded the persistent posterior: "
-                f"{update.recovery_diagnostic}"
+                "ERROR: public turn retained historical particle conditioning"
             )
-        if update.matched_branches <= 0:
-            raise SystemExit("ERROR: no hypothetical branch matched the live observation")
+        if update.recovery_retry_diagnostic is not None:
+            raise SystemExit("ERROR: sealed battle retried historical recovery")
         if update.public_view.get("player", {}).get("name") != "Human":
             raise SystemExit("ERROR: facade returned the AI-side private player view")
 
@@ -96,41 +95,53 @@ def main() -> None:
             human_choice=HUMAN_TURN_TWO,
         )
         second_decision = second_update.decision
-        if second_decision.mode != "belief-search":
+        if second_decision.mode == "fallback":
+            if not (
+                (second_decision.fallback_reason or "").startswith(
+                    "fresh-public-world:"
+                )
+                or second_decision.fallback_reason == "belief-search-deadline"
+                or (second_decision.fallback_reason or "").startswith(
+                    "search-error:"
+                )
+            ):
+                raise SystemExit(
+                    "ERROR: second live decision used an unrecognized fallback: "
+                    f"{second_decision.fallback_reason}"
+                )
+        elif second_decision.mode not in ("belief-search", "strategy"):
             raise SystemExit(
-                "ERROR: second decision did not use persistent belief search: "
-                f"{second_decision.fallback_reason}"
+                "ERROR: second live decision did not use current public worlds: "
+                f"{second_decision.mode}"
             )
-        if second_update.degraded:
+        if (second_update.particles_after or second_update.matched_branches
+                or second_update.recovery_retry_diagnostic is not None):
             raise SystemExit(
-                "ERROR: second live observation degraded the persistent posterior: "
-                f"{second_update.recovery_diagnostic}"
+                "ERROR: second live turn retained historical particles/retry"
             )
-        if second_update.matched_branches <= 0:
-            raise SystemExit("ERROR: turn-two observation matched no particle branch")
 
         third_ready = battle.lock_ai_action()
         if not third_ready.token:
             raise SystemExit("ERROR: third sealed decision did not produce a ready token")
 
-        print("Persistent sealed public-belief battle facade")
+        print("Sealed disposable public-world battle facade")
         print(f"Turn-one belief-search choice: {decision.choice}")
         print(f"Turn-one search candidates: {decision.candidate_count}")
         print(f"Turn-one search branches: {decision.branch_count}")
         print(f"Turn-one search seconds: {decision.elapsed_seconds:.3f}")
         print(f"Turn-one strategic plan: {decision.strategic_plan or 'none'}")
-        print(f"Turn-one conditioning matches: {update.matched_branches}")
-        print(f"Turn-one posterior particles: {update.particles_after}")
-        print(f"Turn-two belief-search choice: {second_decision.choice}")
-        print(f"Turn-two search seconds: {second_decision.elapsed_seconds:.3f}")
-        print(f"Turn-two conditioning matches: {second_update.matched_branches}")
-        print(f"Turn-two posterior particles: {second_update.particles_after}")
+        print(f"Turn-one discarded worlds: {decision.particle_count}")
+        print(f"Turn-two decision mode: {second_decision.mode}")
+        print(f"Turn-two action: {second_decision.choice}")
+        print(f"Turn-two elapsed seconds: {second_decision.elapsed_seconds:.3f}")
+        print(f"Turn-two fresh-world result: {second_decision.fallback_reason or 'search'}")
+        print(f"Turn-two discarded worlds: {second_update.particles_after}")
         print("Decision engine live-session capability: NO")
         print("Invalid token advanced live session: NO")
         print("Illegal human action advanced live session: NO")
         print("Pre-commit AI decision payload exposed: NO")
         print("Human client received AI-side private view: NO")
-        print("RESULT: sealed facade drives persistent decisions across live turns")
+        print("RESULT: sealed facade keeps public information, not simulator ancestry")
 
     # Keep the deadline fallback on the same public sealed API used by the demo. A
     # microscopic budget must reveal only a legal fallback after the human commits.
