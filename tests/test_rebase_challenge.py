@@ -217,3 +217,39 @@ def test_rejection_audit_is_opt_in_and_scoped():
         _REJECTION_AUDIT.reset(token)
     _audit_rejection(stage="inactive")
     assert sink == [{"stage": "response-filter", "particle": 3, "outcome": "zero-eligible-responses"}]
+
+
+def test_offline_audit_reaches_bounded_conditioning_executor(monkeypatch):
+    from time import perf_counter
+    from threading import get_ident
+    import champions_practice.belief_controller as controller
+    from champions_practice.observation_beliefs import _REJECTION_AUDIT, _audit_rejection
+
+    class FakeWorker:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def abort(self, **kwargs):
+            pass
+
+    monkeypatch.setattr(controller, "HypotheticalSearchWorker", FakeWorker)
+    engine = controller.BeliefDecisionEngine.__new__(
+        controller.BeliefDecisionEngine
+    )
+    records = []
+    caller_thread = get_ident()
+    token = _REJECTION_AUDIT.set(records)
+    try:
+        def operation(worker):
+            assert isinstance(worker, FakeWorker)
+            _audit_rejection(stage="sampled-branch", particle=0)
+            return get_ident()
+
+        worker_thread, timed_out = engine._run_until_deadline(
+            operation, deadline=perf_counter() + 5,
+        )
+    finally:
+        _REJECTION_AUDIT.reset(token)
+    assert not timed_out
+    assert worker_thread != caller_thread
+    assert records == [{"stage": "sampled-branch", "particle": 0}]
