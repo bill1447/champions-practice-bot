@@ -80,14 +80,49 @@ def main() -> None:
                 )
 
         human_choice, result = results[1]
+        # This fixture crosses a genuine stochastic Protect/status boundary.
+        # Sampled finite witnesses can cover only some worlds under the 8 s
+        # conditioning cap. Such a miss is UNRESOLVED, not a negative proof.
+        # PR #195 deliberately stops replaying that history on live decisions.
+        # Both outcomes are legitimate, but they have different invariants.
         if result.degraded:
-            raise SystemExit(
-                "ERROR: stochastic conditioning still degraded at the frozen "
-                f"league collapse boundary: {result.recovery_diagnostic!r}"
+            diagnosis = result.recovery_diagnostic
+            if diagnosis is None or not diagnosis.sampled_unresolved_worlds:
+                raise SystemExit(
+                    "ERROR: degraded conditioning did not retain unresolved "
+                    "worlds as public uncertainty"
+                )
+            if diagnosis.exhaustively_excluded_worlds > diagnosis.worlds_before:
+                raise SystemExit(
+                    "ERROR: recovered exclusions exceed original belief worlds"
+                )
+            # Exercise the actual sealed live path, not an internal controller
+            # method: an unresolved midgame rebase must promptly yield a legal
+            # fallback instead of continuing historical RNG witness retries.
+            next_choices = battle.legal_human_choices()
+            if not next_choices:
+                raise SystemExit(
+                    "ERROR: stochastic-collapse fixture has no next live choice"
+                )
+            ready = battle.lock_ai_action()
+            next_turn = battle.commit_human_action(
+                token=ready.token,
+                human_choice=_baseline_choice(next_choices),
             )
-        if not result.matched_branches:
+            if (
+                next_turn.decision.mode != "fallback"
+                or next_turn.decision.fallback_reason != "public-rebase-unresolved"
+                or next_turn.recovery_retry_diagnostic is not None
+            ):
+                raise SystemExit(
+                    "ERROR: unresolved stochastic collapse attempted old "
+                    f"history recovery: {next_turn.decision!r}"
+                )
+            print("Unresolved stochastic boundary: correctly entered fresh-public fallback")
+            print(f"Worlds still unresolved: {diagnosis.sampled_unresolved_worlds}")
+        elif not result.matched_branches:
             raise SystemExit(
-                "ERROR: frozen league collapse boundary advanced without any "
+                "ERROR: non-degraded frozen league boundary had no "
                 "mechanics witness"
             )
 
@@ -113,10 +148,16 @@ def main() -> None:
         )
         print(f"Posterior particles: {result.particles_after}")
         print(f"Conditioning time: {result.conditioning_seconds:.3f} seconds")
-        print(
-            "RESULT: the exact frozen trajectory advances the posterior "
-            "without entering degraded recovery"
-        )
+        if result.degraded:
+            print(
+                "RESULT: partial stochastic witnesses remained unresolved; "
+                "next live turn used legal no-history-retry fallback"
+            )
+        else:
+            print(
+                "RESULT: exact frozen trajectory advanced the posterior "
+                "without entering degraded recovery"
+            )
 
 
 if __name__ == "__main__":
