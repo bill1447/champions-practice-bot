@@ -86,3 +86,46 @@ def test_public_world_failure_is_reported_without_resurrecting_old_world():
     )
     assert bot.degraded
     assert bot.particles == ()
+
+
+def test_turn_two_uses_fresh_native_constructor_instead_of_skipping(monkeypatch):
+    from champions_practice.observation_beliefs import BeliefParticle
+    from champions_practice.present_rebase import PresentRebaseReport
+
+    bot = engine()
+    bot.last_public_view = {"turn": 2, "request": {}}
+    bot.public_constraint_ledger = SimpleNamespace(
+        current_turn=2, current_signature="fresh-turn-two",
+    )
+    bot._run_until_deadline = lambda operation, *, deadline: (
+        operation(SimpleNamespace()), False,
+    )
+    constructed = []
+    particle = BeliefParticle(state={"turn": 2}, weight=1.0, world_id="new")
+
+    def build(_worker, **kwargs):
+        constructed.append(kwargs["current_view"]["turn"])
+        assert kwargs["legal_live"] == ("move protect",)
+        return PresentRebaseReport(
+            particles=(particle,), roots_tried=1,
+            native_candidates=1, positive_matches=1, unresolved_reason=None,
+        )
+
+    monkeypatch.setattr(
+        "champions_practice.belief_controller.build_present_rebase", build,
+    )
+    assert bot._try_present_public_rebase(
+        deadline=float("inf"), legal_live=["move protect"],
+    )
+    assert constructed == [2]
+    assert len(bot.particles) == 1
+    assert bot.last_public_world_failure_reason is None
+
+
+def test_missing_public_ledger_reports_explicit_gate():
+    bot = engine()
+    bot.last_public_view = {"turn": 8, "request": {}}
+    assert not bot._try_present_public_rebase(
+        deadline=float("inf"), legal_live=["move protect"],
+    )
+    assert bot.last_public_world_failure_reason == "public-ledger-unavailable"
