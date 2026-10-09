@@ -310,6 +310,7 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
     )
     session_seed = _sodium_seed(config.seed, game_index)
     rows: list[dict[str, Any]] = []
+    trace: list[dict[str, Any]] = []
     with (
         SealedBattleFacade(
             battle_format=CHAMPIONS_FORMAT,
@@ -383,6 +384,11 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             if not choices:
                 break
             human_choice = _baseline_choice(choices)
+            # Offline forensic evidence only: never passed into the public-only
+            # reconstruction engine or production belief controller.
+            pre_state = reference_worker.session_snapshot(oracle_session_id)["state"]
+            pre_human_view = reference_worker.session_view(oracle_session_id, side="p1")["view"]
+            pre_ai_view = reference_worker.session_view(oracle_session_id, side="p2")["view"]
             ready = battle.lock_ai_action()
             result = battle.commit_human_action(
                 token=ready.token, human_choice=human_choice,
@@ -415,6 +421,30 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             oracle_state = reference_worker.session_snapshot(
                 oracle_session_id,
             )["state"]
+            trace.append({
+                "decision_index": decision_index,
+                "observation_turn_before": pre_ai_view.get("turn"),
+                "observation_turn_after": oracle_ai_view.get("turn"),
+                "p1_baseline_choice": human_choice,
+                "p2_bot_choice": result.decision.choice,
+                "legacy_mode": result.decision.mode,
+                "legacy_degraded": result.degraded,
+                "legacy_recovery_reason": (
+                    result.recovery_diagnostic.reason
+                    if result.recovery_diagnostic else None
+                ),
+                "oracle_valid": oracle_valid,
+                "before": {
+                    "native_state": pre_state,
+                    "human_public_view": pre_human_view,
+                    "bot_public_view": pre_ai_view,
+                },
+                "after": {
+                    "native_state": oracle_state,
+                    "human_public_view": oracle_human_view,
+                    "bot_public_view": oracle_ai_view,
+                },
+            })
             if not oracle_valid:
                 # No truth inference from a non-identical replay.
                 rows.append({
@@ -507,7 +537,26 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
         ),
         "collapse_rows": collapses,
         "all_turns": rows,
+        "_offline_oracle_trace": trace,
     }
+
+
+def _write_offline_oracle_trace(
+    path: Path, game_number: int, turns: list[dict[str, Any]],
+) -> None:
+    """Persist complete oracle evidence locally, separately from public report.
+
+    This file contains opponent secrets and exact native simulation snapshots.
+    It is for offline forensic analysis, not live belief or learned-policy input.
+    """
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps({
+        "schema": "offline-collapse-oracle-trace-v1",
+        "game_number": game_number,
+        "pinned_showdown_revision": load_targets()["source"]["pinned_showdown_revision"],
+        "authority": "offline-forensics-only-secret-state-not-for-bot",
+        "turns": turns,
+    }, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -550,10 +599,14 @@ def main(argv: list[str] | None = None) -> int:
         raise ValueError("--run-games accepts distinct league game numbers 1 through 8")
     if not 1 <= args.max_decisions <= 64:
         raise ValueError("--max-decisions must be 1 through 64")
-    payload["fresh_trials"] = [
-        run_case(i - 1, max_decisions=args.max_decisions)
-        for i in numbers
-    ]
+    payload["fresh_trials"] = []
+    for number in numbers:
+        trial = run_case(number - 1, max_decisions=args.max_decisions)
+        oracle_trace = trial.pop("_offline_oracle_trace")
+        trace_path = args.output.parent / f"game-{number}-oracle-trace.json"
+        _write_offline_oracle_trace(trace_path, number, oracle_trace)
+        trial["offline_oracle_trace_path"] = str(trace_path)
+        payload["fresh_trials"].append(trial)
     challenged = [x for game in payload["fresh_trials"]
                   for x in game["collapse_rows"]]
     payload["summary"] = {
