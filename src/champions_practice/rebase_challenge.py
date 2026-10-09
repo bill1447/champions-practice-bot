@@ -37,7 +37,9 @@ from champions_practice.demo_fixture import (
     DEMO_HUMAN_TEAM,
     demo_public_priors,
 )
-from champions_practice.observation_beliefs import public_observation_signature
+from champions_practice.observation_beliefs import (
+    _REJECTION_AUDIT, public_observation_signature,
+)
 from champions_practice.public_scaffold_bootstrap import bootstrap_public_current_scaffolds
 from champions_practice.rolling_public_checkpoints import (
     PublicRebaseCheckpoint,
@@ -311,6 +313,7 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
     session_seed = _sodium_seed(config.seed, game_index)
     rows: list[dict[str, Any]] = []
     trace: list[dict[str, Any]] = []
+    conditioning_audit: list[dict[str, Any]] = []
     with (
         SealedBattleFacade(
             battle_format=CHAMPIONS_FORMAT,
@@ -389,10 +392,16 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             pre_state = reference_worker.session_snapshot(oracle_session_id)["state"]
             pre_human_view = reference_worker.session_view(oracle_session_id, side="p1")["view"]
             pre_ai_view = reference_worker.session_view(oracle_session_id, side="p2")["view"]
-            ready = battle.lock_ai_action()
-            result = battle.commit_human_action(
-                token=ready.token, human_choice=human_choice,
-            )
+            audit_start = len(conditioning_audit)
+            audit_token = _REJECTION_AUDIT.set(conditioning_audit)
+            try:
+                ready = battle.lock_ai_action()
+                result = battle.commit_human_action(
+                    token=ready.token, human_choice=human_choice,
+                )
+            finally:
+                _REJECTION_AUDIT.reset(audit_token)
+            turn_audit = conditioning_audit[audit_start:]
             reference_worker.choose_session(
                 oracle_session_id,
                 p1_choice=human_choice,
@@ -423,6 +432,7 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             )["state"]
             trace.append({
                 "decision_index": decision_index,
+                "conditioning_rejection_audit": turn_audit,
                 "observation_turn_before": pre_ai_view.get("turn"),
                 "observation_turn_after": oracle_ai_view.get("turn"),
                 "p1_baseline_choice": human_choice,

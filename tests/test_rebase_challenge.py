@@ -203,3 +203,17 @@ def test_offline_oracle_trace_exports_actions_and_both_native_snapshots(tmp_path
     assert exported["turns"] == [turn]
     assert exported["turns"][0]["before"]["native_state"]["turn"] == 8
     assert exported["turns"][0]["after"]["native_state"]["turn"] == 9
+
+
+def test_rejection_audit_is_opt_in_and_scoped():
+    from champions_practice.observation_beliefs import _REJECTION_AUDIT, _audit_rejection
+    sink = []
+    _audit_rejection(stage="inactive")
+    assert not sink
+    token = _REJECTION_AUDIT.set(sink)
+    try:
+        _audit_rejection(stage="response-filter", particle=3, outcome="zero-eligible-responses")
+    finally:
+        _REJECTION_AUDIT.reset(token)
+    _audit_rejection(stage="inactive")
+    assert sink == [{"stage": "response-filter", "particle": 3, "outcome": "zero-eligible-responses"}]
