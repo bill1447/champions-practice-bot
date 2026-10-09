@@ -328,10 +328,10 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
         opening_view = reference_worker.session_view(
             oracle_session_id, side="p2",
         )["view"]
-        previews = {
-            "p1": list(opening_view["opponent"]["preview_species"]),
-            "p2": [x["species"] for x in opening_view["player"]["team"]],
-        }
+        if not _public_signature_match(opening_view, battle.public_state()):
+            raise RuntimeError(
+                "independent oracle already diverges at the initial public turn"
+            )
         prior_view = opening_view
         prior_ledger = PublicConstraintLedger.from_public_view(opening_view)
         prior_batch = build_current_state_set_proposals(
