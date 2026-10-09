@@ -13,6 +13,8 @@ param(
     [double]$ConditioningBudgetSeconds = 8.0,
     [double]$WorkerStartupTimeoutSeconds = 30.0,
     [int]$Seed = 15601,
+    [ValidateSet("current-roster-mirror-v1", "synthetic-spread-uncertainty-v1")]
+    [string]$Fixture = "current-roster-mirror-v1",
     [switch]$Refresh
 )
 
@@ -29,6 +31,7 @@ $ArgsList = @(
     "-m",
     "champions_practice.strength_league",
     "--battles", "$Battles",
+    "--fixture", "$Fixture",
     "--max-decisions", "$MaxDecisions",
     "--world-limit", "$WorldLimit",
     "--particles-per-world", "$ParticlesPerWorld",
@@ -49,7 +52,7 @@ if ($Refresh) {
 }
 
 Write-Host "Offline strength league"
-Write-Host "Fixture:             current-roster-mirror-v1"
+Write-Host "Fixture:             $Fixture"
 Write-Host "Bot:                 belief-strategy-main-v1"
 Write-Host "Baseline:            public-fallback-v1"
 Write-Host "Battles:             $Battles"
