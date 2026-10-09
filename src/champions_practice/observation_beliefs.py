@@ -1837,9 +1837,22 @@ def condition_particles(
                 )
             )
 
-        # At most one pair of endpoints per conditioning call. This probe
-        # cannot install a successor or prove a world impossible.
-        if endpoint_probes_used == 0 and branches:
+        # Endpoint probing is offline-forensics-only. The audit context is an
+        # explicit opt-in; ordinary conditioning must retain its branch count,
+        # timing, posterior and authority behavior unchanged.
+        # At most one pair per conditioning call, and only if this particle
+        # has no exact witness in the sampled branches.
+        if (
+            _REJECTION_AUDIT.get() is not None
+            and endpoint_probes_used == 0
+            and branches
+            and not any(
+                entry.get("stage") == "sampled-branch"
+                and entry.get("particle") == particle_index
+                and entry.get("outcome") == "exact-public-match"
+                for entry in (_REJECTION_AUDIT.get() or [])
+            )
+        ):
             endpoint_probes_used += 1
             compatible, endpoint_results = _endpoint_hp_envelope(
                 worker, state=particle.state, branch=branches[0],
