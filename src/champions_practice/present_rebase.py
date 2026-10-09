@@ -175,6 +175,8 @@ class PresentRebaseReport:
     exhaustively_excluded_worlds: int = 0
     # Bounded per-proposal rejection reasons; no hidden truth or private values.
     rejection_reasons: tuple[tuple[str, int], ...] = ()
+    # Bounded own-side speed snapshots from rejected native attempts only.
+    own_speed_diagnostics: tuple[dict[str, Any], ...] = ()
 
 
 class PresentHypothesisWorker(Protocol):
@@ -240,6 +242,7 @@ def build_present_rebase(
     roots = native = 0
     unresolved: str | None = None
     rejected: Counter[str] = Counter()
+    speed_diagnostics: list[dict[str, Any]] = []
     for proposal in batch.proposals[:max_roots]:
         if len(found) >= max_particles:
             break
@@ -264,6 +267,9 @@ def build_present_rebase(
                 limit=min(4, max_particles - len(found)),
             )
             if not report["outcomes"]:
+                diagnostic = report.get("own_speed_diagnostic")
+                if isinstance(diagnostic, dict) and len(speed_diagnostics) < 2:
+                    speed_diagnostics.append(diagnostic)
                 reason = report.get("reason") or "native-produced-no-outcomes"
                 path = report.get("mismatch_path")
                 if isinstance(path, str) and path.startswith("$."):
@@ -315,4 +321,5 @@ def build_present_rebase(
         positive_matches=len(found),
         unresolved_reason=None if found else unresolved or "bounded-public-constructor-unresolved",
         rejection_reasons=reasons,
+        own_speed_diagnostics=tuple(speed_diagnostics),
     )
