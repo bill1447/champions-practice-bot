@@ -1283,6 +1283,77 @@ def _find_exact_damage_bucket_witness(
     return None, len(outcomes)
 
 
+
+def _sampled_hp_envelope_compatible(
+    actual_view: dict[str, Any],
+    sampled_views: tuple[dict[str, Any], ...],
+) -> bool:
+    """Conservative HP envelope evidence from pinned Showdown outcomes.
+
+    This is not an exhaustive proof across critical-hit or other RNG paths.
+    Non-HP public fields must agree across a sampled successor and observation.
+    Only HP values may vary, and each observed HP must lie in the sampled
+    minimum/maximum envelope. This never authorizes a native successor.
+    """
+    if not sampled_views:
+        return False
+
+    def flatten(value: Any, path: str = "$") -> dict[str, Any]:
+        if isinstance(value, dict):
+            result: dict[str, Any] = {}
+            for key, child in value.items():
+                result.update(flatten(child, f"{path}.{key}"))
+            return result
+        if isinstance(value, list):
+            result = {f"{path}.length": len(value)}
+            for index, child in enumerate(value):
+                result.update(flatten(child, f"{path}[{index}]"))
+            return result
+        return {path: value}
+
+    actual = flatten(json.loads(public_observation_signature(actual_view)))
+    samples = [
+        flatten(json.loads(public_observation_signature(view)))
+        for view in sampled_views
+    ]
+    comparable: list[dict[str, Any]] = []
+    for sample in samples:
+        if sample.keys() != actual.keys():
+            continue
+        compatible = True
+        for path, expected in actual.items():
+            if path.endswith((".hp", ".hp_percent")):
+                continue
+            if sample[path] != expected:
+                compatible = False
+                break
+        if compatible:
+            comparable.append(sample)
+    if not comparable:
+        return False
+    hp_paths = [
+        path for path in actual
+        if path.endswith((".hp", ".hp_percent"))
+    ]
+    if not hp_paths:
+        return False
+    for path in hp_paths:
+        expected = actual[path]
+        samples_at_path = [sample[path] for sample in comparable]
+        if isinstance(expected, bool) or not isinstance(expected, (int, float)):
+            if any(value != expected for value in samples_at_path):
+                return False
+            continue
+        if any(
+            isinstance(value, bool) or not isinstance(value, (int, float))
+            for value in samples_at_path
+        ):
+            return False
+        if not min(samples_at_path) <= expected <= max(samples_at_path):
+            return False
+    return True
+
+
 def _source_world_id(particle: BeliefParticle, index: int) -> str:
     """Stable source-hypothesis label for sampled-conditioning diagnostics."""
     return particle.world_id or particle.history_id or f"particle-{index}"
