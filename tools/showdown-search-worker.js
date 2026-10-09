@@ -1993,6 +1993,7 @@ function resolveBranch(
   previews = null,
   includeRngDrawCount = false,
   damageBucket = null,
+  damageEndpoint = null,
 ) {
   if (!state) {
     throw new Error("branch requires a serialized battle state");
@@ -2022,6 +2023,46 @@ function resolveBranch(
     rng.next = () => {
       rngDrawCount++;
       return originalNext();
+    };
+  }
+
+  // Endpoint-only what-if evaluation. All effects still run in pinned Showdown.
+  if (damageEndpoint !== null) {
+    if (!["min-normal", "max-crit"].includes(damageEndpoint) ||
+        damageBucket !== null) {
+      battle.destroy();
+      throw new Error("invalid damage_endpoint");
+    }
+    const forcedCrit = damageEndpoint === "max-crit";
+    const endpointBucket = forcedCrit ? DAMAGE_ROLL_BUCKETS - 1 : 0;
+    const getDamage = battle.actions.getDamage.bind(battle.actions);
+    battle.actions.getDamage = (source, target, move, suppressMessages) => {
+      if (!move || typeof move !== "object" || !("basePower" in move)) {
+        return getDamage(source, target, move, suppressMessages);
+      }
+      const original = move.willCrit;
+      move.willCrit = forcedCrit;
+      try {
+        return getDamage(source, target, move, suppressMessages);
+      } finally {
+        move.willCrit = original;
+      }
+    };
+    const randomizer = battle.randomizer.bind(battle);
+    battle.randomizer = baseDamage => {
+      const random = battle.random.bind(battle);
+      battle.random = (from, to) => {
+        random(from, to); // Consume the normal pinned RNG draw.
+        if (from !== DAMAGE_ROLL_BUCKETS || to !== undefined) {
+          throw new Error("unexpected damage randomizer domain");
+        }
+        return endpointBucket;
+      };
+      try {
+        return randomizer(baseDamage);
+      } finally {
+        battle.random = random;
+      }
     };
   }
 
@@ -2118,6 +2159,7 @@ function resolveBranch(
   if (includeRngDrawCount) {
     response.rng_draw_count = rngDrawCount;
   }
+  if (damageEndpoint !== null) response.damage_endpoint = damageEndpoint;
   if (damageBucket !== null) {
     response.damage_roll_calls = damageRollCalls;
     response.damage_bucket = damageBucket;
@@ -2887,6 +2929,7 @@ function branchMany(request) {
             branch.previews ?? null,
             branch.include_rng_draw_count === true,
             branch.damage_bucket ?? null,
+            branch.damage_endpoint ?? null,
           ),
         };
       } catch (error) {
