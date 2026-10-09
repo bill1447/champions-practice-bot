@@ -1355,6 +1355,33 @@ def _sampled_hp_envelope_compatible(
     return True
 
 
+def _endpoint_hp_envelope(
+    worker: ShowdownSearchWorker,
+    *,
+    state: dict[str, Any],
+    branch: dict[str, Any],
+    actual_public_view: dict[str, Any],
+) -> tuple[bool, tuple[dict[str, Any], ...]]:
+    """Two pinned-mechanics endpoint branches; diagnostic compatibility only.
+
+    Fixed non-damage RNG paths and multi-hit/ordering can invalidate the
+    completeness of this envelope. No negative authority is derived from it.
+    """
+    probes = [
+        {**branch, "damage_endpoint": endpoint}
+        for endpoint in ("min-normal", "max-crit")
+    ]
+    responses = worker.branch_many(state=state, branches=probes)
+    views = tuple(response.get("view") for response in responses)
+    if len(views) != 2 or not all(isinstance(view, dict) for view in views):
+        return False, ()
+    return (
+        _sampled_hp_envelope_compatible(actual_public_view, views),
+        tuple({"endpoint": response.get("damage_endpoint"),
+               "public_view": view} for response, view in zip(responses, views, strict=True)),
+    )
+
+
 def _source_world_id(particle: BeliefParticle, index: int) -> str:
     """Stable source-hypothesis label for sampled-conditioning diagnostics."""
     return particle.world_id or particle.history_id or f"particle-{index}"
@@ -1574,6 +1601,7 @@ def condition_particles(
     damage_probed_responses: set[tuple[int, str]] = set()
     damage_probes_used = 0
     hp_compatible_world_ids: set[str] = set()
+    endpoint_probes_used = 0
 
     observed_candidates = _observed_joint_move_candidates(
         actual_public_view,
@@ -1809,6 +1837,29 @@ def condition_particles(
                 )
             )
 
+        # At most one pair of endpoints per conditioning call. This probe
+        # cannot install a successor or prove a world impossible.
+        if endpoint_probes_used == 0 and branches:
+            endpoint_probes_used += 1
+            compatible, endpoint_results = _endpoint_hp_envelope(
+                worker, state=particle.state, branch=branches[0],
+                actual_public_view=actual_public_view,
+            )
+            generated += 2
+            if compatible:
+                hp_compatible_world_ids.add(source_world_id)
+            _audit_rejection(
+                stage="damage-endpoints", world=source_world_id,
+                outcome="compatible-unresolved" if compatible else "inconclusive",
+                endpoints=[
+                    {"endpoint": result["endpoint"],
+                     "view_hp": {
+                         "player": result["public_view"].get("player", {}).get("active_details", []),
+                         "opponent": result["public_view"].get("opponent", {}).get("active", []),
+                     }}
+                    for result in endpoint_results
+                ],
+            )
         if _sampled_hp_envelope_compatible(actual_public_view, tuple(observed_branch_views)):
             hp_compatible_world_ids.add(source_world_id)
             _audit_rejection(stage='hp-envelope', world=source_world_id, outcome='sampled-compatible-unresolved')
