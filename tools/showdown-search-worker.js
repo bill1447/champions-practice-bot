@@ -2040,32 +2040,51 @@ function materializePresentHypotheses(request) {
     // Opponent observations are public constraints. Exact HP is an unknown,
     // so branch over at most two compatible integers per active Pokemon.
     const hpSlots = [];
-    for (const observed of view.opponent.active) {
+    for (let slot = 0; slot < view.opponent.active.length; slot++) {
+      const observed = view.opponent.active[slot];
+      if (!observed || !observed.base_species || typeof observed.fainted !== "boolean") {
+        return why("unsupported-opponent-active", `$.opponent.active[${slot}]`);
+      }
       const mon = find(foe, observed.base_species);
-      if (!mon || !mon.isActive || observed.fainted ||
-          !Number.isInteger(observed.hp_percent) ||
-          observed.hp_percent < 1 || observed.hp_percent > 100 ||
-          asId(observed.species) !== asId(mon.species.name)) {
-        return why("unsupported-opponent-active");
+      if (!mon || !mon.isActive || asId(observed.species) !== asId(mon.species.name)) {
+        return why("unsupported-opponent-active", `$.opponent.active[${slot}].species`);
       }
-      const hp = [];
-      for (let n = 1; n <= mon.maxhp; n++) {
-        if (championsPublicHpPercent({ hp: n, maxhp: mon.maxhp }) === observed.hp_percent) hp.push(n);
-      }
-      if (!hp.length) return why("no-compatible-opponent-hp");
-      hpSlots.push([...new Set([hp[0], hp[hp.length - 1]])]);
-      if (observed.status && mon.status !== observed.status) {
-        if (!mon.setStatus(observed.status, mon, null, true)) {
-          return why("unsupported-opponent-status");
+      if (observed.fainted) {
+        // Pinned faintMessages() retains a fainted mon in side.active[slot]
+        // when no replacement is available, but clears Pokemon.isActive.
+        // Zero HP is then an exact PUBLIC fact, not a speculative HP roll.
+        if (observed.hp_percent !== 0) {
+          return why("contradictory-fainted-opponent-hp",
+            `$.opponent.active[${slot}].hp_percent`);
         }
-      } else if (!observed.status && mon.status) {
-        mon.clearStatus();
+        mon.faint();
+        hpSlots.push([0]);
+      } else {
+        if (!Number.isInteger(observed.hp_percent) ||
+            observed.hp_percent < 1 || observed.hp_percent > 100) {
+          return why("unsupported-living-opponent-hp",
+            `$.opponent.active[${slot}].hp_percent`);
+        }
+        const hp = [];
+        for (let n = 1; n <= mon.maxhp; n++) {
+          if (championsPublicHpPercent({ hp: n, maxhp: mon.maxhp }) === observed.hp_percent) hp.push(n);
+        }
+        if (!hp.length) return why("no-compatible-opponent-hp");
+        hpSlots.push([...new Set([hp[0], hp[hp.length - 1]])]);
+        if (observed.status && mon.status !== observed.status) {
+          if (!mon.setStatus(observed.status, mon, null, true)) {
+            return why("unsupported-opponent-status");
+          }
+        } else if (!observed.status && mon.status) {
+          mon.clearStatus();
+        }
+        if (!observed.boosts ||
+            Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
+          return why("unsupported-opponent-boost");
+        }
+        mon.clearBoosts();
+        mon.setBoost(observed.boosts);
       }
-      if (!observed.boosts || Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
-        return why("unsupported-opponent-boost");
-      }
-      mon.clearBoosts();
-      mon.setBoost(observed.boosts);
     }
     for (const seen of view.opponent.revealed) {
       const mon = find(foe, seen.species);
