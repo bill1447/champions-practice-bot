@@ -4,6 +4,31 @@ The simulator is exact. The decisions are not yet proven optimal: recommendation
 bounded, one-ply searches over sampled public-belief worlds, adversarial replies, and RNG
 futures using an evolving board evaluator.
 
+### Phase 10.6 — decision-time public worlds (#197, experimental)
+
+Live post-preview decisions no longer condition a persistent particle ancestry,
+reconstruct previous turns, or treat collapsed hypotheses as evidence of an
+unrecoverable battle. After each observed turn, disposable simulator worlds and
+historical queues are dropped. The verified public observation and independent
+constraint ledger remain authoritative. Each new decision samples fresh public
+team/set hypotheses and asks pinned Showdown to materialize *present* mechanically
+compatible states, then performs the existing bounded tactical search. This also
+applies when the previous decision succeeded: old worlds are not reused.
+
+**Important:** Native state materialization still has deliberately strict
+own-request, legality, observed opponent mechanics, and Showdown roundtrip checks.
+Missing priors, unsupported mechanics, or an unsuccessful bounded construction
+still cause a legal fallback, *not* permission to fabricate an incompatible
+simulator state. Failure reasons appear in the decision fallback reason under
+`fresh-public-world:<reason>`. A public ledger mismatch continues to fail closed.
+The old first-turn/historical tools remain for offline diagnostics.
+
+The #196 uncertainty league (17/207 search decisions, 181/207 fallbacks) did
+not establish midgame search recovery. #197 must be tested on that same fixture;
+its architecture is not evidence of stronger play. The critical next work is
+establishing reliable current-state materialization without requiring proof of
+past RNG outcomes, not increasing particle counts or relaxing mechanics.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,
