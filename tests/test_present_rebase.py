@@ -280,6 +280,11 @@ def test_native_constructor_rejection_keeps_first_mismatched_request_path(monkey
             return {
                 "outcomes": [], "reason": "exact-own-request-mismatch",
                 "mismatch_path": "$.request.active[0].moves[0].pp",
+                "own_speed_diagnostic": {
+                    "stage": "exact-own-projection", "slot": 0,
+                    "species": "Sneasler", "observed_speed": 120,
+                    "native_cached_speed": 160,
+                },
             }
 
     report = build_present_rebase(
@@ -293,6 +298,11 @@ def test_native_constructor_rejection_keeps_first_mismatched_request_path(monkey
         "exact-own-request-mismatch:$.request.active[0].moves[0].pp"
     )
     assert report.rejection_reasons == ((report.unresolved_reason, 1),)
+    assert report.own_speed_diagnostics == ({
+        "stage": "exact-own-projection", "slot": 0,
+        "species": "Sneasler", "observed_speed": 120,
+        "native_cached_speed": 160,
+    },)
     assert report.exhaustively_excluded_worlds == 0
 
 
