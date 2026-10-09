@@ -359,6 +359,31 @@ blocker, especially on the Protect + Wood Hammer collapses. Checkpoint rolling
 is a bounded alternative to repeatedly replaying the entire historical backlog,
 not a permission to perform unbounded catch-up.
 
+PR #187 (real-collapse diagnostic challenge) pins the *actual* eight-battle
+reference report from Oct 8, 2026 (run `ab063ad1a10843de3768`):
+15 fallbacks, 19 degraded turns and 19 recovery events. Its actual collapse
+targets are game 1 at observation turn 5 (Struggle + Protect) and games 2 and 8
+at observation turn 8 (Protect + Wood Hammer). Report-only evaluation MUST mark
+true-world survival, retained information and reconstruction time NOT EVALUATED:
+the historical JSON lacks per-turn sanitized public snapshots, own choices,
+and exact native hidden-state oracle checkpoints. Neither a matching public
+signature nor preserving all candidate worlds proves a recovered belief.
+
+`rebase-challenge.ps1 -Games "2,8"` conducts a new frozen-seed league
+reproduction with live decisions unchanged and a separate offline Showdown
+oracle. Only the isolated public constructor receives player-visible views,
+our own known commands and approved public priors; it never receives the
+opponent's actual submitted commands, oracle states or old belief particles.
+Challenge rows report the actual collapse state, checkpoint count, private
+oracle validity, exact native mechanics survival excluding PRNG/log, runtime
+relative to the 8-second cap, and whether backlog can be escaped in one step.
+Public-fact counts are reported, but posterior entropy/weight and meaningful
+retained-information metrics remain explicitly UNMEASURED until the required
+independent posterior retention work is implemented. Runtime disagreement or
+missing oracle/verified checkpoint is a failure, never a success or disproof.
+`-RequireRecovery` makes a non-demonstrated recovery return nonzero. The
+short CI smoke checks evidence isolation, not real late-game recovery success.
+
 PR #181 (merged) added bounded exact damage-bucket positive-witness searches. The frozen
 8-game league remained at 15 fallback decisions (20 -> 19 degraded turns) with
 Protect + Wood Hammer backlog cases intact. PR #182 must be evaluated as a
