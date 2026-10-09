@@ -361,14 +361,24 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             )
             # The evaluator alone owns this second worker's oracle state.
             # No function reconstructing public-only scaffolds receives it.
-            oracle_view = reference_worker.session_view(
+            # SealedTurnResult.public_view is the human-facing p1 view,
+            # whereas belief reconstruction consumes the AI's p2 view.
+            # Verify the separate oracle against the same p1-facing view
+            # before using its *public-to-p2* projection as the test input.
+            # Never compare p1 and p2 requests or expose the oracle state
+            # to the reconstruction constructor.
+            oracle_human_view = reference_worker.session_view(
+                oracle_session_id, side="p1",
+            )["view"]
+            current_view = reference_worker.session_view(
                 oracle_session_id, side="p2",
             )["view"]
+            oracle_valid = _public_signature_match(
+                oracle_human_view, result.public_view,
+            )
             oracle_state = reference_worker.session_snapshot(
                 oracle_session_id,
             )["state"]
-            current_view = result.public_view
-            oracle_valid = _public_signature_match(oracle_view, current_view)
             if not oracle_valid:
                 # No truth inference from a non-identical replay.
                 rows.append({
