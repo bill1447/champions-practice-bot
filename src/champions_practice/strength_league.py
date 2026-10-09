@@ -128,6 +128,7 @@ class GameResult:
     finite_reachability_leaves: int = 0
     recovery_events: tuple[dict[str, Any], ...] = ()
     recovery_retry_events: tuple[dict[str, Any], ...] = ()
+    own_speed_diagnostics: tuple[dict[str, Any], ...] = ()
 
 
 def _sha256_text(value: str) -> str:
@@ -323,6 +324,11 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
                 fallback_decisions / total_decisions if total_decisions else 0.0
             ),
             "fallback_reasons": dict(sorted(fallback_reasons.items())),
+            # Own-side-only native speed evidence, bounded per game and league.
+            "own_speed_diagnostics": [
+                {"game_index": game.game_index, **detail}
+                for game in games for detail in game.own_speed_diagnostics
+            ][:32],
             "degraded_turns": degraded_turns,
             "degraded_rate": (
                 degraded_turns / total_decisions if total_decisions else 0.0
@@ -478,6 +484,7 @@ def run_game(
     recovery_events: list[dict[str, Any]] = []
     recovery_retry_events: list[dict[str, Any]] = []
     fallback_reasons: Counter[str] = Counter()
+    own_speed_diagnostics: list[dict[str, Any]] = []
     search_decisions = 0
     forced_wait_decisions = 0
     fallback_decisions = 0
@@ -571,6 +578,13 @@ def run_game(
             elif decision.mode == "fallback":
                 fallback_decisions += 1
                 fallback_reasons[decision.fallback_reason or "unspecified"] += 1
+                for detail in decision.own_speed_diagnostics[:2]:
+                    if len(own_speed_diagnostics) < 8:
+                        own_speed_diagnostics.append({
+                            "decision_index": len(decision_seconds) - 1,
+                            "fallback_reason": decision.fallback_reason,
+                            **detail,
+                        })
             if decision.strategic_plan is not None:
                 strategy_decisions += 1
             if result.degraded:
@@ -603,6 +617,7 @@ def run_game(
             forced_wait_decisions=forced_wait_decisions,
             fallback_decisions=fallback_decisions,
             fallback_reasons=tuple(sorted(fallback_reasons.items())),
+            own_speed_diagnostics=tuple(own_speed_diagnostics),
             degraded_turns=degraded_turns,
             strategy_decisions=strategy_decisions,
             branch_count=branch_count,
