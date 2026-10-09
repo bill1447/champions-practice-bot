@@ -2291,3 +2291,40 @@ def test_sampled_hp_envelope_only_recognizes_hp_interval_without_authority():
         ]}}, samples,
     )
     assert not _sampled_hp_envelope_compatible(actual, ())
+
+
+def test_two_damage_endpoints_are_bounded_and_diagnostic_only():
+    from champions_practice.observation_beliefs import _endpoint_hp_envelope
+
+    class EndpointWorker:
+        def __init__(self):
+            self.calls = []
+
+        def branch_many(self, *, state, branches):
+            self.calls.extend(branches)
+            return [
+                {"damage_endpoint": branch["damage_endpoint"],
+                 "view": {"turn": 8, "opponent": {"active": [
+                     {"species": "Rillaboom", "hp_percent": value},
+                 ]}, "field": {"terrain": "grassyterrain"}}}
+                for branch, value in zip(branches, (42, 22), strict=True)
+            ]
+
+    worker = EndpointWorker()
+    compatible, results = _endpoint_hp_envelope(
+        worker,
+        state={},
+        branch={"p1_choice": "move protect",
+                "p2_choice": "move woodhammer", "view_side": "p2"},
+        actual_public_view={
+            "turn": 8, "opponent": {"active": [
+                {"species": "Rillaboom", "hp_percent": 35},
+            ]}, "field": {"terrain": "grassyterrain"},
+        },
+    )
+    assert compatible
+    assert len(results) == 2
+    assert [call["damage_endpoint"] for call in worker.calls] == [
+        "min-normal", "max-crit",
+    ]
+    assert not any("state" in result for result in results)
