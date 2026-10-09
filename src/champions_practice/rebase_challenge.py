@@ -402,6 +402,15 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
             finally:
                 _REJECTION_AUDIT.reset(audit_token)
             turn_audit = conditioning_audit[audit_start:]
+            if (
+                result.recovery_diagnostic is not None
+                and result.recovery_diagnostic.reason == 'zero-sampled-match'
+                and not turn_audit
+            ):
+                raise RuntimeError(
+                    'offline conditioning audit missing for zero-sampled-match; '
+                    'verify audit propagation through the worker executor'
+                )
             reference_worker.choose_session(
                 oracle_session_id,
                 p1_choice=human_choice,
