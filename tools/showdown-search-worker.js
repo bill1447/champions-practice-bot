@@ -1872,6 +1872,306 @@ function materializeCurrentHpHypotheses(request) {
   }
 }
 
+
+// #196: construct bounded present-turn hypotheses from a FRESH public-prior
+// Showdown root. This never consumes historical particles, a live session,
+// oracle state, or submitted opponent commands. The only exact history comes
+// from the player's own request; opponent PP/timers remain hypotheses.
+function materializePresentHypotheses(request) {
+  const view = request.current_view;
+  const limit = request.limit;
+  if (!request.state || !view || !Number.isInteger(limit) || limit < 1 || limit > 4) {
+    throw new Error("present hypotheses need a fresh root, public view and limit 1..4");
+  }
+  if (view.phase !== "move" || view.ended || !Number.isInteger(view.turn) ||
+      view.turn < 2 || view.turn > 1000 || !view.request ||
+      !view.request.side || !Array.isArray(view.player?.team) ||
+      !Array.isArray(view.player?.active_details) ||
+      !Array.isArray(view.opponent?.active) ||
+      !Array.isArray(view.opponent?.revealed)) {
+    return { outcomes: [], reason: "unsupported-current-public-phase" };
+  }
+
+  const why = (reason) => ({ outcomes: [], reason });
+  const asId = (value) => toId(value || "");
+  const exact = (value) => JSON.stringify(value);
+  const ownRequested = JSON.stringify(view.request);
+  const supportedBoosts = new Set(["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"]);
+  const candidates = [];
+  const original = Battle.fromJSON(JSON.stringify(request.state));
+  original.restart(() => {});
+  try {
+    if (original.turn !== 1 || original.requestState !== "move" || original.ended ||
+        original.p1.name !== view.opponent.name ||
+        original.p2.name !== view.player.name) {
+      return why("root-not-fresh-public-opening");
+    }
+    // Duplicate base-species identities cannot be associated with public
+    // observations from a species-keyed producer. Never guess lineage.
+    const allOwn = view.player.team.map((mon) => asId(mon.species));
+    const allFoe = view.opponent.revealed.map((mon) => asId(mon.species));
+    if (new Set(allOwn).size !== allOwn.length ||
+        new Set(allFoe).size !== allFoe.length ||
+        allOwn.length !== original.p2.pokemon.length) {
+      return why("ambiguous-or-incompatible-roster-identity");
+    }
+
+    function find(side, species) {
+      const wanted = asId(species);
+      return side.pokemon.find((mon) =>
+        asId(mon.baseSpecies.name) === wanted || asId(mon.set.species) === wanted
+      );
+    }
+    function position(side, identities) {
+      if (identities.length !== side.active.length) return false;
+      for (let slot = 0; slot < identities.length; slot++) {
+        const entry = identities[slot];
+        if (!entry) return false; // forced-switch states are not move phase
+        const species = typeof entry === "string" ? entry : entry.base_species || entry.species;
+        const mon = find(side, species);
+        if (!mon) return false;
+        if (side.active[slot] === mon) continue;
+        // A same-side rotation may require an intermediate bench member:
+        // unsupported rather than illicitly permuting serialized pointers.
+        if (mon.isActive || !side.active[slot]) return false;
+        if (side.battle.actions.switchIn(mon, slot) !== true) return false;
+      }
+      return true;
+    }
+    if (!position(original.p2, view.player.active_details) ||
+        !position(original.p1, view.opponent.active)) {
+      return why("unsupported-native-active-position");
+    }
+    const foe = original.p1;
+    const own = original.p2;
+    // Finish native switch-in events so abilities, weather, terrain, item
+    // activation and speed are represented by the actual pinned engine.
+    original.queue.list = original.queue.list.filter((action) => action.choice !== "runSwitch");
+    for (const mon of [...foe.active, ...own.active]) {
+      if (mon && !mon.isStarted) original.actions.runSwitch(mon);
+    }
+
+    // Owned facts are exact. Do not synthesize missing own team members,
+    // items, abilities, statuses or PP; reject instead.
+    for (const observed of view.player.team) {
+      const mon = find(own, observed.species);
+      if (!mon || !Number.isInteger(observed.hp) ||
+          !Number.isInteger(observed.maxhp) || mon.maxhp !== observed.maxhp ||
+          observed.hp < 0 || observed.hp > mon.maxhp) {
+        return why("unsupported-exact-own-hp");
+      }
+      if (asId(observed.species) !== asId(mon.species.name)) {
+        return why("unsupported-own-form");
+      }
+      if (observed.hp === 0) {
+        mon.faint();
+      } else if (mon.hp !== observed.hp) {
+        mon.sethp(observed.hp);
+      }
+      if (asId(mon.item) !== asId(observed.item)) {
+        if (observed.item) mon.setItem(observed.item);
+        else mon.clearItem();
+      }
+      if (asId(mon.ability) !== asId(observed.ability)) {
+        mon.setAbility(observed.ability || "");
+      }
+      if (observed.status && mon.status !== observed.status) {
+        if (!mon.isActive || !mon.setStatus(observed.status, mon, null, true)) {
+          return why("unsupported-own-status");
+        }
+      } else if (!observed.status && mon.status) {
+        mon.clearStatus();
+      }
+      if (observed.active !== mon.isActive) return why("own-active-mismatch");
+      if (observed.boosts && mon.isActive) {
+        if (Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
+          return why("unsupported-own-boost");
+        }
+        mon.clearBoosts();
+        mon.setBoost(observed.boosts);
+      }
+    }
+    const ownMoves = view.request.active || [];
+    for (let slot = 0; slot < ownMoves.length; slot++) {
+      const mon = own.active[slot];
+      if (!mon || !Array.isArray(ownMoves[slot]?.moves)) {
+        return why("unsupported-own-move-request");
+      }
+      for (const requestMove of ownMoves[slot].moves) {
+        const moveSlot = mon.moveSlots.find((item) => item.id === requestMove.id);
+        if (!moveSlot || !Number.isInteger(requestMove.pp) ||
+            requestMove.pp < 0 || requestMove.pp > moveSlot.maxpp ||
+            moveSlot.maxpp !== requestMove.maxpp) {
+          return why("unsupported-own-pp");
+        }
+        // Native Pokemon has no PP setter; write to a *live native MoveSlot*,
+        // then demand exact request and native serialization roundtrip.
+        moveSlot.pp = requestMove.pp;
+      }
+    }
+
+    // Opponent observations are public constraints. Exact HP is an unknown,
+    // so branch over at most two compatible integers per active Pokemon.
+    const hpSlots = [];
+    for (const observed of view.opponent.active) {
+      const mon = find(foe, observed.base_species);
+      if (!mon || !mon.isActive || observed.fainted ||
+          !Number.isInteger(observed.hp_percent) ||
+          observed.hp_percent < 1 || observed.hp_percent > 100 ||
+          asId(observed.species) !== asId(mon.species.name)) {
+        return why("unsupported-opponent-active");
+      }
+      const hp = [];
+      for (let n = 1; n <= mon.maxhp; n++) {
+        if (championsPublicHpPercent({ hp: n, maxhp: mon.maxhp }) === observed.hp_percent) hp.push(n);
+      }
+      if (!hp.length) return why("no-compatible-opponent-hp");
+      hpSlots.push([...new Set([hp[0], hp[hp.length - 1]])]);
+      if (observed.status && mon.status !== observed.status) {
+        if (!mon.setStatus(observed.status, mon, null, true)) {
+          return why("unsupported-opponent-status");
+        }
+      } else if (!observed.status && mon.status) {
+        mon.clearStatus();
+      }
+      if (!observed.boosts || Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
+        return why("unsupported-opponent-boost");
+      }
+      mon.clearBoosts();
+      mon.setBoost(observed.boosts);
+    }
+    for (const seen of view.opponent.revealed) {
+      const mon = find(foe, seen.species);
+      if (!mon) continue; // unknown team-preview member was not brought
+      if (seen.fainted && mon.hp > 0) mon.faint();
+      if (!seen.fainted && mon.hp === 0) return why("contradictory-faint-state");
+    }
+
+    original.faintMessages(false, false, false);
+    // Derive persistent effects through native pinned setters. Their remaining
+    // durations are unknown hypotheses, NEVER historical facts.
+    const field = view.field || {};
+    const source = own.active.find((mon) => mon && mon.hp) ||
+      foe.active.find((mon) => mon && mon.hp);
+    if (!source) return why("no-current-effect-source");
+    if (field.weather !== original.field.weather) {
+      if (!field.weather) original.field.clearWeather();
+      else if (!original.field.setWeather(field.weather, source)) {
+        return why("unsupported-native-weather");
+      }
+    }
+    if (field.terrain !== original.field.terrain) {
+      if (!field.terrain) original.field.clearTerrain();
+      else if (!original.field.setTerrain(field.terrain, source)) {
+        return why("unsupported-native-terrain");
+      }
+    }
+    if (!Array.isArray(field.pseudo_weather)) return why("unsupported-pseudo-weather");
+    for (const effect of Object.keys(original.field.pseudoWeather)) {
+      if (!field.pseudo_weather.includes(effect)) original.field.removePseudoWeather(effect);
+    }
+    for (const effect of field.pseudo_weather) {
+      if (!original.field.pseudoWeather[effect] &&
+          !original.field.addPseudoWeather(effect, source)) {
+        return why("unsupported-native-pseudo-weather");
+      }
+    }
+    for (const [side, effects] of [
+      [own, view.player.side_conditions], [foe, view.opponent.side_conditions],
+    ]) {
+      if (!Array.isArray(effects)) return why("unsupported-side-conditions");
+      for (const effect of Object.keys(side.sideConditions)) {
+        if (!effects.includes(effect)) side.removeSideCondition(effect);
+      }
+      for (const effect of effects) {
+        if (!side.sideConditions[effect] && !side.addSideCondition(effect, source)) {
+          return why("unsupported-native-side-effect");
+        }
+      }
+    }
+
+    original.turn = view.turn;
+    original.updateSpeed();
+    original.makeRequest("move");
+    const choices = original.p2.activeRequest;
+    if (exact(choices) !== ownRequested) return why("exact-own-request-mismatch");
+
+    const desiredOwn = view.player;
+    const ownProjection = playerView(original, "p2", {
+      p1: view.opponent.preview_species,
+      p2: view.player.team.map((mon) => mon.species),
+    });
+    if (exact(ownProjection.player) !== exact(desiredOwn) ||
+        exact(ownProjection.field) !== exact(field) ||
+        exact(ownProjection.opponent.side_conditions) !==
+          exact(view.opponent.side_conditions)) {
+      return why("current-public-mechanics-mismatch");
+    }
+    const foeMembers = foe.active.map((mon) => mon && ({
+      species: mon.species.name,
+      base_species: mon.baseSpecies.name,
+      status: mon.status || null,
+      boosts: { ...mon.boosts },
+    }));
+    for (let slot = 0; slot < foeMembers.length; slot++) {
+      const expected = view.opponent.active[slot];
+      const got = foeMembers[slot];
+      if (!expected || !got || asId(expected.species) !== asId(got.species) ||
+          asId(expected.base_species) !== asId(got.base_species) ||
+          expected.status !== got.status ||
+          exact(expected.boosts) !== exact(got.boosts)) {
+        return why("current-opponent-mechanics-mismatch");
+      }
+    }
+    // Preserve two HP endpoints independently, *without* claiming the
+    // interval's interior has a historical RNG witness.
+    const seen = new Set();
+    for (let index = 0; index < limit; index++) {
+      const hpPair = hpSlots.map((values, slot) => values[(index >> slot) % values.length]);
+      const key = hpPair.join(",");
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const battle = Battle.fromJSON(JSON.stringify(original.toJSON()));
+      battle.restart(() => {});
+      try {
+        for (let slot = 0; slot < hpPair.length; slot++) {
+          if (battle.p1.active[slot].hp !== hpPair[slot]) {
+            battle.p1.active[slot].sethp(hpPair[slot]);
+          }
+        }
+        const projected = playerView(battle, "p2", {
+          p1: view.opponent.preview_species,
+          p2: view.player.team.map((mon) => mon.species),
+        });
+        if (exact(projected.request) !== ownRequested ||
+            exact(projected.player) !== exact(desiredOwn) ||
+            exact(projected.field) !== exact(field)) continue;
+        if (hpPair.some((hp, slot) =>
+          championsPublicHpPercent({ hp, maxhp: battle.p1.active[slot].maxhp }) !==
+            view.opponent.active[slot].hp_percent
+        )) continue;
+        const state = battle.toJSON();
+        const restored = Battle.fromJSON(JSON.stringify(state));
+        restored.restart(() => {});
+        try {
+          if (exact(playerView(restored, "p2", {
+            p1: view.opponent.preview_species,
+            p2: view.player.team.map((mon) => mon.species),
+          }).request) !== ownRequested) continue;
+        } finally {
+          restored.destroy();
+        }
+        candidates.push({ state, hp: hpPair });
+      } finally {
+        battle.destroy();
+      }
+    }
+    return { outcomes: candidates, reason: candidates.length ? null : "no-native-public-match" };
+  } finally {
+    original.destroy();
+  }
+}
+
 function stateView(request) {
   if (!request.state) {
     throw new Error("state_view requires a serialized battle state");
@@ -3212,6 +3512,8 @@ function handle(request) {
       return validateRecoveryOpeningStatCandidate(request);
     case "materialize_current_hp_hypotheses":
       return materializeCurrentHpHypotheses(request);
+    case "materialize_present_hypotheses":
+      return materializePresentHypotheses(request);
     case "state_view":
       return stateView(request);
     case "session_start":
