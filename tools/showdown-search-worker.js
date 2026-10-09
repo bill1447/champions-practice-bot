@@ -2173,11 +2173,24 @@ function materializePresentHypotheses(request) {
     for (let slot = 0; slot < foeMembers.length; slot++) {
       const expected = view.opponent.active[slot];
       const got = foeMembers[slot];
-      if (!expected || !got || asId(expected.species) !== asId(got.species) ||
-          asId(expected.base_species) !== asId(got.base_species) ||
-          expected.status !== got.status ||
-          exact(expected.boosts) !== exact(got.boosts)) {
-        return why("current-opponent-mechanics-mismatch");
+      const path = `$.opponent.active[${slot}]`;
+      if (!expected || !got) {
+        return why("current-opponent-mechanics-mismatch", path);
+      }
+      // These checks remain exact: the path is diagnostic metadata, never
+      // an instruction to overwrite a mismatched current native mechanic.
+      if (asId(expected.species) !== asId(got.species)) {
+        return why("current-opponent-mechanics-mismatch", `${path}.species`);
+      }
+      if (asId(expected.base_species) !== asId(got.base_species)) {
+        return why("current-opponent-mechanics-mismatch", `${path}.base_species`);
+      }
+      if (expected.status !== got.status) {
+        return why("current-opponent-mechanics-mismatch", `${path}.status`);
+      }
+      if (exact(expected.boosts) !== exact(got.boosts)) {
+        return why("current-opponent-mechanics-mismatch",
+          firstMismatchPath(got.boosts, expected.boosts, `${path}.boosts`));
       }
     }
     // Preserve two HP endpoints independently, *without* claiming the
