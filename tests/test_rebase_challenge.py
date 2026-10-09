@@ -141,11 +141,11 @@ def test_oracle_evidence_requires_matching_human_views_before_ai_projection():
 
 def test_truth_cannot_enter_public_reconstruction_signature():
     signature = inspect.signature(_public_only_step)
-    assert "oracle_state" not in signature.parameters
-    assert "human_choice" not in signature.parameters
-    assert "session_id" not in signature.parameters
-    assert "opponent_team" not in signature.parameters
-    assert "particles" not in signature.parameters
+    for forbidden in (
+        "oracle_state", "human_choice", "session_id", "seed",
+        "opponent_team", "particles",
+    ):
+        assert forbidden not in signature.parameters
     for name in ("previous_view", "current_view", "own_choice", "checkpoints"):
         assert name in signature.parameters
 
