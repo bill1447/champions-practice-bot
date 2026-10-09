@@ -27,6 +27,43 @@ def _audit_rejection(**values: Any) -> None:
 
 
 
+def _audit_active_state(state: dict[str, Any]) -> list[dict[str, Any]]:
+    """Small pre-branch native snapshot; audit only, never conditioning input."""
+    sides = state.get("sides", ())
+    if not isinstance(sides, list):
+        return []
+    active: list[dict[str, Any]] = []
+    for side_index, side in enumerate(sides[:2]):
+        if not isinstance(side, dict):
+            continue
+        for pokemon_index, pokemon in enumerate(side.get("pokemon", ())):
+            if not isinstance(pokemon, dict) or not pokemon.get("isActive"):
+                continue
+            active.append({
+                "side": f"p{side_index + 1}",
+                "pokemon_index": pokemon_index,
+                "species": str(pokemon.get("species", "")),
+                "hp": pokemon.get("hp"),
+                "maxhp": pokemon.get("maxhp"),
+                "status": pokemon.get("status"),
+                "item": pokemon.get("item"),
+                "boosts": dict(pokemon.get("boosts") or {}),
+            })
+    return active
+
+
+def _audit_public_value(value: Any) -> Any:
+    """Bound diagnostic field sizes; preserve exact numeric HP and boosts."""
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    if isinstance(value, str):
+        return value[:200]
+    if isinstance(value, (list, dict)):
+        rendered = json.dumps(value, sort_keys=True, default=str)
+        return rendered[:200]
+    return str(value)[:200]
+
+
 @dataclass(frozen=True)
 class BeliefParticle:
     state: dict[str, Any]
@@ -1570,7 +1607,29 @@ def condition_particles(
                 )
             if public_observation_signature(view) != wanted:
                 mismatch_kind, mismatch_paths = classify_public_observation_mismatch(actual_public_view, view)
-                _audit_rejection(stage='sampled-branch', particle=particle_index, world=source_world_id, opponent_choice=response, rng_sample=identities.index(identity), outcome='sample-mismatch-unresolved', mismatch_kind=mismatch_kind, mismatch_paths=list(mismatch_paths)[:12])
+                if _REJECTION_AUDIT.get() is not None:
+                    mismatches = public_observation_mismatch_details(
+                        actual_public_view, view,
+                    )
+                    _audit_rejection(
+                        stage="sampled-branch",
+                        particle=particle_index,
+                        world=source_world_id,
+                        opponent_choice=response,
+                        rng_sample=identities.index(identity),
+                        outcome="sample-mismatch-unresolved",
+                        mismatch_kind=mismatch_kind,
+                        mismatch_paths=list(mismatch_paths)[:12],
+                        first_value_differences=[
+                            {
+                                "path": path,
+                                "actual": _audit_public_value(actual),
+                                "simulated": _audit_public_value(simulated),
+                            }
+                            for path, actual, simulated in mismatches[:8]
+                        ],
+                        candidate_start_active=_audit_active_state(particle.state),
+                    )
                 # The first sampled damage value cannot disprove the world.
                 # Replay this exact action pair across the pinned finite
                 # randomizer domain once per particle/response. Install only
