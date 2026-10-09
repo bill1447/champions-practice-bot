@@ -236,6 +236,7 @@ def test_offline_audit_reaches_bounded_conditioning_executor(monkeypatch):
     engine = controller.BeliefDecisionEngine.__new__(
         controller.BeliefDecisionEngine
     )
+    engine.project_root = None  # FakeWorker ignores project root.
     records = []
     caller_thread = get_ident()
     token = _REJECTION_AUDIT.set(records)
