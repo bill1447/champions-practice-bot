@@ -127,8 +127,39 @@ def _matches_approved_prior(state: dict, proposal: object) -> bool:
         expected = proposal.world.sets
     except (KeyError, IndexError, TypeError, AttributeError):
         return False
-    if not isinstance(members, list) or len(members) != len(expected):
+    if not isinstance(members, list):
         return False
+    if len(members) == len(expected):
+        # Historical/scaffold states can contain the complete preview roster.
+        # Keep the pre-existing exact six-set gate in that case.
+        approved = expected
+    else:
+        # The pinned Champions doubles format has Picked Team Size = Auto (4).
+        # Post-preview native states contain only the chosen four, whereas the
+        # PUBLIC prior retains all six preview sets. Do not accept any arbitrary
+        # four-member subset: require precisely this proposal's selected species.
+        try:
+            selected_species = proposal.selected_species
+        except AttributeError:
+            return False
+        selected_ids = tuple(_id(species) for species in selected_species)
+        if (
+            len(members) != 4
+            or len(selected_ids) != 4
+            or len(set(selected_ids)) != 4
+            or len(expected) <= len(members)
+        ):
+            return False
+        by_species = {}
+        for candidate in expected:
+            species_id = _id(candidate.species)
+            if species_id in by_species:
+                # Species-keyed public evidence cannot prove duplicate lineage.
+                return False
+            by_species[species_id] = candidate
+        if any(species_id not in by_species for species_id in selected_ids):
+            return False
+        approved = tuple(by_species[species_id] for species_id in selected_ids)
     actual = Counter()
     for member in members:
         if not isinstance(member, dict):
@@ -144,7 +175,7 @@ def _matches_approved_prior(state: dict, proposal: object) -> bool:
             return False
         actual[sig] += 1
     desired = Counter()
-    for candidate in expected:
+    for candidate in approved:
         sig = _set_signature(
             candidate.species, candidate.item, candidate.ability,
             candidate.nature, candidate.moves, dict(candidate.stat_points),
