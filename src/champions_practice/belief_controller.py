@@ -30,6 +30,7 @@ from champions_practice.belief_worlds import (
 from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.current_state_proposals import build_current_state_set_proposals
+from champions_practice.present_rebase import build_present_rebase
 from champions_practice.public_scaffold_bootstrap import bootstrap_public_current_scaffolds
 from champions_practice.rolling_public_checkpoints import validate_public_bootstrap_checkpoint
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
@@ -2727,6 +2728,70 @@ class BeliefDecisionEngine:
         self.degraded = False
         return True
 
+    def _try_present_public_rebase(
+        self, *, deadline: float, legal_live: list[str],
+    ) -> bool:
+        """Rebuild a bounded present-turn belief from public constraints only.
+
+        Fresh hypotheses are Showdown-native and exact-request-validated.
+        Unknown counterfactual timers/PP are not historical facts and no
+        unrepresented opponent world receives negative exclusion authority.
+        """
+        ledger = self.public_constraint_ledger
+        view = self.last_public_view
+        if (
+            ledger is None
+            or self.public_constraint_ledger_issue is not None
+            or not isinstance(view, dict)
+            or view.get("turn", 0) < 3
+            or self._public_ai_preview_choice is None
+            or ledger.current_signature in self._public_rebase_attempted_signatures
+            or perf_counter() >= deadline - 1.0
+        ):
+            return False
+        # A failed proposal is never retried for the same public snapshot.
+        self._public_rebase_attempted_signatures.add(ledger.current_signature)
+        pinned_ai_team = _pin_known_team_genders(
+            self.ai_team, view.get("request", {}),
+        )
+
+        try:
+            def run(worker: HypotheticalSearchWorker):
+                return build_present_rebase(
+                    worker,
+                    ledger=ledger, current_view=view,
+                    priors=self.opponent_priors,
+                    battle_format=self.battle_format,
+                    ai_team=pinned_ai_team,
+                    ai_preview_choice=self._public_ai_preview_choice,
+                    legal_live=tuple(legal_live),
+                    max_roots=min(2, self.world_limit),
+                    max_particles=min(4, self.max_particles),
+                )
+
+            result, timed_out = self._run_until_deadline(
+                run, deadline=min(deadline - 0.5, perf_counter() + 3.5),
+            )
+        except (RuntimeError, ValueError, ShowdownRequestError):
+            return False
+        if timed_out or result is None or not result.particles:
+            return False
+
+        self.particles = resample_particles_by_world(
+            result.particles,
+            limit=self.max_particles,
+            seed=int(view["turn"]) + 829,
+        )
+        self.pending_observations.clear()
+        self._clear_pending_recovery_progress()
+        self.recovery_authority_root_particles = ()
+        self.recovery_opening_authorities = ()
+        self.recovery_authority_root_public_view = None
+        self.recovery_authority_history.clear()
+        self.recovery_authority_history_complete = False
+        self.degraded = False
+        return True
+
     def choose_ai_action(
         self,
         *,
@@ -2741,7 +2806,12 @@ class BeliefDecisionEngine:
             # First-turn positive public witnesses are the only currently
             # certified fresh rebase domain; later turns fail open to a legal
             # fallback until native present-turn synthesis is validated.
-            if not self._try_first_turn_public_rebase(deadline=decision_deadline):
+            if not (
+                self._try_present_public_rebase(
+                    deadline=decision_deadline, legal_live=legal_live,
+                )
+                or self._try_first_turn_public_rebase(deadline=decision_deadline)
+            ):
                 # This is no longer a historical-retry queue. Drop stale
                 # hypothetical state and queued transitions; the independent
                 # public constraint ledger remains authoritative.
