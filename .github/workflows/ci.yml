@@ -259,6 +259,11 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.current_state_reconstruction_smoke
 
+      - name: Pinned selected-four versus six-preview prior admission smoke test
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.selected_prior_smoke
+
       - name: Isolated current-state prior proposal and projection smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh

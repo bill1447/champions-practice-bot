@@ -201,6 +201,55 @@ def test_unapproved_or_mislabelled_scaffold_cannot_reach_worker():
     )
 
 
+def test_post_preview_selected_four_must_match_approved_sets_exactly():
+    _, _, batch, scaffold = setup()
+    proposal = batch.proposals[0]
+    all_members = scaffold.state["sides"][0]["pokemon"]
+    selected = set(proposal.selected_species)
+    assert len(all_members) == 6
+    assert len(selected) == 4
+
+    candidate = deepcopy(scaffold.state)
+    candidate["sides"][0]["pokemon"] = [
+        member for member in all_members if member["set"]["species"] in selected
+    ]
+    assert len(candidate["sides"][0]["pokemon"]) == 4
+    assert _matches_approved_prior(candidate, proposal)
+
+    # A different bring-four, even from otherwise valid approved six sets, is
+    # not this proposal's four. No arbitrary-subset acceptance.
+    other = deepcopy(candidate)
+    unselected_member = next(
+        member for member in all_members if member["set"]["species"] not in selected
+    )
+    other["sides"][0]["pokemon"][-1] = deepcopy(unselected_member)
+    assert not _matches_approved_prior(other, proposal)
+
+    # No set attribute can be replaced or invented to pass the provenance
+    # check: the native serializer's original set remains mechanically exact.
+    for key, value in (
+        ("species", "Unapproved-Pokemon"),
+        ("item", "Unapproved Item"),
+        ("ability", "Unapproved Ability"),
+        ("nature", "Unapproved Nature"),
+        ("moves", ["Struggle"]),
+        ("evs", {"atk": 1}),
+    ):
+        modified = deepcopy(candidate)
+        modified["sides"][0]["pokemon"][0]["set"][key] = value
+        assert not _matches_approved_prior(modified, proposal), key
+
+    truncated = deepcopy(candidate)
+    truncated["sides"][0]["pokemon"].pop()
+    assert not _matches_approved_prior(truncated, proposal)
+
+    from dataclasses import replace
+    invalid_selection = replace(
+        proposal, selected_species=(proposal.selected_species[0],) * 4,
+    )
+    assert not _matches_approved_prior(candidate, invalid_selection)
+
+
 def test_only_one_opponent_hp_value_may_change():
     _, _, _, scaffold = setup()
     candidate = deepcopy(scaffold.state)
