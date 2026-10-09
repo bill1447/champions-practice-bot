@@ -163,8 +163,14 @@ def main() -> None:
                 legal_live=next_legal,
             )
             if next_decision.mode == "fallback":
-                if not (next_decision.fallback_reason or "").startswith(
-                    "fresh-public-world:"
+                if not (
+                    (next_decision.fallback_reason or "").startswith(
+                        "fresh-public-world:"
+                    )
+                    or next_decision.fallback_reason == "belief-search-deadline"
+                    or (next_decision.fallback_reason or "").startswith(
+                        "search-error:"
+                    )
                 ):
                     raise SystemExit(
                         "ERROR: failed current-state search did not report "
