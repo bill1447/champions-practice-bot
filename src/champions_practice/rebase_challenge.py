@@ -206,7 +206,6 @@ def _public_only_step(
     previous_batch: CurrentStateProposalBatch | None,
     checkpoints: tuple[PublicRebaseCheckpoint, ...],
     own_choice: str,
-    seed: str,
 ) -> PublicRebaseStep:
     """The ONLY path given to the reconstruction engine.
 
@@ -228,10 +227,27 @@ def _public_only_step(
             reason = "NO_APPROVED_PUBLIC_PRIOR"
             return PublicRebaseStep((), batch, ledger, perf_counter()-started, reason, 0)
 
-        # Deterministic exploratory seeds, not the true hidden RNG state.
+        # Deterministic exploratory seeds derived only from evidence available
+        # to the reconstruction path. Never key candidate sampling from the
+        # live/oracle session seed: that is hidden truth, even if used only as
+        # a PRNG initializer.
+        seed_basis = hashlib.sha256(
+            (
+                "public-rebase|"
+                + public_observation_signature(current_view)
+                + "|"
+                + json.dumps(
+                    current_view.get("request"),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "|"
+                + own_choice
+            ).encode()
+        ).hexdigest()
         seeds = tuple(
             "sodium," + hashlib.sha256(
-                f"public-only:{seed}:{current_view['turn']}:{i}".encode()
+                f"public-only:{seed_basis}:{i}".encode()
             ).hexdigest()
             for i in range(4)
         )
@@ -429,7 +445,6 @@ def run_case(game_index: int, *, max_decisions: int = 18) -> dict[str, Any]:
                 previous_batch=prior_batch,
                 checkpoints=checkpoints,
                 own_choice=result.decision.choice,
-                seed=session_seed,
             )
             checkpoints = step.checkpoints
             prior_view = current_view
