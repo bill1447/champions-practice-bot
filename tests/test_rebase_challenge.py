@@ -14,6 +14,7 @@ import pytest
 from champions_practice.rebase_challenge import (
     CHALLENGE_SCHEMA,
     _native_mechanics,
+    _write_offline_oracle_trace,
     _verified_ai_public_projection,
     _public_only_step,
     evaluate_historical_report,
@@ -181,3 +182,24 @@ def test_historical_only_command_reports_incomplete_evaluation(tmp_path):
     assert report["summary"]["complete_recovery_demonstrated"] is False
     assert report["summary"]["posterior_information_retention_measured"] is False
     assert main(["--output", str(output), "--require-recovery"]) == 2
+
+
+def test_offline_oracle_trace_exports_actions_and_both_native_snapshots(tmp_path):
+    import json
+    path = tmp_path / "game-2-oracle-trace.json"
+    turn = {
+        "decision_index": 8,
+        "p1_baseline_choice": "move protect",
+        "p2_bot_choice": "move woodhammer",
+        "legacy_recovery_reason": "zero-sampled-match",
+        "before": {"native_state": {"turn": 8, "sides": []}},
+        "after": {"native_state": {"turn": 9, "sides": []}},
+    }
+    _write_offline_oracle_trace(path, 2, [turn])
+    exported = json.loads(path.read_text(encoding="utf-8"))
+    assert exported["schema"] == "offline-collapse-oracle-trace-v1"
+    assert exported["game_number"] == 2
+    assert exported["authority"] == "offline-forensics-only-secret-state-not-for-bot"
+    assert exported["turns"] == [turn]
+    assert exported["turns"][0]["before"]["native_state"]["turn"] == 8
+    assert exported["turns"][0]["after"]["native_state"]["turn"] == 9
