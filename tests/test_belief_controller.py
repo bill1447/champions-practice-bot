@@ -3948,7 +3948,6 @@ def test_fresh_public_rebase_skips_midgame_without_any_worker():
 def test_fresh_public_rebase_requires_independently_certified_native_witness(
     monkeypatch,
 ):
-    from champions_practice.current_state_constraints import PublicConstraintLedger
     from champions_practice.current_state_proposals import CurrentStateProposalBatch
     from champions_practice.public_scaffold_bootstrap import PublicScaffoldBootstrapReport
     from champions_practice.public_scaffold_bootstrap import PublicScaffoldWitness
