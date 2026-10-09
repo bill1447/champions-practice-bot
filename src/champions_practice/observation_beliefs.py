@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from contextvars import ContextVar
 import json
 import math
 import random
@@ -10,6 +11,15 @@ from collections import Counter
 from dataclasses import dataclass
 from itertools import product
 from typing import Any, Iterable
+
+_REJECTION_AUDIT: ContextVar[list[dict[str, Any]] | None] = ContextVar(
+    'conditioning_rejection_audit', default=None
+)
+
+def _audit_rejection(**values: Any) -> None:
+    sink = _REJECTION_AUDIT.get()
+    if sink is not None and len(sink) < 10000:
+        sink.append(values)
 
 from .search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
 from .showdown_public_catalog import MEGA_ITEM_IDS, TRANSFORM_ITEM_SPECIES_IDS
@@ -1413,6 +1423,7 @@ def condition_particles(
             f"use {FORCED_WAIT_CHOICE!r} for a forced wait"
         )
     if not particles:
+        _audit_rejection(stage='input', outcome='no-particles')
         return ParticleUpdate((), 0, 0, 0)
 
     source_world_ids = tuple(
@@ -1426,6 +1437,7 @@ def condition_particles(
     # persistent engine down its degraded/recovery path instead.
     unsupported = _unsupported_public_transition_evidence(actual_public_view)
     if unsupported:
+        _audit_rejection(stage='public-evidence', outcome='unsupported', details=list(unsupported))
         return ParticleUpdate(
             (),
             generated=0,
@@ -1464,9 +1476,11 @@ def condition_particles(
         actual_public_view=actual_public_view,
     )
 
+    _audit_rejection(stage='conditioning-start', particles=len(particles), ai_choice=ai_choice, observed_turn=actual_public_view.get('turn'), rng_samples=len(rng_seeds), seen_actions=list(observed_candidates))
     for particle_index, particle in enumerate(particles):
         source_world_id = _source_world_id(particle, particle_index)
         if particle_index in roster_incompatible_indexes:
+            _audit_rejection(stage='roster', particle=particle_index, world=source_world_id, outcome='exhaustive-public-roster-exclusion')
             continue
         responses: tuple[str, ...]
         validator = getattr(worker, "validate_choices", None)
@@ -1513,7 +1527,9 @@ def condition_particles(
             side=opponent_side,
         )
         if not responses:
+            _audit_rejection(stage='response-filter', particle=particle_index, world=source_world_id, outcome='zero-eligible-responses')
             continue
+        _audit_rejection(stage='responses', particle=particle_index, world=source_world_id, count=len(responses), responses=list(responses))
 
         branch_count = len(responses) * len(rng_seeds)
         branch_weight = particle.weight / branch_count
@@ -1551,6 +1567,8 @@ def condition_particles(
                     previews=previews,
                 )
             if public_observation_signature(view) != wanted:
+                mismatch_kind, mismatch_paths = classify_public_observation_mismatch(actual_public_view, view)
+                _audit_rejection(stage='sampled-branch', particle=particle_index, world=source_world_id, opponent_choice=response, rng_sample=identities.index(identity), outcome='sample-mismatch-unresolved', mismatch_kind=mismatch_kind, mismatch_paths=list(mismatch_paths)[:12])
                 # The first sampled damage value cannot disprove the world.
                 # Replay this exact action pair across the pinned finite
                 # randomizer domain once per particle/response. Install only
@@ -1572,6 +1590,7 @@ def condition_particles(
                         wanted=wanted,
                     )
                     generated += examined
+                    _audit_rejection(stage='damage-probe', particle=particle_index, world=source_world_id, opponent_choice=response, attempted=examined, outcome='positive-witness' if witness is not None else 'unresolved-no-witness')
                     if witness is not None:
                         child_state = witness["state"]
                         matched += 1
@@ -1633,6 +1652,7 @@ def condition_particles(
                             if len(structural_mismatch_examples) >= 8:
                                 break
                 continue
+            _audit_rejection(stage='sampled-branch', particle=particle_index, world=source_world_id, opponent_choice=response, outcome='exact-public-match')
             matched += 1
             matched_source_world_ids.add(source_world_id)
             rng_label = "native" if rng_seed is None else rng_seed
@@ -1670,6 +1690,7 @@ def condition_particles(
             )
 
     posterior = _normalize(merged.values())
+    _audit_rejection(stage='conditioning-summary', generated=generated, matched=matched, survivors=len(posterior), stochastic_misses=stochastic_only_mismatches, structural_misses=structural_mismatches)
     all_world_ids = set(source_world_ids)
     return ParticleUpdate(
         particles=posterior,
