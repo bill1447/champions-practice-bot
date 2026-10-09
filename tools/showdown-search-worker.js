@@ -2219,7 +2219,7 @@ function materializePresentHypotheses(request) {
     });
     if (exact(ownProjection.player) !== exact(desiredOwn)) {
       const path = firstMismatchPath(ownProjection.player, desiredOwn, "$.player");
-      const speedMatch = /^\\$\\.player\\.(active_details|team)\\[(\\d+)\\]\\.speed$/.exec(path || "");
+      const speedMatch = /^\$\.player\.(active_details|team)\[(\d+)\]\.speed$/.exec(path || "");
       let diagnostic = null;
       if (speedMatch) {
         const slot = Number(speedMatch[2]);
