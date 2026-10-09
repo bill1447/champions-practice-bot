@@ -14,6 +14,7 @@ import pytest
 from champions_practice.rebase_challenge import (
     CHALLENGE_SCHEMA,
     _native_mechanics,
+    _verified_ai_public_projection,
     _public_only_step,
     evaluate_historical_report,
     load_targets,
@@ -97,6 +98,46 @@ def test_manifest_rejects_regressed_collapse_history():
     with pytest.raises(ValueError, match="measurements"):
         evaluate_historical_report(report, targets)
 
+
+
+def test_oracle_evidence_requires_matching_human_views_before_ai_projection():
+    # The playable facade exposes p1 after the turn; the current-state
+    # constructor requires p2. They have different private sides and requests.
+    league_human = {
+        "turn": 8,
+        "request": {"side": "p1", "choices": ["move protect"]},
+        "player": {"name": "Human"},
+        "opponent": {"name": "AI"},
+    }
+    independent_human = {
+        **league_human,
+        "request": dict(league_human["request"]),
+    }
+    independent_ai = {
+        "turn": 8,
+        "request": {"side": "p2", "choices": ["move expandingforce"]},
+        "player": {"name": "AI"},
+        "opponent": {"name": "Human"},
+    }
+    assert _verified_ai_public_projection(
+        observed_human_view=league_human,
+        independent_human_view=independent_human,
+        independent_ai_view=independent_ai,
+    ) is independent_ai
+    # The original CI failure incorrectly compared a p2 view to a p1 view.
+    assert _verified_ai_public_projection(
+        observed_human_view=league_human,
+        independent_human_view=independent_ai,
+        independent_ai_view=independent_ai,
+    ) is None
+    conflicting_human = {
+        **independent_human, "request": {"side": "p1", "choices": ["move struggle"]}
+    }
+    assert _verified_ai_public_projection(
+        observed_human_view=league_human,
+        independent_human_view=conflicting_human,
+        independent_ai_view=independent_ai,
+    ) is None
 
 def test_truth_cannot_enter_public_reconstruction_signature():
     signature = inspect.signature(_public_only_step)
