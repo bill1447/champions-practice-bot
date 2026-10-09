@@ -50,6 +50,31 @@ a useful search rate. Require an independent midgame current-state fixture,
 native accepted hypothesis, and a replay of the synthetic strength league
 before claiming that success gate.
 
+### Phase 10.8 — post-preview approved selected-four provenance (#199)
+
+The eight-game #198 strength league remained at **8/200 tactical search decisions**;
+**109/181** fallbacks were attributed to `positive-prior-set-mismatch`.
+The pinned Champions Reg M-C rule `Flat Rules` selects four out of six for
+doubles. `PublicBeliefWorld.sets` deliberately retains all **six** public
+preview set proposals; the Showdown post-preview `state.sides[0].pokemon`
+contains only the **four** actually chosen. A length-six-only gate therefore
+rejects mechanically native current-world candidates solely for picking four.
+
+The provenance gate now separately supports the original complete-roster
+comparison for legacy scaffolds and the post-preview selected-four comparison:
+native four must match **exactly those four species in
+`proposal.selected_species`**, with all original set signatures (species,
+item, ability, nature, moves, stat points) unchanged. It does not accept an
+arbitrary four-member subset. Duplicate or ambiguous selected identities
+remain unproven. A new CI smoke creates a real pinned Showdown post-preview
+state while retaining the full six public preview names, unlike earlier
+smokes that derived the preview from four already selected members.
+
+This removes one demonstrated admission blocker; the unchanged native
+constructor can still reject active-position, status, field, or exact
+own-request hypotheses. Prove a **real turn-eight** admitted state and search
+before rerunning the eight-game strength league or declaring recovery solved.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,
