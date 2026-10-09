@@ -2205,3 +2205,58 @@ def test_ambiguous_transform_alignment_fails_open() -> None:
         assert "move protect megay, move woodhammer +1" in candidates
         assert "move protect ultra, move woodhammer +1" in candidates
 
+
+
+def test_offline_rejection_audit_records_prebranch_state_and_exact_values():
+    from champions_practice.observation_beliefs import _REJECTION_AUDIT
+
+    class DiagnosticWorker(FakeWorker):
+        def branch_many(self, *, state, branches):
+            return [
+                {"state": {"id": state["id"], "branch": index}}
+                for index, _ in enumerate(branches)
+            ]
+
+    candidate = {
+        "id": 1,
+        "sides": [
+            {"pokemon": [
+                {"isActive": True, "species": "Rillaboom", "hp": 156,
+                 "maxhp": 207, "item": "sitrusberry",
+                 "boosts": {"atk": -1}},
+            ]},
+            {"pokemon": [
+                {"isActive": True, "species": "Gardevoir", "hp": 147,
+                 "maxhp": 147, "item": "gardevoirite",
+                 "boosts": {"def": 0}},
+            ]},
+        ],
+    }
+    records = []
+    token = _REJECTION_AUDIT.set(records)
+    try:
+        condition_particles(
+            DiagnosticWorker([{"turn": 8, "opponent": {"hp_percent": 35}},
+                              {"turn": 8, "opponent": {"hp_percent": 35}}]),
+            particles=(BeliefParticle(candidate, 1.0, world_id="w"),),
+            ai_side="p2",
+            ai_choice="move a",
+            actual_public_view={"turn": 8, "opponent": {"hp_percent": 28}},
+            rng_seeds=("seed-a",),
+            damage_probe_limit=0,
+        )
+    finally:
+        _REJECTION_AUDIT.reset(token)
+    mismatch = next(
+        item for item in records
+        if item.get("outcome") == "sample-mismatch-unresolved"
+    )
+    assert any(
+        diff["path"] == "$.opponent.hp_percent"
+        and diff["actual"] == 28 and diff["simulated"] == 35
+        for diff in mismatch["first_value_differences"]
+    )
+    assert mismatch["candidate_start_active"][0]["hp"] == 156
+    assert mismatch["candidate_start_active"][0]["item"] == "sitrusberry"
+    assert mismatch["candidate_start_active"][0]["boosts"]["atk"] == -1
+    assert mismatch["candidate_start_active"][1]["hp"] == 147
