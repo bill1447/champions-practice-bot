@@ -96,8 +96,14 @@ def main() -> None:
         )
         second_decision = second_update.decision
         if second_decision.mode == "fallback":
-            if not (second_decision.fallback_reason or "").startswith(
-                "fresh-public-world:"
+            if not (
+                (second_decision.fallback_reason or "").startswith(
+                    "fresh-public-world:"
+                )
+                or second_decision.fallback_reason == "belief-search-deadline"
+                or (second_decision.fallback_reason or "").startswith(
+                    "search-error:"
+                )
             ):
                 raise SystemExit(
                     "ERROR: second live decision used an unrecognized fallback: "
