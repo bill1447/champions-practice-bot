@@ -2359,7 +2359,6 @@ def test_damage_endpoints_are_opt_in_via_offline_rejection_audit():
     normal = CountingWorker()
     normal_update = run(normal)
     assert normal.branch_sizes == [2]
-    assert normal_update.sampled_hp_compatible_world_ids == ()
 
     audited = CountingWorker()
     records = []
@@ -2371,4 +2370,8 @@ def test_damage_endpoints_are_opt_in_via_offline_rejection_audit():
     assert audited.branch_sizes == [2, 2]
     assert audited_update.matched == normal_update.matched
     assert audited_update.particles == normal_update.particles
+    assert (
+        audited_update.sampled_hp_compatible_world_ids
+        == normal_update.sampled_hp_compatible_world_ids
+    )
     assert any(row.get("stage") == "damage-endpoints" for row in records)
