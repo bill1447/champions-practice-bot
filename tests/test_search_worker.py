@@ -189,3 +189,63 @@ def test_present_hp_validator_rejects_false_zero_hp_authority(
         worker.materialize_present_hypotheses(
             state={"fresh": True}, current_view=public, limit=4,
         )
+
+
+def _own_speed_forensic():
+    return {
+        "stage": "after-native-unburden-removal",
+        "slot": 0, "species": "Sneasler",
+        "observed_speed": 133, "native_cached_speed": 266,
+        "native_action_speed": 132, "native_stored_speed": 132,
+        "speed_boost": 0, "status": None,
+        "ability": "unburden", "item": None,
+        "unburden_volatile": False, "trick_room": False,
+        "terrain": "psychicterrain", "weather": None,
+        "pre_removal_action_speed": 264,
+    }
+
+
+def test_present_native_speed_diagnostic_validated_without_candidate(monkeypatch):
+    worker = object.__new__(ShowdownSearchWorker)
+    data = {
+        "outcomes": [], "reason": "own-unburden-speed-unresolved",
+        "own_speed_diagnostic": _own_speed_forensic(),
+    }
+    monkeypatch.setattr(worker, "request", lambda *args, **kwargs: data)
+    result = worker.materialize_present_hypotheses(
+        state={"fresh": True}, current_view={"opponent": {"active": []}}, limit=2,
+    )
+    assert result["own_speed_diagnostic"]["native_action_speed"] == 132
+    assert result["outcomes"] == []
+
+
+@pytest.mark.parametrize("invalid", [
+    "unexpected-key", "unbounded-species", "bool-as-speed", "bad-stage",
+    "has-hypothesis", "private-opponent", "wrong-slot",
+])
+def test_present_native_speed_diagnostic_rejects_malformed_payload(monkeypatch, invalid):
+    worker = object.__new__(ShowdownSearchWorker)
+    detail = _own_speed_forensic()
+    report = {
+        "outcomes": [], "reason": "own-unburden-speed-unresolved",
+        "own_speed_diagnostic": detail,
+    }
+    if invalid == "unexpected-key":
+        detail["extra"] = 1
+    elif invalid == "unbounded-species":
+        detail["species"] = "X" * 100
+    elif invalid == "bool-as-speed":
+        detail["native_cached_speed"] = True
+    elif invalid == "bad-stage":
+        detail["stage"] = "oracle-source"
+    elif invalid == "has-hypothesis":
+        report["outcomes"] = [{"state": {}, "hp": [1, 1]}]
+    elif invalid == "private-opponent":
+        detail["opponent_set"] = {"item": "Private"}
+    elif invalid == "wrong-slot":
+        detail["slot"] = -1
+    monkeypatch.setattr(worker, "request", lambda *args, **kwargs: report)
+    with pytest.raises(RuntimeError, match="own speed diagnostic"):
+        worker.materialize_present_hypotheses(
+            state={"fresh": True}, current_view={"opponent": {"active": []}}, limit=2,
+        )
