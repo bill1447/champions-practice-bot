@@ -31,6 +31,13 @@ from champions_practice.demo_fixture import (
     DEMO_HUMAN_TEAM,
     demo_public_priors,
 )
+from champions_practice.uncertain_fixture import (
+    FIXTURE_ID as UNCERTAIN_FIXTURE_ID,
+    SOURCE_LABEL as UNCERTAIN_SOURCE_LABEL,
+    opponent_selection as uncertain_opponent_selection,
+    opponent_team as uncertain_opponent_team,
+    public_priors as uncertain_public_priors,
+)
 
 
 RUN_SCHEMA = "offline-strength-league-v1"
@@ -61,6 +68,7 @@ class LeagueConfig:
     conditioning_budget_seconds: float = 8.0
     worker_startup_timeout_seconds: float = 30.0
     seed: int = 15601
+    fixture: str = FIXTURE_ID
 
     def __post_init__(self) -> None:
         positive_ints = {
@@ -92,6 +100,8 @@ class LeagueConfig:
                 raise ValueError(f"{label} must be positive and finite")
         if isinstance(self.seed, bool) or not isinstance(self.seed, int):
             raise ValueError("seed must be an integer")
+        if self.fixture not in {FIXTURE_ID, UNCERTAIN_FIXTURE_ID}:
+            raise ValueError(f"unsupported strength league fixture: {self.fixture}")
 
 
 @dataclass(frozen=True)
@@ -172,17 +182,31 @@ def _run_identity_payload(
     git_commit: str,
     showdown_revision: str,
 ) -> dict[str, Any]:
+    # Preserve the original fixture's run identity and comparison history.
+    config_data = asdict(config)
+    if config.fixture == FIXTURE_ID:
+        config_data.pop("fixture")
+    if config.fixture == UNCERTAIN_FIXTURE_ID:
+        pool = uncertain_public_priors()
+        catalog = "\n".join(
+            candidate.team_text
+            for candidates in pool.values()
+            for candidate in candidates
+        )
+        opponent_team_hash = _sha256_text(catalog)
+    else:
+        opponent_team_hash = _sha256_text(DEMO_HUMAN_TEAM)
     return {
         "schema": RUN_SCHEMA,
-        "fixture_id": FIXTURE_ID,
+        "fixture_id": config.fixture,
         "bot_id": BOT_ID,
         "baseline_id": BASELINE_ID,
         "format_id": CHAMPIONS_FORMAT,
         "git_commit": git_commit,
         "showdown_revision": showdown_revision,
         "bot_team_sha256": _sha256_text(DEMO_AI_TEAM),
-        "opponent_team_sha256": _sha256_text(DEMO_HUMAN_TEAM),
-        "config": asdict(config),
+        "opponent_team_sha256": opponent_team_hash,
+        "config": config_data,
     }
 
 
@@ -440,6 +464,14 @@ def run_game(
     particle_seed = _particle_seed(config.seed, game_index)
     p1_name = "League Baseline"
     p2_name = "League Bot"
+    uncertain = config.fixture == UNCERTAIN_FIXTURE_ID
+    opponent_team = (
+        uncertain_opponent_team(config.seed, game_index)
+        if uncertain else DEMO_HUMAN_TEAM
+    )
+    opponent_priors = (
+        uncertain_public_priors() if uncertain else demo_public_priors()
+    )
 
     decision_seconds: list[float] = []
     conditioning_seconds: list[float] = []
@@ -462,7 +494,7 @@ def run_game(
         battle_format=CHAMPIONS_FORMAT,
         ai_team=DEMO_AI_TEAM,
         ai_preview_choice=DEMO_AI_PREVIEW_CHOICE,
-        opponent_priors=demo_public_priors(),
+        opponent_priors=opponent_priors,
         world_limit=config.world_limit,
         particles_per_world=config.particles_per_world,
         max_particles=config.max_particles,
@@ -477,7 +509,7 @@ def run_game(
         particle_seed=particle_seed,
     ) as battle:
         battle.start(
-            opponent_team=DEMO_HUMAN_TEAM,
+            opponent_team=opponent_team,
             p1_name=p1_name,
             p2_name=p2_name,
             session_seed=session_seed,
@@ -643,8 +675,33 @@ def run_league(
         "run_id": run_id,
         "summary": summarize_games(game_values),
         "games": [asdict(game) for game in game_values],
+        "fixture_provenance": (
+            {
+                "source": UNCERTAIN_SOURCE_LABEL,
+                "set_variants_per_species": {
+                    species: len(candidates)
+                    for species, candidates in uncertain_public_priors().items()
+                },
+                "truth_selection_offline_only": [
+                    list(uncertain_opponent_selection(config.seed, index))
+                    for index in range(config.battles)
+                ],
+                "notes": (
+                    "Synthetic spread/nature uncertainty only; no VGCPastes provenance. "
+                    "True selections must never enter bot priors or observations."
+                ),
+            }
+            if config.fixture == UNCERTAIN_FIXTURE_ID else {
+                "source": "frozen-current-roster-mirror",
+                "notes": "One fixed opponent team; not an uncertainty benchmark.",
+            }
+        ),
         "limitations": [
-            "v1 uses only the current-roster mirror fixture",
+            (
+                "synthetic spread-only alternatives; not a calibrated external set corpus"
+                if config.fixture == UNCERTAIN_FIXTURE_ID
+                else "v1 uses only the current-roster mirror fixture"
+            ),
             "the production belief bot is currently benchmarked only as p2",
             "the baseline is public-fallback-v1, not a calibrated ladder opponent",
             "this report measures gameplay on this fixture, not general ladder strength",
@@ -658,6 +715,8 @@ def run_league(
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--battles", type=int, default=DEFAULT_BATTLES)
+    parser.add_argument("--fixture", choices=(FIXTURE_ID, UNCERTAIN_FIXTURE_ID),
+                        default=FIXTURE_ID)
     parser.add_argument("--max-decisions", type=int, default=DEFAULT_MAX_DECISIONS)
     parser.add_argument("--world-limit", type=int, default=8)
     parser.add_argument("--particles-per-world", type=int, default=1)
@@ -694,6 +753,7 @@ def main(argv: list[str] | None = None) -> None:
                 conditioning_budget_seconds=args.conditioning_budget_seconds,
                 worker_startup_timeout_seconds=args.worker_startup_timeout_seconds,
                 seed=args.seed,
+                fixture=args.fixture,
             ),
             refresh=args.refresh,
         )
