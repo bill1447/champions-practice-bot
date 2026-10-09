@@ -29,6 +29,27 @@ its architecture is not evidence of stronger play. The critical next work is
 establishing reliable current-state materialization without requiring proof of
 past RNG outcomes, not increasing particle counts or relaxing mechanics.
 
+### Phase 10.7 — explain native candidate rejection (#198, diagnostic gate)
+
+The #197 synthetic uncertainty benchmark exposed **101** generic failed
+present-state attempts, **26** native active-position limitations and **19**
+exact-own-request mismatches (8 games; 8/200 tactical searches). The next
+gate preserves pinned Showdown checks but reports the first mismatching public
+field for native request/team/field checks, records counts per candidate
+rejection, and permits turn-two current-state construction.
+
+The pinned source **does reorder** `side.pokemon` on switch, keeping the
+current active Pokemon in the first active slots. Do not "fix" the Python
+active-slot check by treating its serialized array as immutable initial team
+order; this was a mistaken preliminary hypothesis. The remaining native
+active-position failures and unsupported status/phase transitions need
+independent mechanics work after diagnosis.
+
+Passing #198's unit tests does **not** establish recovery at turn eight or
+a useful search rate. Require an independent midgame current-state fixture,
+native accepted hypothesis, and a replay of the synthetic strength league
+before claiming that success gate.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,
