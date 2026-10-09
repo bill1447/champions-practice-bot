@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from itertools import product
 from typing import Any, Iterable
 
+from .search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
+from .showdown_public_catalog import MEGA_ITEM_IDS, TRANSFORM_ITEM_SPECIES_IDS
+
+
 _REJECTION_AUDIT: ContextVar[list[dict[str, Any]] | None] = ContextVar(
     'conditioning_rejection_audit', default=None
 )
@@ -21,8 +25,6 @@ def _audit_rejection(**values: Any) -> None:
     if sink is not None and len(sink) < 10000:
         sink.append(values)
 
-from .search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
-from .showdown_public_catalog import MEGA_ITEM_IDS, TRANSFORM_ITEM_SPECIES_IDS
 
 
 @dataclass(frozen=True)
