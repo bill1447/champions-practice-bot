@@ -13,7 +13,30 @@ from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_rebase import build_present_rebase
 from champions_practice.search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
-from champions_practice.sealed_transition_smoke import HUMAN_TEAM, SELF_KO_TEAM
+from champions_practice.sealed_transition_smoke import SELF_KO_TEAM
+
+# Ghost leads are immune to opposing Explosion even if repeat Protect fails.
+# This makes the three native self-KOs deterministic across PRNG branches.
+GHOST_TEAM = """Gengar
+Ability: Cursed Body
+Level: 50
+- Protect
+
+Mimikyu
+Ability: Disguise
+Level: 50
+- Protect
+
+Froslass
+Ability: Snow Cloak
+Level: 50
+- Protect
+
+Chandelure
+Ability: Flash Fire
+Level: 50
+- Protect
+"""
 
 PREVIEW = "team 1234"
 SEED = "sodium,00000001000000020000000300000004"
@@ -42,7 +65,7 @@ def main() -> None:
     with ShowdownSearchWorker() as worker:
         started = worker.start_session(
             battle_format=CHAMPIONS_FORMAT, p1_team=SELF_KO_TEAM,
-            p2_team=HUMAN_TEAM, p1_name="Human", p2_name="Practice AI",
+            p2_team=GHOST_TEAM, p1_name="Human", p2_name="Practice AI",
             seed=SEED,
         )
         sid = started["session_id"]
@@ -95,7 +118,7 @@ def main() -> None:
             report = build_present_rebase(
                 worker, ledger=ledger, current_view=view,
                 priors=public_priors(), battle_format=CHAMPIONS_FORMAT,
-                ai_team=HUMAN_TEAM, ai_preview_choice=PREVIEW,
+                ai_team=GHOST_TEAM, ai_preview_choice=PREVIEW,
                 legal_live=tuple(legal), max_roots=2, max_particles=4,
             )
             if not report.particles:
