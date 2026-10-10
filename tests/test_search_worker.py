@@ -245,7 +245,12 @@ def test_present_native_speed_diagnostic_rejects_malformed_payload(monkeypatch, 
     elif invalid == "wrong-slot":
         detail["slot"] = -1
     monkeypatch.setattr(worker, "request", lambda *args, **kwargs: report)
-    with pytest.raises(RuntimeError, match="own speed diagnostic"):
+    expected = (
+        "successful native worlds cannot carry speed failure diagnostics"
+        if invalid == "has-hypothesis"
+        else "own speed diagnostic"
+    )
+    with pytest.raises(RuntimeError, match=expected):
         worker.materialize_present_hypotheses(
             state={"fresh": True}, current_view={"opponent": {"active": []}}, limit=2,
         )
