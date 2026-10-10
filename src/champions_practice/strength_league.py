@@ -22,7 +22,6 @@ from typing import Any, Callable
 
 from champions_practice.belief_controller import (
     SealedBattleFacade,
-    choose_public_fallback,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.demo_fixture import (
@@ -43,7 +42,7 @@ from champions_practice.uncertain_fixture import (
 RUN_SCHEMA = "offline-strength-league-v1"
 FIXTURE_ID = "current-roster-mirror-v1"
 BOT_ID = "belief-strategy-main-v1"
-BASELINE_ID = "public-fallback-v1"
+BASELINE_ID = "attacking-mega-legal-v1"
 DEFAULT_BATTLES = 8
 DEFAULT_MAX_DECISIONS = 64
 
@@ -433,7 +432,30 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
 
 
 def _baseline_choice(choices: tuple[str, ...]) -> str:
-    return choose_public_fallback(list(choices))
+    """Attack-first legal-command baseline; independent of the bot fallback.
+
+    This is not the poke-env HeuristicOpponent: it has only legal command
+    strings, not the richer battle objects needed by that evaluator.
+    Deterministic selection ensures reproducibility without Protect spam.
+    """
+    if not choices:
+        raise StrengthLeagueError("baseline has no legal choices")
+    if all(choice.startswith("team ") for choice in choices):
+        return sorted(choices)[0]
+
+    def score(choice: str) -> tuple[int, int, int, str]:
+        parts = [part.strip().lower() for part in choice.split(",")]
+        moves = [part for part in parts if part.startswith("move ")]
+        defensive = ("protect", "detect", "imprison", "trickroom",
+                     "followme", "wideguard", "quickguard", "endure")
+        attacks = sum(not any(token in move for token in defensive)
+                      for move in moves)
+        avoids_stall = -sum(any(token in move for token in defensive)
+                            for move in moves)
+        mega = sum("mega" in move for move in moves)
+        return attacks, mega, avoids_stall, choice
+
+    return max(choices, key=score)
 
 
 def _preview_signature(choice: str) -> str | None:
