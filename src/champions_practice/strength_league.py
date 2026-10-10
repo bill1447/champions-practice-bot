@@ -129,6 +129,7 @@ class GameResult:
     recovery_retry_events: tuple[dict[str, Any], ...] = ()
     own_speed_diagnostics: tuple[dict[str, Any], ...] = ()
     own_speed_transport_issues: tuple[dict[str, str], ...] = ()
+    decision_trace: tuple[dict[str, Any], ...] = ()
 
 
 def _sha256_text(value: str) -> str:
@@ -519,6 +520,7 @@ def run_game(
     recovery_events: list[dict[str, Any]] = []
     recovery_retry_events: list[dict[str, Any]] = []
     fallback_reasons: Counter[str] = Counter()
+    decision_trace: list[dict[str, Any]] = []
     own_speed_diagnostics: list[dict[str, Any]] = []
     own_speed_transport_issues: list[dict[str, str]] = []
     search_decisions = 0
@@ -583,6 +585,27 @@ def run_game(
                 human_choice=human_choice,
             )
             decision = result.decision
+            # Preserve per-decision provenance rather than only aggregate
+            # fallback counts. Never persist the sealed native battle state,
+            # offline opponent truth sets, or internal hypothetical worlds.
+            public_after = result.public_view
+            decision_trace.append({
+                "decision_index": len(decision_seconds),
+                "observed_turn_after": public_after.get("turn"),
+                "observed_phase_after": public_after.get("phase"),
+                "mode": decision.mode,
+                "fallback_reason": decision.fallback_reason,
+                "chosen_action": decision.choice,
+                "baseline_action": human_choice,
+                "baseline_legal_choice_count": len(choices),
+                "particle_count": decision.particle_count,
+                "candidate_count": decision.candidate_count,
+                "branch_count": decision.branch_count,
+                "elapsed_seconds": decision.elapsed_seconds,
+                "conditioning_seconds": result.conditioning_seconds,
+                "degraded": bool(result.degraded),
+                "terminal": bool(result.terminal),
+            })
             decision_seconds.append(float(decision.elapsed_seconds))
             conditioning_seconds.append(float(result.conditioning_seconds))
             finite_reachability_witnesses += int(
@@ -659,6 +682,7 @@ def run_game(
             forced_wait_decisions=forced_wait_decisions,
             fallback_decisions=fallback_decisions,
             fallback_reasons=tuple(sorted(fallback_reasons.items())),
+            decision_trace=tuple(decision_trace),
             own_speed_diagnostics=tuple(own_speed_diagnostics),
             own_speed_transport_issues=tuple(own_speed_transport_issues),
             degraded_turns=degraded_turns,
