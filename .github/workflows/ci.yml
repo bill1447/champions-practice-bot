@@ -269,6 +269,11 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.fainted_active_present_smoke
 
+      - name: Human turn-one Mega public-ledger and search regression
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\\.venv\\Scripts\\python.exe -m champions_practice.human_mega_regression_smoke
+
       - name: Pinned Psychic Seed Unburden switch-lifecycle public-world smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
