@@ -22,7 +22,6 @@ from typing import Any, Callable
 
 from champions_practice.belief_controller import (
     SealedBattleFacade,
-    choose_public_fallback,
 )
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.demo_fixture import (
