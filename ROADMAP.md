@@ -195,6 +195,50 @@ must reveal the specific transport issue; it does *not* yet establish
 the cause of the underlying Speed discrepancy. Do not modify Unburden
 logic from this report alone.
 
+### Phase 10.13 — native own Speed diagnostic domain (#204)
+
+The #203 frozen eight-game synthetic-spread league remained **8-0**,
+with **67 searches / 88 decisions**, **five fallbacks** (four own-Speed,
+one unsupported phase), and **71,511 branches**. PR #203 correctly
+preserved the own-Speed mechanical failure labels but recorded eight
+diagnostic transport issues, all **`invalid:observed_speed`** (two roots
+on each of four decisions). The actual numeric own Speed is still
+unknown because the Python diagnostic guard discarded it.
+
+Source audit: the public own view is built by `playerView()` in
+`tools/showdown-search-worker.js`; its `ownPokemon()` projection
+assigns `speed: mon.speed`. This is the pinned Showdown Pokemon's
+**cached speed**, not a newly computed stat. The pinned simulator's
+`sim/pokemon.ts` defines `updateSpeed()` as
+`this.speed = this.getActionSpeed()`; `getActionSpeed()` evaluates
+the current modifiers, Trick Room, and native 13-bit truncation.
+An arbitrary `0..10000` Python **telemetry-only** range for cached
+Speed is not established by this source. The prior report proves only
+that `observed_speed` violated this telemetry bound or integer
+type. The JS caller already requires `Number.isInteger` before
+emitting a Speed diagnostic, so the live field is numeric/integral,
+but its exact value requires the next report.
+
+PR #204 changes **only the debug transport** to permit signed JSON/
+JavaScript-safe integer values in
+`[-(2**53 - 1), 2**53 - 1]` for observed, cached, stored,
+calculated and pre-removal Speed. It still rejects booleans, strings,
+floating-point values and unsafe integers, with the original
+mechanical reason preserved by #203. No native state, Speed stat,
+Unburden volatile, search decision, world admission, player/request
+projection, or legal action check is relaxed.
+
+The pinned Unburden smoke now independently compares the live
+own-side public Speed with the session's serialized
+`sides[1].pokemon[0].speed` to verify the observation source,
+without supplying any private state to the public-world constructor.
+Unit tests cover native-style signed/large cached values and malformed
+transport. **Next gate:** rerun the *same* eight-game fixture only
+after CI is green; inspect
+`summary.decisions.own_speed_diagnostics` for the **actual observed
+number and native cached/action comparison**. Decide on a mechanical
+repair only from those values, not from a synthetic guessed Speed.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,

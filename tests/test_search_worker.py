@@ -260,7 +260,7 @@ def test_present_native_speed_diagnostic_rejects_malformed_payload(monkeypatch, 
 @pytest.mark.parametrize(("mutation", "expected_issue"), [
     ("missing-native-stored", "missing:native_stored_speed"),
     ("null-native-stored", "invalid:native_stored_speed"),
-    ("over-range-native-cached", "invalid:native_cached_speed"),
+    ("unsafe-native-cached", "invalid:native_cached_speed"),
     ("fractional-native-action", "invalid:native_action_speed"),
     ("missing-pre-removal", "invalid:pre_removal_action_speed-presence"),
     ("unknown-private-field", "unexpected-field"),
@@ -282,8 +282,8 @@ def test_realistic_speed_mismatch_reports_safe_transport_issue(
         del detail["native_stored_speed"]
     elif mutation == "null-native-stored":
         detail["native_stored_speed"] = None
-    elif mutation == "over-range-native-cached":
-        detail["native_cached_speed"] = 11000
+    elif mutation == "unsafe-native-cached":
+        detail["native_cached_speed"] = 1 << 53
     elif mutation == "fractional-native-action":
         detail["native_action_speed"] = 127.5
     elif mutation == "missing-pre-removal":
@@ -327,3 +327,62 @@ def test_non_speed_rejection_cannot_claim_authorized_transport_recovery(monkeypa
             state={"fresh": True},
             current_view={"opponent": {"active": []}},
         )
+
+
+@pytest.mark.parametrize("observed_speed", [
+    -1, -8192, -2147483648, 0, 10000, 10001,
+    (1 << 32) - 1, (1 << 53) - 1,
+])
+def test_present_diagnostic_keeps_native_cached_speed_without_stat_clamp(
+    monkeypatch, observed_speed,
+):
+    """Native cached Speed is not a stat modifier's 0..10000 domain.
+
+    Only the diagnostic transport changes: the mechanically contradictory
+    public observation must still yield zero admitted hypotheses.
+    """
+    worker = object.__new__(ShowdownSearchWorker)
+    detail = _own_speed_forensic()
+    detail["observed_speed"] = observed_speed
+    detail["native_cached_speed"] = observed_speed
+    detail["native_action_speed"] = 130
+    response = {
+        "outcomes": [],
+        "reason": "own-unburden-speed-unresolved",
+        "mismatch_path": "$.player.active_details[0].speed",
+        "own_speed_diagnostic": detail,
+    }
+    monkeypatch.setattr(worker, "request", lambda *args, **kwargs: response)
+    result = worker.materialize_present_hypotheses(
+        state={"fresh": True}, current_view={"opponent": {"active": []}},
+        limit=2,
+    )
+    assert result["outcomes"] == []
+    assert result["own_speed_diagnostic"]["observed_speed"] == observed_speed
+    assert result["reason"] == "own-unburden-speed-unresolved"
+
+
+@pytest.mark.parametrize("invalid", [
+    -(1 << 53), 1 << 53, True, 121.5, None, "10001",
+])
+def test_present_diagnostic_rejects_unsafe_or_noninteger_observed_speed(
+    monkeypatch, invalid,
+):
+    worker = object.__new__(ShowdownSearchWorker)
+    detail = _own_speed_forensic()
+    detail["observed_speed"] = invalid
+    monkeypatch.setattr(
+        worker, "request", lambda *args, **kwargs: {
+            "outcomes": [],
+            "reason": "own-unburden-speed-unresolved",
+            "mismatch_path": "$.player.active_details[0].speed",
+            "own_speed_diagnostic": detail,
+        },
+    )
+    with pytest.raises(OwnSpeedDiagnosticTransportError) as raised:
+        worker.materialize_present_hypotheses(
+            state={"fresh": True},
+            current_view={"opponent": {"active": []}},
+        )
+    assert raised.value.issue == "invalid:observed_speed"
+    assert raised.value.mechanics_reason == "own-unburden-speed-unresolved"
