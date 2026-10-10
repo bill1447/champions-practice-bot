@@ -579,6 +579,12 @@ def run_game(
                     f"baseline selected illegal choice in game {game_index}: "
                     f"{human_choice!r}"
                 )
+            # Capture the exact sanitized p2 checkpoint and request-derived
+            # choices that tactical search is about to consume. These are
+            # diagnostic copies only: no live native state, sealed opponent
+            # truth, hypothetical worlds, or oracle legality is exposed.
+            bot_public_before = battle.diagnostic_ai_public_checkpoint()
+            ai_public_choices_before = battle.diagnostic_ai_public_choices()
             ready = battle.lock_ai_action()
             result = battle.commit_human_action(
                 token=ready.token,
@@ -589,10 +595,21 @@ def run_game(
             # fallback counts. Never persist the sealed native battle state,
             # offline opponent truth sets, or internal hypothetical worlds.
             public_after = result.public_view
+            bot_public_after = battle.diagnostic_ai_public_checkpoint()
             decision_trace.append({
                 "decision_index": len(decision_seconds),
-                "observed_turn_after": public_after.get("turn"),
-                "observed_phase_after": public_after.get("phase"),
+                "observed_turn_before": bot_public_before.get("turn"),
+                "observed_phase_before": bot_public_before.get("phase"),
+                "bot_public_before": bot_public_before,
+                "ai_public_choices_before": list(ai_public_choices_before),
+                "observed_turn_after": bot_public_after.get("turn"),
+                "observed_phase_after": bot_public_after.get("phase"),
+                "bot_public_after": bot_public_after,
+                # Retain the human-facing post-resolution phase/turn from #231
+                # for backward comparison, but do not confuse it with the
+                # decision engine's p2 observation above.
+                "human_observed_turn_after": public_after.get("turn"),
+                "human_observed_phase_after": public_after.get("phase"),
                 "mode": decision.mode,
                 "fallback_reason": decision.fallback_reason,
                 "chosen_action": decision.choice,
