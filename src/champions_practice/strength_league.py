@@ -116,7 +116,6 @@ class GameResult:
     forced_wait_decisions: int
     fallback_decisions: int
     fallback_reasons: tuple[tuple[str, int], ...]
-    decision_trace: tuple[dict[str, Any], ...]
     degraded_turns: int
     strategy_decisions: int
     branch_count: int
@@ -130,6 +129,7 @@ class GameResult:
     recovery_retry_events: tuple[dict[str, Any], ...] = ()
     own_speed_diagnostics: tuple[dict[str, Any], ...] = ()
     own_speed_transport_issues: tuple[dict[str, str], ...] = ()
+    decision_trace: tuple[dict[str, Any], ...] = ()
 
 
 def _sha256_text(value: str) -> str:
