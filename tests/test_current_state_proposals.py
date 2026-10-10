@@ -247,3 +247,45 @@ def test_same_turn_revised_public_snapshot_invalidates_old_proposals():
     with pytest.raises(ValueError, match="stale"):
         _probe(worker, changed, revised, batch)
     assert worker.created == 0
+
+
+
+def test_forced_struggle_does_not_disqualify_public_set_priors():
+    view = public_view(turn=3)
+    indeedee = next(
+        entry for entry in view["opponent"]["revealed"]
+        if entry["species"] == "Indeedee-F"
+    )
+    indeedee["moves"] = ["psychic", "struggle"]
+    ledger = PublicConstraintLedger.from_public_view(view)
+    batch = build_current_state_set_proposals(
+        ledger=ledger, current_view=view,
+        priors=demo_public_priors(), limit=12,
+    )
+    assert batch.proposals
+    assert "struggle" in ledger.known_sets[0].moves or any(
+        "struggle" in known.moves for known in ledger.known_sets
+    )
+    assert all(
+        "struggle" not in {
+            move.lower() for move in proposal.world.set_for_species("Indeedee-F").moves
+        }
+        for proposal in batch.proposals
+        if "Indeedee-F" in proposal.selected_species
+    )
+
+
+def test_actual_unknown_move_still_disqualifies_public_set_priors():
+    view = public_view(turn=3)
+    indeedee = next(
+        entry for entry in view["opponent"]["revealed"]
+        if entry["species"] == "Indeedee-F"
+    )
+    indeedee["moves"] = ["psychic", "thunderbolt"]
+    ledger = PublicConstraintLedger.from_public_view(view)
+    batch = build_current_state_set_proposals(
+        ledger=ledger, current_view=view,
+        priors=demo_public_priors(), limit=12,
+    )
+    assert not batch.proposals
+    assert batch.missing_prior is not None
