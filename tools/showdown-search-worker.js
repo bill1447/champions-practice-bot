@@ -2034,6 +2034,22 @@ function materializePresentHypotheses(request) {
       }
     }
 
+    // An opponent Mega is PUBLIC form information, never a license to
+    // synthesize an unobserved stone. Only an approved hypothetical set
+    // capable of native Mega Evolution can establish the corresponding form.
+    for (const observed of view.opponent.active) {
+      if (!observed || !observed.species) continue;
+      const species = original.dex.species.get(observed.species);
+      if (!species.exists || !species.isMega) continue;
+      const mon = find(foe, observed.base_species);
+      if (!mon || !mon.isActive ||
+          asId(mon.set.species) !== asId(species.baseSpecies) ||
+          !original.actions.runMegaEvo(mon) ||
+          asId(mon.species.name) !== asId(species.name)) {
+        return why("unsupported-native-opponent-mega-evolution");
+      }
+    }
+
     // Owned facts are exact. Do not synthesize missing own team members,
     // items, abilities, statuses or PP; reject instead.
     for (const observed of view.player.team) {
