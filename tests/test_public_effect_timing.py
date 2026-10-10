@@ -1,7 +1,6 @@
 """Public effect timing evidence must not invent native duration authority."""
 
 import json
-from dataclasses import replace
 from types import SimpleNamespace
 
 import pytest
