@@ -248,3 +248,31 @@ def test_invalid_shadow_ledger_quarantines_without_interrupting_live_controller(
     engine._record_public_constraints(view(), initialize=True)
     assert engine.public_constraint_ledger is not None
     assert engine.public_constraint_ledger_issue is None
+
+
+def test_public_opponent_mega_preserves_preview_member_identity():
+    opening = view()
+    opening["opponent"]["preview_species"][0] = "Gardevoir"
+    opening["opponent"]["active"][0].update(
+        species="Gardevoir", base_species="Gardevoir",
+    )
+    opening["opponent"]["revealed"][0]["species"] = "Gardevoir"
+    ledger = PublicConstraintLedger.from_public_view(opening)
+
+    evolved = deepcopy(opening)
+    evolved["turn"] = 2
+    evolved["opponent"]["active"][0]["species"] = "Gardevoir-Mega"
+    # The roster and own public evidence are unchanged by transformation.
+    result = ledger.advance(evolved)
+    assert result.known_sets[0].species == "Gardevoir"
+    assert result.preview_species[0] == "Gardevoir"
+
+
+def test_unrelated_opponent_form_is_not_a_roster_alias():
+    opening = view()
+    ledger = PublicConstraintLedger.from_public_view(opening)
+    changed = deepcopy(opening)
+    changed["turn"] = 2
+    changed["opponent"]["preview_species"][0] = "Gardevoir"
+    with pytest.raises(ValueError):
+        ledger.advance(changed)
