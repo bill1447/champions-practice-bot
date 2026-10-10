@@ -428,6 +428,11 @@ def mega_identity_ability_probe(worker):
             f"rejection={report.unresolved_reason}, "
             f"reasons={report.rejection_reasons}"
         )
+        if not report.particles:
+            raise SystemExit(
+                f"ERROR: pinned Mega failed current-world admission: "
+                f"{report.unresolved_reason}; {report.rejection_reasons}"
+            )
         if report.particles:
             for particle in report.particles:
                 projection = worker.state_view(
