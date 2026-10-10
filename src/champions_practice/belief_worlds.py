@@ -137,7 +137,8 @@ def _candidate_matches(
         return False
 
     candidate_moves = {_id(move) for move in candidate.moves}
-    if not {_id(move) for move in pokemon.revealed_moves}.issubset(candidate_moves):
+    # Struggle is a forced engine action, not a member of the selected moveset.
+    if not {_id(move) for move in pokemon.revealed_moves if _id(move) != "struggle"}.issubset(candidate_moves):
         return False
 
     if pokemon.revealed_items:
