@@ -530,6 +530,42 @@ def preview_form_identity_probe(worker):
     finally:
         worker.close_session(sid)
 
+
+def staged_own_switch_position_probe(worker):
+    """Search admission must survive replacing a live lead with a bench member."""
+    start = worker.start_session(
+        battle_format=CHAMPIONS_FORMAT, p1_team=OPPONENT_TEAM,
+        p2_team=SMOKE_TEAM, p1_name="Public Opponent",
+        p2_name="Practice AI", seed=SEED,
+    )
+    sid = start["session_id"]
+    try:
+        worker.choose_session(sid, p1_choice=P1_PREVIEW, p2_choice=P2_PREVIEW)
+        worker.choose_session(sid, p1_choice=PROTECT, p2_choice=OWN_STAY)
+        legal = worker.session_legal_choices(sid, side="p2")
+        if OWN_SWITCH not in legal:
+            raise SystemExit("ERROR: pinned switch position test choice missing")
+        worker.choose_session(sid, p1_choice=PROTECT, p2_choice=OWN_SWITCH)
+        view = worker.session_view(sid, side="p2")["view"]
+        if view["player"]["active_details"][0]["species"] != "Gardevoir":
+            raise SystemExit("ERROR: own lead switch did not take effect")
+        ledger = PublicConstraintLedger.from_public_view(view)
+        report = build_present_rebase(
+            worker, ledger=ledger, current_view=view, priors=catalog(),
+            battle_format=CHAMPIONS_FORMAT,
+            ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
+            ai_preview_choice=P2_PREVIEW,
+            legal_live=tuple(worker.session_legal_choices(sid, side="p2")),
+            max_roots=2, max_particles=4,
+        )
+        if not report.particles:
+            raise SystemExit(
+                f"ERROR: own active-position rebase failed: {report.unavailable_reason}"
+            )
+        print("Pinned own-side switch position: current-state search admitted")
+    finally:
+        worker.close_session(sid)
+
 def main():
     with ShowdownSearchWorker() as worker:
         control = case(worker, False)
@@ -539,6 +575,7 @@ def main():
         trick_room_unburden_matrix(worker, True)
         mega_identity_ability_probe(worker)
         preview_form_identity_probe(worker)
+        staged_own_switch_position_probe(worker)
     if control[0] != switched[0] or control[1] <= switched[1]:
         raise SystemExit("ERROR: control and switched speeds were not distinct")
     print("RESULT: both native Unburden lifecycles admitted with exact own speed")
