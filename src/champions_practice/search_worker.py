@@ -103,13 +103,22 @@ def _own_speed_diagnostic_issue(diag: object) -> str | None:
         return "invalid:slot"
     if not isinstance(diag["species"], str) or not 1 <= len(diag["species"]) <= 64:
         return "invalid:species"
+    # Debug values are read from pinned Showdown's native own Pokemon:
+    # playerView.ownPokemon() exposes mon.speed (a cached turn state),
+    # while getActionSpeed() and storedStats.spe are separate values.
+    # An action-stat bound of 0..10000 is NOT a valid invariant for all
+    # serialized cached/native Speed fields. Transport only JSON-safe,
+    # exactly representable integers; never use these values for
+    # mechanics admission, which retains exact native/current checks.
+    js_safe_integer = (1 << 53) - 1
     for field in (
         "observed_speed", "native_cached_speed",
         "native_action_speed", "native_stored_speed",
         "pre_removal_action_speed",
     ):
         if field in diag and (
-            type(diag[field]) is not int or not 0 <= diag[field] <= 10000
+            type(diag[field]) is not int
+            or not -js_safe_integer <= diag[field] <= js_safe_integer
         ):
             return "invalid:" + field
     if type(diag["speed_boost"]) is not int or not -6 <= diag["speed_boost"] <= 6:
