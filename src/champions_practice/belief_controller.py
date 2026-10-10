@@ -682,6 +682,13 @@ def _pin_known_team_genders(team_text: str, request: dict) -> str:
         gender = next((token for token in tokens[1:] if token in {"M", "F"}), None)
         if gender is not None:
             genders[_id(species)] = gender
+            # The live request names an already-Mega-Evolved form, while
+            # hypothetical team text still names the original team species.
+            # Pin the known OWN gender to that original member as well.
+            for suffix in ("-Mega-X", "-Mega-Y", "-Mega"):
+                if species.endswith(suffix):
+                    genders[_id(species[:-len(suffix)])] = gender
+                    break
 
     if not genders:
         return team_text
