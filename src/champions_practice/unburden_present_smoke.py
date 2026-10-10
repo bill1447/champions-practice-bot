@@ -303,6 +303,36 @@ def trick_room_unburden_matrix(worker, switched):
                 if unburden == switched:
                     raise SystemExit("ERROR: switch-dependent native Unburden state incorrect")
                 seen.add((trick_room, unburden))
+                # Both currently active and just-expired Trick Room must
+                # admit a public-only current-state world. Keep every exact
+                # own projection/request and legal-menu safeguard.
+                ledger = PublicConstraintLedger.from_public_view(view)
+                legal = tuple(worker.session_legal_choices(sid, side="p2"))
+                report = build_present_rebase(
+                    worker, ledger=ledger, current_view=view, priors=catalog(),
+                    battle_format=CHAMPIONS_FORMAT,
+                    ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
+                    ai_preview_choice=P2_PREVIEW, legal_live=legal,
+                    max_roots=2, max_particles=4,
+                )
+                if not report.particles:
+                    raise SystemExit(
+                        f"ERROR: TR={trick_room} Unburden={unburden} "
+                        f"current-world admission failed: "
+                        f"{report.unresolved_reason}; {report.rejection_reasons}"
+                    )
+                for particle in report.particles:
+                    projection = worker.state_view(
+                        state=particle.state, side="p2",
+                        previews={
+                            "p1": list(ledger.preview_species),
+                            "p2": [mon["species"] for mon in view["player"]["team"]],
+                        },
+                    )
+                    if projection["player"] != view["player"] or projection["request"] != view["request"]:
+                        raise SystemExit("ERROR: TR/Unburden own projection/request mismatch")
+                    if set(worker.legal_choices(state=particle.state, side="p2")) != set(legal):
+                        raise SystemExit("ERROR: TR/Unburden native legal menu mismatch")
             samples.append((trick_room, unburden, observed_speed))
             if step == 5:
                 break
