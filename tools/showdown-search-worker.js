@@ -2192,10 +2192,15 @@ function materializePresentHypotheses(request) {
           asId(mon.species.name) !== asId(observed.species) ||
           asId(mon.ability) !== "unburden" ||
           mon.item || !mon.volatiles["unburden"]) continue;
+      // getActionSpeed() is signed under active Trick Room. A negative
+      // *cached* Speed may also survive its expiry. Compare current native
+      // mechanics in the current field, not a sign from an expired cache.
+      const targetActionSpeed = original.field.pseudoWeather["trickroom"]
+        ? observed.speed : Math.abs(observed.speed);
       const beforeRemoval = mon.getActionSpeed();
-      if (beforeRemoval === observed.speed) continue;
+      if (beforeRemoval === targetActionSpeed) continue;
       mon.removeVolatile("unburden");
-      if (mon.getActionSpeed() !== observed.speed) {
+      if (mon.getActionSpeed() !== targetActionSpeed) {
         return why("own-unburden-speed-unresolved",
           `$.player.active_details[${slot}].speed`,
           speedDiagnostic(mon, observed, slot,
@@ -2205,6 +2210,20 @@ function materializePresentHypotheses(request) {
 
     original.turn = view.turn;
     original.updateSpeed();
+    // Native Trick Room reverses cached Speed's sign during turn ordering.
+    // Upon expiry pinned Showdown can retain the negative cache even though
+    // subsequent action Speed in the current field is positive. Reproduce
+    // that cache with native field transitions, not by assigning Pokemon.speed.
+    if (!original.field.pseudoWeather["trickroom"] &&
+        view.player.active_details.some((mon) => mon && mon.speed < 0)) {
+      const source = own.active.find((mon) => mon && mon.hp > 0);
+      if (!source || !original.field.addPseudoWeather("trickroom", source)) {
+        return why("expired-trick-room-cache-unavailable");
+      }
+      original.updateSpeed();
+      original.field.removePseudoWeather("trickroom");
+      // Do NOT updateSpeed after native expiry.
+    }
     original.makeRequest("move");
     const choices = original.p2.activeRequest;
     if (exact(choices) !== ownRequested) {
