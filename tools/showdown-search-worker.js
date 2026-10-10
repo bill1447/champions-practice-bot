@@ -2112,11 +2112,18 @@ function materializePresentHypotheses(request) {
       // Do not bypass pinned status immunity. If the present state needs
       // historical suppression/change-of-ability evidence we cannot prove,
       // reject this candidate rather than synthesize an illegal native status.
-      if (observed.status && mon.status !== observed.status) {
-        if (!mon.isActive || !mon.setStatus(observed.status, mon)) {
+      // The public own-team view uses "fnt" as a faint marker, not as a
+      // native major status. mon.faint() above already establishes that fact.
+      // Never feed "fnt" into setStatus(), including on a benched fainted mon.
+      if (observed.status === "fnt" && observed.hp !== 0) {
+        return why("unsupported-own-status", `${ownPath}.status`);
+      }
+      const ownStatus = observed.status === "fnt" ? "" : observed.status;
+      if (ownStatus && mon.status !== ownStatus) {
+        if (!mon.isActive || !mon.setStatus(ownStatus, mon)) {
           return why("unsupported-own-status", `${ownPath}.status`);
         }
-      } else if (!observed.status && mon.status) {
+      } else if (!ownStatus && mon.status) {
         mon.clearStatus();
       }
       // Own PP is fully known even after a Pokemon leaves the field.
