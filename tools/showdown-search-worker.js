@@ -2260,8 +2260,8 @@ function materializePresentHypotheses(request) {
       const path = firstMismatchPath(choices, view.request, "$.request");
       // Temporary own-only Mega diagnostics: the two side-request details
       // strings are owned public information, not hidden opponent state.
-      if (path && /^\\$\\.request\\.side\\.pokemon\\[\\d+\\]\\.details$/.test(path)) {
-        const index = Number(path.match(/\\[(\\d+)\\]/)[1]);
+      if (path && path.startsWith("$.request.side.pokemon[") && path.endsWith("].details")) {
+        const index = Number(path.split("[")[1].split("]")[0]);
         console.error("OWN_MEGA_REQUEST_DETAILS " + JSON.stringify({
           slot: index,
           live: view.request.side.pokemon[index]?.details || null,
