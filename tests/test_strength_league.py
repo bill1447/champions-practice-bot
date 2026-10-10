@@ -310,3 +310,18 @@ def test_league_summary_separates_mechanics_and_telemetry_transport_issue():
     ]
     assert summary["decisions"]["own_speed_diagnostics"] == []
     assert "native-proposal-error:RuntimeError" not in str(issue)
+
+
+def test_game_result_decision_trace_is_serializable_and_backwards_compatible():
+    from dataclasses import asdict
+    import json
+
+    game = _game(0, outcome="bot-win")
+    assert asdict(game)["decision_trace"] == ()
+    trace = {
+        "decision_index": 0, "observed_phase_after": "switch",
+        "mode": "fallback", "fallback_reason": "unsupported-own-form",
+        "chosen_action": "switch 3", "baseline_legal_choice_count": 4,
+    }
+    enriched = GameResult(**{**asdict(game), "decision_trace": (trace,)})
+    assert json.loads(json.dumps(asdict(enriched)))["decision_trace"][0] == trace
