@@ -356,6 +356,95 @@ def trick_room_unburden_matrix(worker, switched):
         worker.close_session(sid)
 
 
+
+def mega_identity_ability_probe(worker):
+    """Offline native Mega trace and fresh present-world rejection classification.
+
+    This characterizes a real observed Mega, but makes NO admission changes
+    and never passes the live private session snapshot into reconstruction.
+    """
+    preview = "team 3124"  # Gardevoir + Indeedee, Sneasler + Armarouge
+    start = worker.start_session(
+        battle_format=CHAMPIONS_FORMAT, p1_team=OPPONENT_TEAM,
+        p2_team=SMOKE_TEAM, p1_name="Public Opponent",
+        p2_name="Practice AI", seed=SEED,
+    )
+    sid = start["session_id"]
+    try:
+        worker.choose_session(sid, p1_choice=P1_PREVIEW, p2_choice=preview)
+        before = worker.session_view(sid, side="p2")["view"]
+        if before["player"]["active_details"][0]["species"] != "Gardevoir":
+            raise SystemExit("ERROR: Mega probe did not lead Gardevoir")
+        legal = worker.session_legal_choices(sid, side="p2")
+        mega_choices = [
+            choice for choice in legal
+            if "mega" in choice.lower() and "protect" in choice.lower()
+        ]
+        if not mega_choices:
+            raise SystemExit("ERROR: pinned Gardevoir Mega Protect choice unavailable")
+        choice = mega_choices[0]
+        if PROTECT not in worker.session_legal_choices(sid, side="p1"):
+            raise SystemExit("ERROR: Mega probe opponent Protect unavailable")
+        worker.choose_session(sid, p1_choice=PROTECT, p2_choice=choice)
+        view = worker.session_view(sid, side="p2")["view"]
+        if view["phase"] != "move":
+            raise SystemExit("ERROR: Mega probe did not reach current move phase")
+        snap = worker.request("session_snapshot", session_id=sid)
+        own_native = snap["state"]["sides"][1]["pokemon"]
+        mega_native = next(
+            (mon for mon in own_native if mon["set"]["species"] == "Gardevoir"),
+            None,
+        )
+        if mega_native is None:
+            raise SystemExit("ERROR: Mega probe native team identity missing")
+        mega_public = next(
+            (mon for mon in view["player"]["team"]
+             if mon.get("base_species", mon["species"]) == "Gardevoir"
+             or mon["species"] in ("Gardevoir", "Gardevoir-Mega")),
+            None,
+        )
+        if mega_public is None:
+            raise SystemExit("ERROR: Mega probe public team identity missing")
+        if "mega" not in mega_native["species"].lower():
+            raise SystemExit("ERROR: pinned Mega evolution was not executed")
+        ledger = PublicConstraintLedger.from_public_view(view)
+        legal_live = tuple(worker.session_legal_choices(sid, side="p2"))
+        report = build_present_rebase(
+            worker, ledger=ledger, current_view=view, priors=catalog(),
+            battle_format=CHAMPIONS_FORMAT,
+            ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
+            ai_preview_choice=preview, legal_live=legal_live,
+            max_roots=2, max_particles=4,
+        )
+        print(
+            "Pinned Mega identity/ability trace: "
+            f"native_set={mega_native['set']['species']}, "
+            f"native_form={mega_native['species']}, "
+            f"native_ability={mega_native['ability']}, "
+            f"public_form={mega_public['species']}, "
+            f"public_ability={mega_public['ability']}, "
+            f"active={[mon['species'] for mon in view['player']['active_details']]}, "
+            f"admitted={len(report.particles)}, "
+            f"rejection={report.unresolved_reason}, "
+            f"reasons={report.rejection_reasons}"
+        )
+        if report.particles:
+            for particle in report.particles:
+                projection = worker.state_view(
+                    state=particle.state, side="p2",
+                    previews={
+                        "p1": list(ledger.preview_species),
+                        "p2": [mon["species"] for mon in view["player"]["team"]],
+                    },
+                )
+                if projection["player"] != view["player"] or projection["request"] != view["request"]:
+                    raise SystemExit("ERROR: Mega probe admitted inexact own state")
+                if set(worker.legal_choices(state=particle.state, side="p2")) != set(legal_live):
+                    raise SystemExit("ERROR: Mega probe admitted inexact legal choices")
+    finally:
+        worker.close_session(sid)
+
+
 def main():
     with ShowdownSearchWorker() as worker:
         control = case(worker, False)
@@ -363,6 +452,7 @@ def main():
         trick_room_speed_lifecycle(worker)
         trick_room_unburden_matrix(worker, False)
         trick_room_unburden_matrix(worker, True)
+        mega_identity_ability_probe(worker)
     if control[0] != switched[0] or control[1] <= switched[1]:
         raise SystemExit("ERROR: control and switched speeds were not distinct")
     print("RESULT: both native Unburden lifecycles admitted with exact own speed")
