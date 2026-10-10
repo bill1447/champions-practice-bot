@@ -2339,7 +2339,10 @@ function materializePresentHypotheses(request) {
     }
     const foeMembers = foe.active.map((mon) => mon && ({
       species: mon.species.name,
-      base_species: mon.baseSpecies.name,
+      // Public base_species denotes the original team/preview member, not
+      // Pokedex baseSpecies. In particular Indeedee-F's Dex base is
+      // Indeedee, but its public roster identity remains Indeedee-F.
+      base_species: mon.set.species,
       status: mon.status || null,
       boosts: { ...mon.boosts },
     }));
