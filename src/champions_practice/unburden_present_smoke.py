@@ -282,18 +282,28 @@ def trick_room_unburden_matrix(worker, switched):
             view = worker.session_view(sid, side="p2")["view"]
             snapshot = worker.request("session_snapshot", session_id=sid)
             native = snapshot["state"]["sides"][1]["pokemon"][0]
-            observed = view["player"]["active_details"][0]
             trick_room = "trickroom" in snapshot["state"]["field"]["pseudoWeather"]
             unburden = "unburden" in native.get("volatiles", {})
-            if observed["species"] != "Sneasler" or native["speed"] != observed["speed"]:
-                raise SystemExit("ERROR: state matrix did not preserve native own cache")
-            if view["player"]["team"][0]["speed"] != observed["speed"]:
-                raise SystemExit("ERROR: state matrix own team/active cache disagrees")
+            # During the switched run, Sneasler is on the bench at step 2:
+            # active_details[0] refers to the replacement, not Sneasler.
+            if switched and step == 2:
+                if view["player"]["active_details"][0]["species"] == "Sneasler":
+                    raise SystemExit("ERROR: expected Sneasler to be switched out")
+                observed_speed = view["player"]["team"][0]["speed"]
+                if native["speed"] != observed_speed:
+                    raise SystemExit("ERROR: benched Sneasler cached Speed mismatch")
+            else:
+                observed = view["player"]["active_details"][0]
+                if observed["species"] != "Sneasler" or native["speed"] != observed["speed"]:
+                    raise SystemExit("ERROR: state matrix did not preserve native own cache")
+                if view["player"]["team"][0]["speed"] != observed["speed"]:
+                    raise SystemExit("ERROR: state matrix own team/active cache disagrees")
+                observed_speed = observed["speed"]
             if step >= 3:
                 if unburden == switched:
                     raise SystemExit("ERROR: switch-dependent native Unburden state incorrect")
                 seen.add((trick_room, unburden))
-            samples.append((trick_room, unburden, observed["speed"]))
+            samples.append((trick_room, unburden, observed_speed))
             if step == 5:
                 break
             own_choice = (
