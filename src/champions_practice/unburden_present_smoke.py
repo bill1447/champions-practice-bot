@@ -547,7 +547,7 @@ def staged_own_switch_position_probe(worker):
             raise SystemExit("ERROR: pinned switch position test choice missing")
         worker.choose_session(sid, p1_choice=PROTECT, p2_choice=OWN_SWITCH)
         view = worker.session_view(sid, side="p2")["view"]
-        if view["player"]["active_details"][0]["species"] != "Indeedee-F":
+        if view["player"]["active_details"][0]["species"] != "Gardevoir":
             raise SystemExit("ERROR: own lead switch did not take effect")
         ledger = PublicConstraintLedger.from_public_view(view)
         report = build_present_rebase(
