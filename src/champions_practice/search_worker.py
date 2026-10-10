@@ -1405,11 +1405,12 @@ class ShowdownSearchWorker:
                         "own-unburden-speed-unresolved",
                         "current-public-mechanics-mismatch",
                     }
-                    and isinstance(path, str)
-                    and re.fullmatch(
-                        r"\\$\\.player\\.(?:active_details|team)\\[[01]\\]\\.speed",
-                        path,
-                    )
+                    and path in {
+                        "$.player.active_details[0].speed",
+                        "$.player.active_details[1].speed",
+                        "$.player.team[0].speed",
+                        "$.player.team[1].speed",
+                    }
                 ):
                     raise OwnSpeedDiagnosticTransportError(
                         reason=reason, path=path, issue=issue,
