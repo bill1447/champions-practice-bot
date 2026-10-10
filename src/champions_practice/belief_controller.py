@@ -145,6 +145,7 @@ class BeliefDecision:
     searched_responses: tuple[str, ...] = ()
     evaluated_choices: tuple[str, ...] = ()
     candidate_scores: tuple[tuple[str, float, float], ...] = ()
+    own_speed_diagnostics: tuple[dict[str, object], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -922,6 +923,7 @@ class BeliefDecisionEngine:
         self._public_rebase_attempted_signatures: set[str] = set()
         # Fresh per-decision worlds are disposable. Only the public ledger persists.
         self.last_public_world_failure_reason: str | None = None
+        self.last_own_speed_diagnostics: tuple[dict[str, object], ...] = ()
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
         # Shadow-only public evidence: never participates in live particle
@@ -2632,6 +2634,7 @@ class BeliefDecisionEngine:
         *,
         started: float,
         reason: str,
+        own_speed_diagnostics: tuple[dict[str, object], ...] = (),
     ) -> BeliefDecision:
         return BeliefDecision(
             choice=self.fallback_selector(legal_choices),
@@ -2641,6 +2644,7 @@ class BeliefDecisionEngine:
             branch_count=0,
             elapsed_seconds=perf_counter() - started,
             fallback_reason=reason,
+            own_speed_diagnostics=own_speed_diagnostics,
         )
 
     def _try_first_turn_public_rebase(self, *, deadline: float) -> bool:
@@ -2757,6 +2761,7 @@ class BeliefDecisionEngine:
         """
         ledger = self.public_constraint_ledger
         view = self.last_public_view
+        self.last_own_speed_diagnostics = ()
         self.last_public_world_failure_reason = "missing-public-checkpoint"
         if ledger is None or self.public_constraint_ledger_issue is not None:
             self.last_public_world_failure_reason = "public-ledger-unavailable"
@@ -2798,6 +2803,8 @@ class BeliefDecisionEngine:
         except (RuntimeError, ValueError, ShowdownRequestError) as error:
             self.last_public_world_failure_reason = type(error).__name__
             return False
+        if result is not None and not timed_out:
+            self.last_own_speed_diagnostics = result.own_speed_diagnostics
         if timed_out or result is None or not result.particles:
             self.last_public_world_failure_reason = (
                 "time-budget" if timed_out
@@ -2850,6 +2857,7 @@ class BeliefDecisionEngine:
                     reason="fresh-public-world:" + (
                         self.last_public_world_failure_reason or "unresolved"
                     ),
+                    own_speed_diagnostics=self.last_own_speed_diagnostics,
                 )
         elif self.degraded:
             # Legacy recovery is retained for offline diagnostics / older

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from copy import deepcopy
+
 from champions_practice.belief_controller import _pin_known_team_genders
 from champions_practice.belief_worlds import PublicSetCandidate
 from champions_practice.config import CHAMPIONS_FORMAT
@@ -117,6 +119,53 @@ def case(worker, switched):
                 raise SystemExit("ERROR: exact own current mechanics lost")
             if set(worker.legal_choices(state=particle.state, side="p2")) != set(legal):
                 raise SystemExit("ERROR: own legal moves changed")
+        if switched:
+            # Diagnostic-only negative control. Changing our observed speed
+            # makes this view intentionally impossible: it must be rejected,
+            # never used as a search world, and must return only own data.
+            corrupted = deepcopy(view)
+            impossible = now["speed"] + 1
+            corrupted["player"]["active_details"][0]["speed"] = impossible
+            corrupted["player"]["team"][0]["speed"] = impossible
+            independent_root = worker.create_state(
+                battle_format=CHAMPIONS_FORMAT,
+                p1_team=OPPONENT_TEAM,
+                p2_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
+                p1_preview=P1_PREVIEW, p2_preview=P2_PREVIEW,
+                p1_name=view["opponent"]["name"],
+                p2_name=view["player"]["name"],
+                seed=SEED,
+            )
+            rejected = worker.materialize_present_hypotheses(
+                state=independent_root, current_view=corrupted, limit=2,
+            )
+            if rejected["outcomes"]:
+                raise SystemExit("ERROR: corrupt own speed entered native world")
+            if rejected["reason"] != "own-unburden-speed-unresolved":
+                raise SystemExit(
+                    f"ERROR: expected own speed diagnostic, got {rejected['reason']}"
+                )
+            diagnostic = rejected.get("own_speed_diagnostic")
+            if not isinstance(diagnostic, dict):
+                raise SystemExit("ERROR: own native speed diagnostic was lost")
+            if not (
+                diagnostic["species"] == "Sneasler"
+                and diagnostic["slot"] == 0
+                and diagnostic["observed_speed"] == impossible
+                and diagnostic["stage"] == "after-native-unburden-removal"
+                and diagnostic["unburden_volatile"] is False
+                and diagnostic["pre_removal_action_speed"] > diagnostic["native_action_speed"]
+            ):
+                raise SystemExit("ERROR: incorrect own-only Unburden diagnostic")
+            if set(diagnostic) - {
+                "stage", "slot", "species", "observed_speed",
+                "native_cached_speed", "native_action_speed",
+                "native_stored_speed", "speed_boost", "status", "ability",
+                "item", "unburden_volatile", "trick_room", "terrain",
+                "weather", "pre_removal_action_speed",
+            }:
+                raise SystemExit("ERROR: speed diagnostic leaked unrelated state")
+            print("Impossible own-speed negative control rejected with diagnostics: YES")
         print(f"Unburden switch={switched}: speed {first['speed']} -> {now['speed']}; "
               f"admitted {len(report.particles)}")
         return first["speed"], now["speed"]

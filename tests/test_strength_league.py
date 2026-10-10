@@ -31,6 +31,7 @@ def _game(
     finite_reachability_leaves: int = 0,
     recovery_events: tuple[dict, ...] = (),
     recovery_retry_events: tuple[dict, ...] = (),
+    own_speed_diagnostics: tuple[dict, ...] = (),
 ) -> GameResult:
     winner = {
         "bot-win": "League Bot",
@@ -64,6 +65,7 @@ def _game(
         finite_reachability_leaves=finite_reachability_leaves,
         recovery_events=recovery_events,
         recovery_retry_events=recovery_retry_events,
+        own_speed_diagnostics=own_speed_diagnostics,
     )
 
 
@@ -263,3 +265,26 @@ def test_v1_identifiers_are_explicit():
     assert FIXTURE_ID == "current-roster-mirror-v1"
     assert BOT_ID == "belief-strategy-main-v1"
     assert BASELINE_ID == "public-fallback-v1"
+
+
+def test_league_summary_retains_bounded_own_only_speed_forensics():
+    own = {
+        "decision_index": 3,
+        "fallback_reason": "fresh-public-world:own-unburden-speed-unresolved",
+        "species": "Sneasler",
+        "observed_speed": 121,
+        "native_cached_speed": 242,
+        "native_action_speed": 122,
+        "unburden_volatile": False,
+        "stage": "after-native-unburden-removal",
+    }
+    game = _game(
+        3, outcome="bot-win", fallback_decisions=1,
+        own_speed_diagnostics=(own,),
+    )
+    summary = summarize_games((game,))
+    assert summary["decisions"]["fallback"] == 1
+    assert summary["decisions"]["own_speed_diagnostics"] == [
+        {"game_index": 3, **own},
+    ]
+    assert "opponent_set" not in summary["decisions"]["own_speed_diagnostics"][0]
