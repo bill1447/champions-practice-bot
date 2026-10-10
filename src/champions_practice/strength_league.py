@@ -129,6 +129,7 @@ class GameResult:
     recovery_events: tuple[dict[str, Any], ...] = ()
     recovery_retry_events: tuple[dict[str, Any], ...] = ()
     own_speed_diagnostics: tuple[dict[str, Any], ...] = ()
+    own_speed_transport_issues: tuple[dict[str, str], ...] = ()
 
 
 def _sha256_text(value: str) -> str:
@@ -329,6 +330,10 @@ def summarize_games(games: tuple[GameResult, ...]) -> dict[str, Any]:
                 {"game_index": game.game_index, **detail}
                 for game in games for detail in game.own_speed_diagnostics
             ][:32],
+            "own_speed_transport_issues": [
+                {"game_index": game.game_index, **detail}
+                for game in games for detail in game.own_speed_transport_issues
+            ][:32],
             "degraded_turns": degraded_turns,
             "degraded_rate": (
                 degraded_turns / total_decisions if total_decisions else 0.0
@@ -485,6 +490,7 @@ def run_game(
     recovery_retry_events: list[dict[str, Any]] = []
     fallback_reasons: Counter[str] = Counter()
     own_speed_diagnostics: list[dict[str, Any]] = []
+    own_speed_transport_issues: list[dict[str, str]] = []
     search_decisions = 0
     forced_wait_decisions = 0
     fallback_decisions = 0
@@ -585,6 +591,12 @@ def run_game(
                             "fallback_reason": decision.fallback_reason,
                             **detail,
                         })
+                for detail in decision.own_speed_transport_issues[:2]:
+                    if len(own_speed_transport_issues) < 8:
+                        own_speed_transport_issues.append({
+                            "decision_index": len(decision_seconds) - 1,
+                            **detail,
+                        })
             if decision.strategic_plan is not None:
                 strategy_decisions += 1
             if result.degraded:
@@ -618,6 +630,7 @@ def run_game(
             fallback_decisions=fallback_decisions,
             fallback_reasons=tuple(sorted(fallback_reasons.items())),
             own_speed_diagnostics=tuple(own_speed_diagnostics),
+            own_speed_transport_issues=tuple(own_speed_transport_issues),
             degraded_turns=degraded_turns,
             strategy_decisions=strategy_decisions,
             branch_count=branch_count,
