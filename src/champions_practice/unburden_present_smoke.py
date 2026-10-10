@@ -88,6 +88,19 @@ def case(worker, switched):
         now = view["player"]["active_details"][0]
         if view["phase"] != "move" or view["turn"] < 4 or now["species"] != "Sneasler":
             raise SystemExit("ERROR: missing midgame Sneasler")
+        # Offline provenance oracle ONLY: the public own_speed observation
+        # is exactly the pinned live Pokemon.speed cached field. The full
+        # sealed session snapshot is NEVER given to the fresh constructor.
+        snapshot = worker.request("session_snapshot", session_id=sid)
+        own_native = snapshot["state"]["sides"][1]["pokemon"][0]
+        if (
+            type(now["speed"]) is not int
+            or now["speed"] != own_native["speed"]
+            or view["player"]["team"][0]["speed"] != own_native["speed"]
+        ):
+            raise SystemExit(
+                "ERROR: own observed Speed did not originate at native Pokemon.speed"
+            )
         if switched and not now["speed"] < first["speed"]:
             raise SystemExit("ERROR: switching did not clear live Unburden")
         if not switched and now["speed"] != first["speed"]:
@@ -152,6 +165,11 @@ def case(worker, switched):
             diagnostic = rejected.get("own_speed_diagnostic")
             if not isinstance(diagnostic, dict):
                 raise SystemExit("ERROR: own native speed diagnostic was lost")
+            # A native cached own Speed is not a stat-domain assertion.
+            # In particular, only game-state admission checks may decide
+            # whether an own observation matches current mechanics.
+            if diagnostic["observed_speed"] != corrupted["player"]["team"][0]["speed"]:
+                raise SystemExit("ERROR: diagnostic did not preserve public cached Speed")
             if not (
                 diagnostic["species"] == "Sneasler"
                 and diagnostic["slot"] == 0
