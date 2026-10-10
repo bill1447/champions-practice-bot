@@ -225,7 +225,30 @@ def build_present_rebase(
         or not isinstance(ai_preview_choice, str)
         or not ai_preview_choice.startswith("team ")
     ):
-        return PresentRebaseReport((), 0, 0, 0, "unsupported-public-phase")
+        phase = str(current_view.get("phase", "missing"))
+        turn = current_view.get("turn", "missing")
+        request = current_view.get("request")
+        if not isinstance(request, dict):
+            request_kind = "missing"
+        elif request.get("wait") is True:
+            request_kind = "wait"
+        elif request.get("forceSwitch"):
+            request_kind = "force-switch"
+        elif request.get("teamPreview"):
+            request_kind = "team-preview"
+        elif isinstance(request.get("active"), list):
+            request_kind = "move"
+        else:
+            request_kind = "other"
+        preview_valid = (
+            isinstance(ai_preview_choice, str)
+            and ai_preview_choice.startswith("team ")
+        )
+        reason = (
+            f"unsupported-public-phase:phase={phase}:turn={turn}"
+            f":request={request_kind}:preview={'valid' if preview_valid else 'invalid'}"
+        )
+        return PresentRebaseReport((), 0, 0, 0, reason)
 
     batch = build_current_state_set_proposals(
         ledger=ledger, current_view=current_view,
