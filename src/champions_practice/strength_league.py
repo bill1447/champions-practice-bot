@@ -443,17 +443,25 @@ def _baseline_choice(choices: tuple[str, ...]) -> str:
     if all(choice.startswith("team ") for choice in choices):
         return sorted(choices)[0]
 
-    def score(choice: str) -> tuple[int, int, int, str]:
+    def score(choice: str) -> tuple[int, int, int, int, str]:
         parts = [part.strip().lower() for part in choice.split(",")]
         moves = [part for part in parts if part.startswith("move ")]
         defensive = ("protect", "detect", "imprison", "trickroom",
                      "followme", "wideguard", "quickguard", "endure")
+        # In Showdown command targets, -1/-2 select our own side;
+        # +1/+2 select the opposing side. Avoid selecting ally-targeted
+        # attacks by lexicographic tie break before rewarding aggression.
+        friendly_fire = sum(
+            any(token.startswith("-") and token[1:].isdigit()
+                for token in move.split()[2:])
+            for move in moves
+        )
         attacks = sum(not any(token in move for token in defensive)
                       for move in moves)
         avoids_stall = -sum(any(token in move for token in defensive)
                             for move in moves)
         mega = sum("mega" in move for move in moves)
-        return attacks, mega, avoids_stall, choice
+        return -friendly_fire, attacks, mega, avoids_stall, choice
 
     return max(choices, key=score)
 
