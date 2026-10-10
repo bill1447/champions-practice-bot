@@ -374,3 +374,20 @@ def test_invalid_speed_telemetry_preserves_mechanical_rejection_separately(
         "diagnostic_issue": "invalid:native_stored_speed",
     },)
     assert report.exhaustively_excluded_worlds == 0
+
+
+def test_public_phase_telemetry_records_phase_turn_and_request_kind():
+    view, _state, ledger = sample()
+    view["phase"] = "switch"
+    view["request"] = {"forceSwitch": [True, False]}
+    ledger.own_request = json.dumps(view["request"], sort_keys=True, separators=(",", ":"))
+    ledger.matches_current_public_projection = lambda candidate: candidate is view
+    report = build_present_rebase(
+        None, ledger=ledger, current_view=view, priors={},
+        battle_format="test", ai_team="own team",
+        ai_preview_choice="team 12",
+    )
+    assert report.unresolved_reason == (
+        "unsupported-public-phase:phase=switch:turn=8"
+        ":request=force-switch:preview=valid"
+    )
