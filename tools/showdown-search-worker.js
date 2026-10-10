@@ -2257,21 +2257,8 @@ function materializePresentHypotheses(request) {
     original.makeRequest("move");
     const choices = original.p2.activeRequest;
     if (exact(choices) !== ownRequested) {
-      const path = firstMismatchPath(choices, view.request, "$.request");
-      // Temporary own-only Mega diagnostics: the two side-request details
-      // strings are owned public information, not hidden opponent state.
-      if (path && path.startsWith("$.request.side.pokemon[") && path.endsWith("].details")) {
-        const index = Number(path.split("[")[1].split("]")[0]);
-        const liveDetails = view.request.side.pokemon[index]?.details || "";
-        const syntheticDetails = choices.side.pokemon[index]?.details || "";
-        // The Python worker does not forward console stderr in the smoke
-        // output. Return ONLY these owned, public request fields through the
-        // already allowlisted failure path; the candidate stays rejected.
-        return why("exact-own-request-mismatch",
-          path + ":live=" + JSON.stringify(liveDetails) +
-          ":synthetic=" + JSON.stringify(syntheticDetails));
-      }
-      return why("exact-own-request-mismatch", path);
+      return why("exact-own-request-mismatch",
+        firstMismatchPath(choices, view.request, "$.request"));
     }
 
     const desiredOwn = view.player;
