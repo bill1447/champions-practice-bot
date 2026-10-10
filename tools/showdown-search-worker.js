@@ -2067,15 +2067,16 @@ function materializePresentHypotheses(request) {
 
     // Owned facts are exact. Do not synthesize missing own team members,
     // items, abilities, statuses or PP; reject instead.
-    for (const observed of view.player.team) {
+    for (const [teamIndex, observed] of view.player.team.entries()) {
       const mon = find(own, observed.species);
+      const ownPath = `$.player.team[${teamIndex}]`;
       if (!mon || !Number.isInteger(observed.hp) ||
           !Number.isInteger(observed.maxhp) || mon.maxhp !== observed.maxhp ||
           observed.hp < 0 || observed.hp > mon.maxhp) {
-        return why("unsupported-exact-own-hp");
+        return why("unsupported-exact-own-hp", `${ownPath}.hp`);
       }
       if (asId(observed.species) !== asId(mon.species.name)) {
-        return why("unsupported-own-form");
+        return why("unsupported-own-form", `${ownPath}.species`);
       }
       if (observed.hp === 0) {
         mon.faint();
@@ -2085,7 +2086,7 @@ function materializePresentHypotheses(request) {
       if (asId(mon.item) !== asId(observed.item)) {
         const knownItem = original.dex.items.get(observed.item || "");
         if (observed.item && !knownItem.exists) {
-          return why("unsupported-exact-own-item");
+          return why("unsupported-exact-own-item", `${ownPath}.item`);
         }
         if (mon.isActive) {
           // Native SetItem/End events must fire for active Pokemon.
@@ -2113,7 +2114,7 @@ function materializePresentHypotheses(request) {
       // reject this candidate rather than synthesize an illegal native status.
       if (observed.status && mon.status !== observed.status) {
         if (!mon.isActive || !mon.setStatus(observed.status, mon)) {
-          return why("unsupported-own-status");
+          return why("unsupported-own-status", `${ownPath}.status`);
         }
       } else if (!observed.status && mon.status) {
         mon.clearStatus();
@@ -2138,7 +2139,7 @@ function materializePresentHypotheses(request) {
         }
         slot.pp = entry.pp;
       }
-      if (observed.active !== mon.isActive) return why("own-active-mismatch");
+      if (observed.active !== mon.isActive) return why("own-active-mismatch", `${ownPath}.active`);
       if (observed.boosts && mon.isActive) {
         if (Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
           return why("unsupported-own-boost");
