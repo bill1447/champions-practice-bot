@@ -2257,8 +2257,20 @@ function materializePresentHypotheses(request) {
     original.makeRequest("move");
     const choices = original.p2.activeRequest;
     if (exact(choices) !== ownRequested) {
-      return why("exact-own-request-mismatch",
-        firstMismatchPath(choices, view.request, "$.request"));
+      const path = firstMismatchPath(choices, view.request, "$.request");
+      // Temporary own-only Mega diagnostics: the two side-request details
+      // strings are owned public information, not hidden opponent state.
+      if (path && /^\\$\\.request\\.side\\.pokemon\\[\\d+\\]\\.details$/.test(path)) {
+        const index = Number(path.match(/\\[(\\d+)\\]/)[1]);
+        console.error("OWN_MEGA_REQUEST_DETAILS " + JSON.stringify({
+          slot: index,
+          live: view.request.side.pokemon[index]?.details || null,
+          synthetic: choices.side.pokemon[index]?.details || null,
+          own_form: own.pokemon[index]?.species.name || null,
+          own_set: own.pokemon[index]?.set.species || null,
+        }));
+      }
+      return why("exact-own-request-mismatch", path);
     }
 
     const desiredOwn = view.player;
