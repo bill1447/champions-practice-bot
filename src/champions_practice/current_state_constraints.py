@@ -113,7 +113,20 @@ class PublicConstraintLedger:
             raise ValueError("public ledger roster identity changed")
         known: list[KnownPublicSet] = []
         for previous, mon in zip(self.known_sets, belief.pokemon, strict=True):
-            if _species_id(previous.species) != _species_id(mon.species):
+            previous_id = _species_id(previous.species)
+            observed_id = _species_id(mon.species)
+            # A known member's publicly visible Mega form preserves roster
+            # identity. Do not treat arbitrary other formes as aliases.
+            mega_alias = (
+                observed_id == previous_id + "mega"
+                and any(
+                    active is not None
+                    and _species_id(active.get("base_species", "")) == previous_id
+                    and _species_id(active.get("species", "")) == observed_id
+                    for active in view["opponent"]["active"]
+                )
+            )
+            if previous_id != observed_id and not mega_alias:
                 raise ValueError("public ledger roster identity changed")
             known.append(
                 KnownPublicSet(
