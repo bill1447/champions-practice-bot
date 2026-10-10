@@ -4,6 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from champions_practice.search_worker import (
+    OwnSpeedDiagnosticTransportError,
     ShowdownSearchWorker,
     verify_showdown_checkout,
     write_showdown_build_stamp,
@@ -253,4 +254,76 @@ def test_present_native_speed_diagnostic_rejects_malformed_payload(monkeypatch, 
     with pytest.raises(RuntimeError, match=expected):
         worker.materialize_present_hypotheses(
             state={"fresh": True}, current_view={"opponent": {"active": []}}, limit=2,
+        )
+
+
+@pytest.mark.parametrize(("mutation", "expected_issue"), [
+    ("missing-native-stored", "missing:native_stored_speed"),
+    ("null-native-stored", "invalid:native_stored_speed"),
+    ("over-range-native-cached", "invalid:native_cached_speed"),
+    ("fractional-native-action", "invalid:native_action_speed"),
+    ("missing-pre-removal", "invalid:pre_removal_action_speed-presence"),
+    ("unknown-private-field", "unexpected-field"),
+])
+def test_realistic_speed_mismatch_reports_safe_transport_issue(
+    monkeypatch, mutation, expected_issue,
+):
+    """An unresolved own Unburden Speed must not become a generic worker error.
+
+    Numeric examples model cached-versus-calculated Speed gaps. A malformed
+    debug field carries no world admission authority or hidden private value.
+    """
+    worker = object.__new__(ShowdownSearchWorker)
+    detail = _own_speed_forensic()
+    detail["observed_speed"] = 132
+    detail["native_cached_speed"] = 264
+    detail["native_action_speed"] = 128
+    if mutation == "missing-native-stored":
+        del detail["native_stored_speed"]
+    elif mutation == "null-native-stored":
+        detail["native_stored_speed"] = None
+    elif mutation == "over-range-native-cached":
+        detail["native_cached_speed"] = 11000
+    elif mutation == "fractional-native-action":
+        detail["native_action_speed"] = 127.5
+    elif mutation == "missing-pre-removal":
+        del detail["pre_removal_action_speed"]
+    else:
+        detail["opponent_private_item"] = "DO-NOT-EXPOSE"
+    monkeypatch.setattr(
+        worker, "request",
+        lambda *args, **kwargs: {
+            "outcomes": [],
+            "reason": "own-unburden-speed-unresolved",
+            "mismatch_path": "$.player.active_details[0].speed",
+            "own_speed_diagnostic": detail,
+        },
+    )
+    with pytest.raises(OwnSpeedDiagnosticTransportError) as raised:
+        worker.materialize_present_hypotheses(
+            state={"fresh": True},
+            current_view={"opponent": {"active": []}},
+            limit=2,
+        )
+    failure = raised.value
+    assert failure.mechanics_reason == "own-unburden-speed-unresolved"
+    assert failure.mismatch_path == "$.player.active_details[0].speed"
+    assert failure.issue == expected_issue
+    assert "DO-NOT-EXPOSE" not in str(failure)
+    assert "opponent_private_item" not in str(failure)
+
+
+def test_non_speed_rejection_cannot_claim_authorized_transport_recovery(monkeypatch):
+    worker = object.__new__(ShowdownSearchWorker)
+    monkeypatch.setattr(
+        worker, "request", lambda *args, **kwargs: {
+            "outcomes": [], "reason": "unsupported-opponent-active",
+            "mismatch_path": "$.opponent.active[0].species",
+            "own_speed_diagnostic": {"opponent_private_item": "NO"},
+        },
+    )
+    with pytest.raises(RuntimeError, match="own speed diagnostic"):
+        worker.materialize_present_hypotheses(
+            state={"fresh": True},
+            current_view={"opponent": {"active": []}},
         )
