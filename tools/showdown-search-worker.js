@@ -1965,9 +1965,18 @@ function materializePresentHypotheses(request) {
 
     function find(side, species) {
       const wanted = asId(species);
-      return side.pokemon.find((mon) =>
+      // A publicly observed Mega form belongs to its pre-Mega team member.
+      // Resolve the identity through the pinned format's species metadata.
+      const direct = side.pokemon.find((mon) =>
         asId(mon.baseSpecies.name) === wanted || asId(mon.set.species) === wanted
       );
+      if (direct) return direct;
+      const nativeSpecies = side.battle.dex.species.get(species);
+      // Only a Mega can alias to a different base team identity.
+      // Ordinary formes such as Indeedee-F must retain their set identity.
+      if (!nativeSpecies.exists || !nativeSpecies.isMega) return undefined;
+      const base = asId(nativeSpecies.baseSpecies);
+      return side.pokemon.find((mon) => asId(mon.set.species) === base);
     }
     function position(side, identities, path) {
       if (identities.length !== side.active.length) return `${path}.length`;
@@ -2003,6 +2012,22 @@ function materializePresentHypotheses(request) {
     original.queue.clear();
     for (const mon of [...foe.active, ...own.active]) {
       if (mon && !mon.isStarted) original.actions.runSwitch(mon);
+    }
+
+    // Only an OWN active Mega form can be re-established from the exact
+    // owned item and requested form. Use pinned native evolution mechanics:
+    // never write species, ability, stats, or mega-used flags directly.
+    for (const observed of view.player.active_details) {
+      if (!observed || !observed.species) continue;
+      const species = original.dex.species.get(observed.species);
+      if (!species.exists || !species.isMega) continue;
+      const mon = find(own, observed.species);
+      if (!mon || !mon.isActive || asId(mon.species.name) === asId(species.name)) continue;
+      if (asId(mon.set.species) !== asId(species.baseSpecies) ||
+          !original.actions.runMegaEvo(mon) ||
+          asId(mon.species.name) !== asId(species.name)) {
+        return why("unsupported-native-own-mega-evolution");
+      }
     }
 
     // Owned facts are exact. Do not synthesize missing own team members,
