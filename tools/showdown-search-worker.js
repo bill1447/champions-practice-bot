@@ -2054,8 +2054,11 @@ function materializePresentHypotheses(request) {
       if (asId(mon.ability) !== asId(observed.ability)) {
         mon.setAbility(observed.ability || "");
       }
+      // Do not bypass pinned status immunity. If the present state needs
+      // historical suppression/change-of-ability evidence we cannot prove,
+      // reject this candidate rather than synthesize an illegal native status.
       if (observed.status && mon.status !== observed.status) {
-        if (!mon.isActive || !mon.setStatus(observed.status, mon, null, true)) {
+        if (!mon.isActive || !mon.setStatus(observed.status, mon)) {
           return why("unsupported-own-status");
         }
       } else if (!observed.status && mon.status) {
@@ -2123,8 +2126,10 @@ function materializePresentHypotheses(request) {
         }
         if (!hp.length) return why("no-compatible-opponent-hp");
         hpSlots.push([...new Set([hp[0], hp[hp.length - 1]])]);
+        // A status incompatible with the proposed native ability is not
+        // admitted through ignoreImmunities. Another prior may remain viable.
         if (observed.status && mon.status !== observed.status) {
-          if (!mon.setStatus(observed.status, mon, null, true)) {
+          if (!mon.setStatus(observed.status, mon)) {
             return why("unsupported-opponent-status");
           }
         } else if (!observed.status && mon.status) {
