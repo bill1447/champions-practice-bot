@@ -319,7 +319,17 @@ def test_game_result_decision_trace_is_serializable_and_backwards_compatible():
     game = _game(0, outcome="bot-win")
     assert asdict(game)["decision_trace"] == ()
     trace = {
-        "decision_index": 0, "observed_phase_after": "switch",
+        "decision_index": 0,
+        "observed_turn_before": 4,
+        "observed_phase_before": "move",
+        "bot_public_before": {
+            "turn": 4, "phase": "move",
+            "player": {"team": [{"species": "Gardevoir", "status": None}]},
+            "field": {"terrain": "psychicterrain"},
+        },
+        "ai_public_choices_before": ["move protect", "switch 3"],
+        "observed_phase_after": "switch",
+        "bot_public_after": {"turn": 4, "phase": "switch"},
         "mode": "fallback", "fallback_reason": "unsupported-own-form",
         "chosen_action": "switch 3", "baseline_legal_choice_count": 4,
     }
