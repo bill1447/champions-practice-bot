@@ -319,9 +319,80 @@ def test_game_result_decision_trace_is_serializable_and_backwards_compatible():
     game = _game(0, outcome="bot-win")
     assert asdict(game)["decision_trace"] == ()
     trace = {
-        "decision_index": 0, "observed_phase_after": "switch",
+        "decision_index": 0,
+        "observed_turn_before": 4,
+        "observed_phase_before": "move",
+        "bot_public_before": {
+            "turn": 4, "phase": "move",
+            "player": {"team": [{"species": "Gardevoir", "status": None}]},
+            "field": {"terrain": "psychicterrain"},
+        },
+        "ai_public_choices_before": ["move protect", "switch 3"],
+        "observed_phase_after": "switch",
+        "bot_public_after": {"turn": 4, "phase": "switch"},
         "mode": "fallback", "fallback_reason": "unsupported-own-form",
         "chosen_action": "switch 3", "baseline_legal_choice_count": 4,
     }
     enriched = GameResult(**{**asdict(game), "decision_trace": (trace,)})
     assert json.loads(json.dumps(asdict(enriched)))["decision_trace"][0] == trace
+
+
+
+@pytest.mark.parametrize("failure_stage", [
+    "locking-ai-action",
+    "committing-joint-action",
+])
+def test_failed_league_preserves_public_trace_and_completed_games(
+    monkeypatch, tmp_path, failure_stage,
+):
+    import json
+    import champions_practice.strength_league as league
+
+    monkeypatch.setattr(league, "_git_commit", lambda root: "a" * 40)
+    monkeypatch.setattr(league, "_showdown_revision", lambda root: "b" * 40)
+
+    def failing_game(config, *, game_index, project_root, trace_sink):
+        if game_index == 0:
+            trace_sink((
+                {"decision_index": 0, "stage": "complete", "complete": True},
+            ), "decision-complete")
+            return _game(0, outcome="bot-win")
+        trace_sink((
+            {
+                "decision_index": 0,
+                "stage": failure_stage,
+                "complete": False,
+                "bot_public_before": {
+                    "turn": 6, "phase": "move",
+                    "player": {"team": [{"species": "Sneasler"}]},
+                },
+            },
+        ), failure_stage)
+        raise RuntimeError("SECRET OPPONENT TRUTH MUST NOT BE SAVED")
+
+    monkeypatch.setattr(league, "run_game", failing_game)
+    config = LeagueConfig(battles=2)
+    with pytest.raises(RuntimeError, match="SECRET OPPONENT"):
+        league.run_league(config, project_root=tmp_path)
+
+    run_id = _run_id(
+        config, git_commit="a" * 40, showdown_revision="b" * 40,
+    )
+    path = tmp_path / "runs" / "strength-league" / run_id
+    partial = json.loads((path / "partial-report.json").read_text())
+    latest = json.loads((
+        tmp_path / "runs" / "strength-league" / "latest-partial-report.json"
+    ).read_text())
+    assert partial == latest
+    assert partial["complete"] is False
+    assert len(partial["completed_games"]) == 1
+    assert partial["failure"] == {
+        "game_index": 1,
+        "stage": failure_stage,
+        "error_type": "RuntimeError",
+    }
+    assert partial["active_game"]["decision_trace"][0]["bot_public_before"][
+        "player"
+    ]["team"][0]["species"] == "Sneasler"
+    assert not (path / "report.json").exists()
+    assert "SECRET OPPONENT" not in json.dumps(partial)

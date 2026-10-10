@@ -3967,6 +3967,32 @@ class _BeliefBattleCoordinator:
                 side="p1",
             )["view"]
 
+    def diagnostic_ai_public_checkpoint(self) -> dict:
+        """Detached sanitized p2 checkpoint used by the decision engine.
+
+        This surface exists for offline diagnostics. It exposes only the
+        already-sanitized public observation held by the engine: never the live
+        native battle, sealed opponent team, hypothetical worlds, or oracle
+        legality.
+        """
+        with self._state_lock:
+            view = self._engine.last_public_view
+            if not isinstance(view, dict):
+                raise RuntimeError("AI public checkpoint is not initialized")
+            return deepcopy(view)
+
+    def diagnostic_ai_public_choices(self) -> list[str]:
+        """Public-request p2 choices for offline diagnostics only."""
+        with self._state_lock:
+            if self._turn_state not in {
+                SealedTurnState.IDLE,
+                SealedTurnState.RESOLVED,
+            }:
+                raise RuntimeError(
+                    "AI public choices are only available before sealing a turn"
+                )
+            return list(self._ai_preseal_choices())
+
     def human_legal_choices(self) -> list[str]:
         """Return choices derivable from the human side's public request.
 
@@ -4461,6 +4487,14 @@ class SealedBattleFacade:
 
     def public_state(self) -> dict:
         return self.__coordinator.human_public_view()
+
+    def diagnostic_ai_public_checkpoint(self) -> dict:
+        """Offline-only sanitized p2 checkpoint; never native or sealed truth."""
+        return self.__coordinator.diagnostic_ai_public_checkpoint()
+
+    def diagnostic_ai_public_choices(self) -> tuple[str, ...]:
+        """Offline-only p2 choices derived from its public request."""
+        return tuple(self.__coordinator.diagnostic_ai_public_choices())
 
     def legal_human_choices(self) -> tuple[str, ...]:
         return tuple(self.__coordinator.human_legal_choices())

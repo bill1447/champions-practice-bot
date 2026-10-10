@@ -501,6 +501,7 @@ def run_game(
     game_index: int,
     project_root: Path,
     baseline_selector: Callable[[tuple[str, ...]], str] = _baseline_choice,
+    trace_sink: Callable[[tuple[dict[str, Any], ...], str], None] | None = None,
 ) -> GameResult:
     session_seed = _sodium_seed(config.seed, game_index)
     particle_seed = _particle_seed(config.seed, game_index)
@@ -579,7 +580,29 @@ def run_game(
                     f"baseline selected illegal choice in game {game_index}: "
                     f"{human_choice!r}"
                 )
+            # Capture the exact sanitized p2 checkpoint and request-derived
+            # choices that tactical search is about to consume. These are
+            # diagnostic copies only: no live native state, sealed opponent
+            # truth, hypothetical worlds, or oracle legality is exposed.
+            bot_public_before = battle.diagnostic_ai_public_checkpoint()
+            ai_public_choices_before = battle.diagnostic_ai_public_choices()
+            decision_trace.append({
+                "decision_index": len(decision_trace),
+                "observed_turn_before": bot_public_before.get("turn"),
+                "observed_phase_before": bot_public_before.get("phase"),
+                "bot_public_before": bot_public_before,
+                "ai_public_choices_before": list(ai_public_choices_before),
+                "baseline_action": human_choice,
+                "baseline_legal_choice_count": len(choices),
+                "stage": "locking-ai-action",
+                "complete": False,
+            })
+            if trace_sink is not None:
+                trace_sink(tuple(decision_trace), "locking-ai-action")
             ready = battle.lock_ai_action()
+            decision_trace[-1]["stage"] = "committing-joint-action"
+            if trace_sink is not None:
+                trace_sink(tuple(decision_trace), "committing-joint-action")
             result = battle.commit_human_action(
                 token=ready.token,
                 human_choice=human_choice,
@@ -589,23 +612,32 @@ def run_game(
             # fallback counts. Never persist the sealed native battle state,
             # offline opponent truth sets, or internal hypothetical worlds.
             public_after = result.public_view
-            decision_trace.append({
-                "decision_index": len(decision_seconds),
-                "observed_turn_after": public_after.get("turn"),
-                "observed_phase_after": public_after.get("phase"),
+            bot_public_after = battle.diagnostic_ai_public_checkpoint()
+            decision_trace[-1].update({
+                "stage": "complete",
+                "complete": True,
+                "observed_turn_after": bot_public_after.get("turn"),
+                "observed_phase_after": bot_public_after.get("phase"),
+                "bot_public_after": bot_public_after,
+                # Retain the human-facing post-resolution phase/turn from #231
+                # for backward comparison, but do not confuse it with the
+                # decision engine's p2 observation above.
+                "human_observed_turn_after": public_after.get("turn"),
+                "human_observed_phase_after": public_after.get("phase"),
                 "mode": decision.mode,
                 "fallback_reason": decision.fallback_reason,
                 "chosen_action": decision.choice,
-                "baseline_action": human_choice,
-                "baseline_legal_choice_count": len(choices),
                 "particle_count": decision.particle_count,
                 "candidate_count": decision.candidate_count,
                 "branch_count": decision.branch_count,
                 "elapsed_seconds": decision.elapsed_seconds,
                 "conditioning_seconds": result.conditioning_seconds,
+                "post_decision_conditioning_seconds": result.conditioning_seconds,
                 "degraded": bool(result.degraded),
                 "terminal": bool(result.terminal),
             })
+            if trace_sink is not None:
+                trace_sink(tuple(decision_trace), "decision-complete")
             decision_seconds.append(float(decision.elapsed_seconds))
             conditioning_seconds.append(float(result.conditioning_seconds))
             finite_reachability_witnesses += int(
@@ -738,9 +770,59 @@ def run_league(
         return report
 
     games: list[GameResult] = []
+    partial_path = run_dir / "partial-report.json"
+    latest_partial_path = base / "latest-partial-report.json"
+    active_trace: tuple[dict[str, Any], ...] = ()
+    active_stage = "starting-game"
+
+    def write_partial(*, failure: dict[str, Any] | None = None) -> None:
+        payload = {
+            **_run_identity_payload(
+                config, git_commit=git_commit,
+                showdown_revision=showdown_revision,
+            ),
+            "run_id": run_id,
+            "complete": False,
+            "completed_games": [asdict(game) for game in games],
+            "active_game": {
+                "game_index": len(games),
+                "stage": active_stage,
+                "decision_trace": active_trace,
+            },
+            "failure": failure,
+        }
+        _atomic_write_json(partial_path, payload)
+        _atomic_write_json(latest_partial_path, payload)
+
+    def retain_trace(trace: tuple[dict[str, Any], ...], stage: str) -> None:
+        nonlocal active_trace, active_stage
+        active_trace = trace
+        active_stage = stage
+        write_partial()
+
     for index in range(config.battles):
-        game = run_game(config, game_index=index, project_root=root)
+        active_trace = ()
+        active_stage = "starting-game"
+        write_partial()
+        try:
+            game = run_game(
+                config, game_index=index, project_root=root,
+                trace_sink=retain_trace,
+            )
+        except Exception as error:
+            # Never serialize exception text: worker exceptions may contain
+            # untrusted or private data. Type and stage are enough to locate
+            # the last durable public checkpoint for investigation.
+            write_partial(failure={
+                "game_index": index,
+                "stage": active_stage,
+                "error_type": type(error).__name__,
+            })
+            raise
         games.append(game)
+        active_trace = ()
+        active_stage = "game-complete"
+        write_partial()
         print(
             f"Game {index + 1}/{config.battles}: {game.outcome} | "
             f"turns {game.turns} | decisions {game.decisions} | "
@@ -785,12 +867,14 @@ def run_league(
                 else "v1 uses only the current-roster mirror fixture"
             ),
             "the production belief bot is currently benchmarked only as p2",
-            "the baseline is public-fallback-v1, not a calibrated ladder opponent",
+            "the baseline is attacking-mega-legal-v1, not a calibrated ladder opponent",
             "this report measures gameplay on this fixture, not general ladder strength",
         ],
     }
     _atomic_write_json(report_path, report)
     _atomic_write_json(latest_path, report)
+    # Leave the partial artifact for forensic continuity; complete results
+    # are authoritative only when the full report exists.
     return report
 
 

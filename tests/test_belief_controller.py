@@ -147,6 +147,34 @@ def test_human_choice_menu_uses_public_request_not_hidden_legality() -> None:
     assert controller.human_legal_choices() == ["move human"]
 
 
+def test_diagnostic_ai_checkpoint_is_detached_and_choices_are_public_only() -> None:
+    worker = _CoordinatorWorker()
+    controller = _BeliefBattleCoordinator(
+        worker,
+        battle_format="test",
+        ai_team="own-team",
+        opponent_priors={},
+    )
+    controller._session_id = "live-1"
+    controller._turn_state = SealedTurnState.IDLE
+    controller._engine.last_public_view = {
+        "turn": 7,
+        "phase": "move",
+        "request": {"active": [{"moves": [{"id": "protect"}]}]},
+        "player": {"team": [{"species": "OwnA", "status": "par"}]},
+        "opponent": {"revealed": [{"species": "FoeA"}]},
+        "field": {"terrain": "psychicterrain"},
+    }
+
+    checkpoint = controller.diagnostic_ai_public_checkpoint()
+    assert checkpoint == controller._engine.last_public_view
+    checkpoint["turn"] = 999
+    assert controller._engine.last_public_view["turn"] == 7
+
+    assert controller.diagnostic_ai_public_choices() == ["move secret-ai"]
+    assert "move hidden-oracle" not in controller.diagnostic_ai_public_choices()
+
+
 class _WaitingCoordinatorWorker(_CoordinatorWorker):
     def session_public_choices(self, session_id, *, side):
         if side == "p2":
