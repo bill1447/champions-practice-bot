@@ -251,6 +251,36 @@ def trick_room_speed_lifecycle(worker):
             if active and (not isinstance(duration, int) or duration < 1):
                 raise SystemExit("ERROR: native Trick Room counter unavailable")
             samples.append((active, observed["speed"], duration))
+            if turn_index == 3 and active:
+                # Independent public-only fresh construction. The snapshot
+                # duration above is an OFFLINE oracle, never a builder input.
+                ledger = PublicConstraintLedger.from_public_view(view)
+                report = build_present_rebase(
+                    worker, ledger=ledger, current_view=view,
+                    priors=catalog(), battle_format=CHAMPIONS_FORMAT,
+                    ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
+                    ai_preview_choice=P2_PREVIEW,
+                    legal_live=tuple(worker.session_legal_choices(sid, side="p2")),
+                    max_roots=2, max_particles=4,
+                )
+                generated = []
+                for particle in report.particles:
+                    effect = particle.state["field"]["pseudoWeather"].get("trickroom")
+                    generated.append(
+                        effect.get("duration") if isinstance(effect, dict) else None
+                    )
+                print(
+                    "Pinned Trick Room fresh-duration diagnostic: "
+                    f"public_age=unknown_from_single_view, "
+                    f"live_oracle_duration={duration}, "
+                    f"independent_admitted={len(report.particles)}, "
+                    f"generated_durations={generated}, "
+                    f"unresolved={report.unresolved_reason}"
+                )
+                if generated and any(
+                    not isinstance(value, int) or value < 1 for value in generated
+                ):
+                    raise SystemExit("ERROR: fresh Trick Room native counter invalid")
             if turn_index == 5:
                 break
             own_choice = (
