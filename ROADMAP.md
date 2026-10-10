@@ -1,5 +1,34 @@
 # Champions Practice Bot Roadmap
 
+### Standing adversarial-review gate — PRs #220, #230, #240, ...
+
+Every PR whose number is a multiple of ten starting with **#220** is reserved
+for an independent adversarial review of the code and measured behavior
+landed since the previous review. For example, #220 reviews #213–#219
+plus the current baseline; #230 reviews #221–#229 and any unresolved
+findings from #220. Do not count a self-authored recap as independent review.
+
+- Prepare the review brief and capture frozen benchmark evidence *before*
+  opening the milestone PR. Include both `synthetic-spread-uncertainty-v1`
+  and `current-roster-mirror-v1` results, with exact configuration, commit,
+  search/fallback counts and rejection reasons.
+- Independently inspect critical invariants, pinned simulator mechanics,
+  state admission, privacy boundaries, and tests. Attempt native negative
+  controls; distinguish code-confirmed results from unexecuted hypotheses.
+- Record severity-ranked findings (P0–P3), reproductions, follow-up issue/PR
+  references and explicit acceptance criteria in the milestone PR. The
+  milestone PR is the review artifact and gate, not a claim that every
+  finding was fixed in that PR.
+- **Block new feature work** on unresolved P0 or P1 correctness/privacy
+  findings until remediation is planned and the relevant safety gate passes.
+  Keep known unresolved findings visible in the next decadal review.
+- Never weaken exact own-state, native legality or public-information
+  boundaries to improve benchmark numbers. Missing hypotheses are
+  unresolved, not proof of impossibility.
+
+This is a PR-number milestone, not a time-based calendar schedule. The next
+review is **#220**.
+
 The simulator is exact. The decisions are not yet proven optimal: recommendations are
 bounded, one-ply searches over sampled public-belief worlds, adversarial replies, and RNG
 futures using an evolving board evaluator.
