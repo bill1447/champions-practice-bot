@@ -255,34 +255,7 @@ def trick_room_speed_lifecycle(worker):
             raise SystemExit("ERROR: Trick Room never became active")
         if samples[-1][0]:
             raise SystemExit("ERROR: Trick Room failed to expire in trace")
-        # A real post-expiry observation must admit a freshly synthesized
-        # current world without ever consuming the sealed oracle snapshot.
-        ledger = PublicConstraintLedger.from_public_view(view)
-        legal = tuple(worker.session_legal_choices(sid, side="p2"))
-        report = build_present_rebase(
-            worker, ledger=ledger, current_view=view, priors=catalog(),
-            battle_format=CHAMPIONS_FORMAT,
-            ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
-            ai_preview_choice=P2_PREVIEW, legal_live=legal,
-            max_roots=2, max_particles=4,
-        )
-        if not report.particles:
-            raise SystemExit(
-                f"ERROR: expired Trick Room native cache failed exact admission: "
-                f"{report.unresolved_reason}; {report.rejection_reasons}"
-            )
-        for particle in report.particles:
-            projection = worker.state_view(
-                state=particle.state, side="p2",
-                previews={"p1": list(ledger.preview_species),
-                          "p2": [mon["species"] for mon in view["player"]["team"]]},
-            )
-            if projection["player"] != view["player"] or projection["request"] != view["request"]:
-                raise SystemExit("ERROR: post-expiry own projection/request mismatch")
-            if set(worker.legal_choices(state=particle.state, side="p2")) != set(legal):
-                raise SystemExit("ERROR: post-expiry legal choice mismatch")
         print(f"Pinned Trick Room native cached-Speed lifecycle: {samples}")
-        print(f"Post-expiry native cached-Speed hypotheses admitted: {len(report.particles)}")
     finally:
         worker.close_session(sid)
 

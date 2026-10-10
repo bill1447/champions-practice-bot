@@ -2193,14 +2193,9 @@ function materializePresentHypotheses(request) {
           asId(mon.ability) !== "unburden" ||
           mon.item || !mon.volatiles["unburden"]) continue;
       const beforeRemoval = mon.getActionSpeed();
-      // Pinned Champions caches *negative* action Speed during Trick Room.
-      // The cache survives expiration until the next native Speed refresh.
-      // Compare the positive effective magnitudes only for deciding whether
-      // this fresh opening has an extra Unburden volatile.
-      const observedMagnitude = observed.speed < 0 ? -observed.speed : observed.speed;
-      if (beforeRemoval === observedMagnitude) continue;
+      if (beforeRemoval === observed.speed) continue;
       mon.removeVolatile("unburden");
-      if (mon.getActionSpeed() !== observedMagnitude) {
+      if (mon.getActionSpeed() !== observed.speed) {
         return why("own-unburden-speed-unresolved",
           `$.player.active_details[${slot}].speed`,
           speedDiagnostic(mon, observed, slot,
@@ -2210,39 +2205,6 @@ function materializePresentHypotheses(request) {
 
     original.turn = view.turn;
     original.updateSpeed();
-    // Native Champions Trick Room negates cached Pokemon.speed during turn
-    // ordering. When it expires the field no longer lists Trick Room, but
-    // Pokemon.speed still holds the negative value until the next update.
-    // Reproduce that lifecycle with native setters instead of mutating the
-    // cached integer or relaxing exact own-state/request equality.
-    const expiredTrickRoomOwn = view.player.active_details.some(
-      (observed) => observed && Number.isInteger(observed.speed) &&
-        observed.speed < 0,
-    );
-    if (expiredTrickRoomOwn) {
-      if (original.field.pseudoWeather["trickroom"]) {
-        return why("unsupported-negative-speed-during-trick-room");
-      }
-      const speedSource = own.active.find((mon) => mon && mon.hp > 0);
-      if (!speedSource ||
-          !original.field.addPseudoWeather("trickroom", speedSource)) {
-        return why("native-expired-trick-room-cache-unavailable");
-      }
-      original.updateSpeed();
-      original.field.removePseudoWeather("trickroom");
-      // Intentionally no updateSpeed here: this is the native expiry cache.
-      for (let slot = 0; slot < view.player.active_details.length; slot++) {
-        const observed = view.player.active_details[slot];
-        const mon = own.active[slot];
-        if (observed && observed.speed < 0 &&
-            (!mon || mon.speed !== observed.speed)) {
-          return why("native-expired-trick-room-speed-mismatch",
-            `$.player.active_details[${slot}].speed`,
-            mon ? speedDiagnostic(mon, observed, slot,
-              "expired-trick-room-cache") : null);
-        }
-      }
-    }
     original.makeRequest("move");
     const choices = original.p2.activeRequest;
     if (exact(choices) !== ownRequested) {
