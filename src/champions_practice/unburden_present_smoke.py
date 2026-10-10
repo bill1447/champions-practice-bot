@@ -238,8 +238,19 @@ def trick_room_speed_lifecycle(worker):
             observed = view["player"]["active_details"][0]
             if observed["speed"] != native["speed"]:
                 raise SystemExit("ERROR: Trick Room trace lost native cached-Speed provenance")
-            active = "trickroom" in snapshot["state"]["field"]["pseudoWeather"]
-            samples.append((active, observed["speed"]))
+            native_effect = snapshot["state"]["field"]["pseudoWeather"].get("trickroom")
+            active = native_effect is not None
+            if active != ("trickroom" in view["field"]["pseudo_weather"]):
+                raise SystemExit("ERROR: native/public Trick Room presence mismatch")
+            # Oracle-only: native serialized counters must not be copied to
+            # production current-state inference. Public observation exposes
+            # presence, not the remaining native turn count.
+            if "pseudo_weather_durations" in view["field"]:
+                raise SystemExit("ERROR: private native timer leaked into public view")
+            duration = native_effect.get("duration") if isinstance(native_effect, dict) else None
+            if active and (not isinstance(duration, int) or duration < 1):
+                raise SystemExit("ERROR: native Trick Room counter unavailable")
+            samples.append((active, observed["speed"], duration))
             if turn_index == 5:
                 break
             own_choice = (
@@ -251,11 +262,15 @@ def trick_room_speed_lifecycle(worker):
             if PROTECT not in worker.session_legal_choices(sid, side="p1"):
                 raise SystemExit("ERROR: opponent Protect unavailable during Trick Room trace")
             worker.choose_session(sid, p1_choice=PROTECT, p2_choice=own_choice)
-        if not any(active for active, _ in samples):
+        if not any(active for active, _, _ in samples):
             raise SystemExit("ERROR: Trick Room never became active")
         if samples[-1][0]:
             raise SystemExit("ERROR: Trick Room failed to expire in trace")
-        print(f"Pinned Trick Room native cached-Speed lifecycle: {samples}")
+        active_durations = [duration for active, _, duration in samples if active]
+        if any(left - right != 1 for left, right in
+               zip(active_durations, active_durations[1:])):
+            raise SystemExit("ERROR: pinned Trick Room native duration did not decrement")
+        print(f"Pinned Trick Room native Speed/duration lifecycle: {samples}")
     finally:
         worker.close_session(sid)
 
