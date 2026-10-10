@@ -8,6 +8,8 @@ from types import SimpleNamespace
 import pytest
 
 from champions_practice.current_state_proposals import CurrentStateProposalBatch
+from champions_practice.search_worker import OwnSpeedDiagnosticTransportError
+
 from champions_practice.present_rebase import (
     _positive_mechanics_match,
     _positive_mechanics_rejection,
@@ -315,3 +317,60 @@ def test_present_rebase_rejects_unbounded_particle_search(limit):
             priors={}, battle_format="test", ai_team="team",
             ai_preview_choice="team 12", max_particles=limit,
         )
+
+
+def test_invalid_speed_telemetry_preserves_mechanical_rejection_separately(
+    monkeypatch,
+):
+    view, _, ledger = sample()
+    proposal = SimpleNamespace(
+        proposal_id="public-prior:snapshot", weight=1.0,
+        team_text="public team", world=SimpleNamespace(sets=()),
+    )
+    batch = CurrentStateProposalBatch(
+        proposals=(proposal,), source_turn=8,
+        source_signature=ledger.current_signature,
+        candidates_considered=1, rejected_missing_public_moves=0,
+    )
+    monkeypatch.setattr(
+        "champions_practice.present_rebase._require_current_public_input",
+        lambda _ledger, _view: None,
+    )
+    monkeypatch.setattr(
+        "champions_practice.present_rebase.build_current_state_set_proposals",
+        lambda **_kw: batch,
+    )
+    monkeypatch.setattr(
+        "champions_practice.present_rebase.preview_choice_for_world",
+        lambda *_a: "team 12",
+    )
+
+    class Worker:
+        def create_state(self, **kwargs):
+            return {"turn": 1}
+
+        def materialize_present_hypotheses(self, *, state, current_view, limit):
+            raise OwnSpeedDiagnosticTransportError(
+                reason="own-unburden-speed-unresolved",
+                path="$.player.active_details[0].speed",
+                issue="invalid:native_stored_speed",
+            )
+
+    report = build_present_rebase(
+        Worker(), ledger=ledger, current_view=view,
+        priors={}, battle_format="test", ai_team="own team",
+        ai_preview_choice="team 12",
+    )
+    assert report.particles == ()
+    assert report.native_candidates == 0
+    assert report.unresolved_reason == (
+        "own-unburden-speed-unresolved:$.player.active_details[0].speed"
+    )
+    assert report.rejection_reasons == ((report.unresolved_reason, 1),)
+    assert report.own_speed_diagnostics == ()
+    assert report.own_speed_transport_issues == ({
+        "mechanics_reason": "own-unburden-speed-unresolved",
+        "mismatch_path": "$.player.active_details[0].speed",
+        "diagnostic_issue": "invalid:native_stored_speed",
+    },)
+    assert report.exhaustively_excluded_worlds == 0
