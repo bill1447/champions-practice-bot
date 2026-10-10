@@ -390,6 +390,15 @@ def mega_identity_ability_probe(worker):
         if view["phase"] != "move":
             raise SystemExit("ERROR: Mega probe did not reach current move phase")
         snap = worker.request("session_snapshot", session_id=sid)
+        # The player view must retain exact PP for active AND benched members.
+        # Otherwise a fresh world can invent usable moves after switching.
+        for pokemon in view["player"]["team"]:
+            pp = pokemon.get("move_pp")
+            if not isinstance(pp, list) or len(pp) != len(pokemon["moves"]):
+                raise SystemExit("ERROR: own team PP inventory omitted")
+            if any(not isinstance(slot["pp"], int) or slot["pp"] < 0
+                   or slot["pp"] > slot["maxpp"] for slot in pp):
+                raise SystemExit("ERROR: invalid own team PP inventory")
         own_native = snap["state"]["sides"][1]["pokemon"]
         mega_native = next(
             (mon for mon in own_native if mon["set"]["species"] == "Gardevoir"),

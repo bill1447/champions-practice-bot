@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from champions_practice.belief_controller import SealedBattleFacade
+from champions_practice.search_worker import FORCED_WAIT_CHOICE
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.demo_fixture import (
     DEMO_AI_PREVIEW_CHOICE,
@@ -116,6 +117,13 @@ def main() -> None:
                 raise SystemExit(
                     "ERROR: current decision fell back without a fresh-world "
                     f"reason: {next_turn.decision!r}"
+                )
+        elif mode == "forced-wait":
+            # A forced-wait turn has no AI choice to search. Do not confuse
+            # it with a failed fresh-world materialization or a fallback.
+            if next_turn.decision.choice != FORCED_WAIT_CHOICE:
+                raise SystemExit(
+                    "ERROR: forced-wait mode selected an executable action"
                 )
         elif mode not in ("belief-search", "strategy"):
             raise SystemExit(

@@ -2072,7 +2072,7 @@ def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
             "speed",
             "damaging_move_count",
             "active",
-        },
+        } | ({"move_pp"} if "move_pp" in value else set()),
     )
     if issue:
         return issue
@@ -2125,6 +2125,33 @@ def _own_pokemon_schema_issue(value: object, *, path: str) -> str | None:
             f"{path}.moves",
             "must contain pinned public move display names",
         )
+    # Exact owned bench PP was added after the original v10 producer.
+    # Validate it when present while retaining legacy v10 witness fixtures.
+    # Current-state materialization independently requires this inventory.
+    if "move_pp" in value:
+        entries = value["move_pp"]
+        if not isinstance(entries, list) or len(entries) != len(move_ids):
+            return _schema_error(f"{path}.move_pp", "must align with own moves")
+        seen_pp: set[str] = set()
+        for index, entry in enumerate(entries):
+            pp_path = f"{path}.move_pp[{index}]"
+            if not isinstance(entry, dict):
+                return _schema_error(pp_path, "must be a dictionary")
+            issue = _exact_keys(entry, path=pp_path, keys={"id", "pp", "maxpp"})
+            if issue:
+                return issue
+            move_id = entry["id"]
+            if not isinstance(move_id, str) or move_id not in MOVE_IDS or move_id in seen_pp:
+                return _schema_error(f"{pp_path}.id", "must be a unique pinned move id")
+            seen_pp.add(move_id)
+            if (
+                not _non_bool_int(entry["maxpp"], minimum=1)
+                or not _non_bool_int(entry["pp"], minimum=0)
+                or entry["pp"] > entry["maxpp"]
+            ):
+                return _schema_error(pp_path, "PP must be within native slot bounds")
+        if seen_pp != set(move_ids):
+            return _schema_error(f"{path}.move_pp", "must cover exactly own moves")
     expected_damaging = sum(
         MOVE_CATEGORIES[move_id] != "Status"
         for move_id in move_ids

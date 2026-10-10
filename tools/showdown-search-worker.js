@@ -762,6 +762,10 @@ function ownPokemon(mon, battle) {
     item: mon.item || null,
     ability: mon.ability || null,
     moves: mon.moveSlots.map((slot) => slot.move),
+    // Own-side information, including benched PP; never export for opponents.
+    move_pp: mon.moveSlots.map((slot) => ({
+      id: slot.id, pp: slot.pp, maxpp: slot.maxpp,
+    })),
     speed: mon.speed,
     damaging_move_count: damagingMoveCount,
     active: mon.isActive,
@@ -2063,6 +2067,26 @@ function materializePresentHypotheses(request) {
         }
       } else if (!observed.status && mon.status) {
         mon.clearStatus();
+      }
+      // Own PP is fully known even after a Pokemon leaves the field.
+      // Restore all selected team members, not only request.active entries.
+      // Require an exact slot inventory; do not infer missing bench values.
+      if (!Array.isArray(observed.move_pp) ||
+          observed.move_pp.length !== mon.moveSlots.length) {
+        return why("unsupported-exact-own-bench-pp");
+      }
+      const ppIds = new Set();
+      for (const entry of observed.move_pp) {
+        if (!entry || typeof entry.id !== "string" ||
+            ppIds.has(entry.id)) return why("unsupported-exact-own-bench-pp");
+        ppIds.add(entry.id);
+        const slot = mon.moveSlots.find((move) => move.id === entry.id);
+        if (!slot || !Number.isInteger(entry.pp) ||
+            entry.pp < 0 || entry.pp > slot.maxpp ||
+            entry.maxpp !== slot.maxpp) {
+          return why("unsupported-exact-own-bench-pp");
+        }
+        slot.pp = entry.pp;
       }
       if (observed.active !== mon.isActive) return why("own-active-mismatch");
       if (observed.boosts && mon.isActive) {
