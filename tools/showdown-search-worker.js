@@ -2262,13 +2262,14 @@ function materializePresentHypotheses(request) {
       // strings are owned public information, not hidden opponent state.
       if (path && path.startsWith("$.request.side.pokemon[") && path.endsWith("].details")) {
         const index = Number(path.split("[")[1].split("]")[0]);
-        console.error("OWN_MEGA_REQUEST_DETAILS " + JSON.stringify({
-          slot: index,
-          live: view.request.side.pokemon[index]?.details || null,
-          synthetic: choices.side.pokemon[index]?.details || null,
-          own_form: own.pokemon[index]?.species.name || null,
-          own_set: own.pokemon[index]?.set.species || null,
-        }));
+        const liveDetails = view.request.side.pokemon[index]?.details || "";
+        const syntheticDetails = choices.side.pokemon[index]?.details || "";
+        // The Python worker does not forward console stderr in the smoke
+        // output. Return ONLY these owned, public request fields through the
+        // already allowlisted failure path; the candidate stays rejected.
+        return why("exact-own-request-mismatch",
+          path + ":live=" + JSON.stringify(liveDetails) +
+          ":synthetic=" + JSON.stringify(syntheticDetails));
       }
       return why("exact-own-request-mismatch", path);
     }
