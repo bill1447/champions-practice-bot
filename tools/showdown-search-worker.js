@@ -1993,7 +1993,22 @@ function materializePresentHypotheses(request) {
         if (!mon) return `${slotPath}.identity`;
         if (side.active[slot] === mon) continue;
         // Do not permute active pointers or bypass pinned native switch rules.
-        if (mon.isActive) return `${slotPath}.already-active`;
+        if (mon.isActive) {
+          // A desired member can already occupy the OTHER active slot.
+          // Native switchIn rejects an active incoming Pokemon. Stage a
+          // non-target bench member into its current slot first, then use
+          // pinned native switchIn for the requested position.
+          const desiredIds = new Set(identities.filter(Boolean).map((value) =>
+            asId(typeof value === "string" ? value : value.base_species || value.species)
+          ));
+          const staging = side.pokemon.find((candidate) =>
+            !candidate.isActive && candidate.hp > 0 &&
+            !desiredIds.has(asId(candidate.set.species))
+          );
+          if (!staging || side.battle.actions.switchIn(staging, mon.position) !== true) {
+            return `${slotPath}.already-active`;
+          }
+        }
         if (!side.active[slot]) return `${slotPath}.empty-native-slot`;
         if (side.battle.actions.switchIn(mon, slot) !== true) {
           return `${slotPath}.native-switch-rejected`;
