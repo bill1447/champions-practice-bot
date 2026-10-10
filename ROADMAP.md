@@ -1,5 +1,41 @@
 # Champions Practice Bot Roadmap
 
+### Phase 10.16 — field-duration correctness gate (#216)
+
+Adversarial review found that fresh current-world materialization uses pinned
+native setters to recreate weather, terrain, pseudo-weather and side conditions
+but only compares effect names in the current public projection. Native effect
+durations are not established by that comparison; a constructed search root can
+retain a full duration after the real effect is close to expiration.
+
+**Do not fix by writing invented duration counters or copying sealed state.**
+Do not treat a freshly added pinned effect as an exact current timer. The
+solution needs an independently public-authorized *remaining-duration domain*
+rather than the private live battle's counter.
+
+Before changing production state admission:
+
+1. Pin a native fixture for Trick Room and Tailwind at successive turns,
+   including expiration, overwrite/reset where legal, and activation by either
+   side. Record native duration counters only as **offline test oracles**.
+2. Derive permissible remaining-duration values from the public protocol ledger
+   (starts, ends, turn boundaries and public extensions), with explicit
+   uncertainty when activation time is unknown. Public-only inference must not
+   consult session snapshots or unobservable item/ability information.
+3. Validate whether native simulation can materialize each remaining-duration
+   hypothesis from supported pinned operations. When it cannot, return
+   `unsupported-public-effect-duration` rather than admit a fabricated
+   exact timer. Do not equate lack of construction support with impossibility.
+4. Extend the admission gate or hypothesis representation so tactical search
+   cannot silently treat one chosen counter as the sole proven value. Verify
+   serialization/restore and multi-turn expiration behavior.
+5. Benchmark *both* frozen fixtures and report fallback and search coverage.
+   An apparently improved projection match does not close this gate.
+
+#216 is deliberately an evidence/design checkpoint, **not** a claim that
+timed effects are fixed. The follow-up implementation is required before
+declaring the adversarial P1 resolved.
+
 ### Standing adversarial-review gate — PRs #220, #230, #240, ...
 
 Every PR whose number is a multiple of ten starting with **#220** is reserved
