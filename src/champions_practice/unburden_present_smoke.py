@@ -215,10 +215,56 @@ def case(worker, switched):
         worker.close_session(sid)
 
 
+
+def trick_room_speed_lifecycle(worker):
+    """Record genuine cached-Speed signs across pinned Champions Trick Room expiry.
+
+    A negative cached value is NOT interchangeable with a negative stat.
+    Session snapshots are offline-only oracles and never enter inference.
+    """
+    start = worker.start_session(
+        battle_format=CHAMPIONS_FORMAT, p1_team=OPPONENT_TEAM,
+        p2_team=SMOKE_TEAM, p1_name="Public Opponent",
+        p2_name="Practice AI", seed=SEED,
+    )
+    sid = start["session_id"]
+    samples = []
+    try:
+        worker.choose_session(sid, p1_choice=P1_PREVIEW, p2_choice=P2_PREVIEW)
+        for turn_index in range(6):
+            view = worker.session_view(sid, side="p2")["view"]
+            snapshot = worker.request("session_snapshot", session_id=sid)
+            native = snapshot["state"]["sides"][1]["pokemon"][0]
+            observed = view["player"]["active_details"][0]
+            if observed["speed"] != native["speed"]:
+                raise SystemExit("ERROR: Trick Room trace lost native cached-Speed provenance")
+            active = "trickroom" in snapshot["state"]["field"]["pseudoWeather"]
+            samples.append((active, observed["speed"]))
+            if turn_index == 5:
+                break
+            own_choice = (
+                "move protect, move trickroom"
+                if turn_index == 0 else "move protect, move followme"
+            )
+            if own_choice not in worker.session_legal_choices(sid, side="p2"):
+                raise SystemExit(f"ERROR: missing Trick Room trace choice: {own_choice}")
+            if PROTECT not in worker.session_legal_choices(sid, side="p1"):
+                raise SystemExit("ERROR: opponent Protect unavailable during Trick Room trace")
+            worker.choose_session(sid, p1_choice=PROTECT, p2_choice=own_choice)
+        if not any(active for active, _ in samples):
+            raise SystemExit("ERROR: Trick Room never became active")
+        if samples[-1][0]:
+            raise SystemExit("ERROR: Trick Room failed to expire in trace")
+        print(f"Pinned Trick Room native cached-Speed lifecycle: {samples}")
+    finally:
+        worker.close_session(sid)
+
+
 def main():
     with ShowdownSearchWorker() as worker:
         control = case(worker, False)
         switched = case(worker, True)
+        trick_room_speed_lifecycle(worker)
     if control[0] != switched[0] or control[1] <= switched[1]:
         raise SystemExit("ERROR: control and switched speeds were not distinct")
     print("RESULT: both native Unburden lifecycles admitted with exact own speed")
