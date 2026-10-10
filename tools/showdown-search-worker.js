@@ -2138,7 +2138,14 @@ function materializePresentHypotheses(request) {
         }
       }
       if (asId(mon.ability) !== asId(observed.ability)) {
-        mon.setAbility(observed.ability || "");
+        // A public own ability is exact evidence, but native setAbility may
+        // refuse restoration (notably on benched or previously Mega members).
+        // Never allow a silently rejected transition to survive until the
+        // generic whole-request equality gate.
+        const restored = mon.setAbility(observed.ability || "");
+        if (!restored || asId(mon.ability) !== asId(observed.ability)) {
+          return why("unsupported-native-own-ability", `${ownPath}.ability`);
+        }
       }
       // Do not bypass pinned status immunity. If the present state needs
       // historical suppression/change-of-ability evidence we cannot prove,
