@@ -390,6 +390,23 @@ def test_public_fallback_returns_legal_choice_without_friendly_fire() -> None:
     assert chosen != "move psychic -2, move protect"
 
 
+def test_public_fallback_attacks_instead_of_repeating_protect() -> None:
+    choices = [
+        "move protect, move protect",
+        "move psychic, move protect",
+        "move psychic, move hypervoice",
+    ]
+    assert choose_public_fallback(choices) == "move psychic, move hypervoice"
+
+
+def test_public_fallback_avoids_ally_targeting_even_if_it_can_attack() -> None:
+    choices = [
+        "move psychic -2, move hypervoice",
+        "move protect, move psychic",
+    ]
+    assert choose_public_fallback(choices) == "move protect, move psychic"
+
+
 def test_public_fallback_requires_legal_choices() -> None:
     with pytest.raises(ValueError, match="at least one legal choice"):
         choose_public_fallback([])

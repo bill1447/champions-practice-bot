@@ -611,33 +611,34 @@ def _recovery_diagnostic(
     )
 
 
-def _fallback_score(choice: str) -> tuple[int, int, str]:
-    """Prefer conservative legal commands without hidden opponent information."""
-    score = 0
+def _fallback_score(choice: str) -> tuple[int, int, int, int, str]:
+    """Prefer legal attacks over repeated defensive moves when search fails.
+
+    This is a blind *legal-menu* policy, not a hidden-state evaluator.
+    Ally-targeting commands remain disfavored without positive justification.
+    """
+    attacks = 0
+    defensive = 0
+    friendly_fire = 0
     moves = 0
     for command in choice.split(","):
-        tokens = command.strip().split()
+        tokens = command.strip().lower().split()
         if not tokens:
             continue
         if tokens[0] == "move":
             moves += 1
-            score += 4
-            if len(tokens) > 1 and tokens[1] in {
-                "protect",
-                "detect",
-                "followme",
-                "wideguard",
-                "trickroom",
-                "imprison",
+            move_id = tokens[1] if len(tokens) > 1 else ""
+            if move_id in {
+                "protect", "detect", "followme", "wideguard",
+                "quickguard", "trickroom", "imprison", "endure",
             }:
-                score += 2
-            if any(token.startswith("-") and token[1:].isdigit() for token in tokens[2:]):
-                score -= 8
-        elif tokens[0] == "switch":
-            score += 1
-    if choice.count("move protect") >= 2:
-        score -= 2
-    return score, moves, choice
+                defensive += 1
+            else:
+                attacks += 1
+            if any(token.startswith("-") and token[1:].isdigit()
+                   for token in tokens[2:]):
+                friendly_fire += 1
+    return (-friendly_fire, attacks, -defensive, moves, choice)
 
 
 def choose_public_fallback(choices: list[str]) -> str:
