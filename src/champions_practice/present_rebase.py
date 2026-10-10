@@ -23,6 +23,7 @@ from champions_practice.current_state_proposals import (
     build_current_state_set_proposals,
 )
 from champions_practice.current_state_reconstruction import _matches_approved_prior
+from champions_practice.search_worker import OwnSpeedDiagnosticTransportError
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     identity_member_lineage,
@@ -177,6 +178,8 @@ class PresentRebaseReport:
     rejection_reasons: tuple[tuple[str, int], ...] = ()
     # Bounded own-side speed snapshots from rejected native attempts only.
     own_speed_diagnostics: tuple[dict[str, Any], ...] = ()
+    # Transport errors are not mechanics disprovals or usable debug values.
+    own_speed_transport_issues: tuple[dict[str, str], ...] = ()
 
 
 class PresentHypothesisWorker(Protocol):
@@ -243,6 +246,7 @@ def build_present_rebase(
     unresolved: str | None = None
     rejected: Counter[str] = Counter()
     speed_diagnostics: list[dict[str, Any]] = []
+    speed_issues: list[dict[str, str]] = []
     for proposal in batch.proposals[:max_roots]:
         if len(found) >= max_particles:
             break
@@ -304,6 +308,20 @@ def build_present_rebase(
                 ))
                 if len(found) >= max_particles:
                     break
+        except OwnSpeedDiagnosticTransportError as error:
+            # Keep the original pinned rejection label, while separately
+            # recording which *allowlisted diagnostic field* failed transport.
+            # Never carry through the invalid diagnostic or native state.
+            reason = error.mechanics_reason + ":" + error.mismatch_path
+            rejected[reason] += 1
+            unresolved = reason
+            if len(speed_issues) < 2:
+                speed_issues.append({
+                    "mechanics_reason": error.mechanics_reason,
+                    "mismatch_path": error.mismatch_path,
+                    "diagnostic_issue": error.issue,
+                })
+            continue
         except (RuntimeError, ValueError, KeyError) as error:
             # A failed fresh proposal is unresolved, NOT negative world proof.
             unresolved = "native-proposal-error:" + type(error).__name__
@@ -322,4 +340,5 @@ def build_present_rebase(
         unresolved_reason=None if found else unresolved or "bounded-public-constructor-unresolved",
         rejection_reasons=reasons,
         own_speed_diagnostics=tuple(speed_diagnostics),
+        own_speed_transport_issues=tuple(speed_issues),
     )

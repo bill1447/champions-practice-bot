@@ -159,6 +159,42 @@ report must tell whether the mismatches are cached-vs-action, volatile,
 or a different effect, before deciding on a mechanics repair. The
 separate unsupported-phase fallback stays out of scope.
 
+### Phase 10.12 — preserve mechanical rejections when telemetry fails (#203)
+
+The first #202 league report was still **8-0 / 67 searches / 88
+decisions / 5 fallbacks**, but the four own-Speed failures changed
+from named mechanical rejections to generic
+`native-proposal-error:RuntimeError`. No own-Speed snapshots survived
+to `summary.decisions.own_speed_diagnostics`. This is an *instrumentation
+regression*, not evidence of a repaired speed mechanic.
+
+Python's strict own-only debug-payload validator rejects malformed
+diagnostics. Then the bounded native-proposal loop accidentally re-labels
+that exception as a generic worker error, hiding the original mechanical
+rejection reason. PR #203 retains fail-closed diagnostic validation,
+but raises a typed transport error with the original **allowlisted
+own-Speed rejection label and own Speed field path**, plus a static,
+schema-defined issue such as `invalid:native_stored_speed` or
+`missing:native_action_speed`. Unexpected/private fields are reduced
+to `unexpected-field`; their names and values never enter a report.
+
+Positive-only rebase catches that specific transport error independently
+from generic native worker errors. It preserves the *original mechanical
+reason* in the fallback and records a separate transport issue through the
+decision and offline strength-league JSON at
+`summary.decisions.own_speed_transport_issues` and per-game entries
+(capped at two root issues per decision, eight per game, 32 in summary).
+Neither invalid debug content nor its candidate state is admitted.
+All exact player, request, legal choice and pinned-world checks remain.
+
+Regressions cover league-style cached/action/observed Speed disagreement,
+missing and out-of-range numbers, unexpected fields (without leaking any
+private values), and a **real pinned Unburden rejection** with a
+transport-fault-injected diagnostic. The next unchanged-fixture league
+must reveal the specific transport issue; it does *not* yet establish
+the cause of the underlying Speed discrepancy. Do not modify Unburden
+logic from this report alone.
+
 ## Phase 1 — Exact simulator foundation — complete
 
 Official Pokémon Showdown owns mechanics, serialized state, restoration, branching,

@@ -3,13 +3,17 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from unittest.mock import patch
 
 from champions_practice.belief_controller import _pin_known_team_genders
 from champions_practice.belief_worlds import PublicSetCandidate
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_rebase import build_present_rebase
-from champions_practice.search_worker import ShowdownSearchWorker
+from champions_practice.search_worker import (
+    OwnSpeedDiagnosticTransportError,
+    ShowdownSearchWorker,
+)
 from champions_practice.teams import SMOKE_TEAM
 
 OPPONENT_TEAM = """Gengar
@@ -165,7 +169,27 @@ def case(worker, switched):
                 "weather", "pre_removal_action_speed",
             }:
                 raise SystemExit("ERROR: speed diagnostic leaked unrelated state")
+            # Transport fault injection on an ACTUAL pinned native mismatch,
+            # rather than on an invented diagnostic-shaped fixture. The
+            # rejected world stays rejected and its mechanical cause survives.
+            broken = deepcopy(rejected)
+            broken["own_speed_diagnostic"]["native_stored_speed"] = None
+            with patch.object(worker, "request", return_value=broken):
+                try:
+                    worker.materialize_present_hypotheses(
+                        state=independent_root, current_view=corrupted, limit=2,
+                    )
+                except OwnSpeedDiagnosticTransportError as error:
+                    if (
+                        error.mechanics_reason != "own-unburden-speed-unresolved"
+                        or error.mismatch_path != "$.player.active_details[0].speed"
+                        or error.issue != "invalid:native_stored_speed"
+                    ):
+                        raise SystemExit("ERROR: native mismatch lost its cause")
+                else:
+                    raise SystemExit("ERROR: bad Speed diagnostic was accepted")
             print("Impossible own-speed negative control rejected with diagnostics: YES")
+            print("Malformed native diagnostic preserves original Speed rejection: YES")
         print(f"Unburden switch={switched}: speed {first['speed']} -> {now['speed']}; "
               f"admitted {len(report.particles)}")
         return first["speed"], now["speed"]

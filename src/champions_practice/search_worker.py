@@ -58,6 +58,74 @@ class ShowdownRequestError(RuntimeError):
         super().__init__(f"Showdown worker {op!r} failed: {detail}")
 
 
+class OwnSpeedDiagnosticTransportError(RuntimeError):
+    """Own-side debug metadata invalid; no native world was admitted.
+
+    A valid mechanical rejection remains available separately from the
+    diagnostics failure. Field codes are fixed-schema only, never raw values.
+    """
+
+    def __init__(self, *, reason: str, path: str, issue: str) -> None:
+        self.mechanics_reason = reason
+        self.mismatch_path = path
+        self.issue = issue
+        super().__init__(
+            "pinned Showdown returned invalid own speed diagnostic: " + issue
+        )
+
+
+def _own_speed_diagnostic_issue(diag: object) -> str | None:
+    """Return a safe field-level code, never an unknown/private field name."""
+    required = {
+        "stage", "slot", "species", "observed_speed",
+        "native_cached_speed", "native_action_speed",
+        "native_stored_speed", "speed_boost", "status",
+        "ability", "item", "unburden_volatile", "trick_room",
+        "terrain", "weather",
+    }
+    allowed = required | {"pre_removal_action_speed"}
+    if not isinstance(diag, dict):
+        return "payload:type"
+    for field in sorted(required):
+        if field not in diag:
+            return "missing:" + field
+    if set(diag) - allowed:
+        return "unexpected-field"
+    if type(diag["stage"]) is not str or diag["stage"] not in {
+        "after-native-unburden-removal", "exact-own-projection",
+    }:
+        return "invalid:stage"
+    if ("pre_removal_action_speed" in diag) != (
+        diag["stage"] == "after-native-unburden-removal"
+    ):
+        return "invalid:pre_removal_action_speed-presence"
+    if type(diag["slot"]) is not int or diag["slot"] not in (0, 1):
+        return "invalid:slot"
+    if not isinstance(diag["species"], str) or not 1 <= len(diag["species"]) <= 64:
+        return "invalid:species"
+    for field in (
+        "observed_speed", "native_cached_speed",
+        "native_action_speed", "native_stored_speed",
+        "pre_removal_action_speed",
+    ):
+        if field in diag and (
+            type(diag[field]) is not int or not 0 <= diag[field] <= 10000
+        ):
+            return "invalid:" + field
+    if type(diag["speed_boost"]) is not int or not -6 <= diag["speed_boost"] <= 6:
+        return "invalid:speed_boost"
+    for field in ("unburden_volatile", "trick_room"):
+        if type(diag[field]) is not bool:
+            return "invalid:" + field
+    for field in ("status", "ability", "item", "terrain", "weather"):
+        value = diag[field]
+        if value is not None and (
+            not isinstance(value, str) or len(value) > 64
+        ):
+            return "invalid:" + field
+    return None
+
+
 class ShowdownWorkerTimeout(TimeoutError):
     """A bounded worker operation exceeded its startup or transport deadline."""
 
@@ -1321,62 +1389,40 @@ class ShowdownSearchWorker:
             raise RuntimeError("pinned Showdown exceeded present-hypothesis limit")
         if result.get("reason") is not None and not isinstance(result["reason"], str):
             raise RuntimeError("pinned Showdown returned invalid present failure")
-        # Whitelist ONLY own-side numeric speed diagnostics. Do not pass
-        # arbitrary worker objects to the public league report.
+        # Diagnostic metadata never changes the native admission gate. If a
+        # rejected proposal sends bad debug data, preserve the original
+        # mechanics reason and a bounded, schema-only error field for the
+        # caller. We still reject the bad diagnostic and *all* its outcomes.
         diag = result.get("own_speed_diagnostic")
         if diag is not None:
-            required = {
-                "stage", "slot", "species", "observed_speed",
-                "native_cached_speed", "native_action_speed",
-                "native_stored_speed", "speed_boost", "status",
-                "ability", "item", "unburden_volatile", "trick_room",
-                "terrain", "weather",
-            }
-            allowed = required | {"pre_removal_action_speed"}
-            if (
-                not isinstance(diag, dict)
-                or not required.issubset(diag)
-                or set(diag) - allowed
-                or type(diag["stage"]) is not str
-                or diag["stage"] not in {
-                    "after-native-unburden-removal", "exact-own-projection"
-                }
-                or ("pre_removal_action_speed" in diag) != (
-                    diag["stage"] == "after-native-unburden-removal"
-                )
-                or type(diag["slot"]) is not int
-                or diag["slot"] not in (0, 1)
-                or not isinstance(diag["species"], str)
-                or not 1 <= len(diag["species"]) <= 64
-                or any(
-                    type(diag[k]) is not int or not 0 <= diag[k] <= 10000
-                    for k in (
-                        "observed_speed", "native_cached_speed",
-                        "native_action_speed", "native_stored_speed"
+            issue = _own_speed_diagnostic_issue(diag)
+            if issue is not None:
+                reason = result.get("reason")
+                path = result.get("mismatch_path")
+                if (
+                    not result["outcomes"]
+                    and reason in {
+                        "own-unburden-speed-unresolved",
+                        "current-public-mechanics-mismatch",
+                    }
+                    and path in {
+                        "$.player.active_details[0].speed",
+                        "$.player.active_details[1].speed",
+                        "$.player.team[0].speed",
+                        "$.player.team[1].speed",
+                    }
+                ):
+                    raise OwnSpeedDiagnosticTransportError(
+                        reason=reason, path=path, issue=issue,
                     )
+                raise RuntimeError(
+                    "pinned Showdown returned invalid own speed diagnostic: "
+                    + issue
                 )
-                or type(diag["speed_boost"]) is not int
-                or not -6 <= diag["speed_boost"] <= 6
-                or type(diag["unburden_volatile"]) is not bool
-                or type(diag["trick_room"]) is not bool
-                or any(
-                    diag[k] is not None and (
-                        not isinstance(diag[k], str)
-                        or len(diag[k]) > 64
-                    )
-                    for k in ("status", "ability", "item", "terrain", "weather")
-                )
-                or (
-                    "pre_removal_action_speed" in diag
-                    and (
-                        type(diag["pre_removal_action_speed"]) is not int
-                        or not 0 <= diag["pre_removal_action_speed"] <= 10000
-                    )
-                )
-            ):
-                raise RuntimeError("pinned Showdown returned invalid own speed diagnostic")
             if result["outcomes"]:
-                raise RuntimeError("successful native worlds cannot carry speed failure diagnostics")
+                raise RuntimeError(
+                    "successful native worlds cannot carry speed failure diagnostics"
+                )
         # A native fainted active slot legitimately has exact HP zero.
         # Require the public faint/0% observation before accepting that value;
         # otherwise the result is malformed and must never become a belief.

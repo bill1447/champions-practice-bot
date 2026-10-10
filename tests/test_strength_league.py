@@ -32,6 +32,7 @@ def _game(
     recovery_events: tuple[dict, ...] = (),
     recovery_retry_events: tuple[dict, ...] = (),
     own_speed_diagnostics: tuple[dict, ...] = (),
+    own_speed_transport_issues: tuple[dict, ...] = (),
 ) -> GameResult:
     winner = {
         "bot-win": "League Bot",
@@ -66,6 +67,7 @@ def _game(
         recovery_events=recovery_events,
         recovery_retry_events=recovery_retry_events,
         own_speed_diagnostics=own_speed_diagnostics,
+        own_speed_transport_issues=own_speed_transport_issues,
     )
 
 
@@ -288,3 +290,23 @@ def test_league_summary_retains_bounded_own_only_speed_forensics():
         {"game_index": 3, **own},
     ]
     assert "opponent_set" not in summary["decisions"]["own_speed_diagnostics"][0]
+
+
+def test_league_summary_separates_mechanics_and_telemetry_transport_issue():
+    issue = {
+        "decision_index": 7,
+        "mechanics_reason": "own-unburden-speed-unresolved",
+        "mismatch_path": "$.player.active_details[0].speed",
+        "diagnostic_issue": "invalid:native_stored_speed",
+    }
+    game = _game(
+        5, outcome="bot-win", fallback_decisions=1,
+        own_speed_transport_issues=(issue,),
+    )
+    summary = summarize_games((game,))
+    assert summary["decisions"]["fallback"] == 1
+    assert summary["decisions"]["own_speed_transport_issues"] == [
+        {"game_index": 5, **issue},
+    ]
+    assert summary["decisions"]["own_speed_diagnostics"] == []
+    assert "native-proposal-error:RuntimeError" not in str(issue)
