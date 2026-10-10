@@ -2068,8 +2068,27 @@ function materializePresentHypotheses(request) {
         mon.sethp(observed.hp);
       }
       if (asId(mon.item) !== asId(observed.item)) {
-        if (observed.item) mon.setItem(observed.item);
-        else mon.clearItem();
+        const knownItem = original.dex.items.get(observed.item || "");
+        if (observed.item && !knownItem.exists) {
+          return why("unsupported-exact-own-item");
+        }
+        if (mon.isActive) {
+          // Native SetItem/End events must fire for active Pokemon.
+          const changed = observed.item
+            ? mon.setItem(knownItem) : mon.clearItem();
+          if (!changed) return why("unsupported-exact-own-item");
+        } else {
+          // Pinned Pokemon.setItem() returns false for bench members. This
+          // state belongs to OUR fully observed team; restore the exact
+          // present inventory without triggering an active-only item event.
+          mon.item = knownItem.id;
+          mon.itemState = original.initEffectState({
+            id: knownItem.id, target: mon,
+          });
+        }
+        if (asId(mon.item) !== asId(observed.item)) {
+          return why("unsupported-exact-own-item");
+        }
       }
       if (asId(mon.ability) !== asId(observed.ability)) {
         mon.setAbility(observed.ability || "");
