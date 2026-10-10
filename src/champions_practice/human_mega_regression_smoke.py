@@ -12,7 +12,7 @@ from champions_practice.demo_fixture import (
     DEMO_AI_PREVIEW_CHOICE, DEMO_AI_TEAM, DEMO_HUMAN_TEAM, demo_public_priors,
 )
 from champions_practice.strength_league import (
-    LeagueConfig, _baseline_choice, _particle_seed, _resolve_preview_choice,
+    LeagueConfig, _baseline_choice, _particle_seed,
     _sodium_seed,
 )
 
@@ -45,9 +45,17 @@ def main() -> None:
             p2_name="Practice Bot",
             session_seed=_sodium_seed(7, 0),
         )
-        preview = _resolve_preview_choice(
-            battle.legal_human_choices(), "team 3164",
+        # The reviewer's 3164 selection is not legal for this fixed
+        # mirror roster (it brings both Mega candidates). Choose a legal
+        # Gardevoir lead, and still require actual turn-one Mega.
+        legal_previews = battle.legal_human_choices()
+        gardevoir_leads = sorted(
+            choice for choice in legal_previews
+            if choice.startswith("team 3") and "6" not in choice
         )
+        if not gardevoir_leads:
+            raise SystemExit("ERROR: no legal Gardevoir-led preview")
+        preview = gardevoir_leads[0]
         battle.commit_preview(human_choice=preview)
         mega_selected = False
         for turn_index in range(config.max_decisions):
@@ -77,7 +85,7 @@ def main() -> None:
                 break
 
     search_count = sum(mode in {"belief-search", "strategy"} for mode in modes)
-    print(f"Human-Mega seed=7 preview=3164 mega_turn_one={mega_selected}")
+    print(f"Human-Mega seed=7 preview={preview} mega_turn_one={mega_selected}")
     print(f"decisions={len(modes)} search={search_count} modes={modes}")
     print(f"fallback_reasons={failures}")
     if not mega_selected or len(modes) < 3:
