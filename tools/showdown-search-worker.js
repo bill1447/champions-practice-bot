@@ -2049,6 +2049,37 @@ function materializePresentHypotheses(request) {
       }
     }
 
+    // A previously Mega-Evolved OWN member may now be on the bench.
+    // Temporarily stage it through pinned native switch/evolution mechanics,
+    // then restore the exact active position. Never assign species, ability,
+    // stats, or Mega flags directly. All resulting requests still pass the
+    // exact own-request gate below; any native rejection fails closed.
+    for (const [teamIndex, observed] of view.player.team.entries()) {
+      if (!observed || observed.active || !observed.species) continue;
+      const species = original.dex.species.get(observed.species);
+      if (!species.exists || !species.isMega) continue;
+      const mon = find(own, observed.species);
+      const path = `$.player.team[${teamIndex}].species`;
+      if (!mon || mon.isActive ||
+          asId(mon.set.species) !== asId(species.baseSpecies) ||
+          asId(mon.item) !== asId(observed.item) ||
+          !original.dex.items.get(mon.item).megaStone ||
+          asId(original.dex.items.get(mon.item).megaStone) !== asId(species.name)) {
+        return why("unsupported-native-own-benched-mega", path);
+      }
+      if (asId(mon.species.name) === asId(species.name)) continue;
+      const slot = own.active.findIndex((active) => active && active.hp > 0);
+      if (slot < 0) return why("unsupported-native-own-benched-mega", path);
+      const displaced = own.active[slot];
+      if (original.actions.switchIn(mon, slot) !== true ||
+          !original.actions.runMegaEvo(mon) ||
+          asId(mon.species.name) !== asId(species.name) ||
+          original.actions.switchIn(displaced, slot) !== true ||
+          own.active[slot] !== displaced || mon.isActive) {
+        return why("unsupported-native-own-benched-mega", path);
+      }
+    }
+
     // An opponent Mega is PUBLIC form information, never a license to
     // synthesize an unobserved stone. Only an approved hypothetical set
     // capable of native Mega Evolution can establish the corresponding form.
