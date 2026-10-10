@@ -260,11 +260,69 @@ def trick_room_speed_lifecycle(worker):
         worker.close_session(sid)
 
 
+
+def trick_room_unburden_matrix(worker, switched):
+    """Characterize orthogonal Trick Room / Unburden native states.
+
+    This intentionally does not require current-world admission: the known
+    negative-cache issue is an expected failure in production until fixed.
+    All private snapshots stay inside this offline regression test.
+    """
+    start = worker.start_session(
+        battle_format=CHAMPIONS_FORMAT, p1_team=OPPONENT_TEAM,
+        p2_team=SMOKE_TEAM, p1_name="Public Opponent",
+        p2_name="Practice AI", seed=SEED,
+    )
+    sid = start["session_id"]
+    seen = set()
+    samples = []
+    try:
+        worker.choose_session(sid, p1_choice=P1_PREVIEW, p2_choice=P2_PREVIEW)
+        for step in range(6):
+            view = worker.session_view(sid, side="p2")["view"]
+            snapshot = worker.request("session_snapshot", session_id=sid)
+            native = snapshot["state"]["sides"][1]["pokemon"][0]
+            observed = view["player"]["active_details"][0]
+            trick_room = "trickroom" in snapshot["state"]["field"]["pseudoWeather"]
+            unburden = "unburden" in native.get("volatiles", {})
+            if observed["species"] != "Sneasler" or native["speed"] != observed["speed"]:
+                raise SystemExit("ERROR: state matrix did not preserve native own cache")
+            if view["player"]["team"][0]["speed"] != observed["speed"]:
+                raise SystemExit("ERROR: state matrix own team/active cache disagrees")
+            if step >= 3:
+                if unburden == switched:
+                    raise SystemExit("ERROR: switch-dependent native Unburden state incorrect")
+                seen.add((trick_room, unburden))
+            samples.append((trick_room, unburden, observed["speed"]))
+            if step == 5:
+                break
+            own_choice = (
+                "move protect, move trickroom" if step == 0 else
+                OWN_SWITCH if switched and step in (1, 2) else OWN_STAY
+            )
+            if own_choice not in worker.session_legal_choices(sid, side="p2"):
+                raise SystemExit(f"ERROR: matrix own command illegal: {own_choice}")
+            if PROTECT not in worker.session_legal_choices(sid, side="p1"):
+                raise SystemExit("ERROR: matrix opponent Protect illegal")
+            worker.choose_session(sid, p1_choice=PROTECT, p2_choice=own_choice)
+        if (True, not switched) not in seen or (False, not switched) not in seen:
+            raise SystemExit(f"ERROR: missing active/expired Trick Room states: {seen}")
+        if switched and samples[-1][2] == samples[0][2] * -2:
+            raise SystemExit("ERROR: switched-out Unburden incorrectly retained")
+        if not switched and samples[-1][2] >= 0:
+            raise SystemExit("ERROR: expected native stale negative cached Speed after expiry")
+        print(f"Pinned TR/Unburden switched={switched}: {samples}")
+    finally:
+        worker.close_session(sid)
+
+
 def main():
     with ShowdownSearchWorker() as worker:
         control = case(worker, False)
         switched = case(worker, True)
         trick_room_speed_lifecycle(worker)
+        trick_room_unburden_matrix(worker, False)
+        trick_room_unburden_matrix(worker, True)
     if control[0] != switched[0] or control[1] <= switched[1]:
         raise SystemExit("ERROR: control and switched speeds were not distinct")
     print("RESULT: both native Unburden lifecycles admitted with exact own speed")
