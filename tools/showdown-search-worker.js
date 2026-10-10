@@ -1969,26 +1969,31 @@ function materializePresentHypotheses(request) {
         asId(mon.baseSpecies.name) === wanted || asId(mon.set.species) === wanted
       );
     }
-    function position(side, identities) {
-      if (identities.length !== side.active.length) return false;
+    function position(side, identities, path) {
+      if (identities.length !== side.active.length) return `${path}.length`;
       for (let slot = 0; slot < identities.length; slot++) {
         const entry = identities[slot];
-        if (!entry) return false; // forced-switch states are not move phase
+        const slotPath = `${path}[${slot}]`;
+        if (!entry) return `${slotPath}.missing`; // forced-switch state
         const species = typeof entry === "string" ? entry : entry.base_species || entry.species;
         const mon = find(side, species);
-        if (!mon) return false;
+        if (!mon) return `${slotPath}.identity`;
         if (side.active[slot] === mon) continue;
-        // A same-side rotation may require an intermediate bench member:
-        // unsupported rather than illicitly permuting serialized pointers.
-        if (mon.isActive || !side.active[slot]) return false;
-        if (side.battle.actions.switchIn(mon, slot) !== true) return false;
+        // Do not permute active pointers or bypass pinned native switch rules.
+        if (mon.isActive) return `${slotPath}.already-active`;
+        if (!side.active[slot]) return `${slotPath}.empty-native-slot`;
+        if (side.battle.actions.switchIn(mon, slot) !== true) {
+          return `${slotPath}.native-switch-rejected`;
+        }
       }
-      return true;
+      return null;
     }
-    if (!position(original.p2, view.player.active_details) ||
-        !position(original.p1, view.opponent.active)) {
-      return why("unsupported-native-active-position");
-    }
+    const ownPositionIssue = position(original.p2, view.player.active_details,
+      "$.player.active_details");
+    if (ownPositionIssue) return why("unsupported-native-active-position", ownPositionIssue);
+    const foePositionIssue = position(original.p1, view.opponent.active,
+      "$.opponent.active");
+    if (foePositionIssue) return why("unsupported-native-active-position", foePositionIssue);
     const foe = original.p1;
     const own = original.p2;
     // Finish native switch-in events so abilities, weather, terrain, item
