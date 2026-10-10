@@ -266,7 +266,7 @@ def test_v1_identifiers_are_explicit():
     assert RUN_SCHEMA == "offline-strength-league-v1"
     assert FIXTURE_ID == "current-roster-mirror-v1"
     assert BOT_ID == "belief-strategy-main-v1"
-    assert BASELINE_ID == "public-fallback-v1"
+    assert BASELINE_ID == "attacking-mega-legal-v1"
 
 
 def test_league_summary_retains_bounded_own_only_speed_forensics():
