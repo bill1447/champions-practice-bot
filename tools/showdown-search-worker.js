@@ -1967,11 +1967,16 @@ function materializePresentHypotheses(request) {
       const wanted = asId(species);
       // A publicly observed Mega form belongs to its pre-Mega team member.
       // Resolve the identity through the pinned format's species metadata.
-      const nativeSpecies = side.battle.dex.species.get(species);
-      const base = nativeSpecies.exists ? asId(nativeSpecies.baseSpecies) : wanted;
-      return side.pokemon.find((mon) =>
-        asId(mon.baseSpecies.name) === base || asId(mon.set.species) === base
+      const direct = side.pokemon.find((mon) =>
+        asId(mon.baseSpecies.name) === wanted || asId(mon.set.species) === wanted
       );
+      if (direct) return direct;
+      const nativeSpecies = side.battle.dex.species.get(species);
+      // Only a Mega can alias to a different base team identity.
+      // Ordinary formes such as Indeedee-F must retain their set identity.
+      if (!nativeSpecies.exists || !nativeSpecies.isMega) return undefined;
+      const base = asId(nativeSpecies.baseSpecies);
+      return side.pokemon.find((mon) => asId(mon.set.species) === base);
     }
     function position(side, identities, path) {
       if (identities.length !== side.active.length) return `${path}.length`;
