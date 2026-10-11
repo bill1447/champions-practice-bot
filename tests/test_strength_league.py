@@ -116,6 +116,101 @@ def test_league_identity_changes_with_code_or_showdown_revision():
     )
 
 
+def test_runtime_fingerprint_binds_uncommitted_and_new_sources(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+    import champions_practice.strength_league as league
+
+    (tmp_path / "src").mkdir()
+    source = tmp_path / "src" / "bot.py"
+    source.write_text("original")
+    inventory = [b"src/bot.py\0"]
+
+    def git(args, **kwargs):
+        return SimpleNamespace(stdout=inventory[0] if args[1] == "ls-files" else b" M src/bot.py\0")
+
+    monkeypatch.setattr(league.subprocess, "run", git)
+    before = league._source_identity(tmp_path)
+    source.write_text("changed without commit")
+    edited = league._source_identity(tmp_path)
+    assert edited["dirty"] is True
+    assert before["sha256"] != edited["sha256"]
+    (tmp_path / "src" / "new.py").write_text("new module")
+    inventory[0] += b"src/new.py\0"
+    added = league._source_identity(tmp_path)
+    assert edited["sha256"] != added["sha256"]
+    assert league._run_id(LeagueConfig(), git_commit="a" * 40,
+                          showdown_revision="b" * 40, source_identity=before) != league._run_id(
+        LeagueConfig(), git_commit="a" * 40, showdown_revision="b" * 40, source_identity=added
+    )
+
+
+@pytest.mark.parametrize("refresh", [False, True])
+def test_dirty_source_cannot_reuse_head_report(monkeypatch, tmp_path, refresh):
+    import champions_practice.strength_league as league
+
+    monkeypatch.setattr(league, "_git_commit", lambda root: "a" * 40)
+    monkeypatch.setattr(league, "_showdown_revision", lambda root: "b" * 40)
+    identity = {"schema": "runtime-source-sha256-v1", "sha256": "c" * 64, "dirty": True}
+    monkeypatch.setattr(league, "_source_identity", lambda root: dict(identity))
+    calls = []
+
+    def game(*args, **kwargs):
+        calls.append(kwargs["game_index"])
+        return _game(0, outcome="bot-win")
+
+    monkeypatch.setattr(league, "run_game", game)
+    first = league.run_league(LeagueConfig(battles=1), project_root=tmp_path)
+    cached = league.run_league(LeagueConfig(battles=1), project_root=tmp_path)
+    assert cached["run_id"] == first["run_id"] and calls == [0]
+    identity["sha256"] = "d" * 64
+    second = league.run_league(LeagueConfig(battles=1), project_root=tmp_path, refresh=refresh)
+    assert calls == [0, 0]
+    assert first["run_id"] != second["run_id"]
+    assert second["source_identity"] == identity
+
+
+def test_source_change_during_league_cannot_publish_complete_report(monkeypatch, tmp_path):
+    import champions_practice.strength_league as league
+
+    monkeypatch.setattr(league, "_git_commit", lambda root: "a" * 40)
+    monkeypatch.setattr(league, "_showdown_revision", lambda root: "b" * 40)
+    identities = iter([{"sha256": "c" * 64}, {"sha256": "d" * 64}])
+    monkeypatch.setattr(league, "_source_identity", lambda root: next(identities))
+    monkeypatch.setattr(league, "run_game", lambda *args, **kwargs: _game(0, outcome="bot-win"))
+    with pytest.raises(StrengthLeagueError, match="source changed"):
+        league.run_league(LeagueConfig(battles=1), project_root=tmp_path)
+    assert not list((tmp_path / "runs").rglob("report.json"))
+    assert (tmp_path / "runs/strength-league/latest-partial-report.json").is_file()
+
+
+def test_parallel_report_writers_use_distinct_atomic_temporaries(monkeypatch, tmp_path):
+    from concurrent.futures import ThreadPoolExecutor
+    from threading import Barrier
+    import json
+    import champions_practice.strength_league as league
+
+    barrier = Barrier(2)
+    replace = league.os.replace
+    temporaries = []
+
+    def simultaneous(source, target):
+        if source not in temporaries:
+            temporaries.append(source)
+            barrier.wait(timeout=5)
+        replace(source, target)
+
+    monkeypatch.setattr(league.os, "replace", simultaneous)
+    destination = tmp_path / "latest-report.json"
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(league._atomic_write_json, destination, {"writer": n})
+                   for n in (1, 2)]
+        for future in futures:
+            future.result(timeout=10)
+    assert len(set(temporaries)) == 2
+    assert json.loads(destination.read_text())["writer"] in (1, 2)
+    assert not list(tmp_path.glob("*.part"))
+
+
 def test_seed_generation_is_deterministic_and_game_specific():
     assert _sodium_seed(15601, 0) == _sodium_seed(15601, 0)
     assert _sodium_seed(15601, 0) != _sodium_seed(15601, 1)
@@ -350,6 +445,7 @@ def test_failed_league_preserves_public_trace_and_completed_games(
 
     monkeypatch.setattr(league, "_git_commit", lambda root: "a" * 40)
     monkeypatch.setattr(league, "_showdown_revision", lambda root: "b" * 40)
+    monkeypatch.setattr(league, "_source_identity", lambda root: None)
 
     def failing_game(config, *, game_index, project_root, trace_sink):
         if game_index == 0:

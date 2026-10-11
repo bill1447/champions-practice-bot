@@ -1,5 +1,22 @@
 # Champions Practice Bot Roadmap
 
+### October 10 correctness remediation — production support gate
+
+The project review at merge #236 reproduced both reset repeat-Protect counters
+and stale Psychic Terrain duration in projection-compatible native candidates.
+The live decision engine now rejects fresh states with unsupported persistent
+effects or protection history before worker startup, returning explicit legal
+fallback reasons. This closes that production admission path; it does not prove
+that the experimental offline constructor restores those counters.
+
+Terrain recovery now uses public opening observations and canonical Surge starts,
+then pinned native residual lifecycle operations to restore timer age. Opening,
+overwrite, expiration and serialization controls pass; protection, weather,
+pseudo-weather and side-effect support remains pending. Recovery is measured by
+falling fallback rates and rising midgame search coverage on both frozen fixtures.
+Preserve exact own-state and privacy checks throughout.
+See `docs/present-mechanics-support.md` and the project review in `reviews/`.
+
 ### Phase 10.16 — field-duration correctness gate (#216)
 
 Adversarial review found that fresh current-world materialization uses pinned
@@ -63,7 +80,9 @@ findings from #220. Do not count a self-authored recap as independent review.
   unresolved, not proof of impossibility.
 
 This is a PR-number milestone, not a time-based calendar schedule. The next
-review is **#220**.
+review milestone after the reviewed #236 checkout is **#240**. The checkout
+contains a #220 handoff; do not infer that #230 received an independent review
+without its separate artifact. Carry unresolved findings into the next review.
 
 The simulator is exact. The decisions are not yet proven optimal: recommendations are
 bounded, one-ply searches over sampled public-belief worlds, adversarial replies, and RNG

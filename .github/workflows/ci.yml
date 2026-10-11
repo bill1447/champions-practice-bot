@@ -108,6 +108,11 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m ruff check src tests
 
+      - name: Present-state latent mechanics production gate
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.present_mechanics_smoke
+
       - name: Unit tests
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh

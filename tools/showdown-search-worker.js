@@ -1950,6 +1950,38 @@ function materializePresentHypotheses(request) {
   const supportedBoosts = new Set(["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"]);
   const candidates = [];
   const original = Battle.fromJSON(JSON.stringify(request.state));
+  const terrainPlan = request.mechanics_plan;
+  let terrainSource = null;
+  let terrainSourceItem = null;
+  if (terrainPlan != null) {
+    const sourced = terrainPlan.source_species != null;
+    const expectedKeys = sourced
+      ? 'opening_terrain,residual_turns,source_ability,source_side,source_species'
+      : 'opening_terrain,residual_turns';
+    if (Object.keys(terrainPlan).sort().join(',') !== expectedKeys ||
+        terrainPlan.opening_terrain !== view.field.terrain ||
+        (!sourced && original.field.terrain !== terrainPlan.opening_terrain) ||
+        !Number.isInteger(terrainPlan.residual_turns) ||
+        (!sourced && terrainPlan.residual_turns !== view.turn - 1) ||
+        terrainPlan.residual_turns < 1 || terrainPlan.residual_turns > 7 ||
+        view.field.weather || view.field.pseudo_weather.length ||
+        view.player.side_conditions.length || view.opponent.side_conditions.length) {
+      return why('unsupported-opening-terrain-plan');
+    }
+    if (sourced) {
+      const side = terrainPlan.source_side === 'player' ? original.p2
+        : terrainPlan.source_side === 'opponent' ? original.p1 : null;
+      const sources = side?.pokemon.filter((mon) =>
+        asId(mon.species.name) === asId(terrainPlan.source_species) &&
+        mon.ability === terrainPlan.source_ability) || [];
+      if (sources.length !== 1) return why('unsupported-terrain-source');
+      terrainSource = sources[0];
+    } else {
+      terrainSource = original.field.terrainState.source;
+    }
+    if (!terrainSource) return why('unsupported-terrain-source');
+    terrainSourceItem = terrainSource.item;
+  }
   original.restart(() => {});
   try {
     if (original.turn !== 1 || original.requestState !== "move" || original.ended ||
@@ -2328,6 +2360,25 @@ function materializePresentHypotheses(request) {
         if (!side.sideConditions[effect] && !side.addSideCondition(effect, source)) {
           return why("unsupported-native-side-effect");
         }
+      }
+    }
+
+    if (terrainPlan != null) {
+      // Restore after all native switching, which can overwrite terrain.
+      // An extender lost since activation needs a separate public domain.
+      if (terrainSourceItem === 'terrainextender' && terrainSource.item !== terrainSourceItem) {
+        return why('unsupported-terrain-extension-history');
+      }
+      original.field.clearTerrain();
+      if (!original.field.setTerrain(terrainPlan.opening_terrain, terrainSource)) {
+        return why('unsupported-native-terrain-start');
+      }
+      // Native field lifecycle; empty targets exclude Pokemon residuals.
+      for (let age = 0; age < terrainPlan.residual_turns; age++) {
+        original.fieldEvent('Residual', []);
+      }
+      if (original.field.terrain !== terrainPlan.opening_terrain) {
+        return why('opening-terrain-expired');
       }
     }
 

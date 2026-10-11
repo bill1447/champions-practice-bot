@@ -31,6 +31,7 @@ from champions_practice.beliefs import build_public_opponent_belief
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.current_state_proposals import build_current_state_set_proposals
 from champions_practice.present_rebase import build_present_rebase
+from champions_practice.present_mechanics import unsupported_present_mechanics
 from champions_practice.public_scaffold_bootstrap import bootstrap_public_current_scaffolds
 from champions_practice.rolling_public_checkpoints import validate_public_bootstrap_checkpoint
 from champions_practice.recommendations import FINAL_RNG_SEEDS, SCREENING_RNG_SEEDS
@@ -2783,6 +2784,13 @@ class BeliefDecisionEngine:
             return False
         if self._public_ai_preview_choice is None:
             self.last_public_world_failure_reason = "missing-own-preview"
+            return False
+        mechanics_issue = unsupported_present_mechanics(view, ledger)
+        if mechanics_issue is not None:
+            # Native projection equality cannot certify latent durations or
+            # protection counters. Legacy constructors remain offline probes;
+            # their projection-compatible states must not enter live search.
+            self.last_public_world_failure_reason = mechanics_issue
             return False
         if ledger.current_signature in self._public_rebase_attempted_signatures:
             self.last_public_world_failure_reason = "snapshot-already-attempted"

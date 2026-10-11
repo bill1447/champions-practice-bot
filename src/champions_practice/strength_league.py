@@ -14,10 +14,12 @@ import json
 import math
 import os
 import subprocess
+import tempfile
 from collections import Counter
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from statistics import fmean, median
+from time import sleep
 from typing import Any, Callable
 
 from champions_practice.belief_controller import (
@@ -178,11 +180,51 @@ def _showdown_revision(project_root: Path) -> str:
     return value
 
 
+def _source_identity(project_root: Path) -> dict[str, Any]:
+    """Bind runtime sources, including unstaged and new modules, to a run.
+
+    Generated reports and review documents are excluded so writing a report
+    does not change its own identity. Git metadata alone cannot identify the
+    implementation executed from an uncommitted working tree.
+    """
+    paths = ["src", "tools", "pyproject.toml", "showdown-version.txt"]
+    try:
+        inventory = subprocess.run(
+            ["git", "ls-files", "--cached", "--others", "--exclude-standard", "-z", "--",
+             *paths],
+            cwd=project_root, check=True, capture_output=True, timeout=5,
+        ).stdout
+        status = subprocess.run(
+            ["git", "status", "--porcelain=v1", "--untracked-files=all", "-z", "--", *paths],
+            cwd=project_root, check=True, capture_output=True, timeout=5,
+        ).stdout
+        digest = hashlib.sha256()
+        names = sorted(set(name for name in inventory.split(b"\0") if name))
+        if not names:
+            raise StrengthLeagueError("runtime source inventory is empty")
+        for name in names:
+            file = (project_root / os.fsdecode(name)).resolve()
+            if not file.is_relative_to(project_root.resolve()):
+                raise StrengthLeagueError("runtime source escapes repository")
+            payload = file.read_bytes() if file.is_file() else None
+            digest.update(len(name).to_bytes(8, "big"))
+            digest.update(name)
+            digest.update(b"missing" if payload is None else b"file")
+            if payload is not None:
+                digest.update(len(payload).to_bytes(8, "big"))
+                digest.update(payload)
+    except (OSError, subprocess.SubprocessError) as error:
+        raise StrengthLeagueError("could not fingerprint runtime sources") from error
+    return {"schema": "runtime-source-sha256-v1", "sha256": digest.hexdigest(),
+            "dirty": bool(status)}
+
+
 def _run_identity_payload(
     config: LeagueConfig,
     *,
     git_commit: str,
     showdown_revision: str,
+    source_identity: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     # Preserve the original fixture's run identity and comparison history.
     config_data = asdict(config)
@@ -209,6 +251,7 @@ def _run_identity_payload(
         "bot_team_sha256": _sha256_text(DEMO_AI_TEAM),
         "opponent_team_sha256": opponent_team_hash,
         "config": config_data,
+        **({"source_identity": source_identity} if source_identity is not None else {}),
     }
 
 
@@ -217,12 +260,14 @@ def _run_id(
     *,
     git_commit: str,
     showdown_revision: str,
+    source_identity: dict[str, Any] | None = None,
 ) -> str:
     payload = json.dumps(
         _run_identity_payload(
             config,
             git_commit=git_commit,
             showdown_revision=showdown_revision,
+            source_identity=source_identity,
         ),
         sort_keys=True,
         separators=(",", ":"),
@@ -733,12 +778,24 @@ def run_game(
 
 def _atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(path.suffix + ".part")
-    temporary.write_text(
-        json.dumps(payload, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    os.replace(temporary, path)
+    descriptor, name = tempfile.mkstemp(prefix=path.name + ".", suffix=".part", dir=path.parent)
+    temporary = Path(name)
+    try:
+        with os.fdopen(descriptor, "w", encoding="utf-8") as output:
+            output.write(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+        # Windows can briefly hold the destination during another writer's
+        # rename or reader open. Keep each source private and retry only those
+        # bounded sharing/access failures; never rewrite the destination in place.
+        for attempt in range(8):
+            try:
+                os.replace(temporary, path)
+                break
+            except PermissionError as error:
+                if os.name != "nt" or error.winerror not in {5, 32, 33} or attempt == 7:
+                    raise
+                sleep(0.01 * (attempt + 1))
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def run_league(
@@ -754,10 +811,12 @@ def run_league(
     )
     git_commit = _git_commit(root)
     showdown_revision = _showdown_revision(root)
+    source_identity = _source_identity(root)
     run_id = _run_id(
         config,
         git_commit=git_commit,
         showdown_revision=showdown_revision,
+        source_identity=source_identity,
     )
     base = root / "runs" / "strength-league"
     run_dir = base / run_id
@@ -780,6 +839,7 @@ def run_league(
             **_run_identity_payload(
                 config, git_commit=git_commit,
                 showdown_revision=showdown_revision,
+                source_identity=source_identity,
             ),
             "run_id": run_id,
             "complete": False,
@@ -829,12 +889,19 @@ def run_league(
             f"fallbacks {game.fallback_decisions}"
         )
 
+    if _source_identity(root) != source_identity or _git_commit(root) != git_commit:
+        write_partial(failure={
+            "game_index": config.battles - 1, "stage": "source-provenance",
+            "error_type": "StrengthLeagueError",
+        })
+        raise StrengthLeagueError("runtime source changed during strength league")
     game_values = tuple(games)
     report = {
         **_run_identity_payload(
             config,
             git_commit=git_commit,
             showdown_revision=showdown_revision,
+            source_identity=source_identity,
         ),
         "run_id": run_id,
         "summary": summarize_games(game_values),

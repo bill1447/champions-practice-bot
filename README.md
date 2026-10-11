@@ -175,6 +175,17 @@ The browser never receives the current sealed AI command or the facade lock toke
 trace becomes browser-visible only after the human command has been accepted and the turn has
 been submitted.
 
+Fresh midgame search now refuses unsupported effect timers and repeat-protection
+history and uses an explicit legal fallback. This prevents projection-compatible
+states with reset native counters from entering production search. Public opening
+terrain observations and later Surge starts now restore native timer age and
+recover midgame search. See `docs/present-mechanics-support.md` for the remaining
+support boundary and recovery controls.
+
+Demo mutations require a valid local Host, same-origin browser requests, JSON
+bodies and a per-server request token embedded in the served page. Restarting
+the server requires refreshing any existing browser tab.
+
 This v0 is intentionally plain. Arbitrary team import, richer move/target controls, battle-log
 presentation, replay/postgame analysis, and team-preview intelligence are follow-on demo work
 driven by actual games rather than more pre-demo architecture.
