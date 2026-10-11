@@ -1,0 +1,30 @@
+{
+  "schema": "native-frontier-paired-comparison-v1",
+  "source_sha256": "e82d996972a113d169c3799155dde64bab07dceec097a883b626c804154cfcb4",
+  "paired_reference_games": 10,
+  "identical_reference_traces": true,
+  "baseline_generation": "guided",
+  "candidate_generation": "frontier",
+  "baseline": {
+    "checkpoints": 196,
+    "witnessed": 68,
+    "unresolved": 128,
+    "unresolved_percent": 65.3061224489796,
+    "continuous_witnessed_checkpoints": 38,
+    "continuous_games": 2,
+    "terminal_witnesses": 3
+  },
+  "candidate": {
+    "checkpoints": 196,
+    "witnessed": 86,
+    "unresolved": 110,
+    "unresolved_percent": 56.12244897959184,
+    "continuous_witnessed_checkpoints": 40,
+    "continuous_games": 2,
+    "terminal_witnesses": 3
+  },
+  "continuous_regressions": [],
+  "continuous_gains": [],
+  "production_fallback_measured": false,
+  "promotion_ready": false
+}
