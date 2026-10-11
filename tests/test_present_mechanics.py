@@ -24,7 +24,7 @@ def test_continuous_opening_terrain_recovers_gate_without_counter_input():
     assert opening_terrain_plan(current, ledger) == {
         "opening_terrain": "psychicterrain", "residual_turns": 2,
     }
-    assert unsupported_present_mechanics(current, ledger) is None
+    assert unsupported_present_mechanics(current, ledger) == 'unsupported-persistent:history'
     ledger.field_snapshots = ((1, payload), (3, payload))
     assert unsupported_present_mechanics(current, ledger) == "unsupported-public-effect-duration"
 
@@ -57,7 +57,7 @@ def test_public_ability_start_restores_changed_terrain_age():
         "source_side": "opponent", "source_species": "rillaboom",
         "source_ability": "grassysurge",
     }
-    assert unsupported_present_mechanics(current, ledger) is None
+    assert unsupported_present_mechanics(current, ledger) == 'unsupported-persistent:active-tenure'
 
 
 def test_native_cant_does_not_refresh_protection_chain():
@@ -65,7 +65,7 @@ def test_native_cant_does_not_refresh_protection_chain():
     current["public_execution_delta"]["actions"] = [{
         "outcome": "prevented", "reason": "flinch", "attempted_move": None,
     }]
-    assert unsupported_present_mechanics(current) is None
+    assert unsupported_present_mechanics(current) == 'unsupported-persistent:history'
 
 
 def view():
@@ -122,10 +122,10 @@ def test_missing_or_retained_execution_is_not_negative_evidence(delta):
     assert unsupported_present_mechanics(current) == "unsupported-public-protection-history"
 
 
-def test_supported_projection_keeps_search_eligible_without_mutation():
+def test_matching_projection_without_complete_history_is_unresolved_without_mutation():
     current = view()
     before = deepcopy(current)
-    assert unsupported_present_mechanics(current) is None
+    assert unsupported_present_mechanics(current) == 'unsupported-persistent:history'
     assert before == current
 
 

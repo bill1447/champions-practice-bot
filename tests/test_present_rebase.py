@@ -1,4 +1,4 @@
-"""PR #196: public-only midgame hypothesis and negative-authority gates."""
+"""Projection and transport unit tests; native support has separate controls."""
 
 from __future__ import annotations
 
@@ -11,10 +11,27 @@ from champions_practice.current_state_proposals import CurrentStateProposalBatch
 from champions_practice.search_worker import OwnSpeedDiagnosticTransportError
 
 from champions_practice.present_rebase import (
-    _positive_mechanics_match,
-    _positive_mechanics_rejection,
+    _projection_mechanics_rejection,
     build_present_rebase,
 )
+
+
+# These partial/mock native states test projection validation only. They are
+# not admissible production worlds; persistent_admission_smoke exercises the
+# real admission contract and native next-turn outcomes.
+_positive_mechanics_rejection = _projection_mechanics_rejection
+
+
+def _positive_mechanics_match(*args, **kwargs):
+    return _projection_mechanics_rejection(*args, **kwargs) is None
+
+
+def stub_transport_contract(monkeypatch):
+    monkeypatch.setattr('champions_practice.present_rebase.unsupported_present_mechanics', lambda *_: None)
+    monkeypatch.setattr('champions_practice.present_rebase.current_capability_issue', lambda *_: None)
+    monkeypatch.setattr('champions_practice.present_rebase.public_active_tenure_plan', lambda *_: None)
+    monkeypatch.setattr('champions_practice.present_rebase.public_opponent_pp_plan', lambda *_: [])
+    monkeypatch.setattr('champions_practice.present_rebase._positive_mechanics_rejection', _projection_mechanics_rejection)
 
 
 def sample(turn=8):
@@ -120,6 +137,7 @@ def test_fainted_opponent_slot_is_not_a_living_active_pokemon():
 
 
 def test_midgame_turn_eight_uses_only_fresh_public_set_and_native_state(monkeypatch):
+    stub_transport_contract(monkeypatch)
     view, state, ledger = sample()
     proposal = SimpleNamespace(
         proposal_id="public-prior:known", weight=1.0,
@@ -161,7 +179,7 @@ def test_midgame_turn_eight_uses_only_fresh_public_set_and_native_state(monkeypa
             self.created.append(kwargs)
             return {"fresh": True, "turn": 1}
 
-        def materialize_present_hypotheses(self, *, state, current_view, limit):
+        def materialize_present_hypotheses(self, *, state, current_view, limit, active_tenure_plan, opponent_pp_plan):
             assert state == {"fresh": True, "turn": 1}
             assert current_view is view
             assert limit <= 4
@@ -251,6 +269,7 @@ def test_native_roster_active_slots_follow_pinned_switch_order():
 
 
 def test_native_constructor_rejection_keeps_first_mismatched_request_path(monkeypatch):
+    stub_transport_contract(monkeypatch)
     view, _, ledger = sample()
     proposal = SimpleNamespace(
         proposal_id="public-prior:snapshot", weight=1.0,
@@ -278,7 +297,7 @@ def test_native_constructor_rejection_keeps_first_mismatched_request_path(monkey
         def create_state(self, **kwargs):
             return {"turn": 1}
 
-        def materialize_present_hypotheses(self, *, state, current_view, limit):
+        def materialize_present_hypotheses(self, *, state, current_view, limit, active_tenure_plan, opponent_pp_plan):
             return {
                 "outcomes": [], "reason": "exact-own-request-mismatch",
                 "mismatch_path": "$.request.active[0].moves[0].pp",
@@ -322,6 +341,7 @@ def test_present_rebase_rejects_unbounded_particle_search(limit):
 def test_invalid_speed_telemetry_preserves_mechanical_rejection_separately(
     monkeypatch,
 ):
+    stub_transport_contract(monkeypatch)
     view, _, ledger = sample()
     proposal = SimpleNamespace(
         proposal_id="public-prior:snapshot", weight=1.0,
@@ -349,7 +369,7 @@ def test_invalid_speed_telemetry_preserves_mechanical_rejection_separately(
         def create_state(self, **kwargs):
             return {"turn": 1}
 
-        def materialize_present_hypotheses(self, *, state, current_view, limit):
+        def materialize_present_hypotheses(self, *, state, current_view, limit, active_tenure_plan, opponent_pp_plan):
             raise OwnSpeedDiagnosticTransportError(
                 reason="own-unburden-speed-unresolved",
                 path="$.player.active_details[0].speed",

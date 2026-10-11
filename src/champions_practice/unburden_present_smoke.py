@@ -1,4 +1,8 @@
-"""Pinned Showdown midgame Unburden switch lifecycle regression."""
+"""Native Unburden lifecycle/projection controls and production admission denial.
+
+Matching cached Speed does not establish a supported activation/reset domain.
+These single-checkpoint projection probes have no search admission authority.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +14,8 @@ from champions_practice.belief_worlds import PublicSetCandidate
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_rebase import build_present_rebase
+from champions_practice.native_projection_smoke import NoNativeConstruction, probe_present_projection
+from champions_practice.persistent_support import static_support_issue
 from champions_practice.search_worker import (
     OwnSpeedDiagnosticTransportError,
     ShowdownSearchWorker,
@@ -60,6 +66,25 @@ def catalog():
     }
 
 
+def unburden_projection_probe(worker, **kwargs):
+    # Assert this domain is unresolved independently of the older field gates,
+    # including active, switched, benched and Mega fixtures. Do not weaken or
+    # monkeypatch production admission to run a projection-only control.
+    own = kwargs["current_view"]["player"]["team"]
+    if not any(static_support_issue(ability=mon.get("ability"), item=mon.get("item"),
+                                    moves=mon.get("moves", ()), opponent=False)
+               == "unsupported-persistent:owned-unburden" for mon in own):
+        raise SystemExit("ERROR: owned Unburden capability was not classified unresolved")
+    denied = build_present_rebase(NoNativeConstruction(), **kwargs)
+    if denied.particles or denied.unresolved_reason not in {
+        "unsupported-public-effect-duration", "unsupported-public-protection-chain",
+        "unsupported-public-trace-state", "unsupported-persistent:owned-unburden",
+        "unsupported-persistent:public-history", "unsupported-persistent:active-tenure",
+    }:
+        raise SystemExit(f"ERROR: unsupported fixture not rejected: {denied.unresolved_reason}")
+    return probe_present_projection(worker, **kwargs)
+
+
 def case(worker, switched):
     start = worker.start_session(
         battle_format=CHAMPIONS_FORMAT, p1_team=OPPONENT_TEAM,
@@ -69,14 +94,17 @@ def case(worker, switched):
     sid = start["session_id"]
     try:
         worker.choose_session(sid, p1_choice=P1_PREVIEW, p2_choice=P2_PREVIEW)
+        ledger = PublicConstraintLedger.from_public_view(worker.session_view(sid, side="p2")["view"])
 
         def advance(own_choice):
+            nonlocal ledger
             if PROTECT not in worker.session_legal_choices(sid, side="p1"):
                 raise SystemExit("ERROR: opponent Protect unavailable")
             legal = worker.session_legal_choices(sid, side="p2")
             if own_choice not in legal:
                 raise SystemExit(f"ERROR: own switch not legal: {own_choice}, {legal[:10]}")
             worker.choose_session(sid, p1_choice=PROTECT, p2_choice=own_choice)
+            ledger = ledger.advance(worker.session_view(sid, side="p2")["view"])
 
         advance(OWN_STAY)
         first = worker.session_view(sid, side="p2")["view"]["player"]["active_details"][0]
@@ -106,9 +134,18 @@ def case(worker, switched):
         if not switched and now["speed"] != first["speed"]:
             raise SystemExit("ERROR: retained Unburden speed changed")
 
-        ledger = PublicConstraintLedger.from_public_view(view)
         legal = tuple(worker.session_legal_choices(sid, side="p2"))
-        report = build_present_rebase(
+        if not switched:
+            denied = build_present_rebase(
+                NoNativeConstruction(), ledger=ledger, current_view=view, priors=catalog(),
+                battle_format=CHAMPIONS_FORMAT,
+                ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
+                ai_preview_choice=P2_PREVIEW, legal_live=legal,
+            )
+            if denied.particles or denied.unresolved_reason != "unsupported-persistent:owned-unburden":
+                raise SystemExit(f"ERROR: complete-history Unburden bypassed denial: {denied.unresolved_reason}")
+            print("Complete public history: owned Unburden rejected before native construction")
+        report = unburden_projection_probe(
             worker, ledger=ledger, current_view=view, priors=catalog(),
             battle_format=CHAMPIONS_FORMAT,
             ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
@@ -209,7 +246,7 @@ def case(worker, switched):
             print("Impossible own-speed negative control rejected with diagnostics: YES")
             print("Malformed native diagnostic preserves original Speed rejection: YES")
         print(f"Unburden switch={switched}: speed {first['speed']} -> {now['speed']}; "
-              f"admitted {len(report.particles)}")
+              f"offline projections {len(report.particles)}")
         return first["speed"], now["speed"]
     finally:
         worker.close_session(sid)
@@ -255,7 +292,7 @@ def trick_room_speed_lifecycle(worker):
                 # Independent public-only fresh construction. The snapshot
                 # duration above is an OFFLINE oracle, never a builder input.
                 ledger = PublicConstraintLedger.from_public_view(view)
-                report = build_present_rebase(
+                report = unburden_projection_probe(
                     worker, ledger=ledger, current_view=view,
                     priors=catalog(), battle_format=CHAMPIONS_FORMAT,
                     ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
@@ -273,7 +310,7 @@ def trick_room_speed_lifecycle(worker):
                     "Pinned Trick Room fresh-duration diagnostic: "
                     f"public_age=unknown_from_single_view, "
                     f"live_oracle_duration={duration}, "
-                    f"independent_admitted={len(report.particles)}, "
+                    f"offline_projection_witnesses={len(report.particles)}, "
                     f"generated_durations={generated}, "
                     f"unresolved={report.unresolved_reason}"
                 )
@@ -348,12 +385,12 @@ def trick_room_unburden_matrix(worker, switched):
                 if unburden == switched:
                     raise SystemExit("ERROR: switch-dependent native Unburden state incorrect")
                 seen.add((trick_room, unburden))
-                # Both currently active and just-expired Trick Room must
-                # admit a public-only current-state world. Keep every exact
-                # own projection/request and legal-menu safeguard.
+                # Isolated cached-Speed projection checks only. Active and
+                # expired Trick Room/Unburden states remain blocked from fresh
+                # search; these single views cannot establish latent lifecycle.
                 ledger = PublicConstraintLedger.from_public_view(view)
                 legal = tuple(worker.session_legal_choices(sid, side="p2"))
-                report = build_present_rebase(
+                report = unburden_projection_probe(
                     worker, ledger=ledger, current_view=view, priors=catalog(),
                     battle_format=CHAMPIONS_FORMAT,
                     ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
@@ -463,7 +500,7 @@ def mega_identity_ability_probe(worker):
             raise SystemExit("ERROR: pinned Mega evolution was not executed")
         ledger = PublicConstraintLedger.from_public_view(view)
         legal_live = tuple(worker.session_legal_choices(sid, side="p2"))
-        report = build_present_rebase(
+        report = unburden_projection_probe(
             worker, ledger=ledger, current_view=view, priors=catalog(),
             battle_format=CHAMPIONS_FORMAT,
             ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
@@ -478,7 +515,7 @@ def mega_identity_ability_probe(worker):
             f"public_form={mega_public['species']}, "
             f"public_ability={mega_public['ability']}, "
             f"active={[mon['species'] for mon in view['player']['active_details']]}, "
-            f"admitted={len(report.particles)}, "
+            f"offline_projection_witnesses={len(report.particles)}, "
             f"rejection={report.unresolved_reason}, "
             f"reasons={report.rejection_reasons}"
         )
@@ -532,7 +569,7 @@ def preview_form_identity_probe(worker):
 
 
 def staged_own_switch_position_probe(worker):
-    """Search admission must survive replacing a live lead with a bench member."""
+    """Isolated projection must handle a lead replaced by a bench member."""
     start = worker.start_session(
         battle_format=CHAMPIONS_FORMAT, p1_team=OPPONENT_TEAM,
         p2_team=SMOKE_TEAM, p1_name="Public Opponent",
@@ -550,7 +587,7 @@ def staged_own_switch_position_probe(worker):
         if view["player"]["active_details"][0]["species"] != "Gardevoir":
             raise SystemExit("ERROR: own lead switch did not take effect")
         ledger = PublicConstraintLedger.from_public_view(view)
-        report = build_present_rebase(
+        report = unburden_projection_probe(
             worker, ledger=ledger, current_view=view, priors=catalog(),
             battle_format=CHAMPIONS_FORMAT,
             ai_team=_pin_known_team_genders(SMOKE_TEAM, view["request"]),
@@ -560,9 +597,9 @@ def staged_own_switch_position_probe(worker):
         )
         if not report.particles:
             raise SystemExit(
-                f"ERROR: own active-position rebase failed: {report.unavailable_reason}"
+                f"ERROR: own active-position projection failed: {report.unresolved_reason}"
             )
-        print("Pinned own-side switch position: current-state search admitted")
+        print("Pinned own-side switch position: offline projection matches; production rejected")
     finally:
         worker.close_session(sid)
 
@@ -578,7 +615,7 @@ def main():
         staged_own_switch_position_probe(worker)
     if control[0] != switched[0] or control[1] <= switched[1]:
         raise SystemExit("ERROR: control and switched speeds were not distinct")
-    print("RESULT: both native Unburden lifecycles admitted with exact own speed")
+    print("RESULT: isolated Unburden projections match; unsupported production admission rejected")
 
 
 if __name__ == "__main__":

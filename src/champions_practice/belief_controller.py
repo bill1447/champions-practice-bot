@@ -2786,7 +2786,10 @@ class BeliefDecisionEngine:
         if self._public_ai_preview_choice is None:
             self.last_public_world_failure_reason = "missing-own-preview"
             return False
-        mechanics_issue = unsupported_present_mechanics(view, ledger)
+        from champions_practice.persistent_support import current_capability_issue
+        mechanics_issue = unsupported_present_mechanics(view, ledger) or current_capability_issue(
+            view, self.opponent_priors,
+        )
         if mechanics_issue is not None:
             # Native projection equality cannot certify latent durations or
             # protection counters. Legacy constructors remain offline probes;

@@ -175,12 +175,18 @@ The browser never receives the current sealed AI command or the facade lock toke
 trace becomes browser-visible only after the human command has been accepted and the turn has
 been submitted.
 
-Fresh midgame search now refuses unsupported effect timers and repeat-protection
-history and uses an explicit legal fallback. This prevents projection-compatible
-states with reset native counters from entering production search. Public opening
-terrain observations and later Surge starts now restore native timer age and
-recover midgame search. See `docs/present-mechanics-support.md` for the remaining
-support boundary and recovery controls.
+Fresh midgame search requires a closed persistent-state support contract in
+addition to matching observations and menus. Unknown capabilities, incomplete
+history, sleep/toxic counters, Flash Fire activation and other unrestored
+volatiles use an explicit legal fallback. All public-compatible opponent prior
+sets must pass the contract before bounded sampling; an empty reveal list is
+not evidence that a silent mechanic is absent. Fake Out tenure and ordinary
+opponent PP now have public/native reconstruction controls. The shipped demo
+currently falls back frequently because Unburden activation and opponent inventory loss
+remain unresolved. Earlier zero-fallback/win reports do not establish mechanical
+correctness. See `docs/present-mechanics-support.md` for the bounded support
+domain. Learned priors, strength claims and arbitrary team import remain gated
+on further correctness validation.
 
 Demo mutations require a valid local Host, same-origin browser requests, JSON
 bodies and a per-server request token embedded in the served page. Restarting

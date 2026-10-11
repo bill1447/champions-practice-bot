@@ -5,7 +5,7 @@ from copy import deepcopy
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_mechanics import (
-    opening_terrain_plan, public_trick_room_plan, unsupported_present_mechanics,
+    opening_terrain_plan, public_trick_room_plan, _field_and_protection_issue,
 )
 from champions_practice.public_lifecycle import (
     public_opponent_mega_plan, public_protection_plan, public_trace_plan,
@@ -29,7 +29,7 @@ def plans(view, ledger):
 
 
 def check(worker, root, current, view, ledger):
-    assert unsupported_present_mechanics(view, ledger) is None, (view['turn'], view['phase'], unsupported_present_mechanics(view, ledger), view['public_event_delta'])
+    assert _field_and_protection_issue(view, ledger) is None, (view['turn'], view['phase'], view['public_event_delta'])
     result = worker.materialize_present_hypotheses(state=root, current_view=view, **plans(view, ledger))
     assert result['outcomes'], (view['turn'], result.get('reason'), result.get('mismatch_path'))
     for entry in result['outcomes']:

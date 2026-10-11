@@ -2,7 +2,7 @@
 
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
-from champions_practice.present_mechanics import opening_terrain_plan, unsupported_present_mechanics
+from champions_practice.present_mechanics import opening_terrain_plan, _field_and_protection_issue
 from champions_practice.public_lifecycle import public_protection_plan, public_trace_plan
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
@@ -36,7 +36,7 @@ def main():
                     ledger = ledger.advance(view)
                     plan = public_protection_plan(view, ledger)
                     assert plan is not None, (guard, seed, view['public_event_delta'])
-                    assert unsupported_present_mechanics(view, ledger) is None, (guard, seed, view['public_event_delta'], unsupported_present_mechanics(view, ledger))
+                    assert _field_and_protection_issue(view, ledger) is None, (guard, seed, view['public_event_delta'])
                     repaired = worker.materialize_present_hypotheses(state=root, current_view=view,
                         protection_plan=plan, mechanics_plan=opening_terrain_plan(view, ledger),
                         trace_plan=public_trace_plan(view, ledger), limit=4)

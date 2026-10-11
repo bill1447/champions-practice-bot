@@ -12,7 +12,9 @@ from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
-from champions_practice.present_mechanics import opening_terrain_plan, unsupported_present_mechanics
+from champions_practice.present_mechanics import (
+    opening_terrain_plan, unsupported_present_mechanics, _field_and_protection_issue,
+)
 from champions_practice.public_lifecycle import public_protection_plan
 
 
@@ -101,7 +103,7 @@ def main():
                             actual = entry["state"]["sides"][1]["pokemon"][slot]["volatiles"]["stall"]
                             expected = oracle["sides"][1]["pokemon"][slot]["volatiles"]["stall"]
                             assert (actual["counter"], actual["duration"]) == (expected["counter"], expected["duration"])
-                    assert unsupported_present_mechanics(view, ledger) is None
+                    assert _field_and_protection_issue(view, ledger) is None
                     ledger = replace(ledger, field_snapshots=())
                     print("Pinned protection recovery: native restart/expiry restores public chain")
 
@@ -125,7 +127,7 @@ def main():
                 print(f"Pinned {name} negative control: production fallback before construction")
             finally:
                 worker.close_session(sid)
-    print("RESULT: unsupported native counters cannot enter production tactical search")
+    print("RESULT: tested terrain/protection gaps and missing-history checkpoints rejected")
 
 
 if __name__ == "__main__":

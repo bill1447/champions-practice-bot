@@ -89,6 +89,10 @@ def test_public_world_failure_is_reported_without_resurrecting_old_world():
 
 
 def test_turn_two_uses_fresh_native_constructor_instead_of_skipping(monkeypatch):
+    # Transport orchestration only; this deliberately partial view cannot
+    # certify mechanics. Real contract/outcome tests run against pinned native.
+    monkeypatch.setattr('champions_practice.belief_controller.unsupported_present_mechanics', lambda *_: None)
+    monkeypatch.setattr('champions_practice.persistent_support.current_capability_issue', lambda *_: None)
     from champions_practice.observation_beliefs import BeliefParticle
     from champions_practice.present_rebase import PresentRebaseReport
 

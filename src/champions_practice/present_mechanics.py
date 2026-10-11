@@ -140,7 +140,7 @@ PROTECTION_CHAIN_MOVES = frozenset({
 })
 
 
-def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
+def _field_and_protection_issue(view: dict, ledger=None) -> str | None:
     """Return a fixed public-only reason before spawning a search worker.
 
     This applies to fresh midgame hypotheses, not turn-one native openings or
@@ -209,3 +209,13 @@ def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
         if not isinstance(move, str) or not move:
             return "unsupported-public-protection-history"
     return None
+
+
+def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
+    """Projection checks plus a closed public persistent-state contract."""
+    from champions_practice.persistent_support import public_support_contract
+
+    issue = _field_and_protection_issue(view, ledger)
+    if issue is not None:
+        return issue
+    return public_support_contract(view, ledger).unresolved_reason

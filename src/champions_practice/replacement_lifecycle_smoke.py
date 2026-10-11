@@ -5,7 +5,7 @@ from copy import deepcopy
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.demo_fixture import DEMO_AI_TEAM, DEMO_AI_PREVIEW_CHOICE
-from champions_practice.present_mechanics import opening_terrain_plan, unsupported_present_mechanics
+from champions_practice.present_mechanics import opening_terrain_plan, unsupported_present_mechanics, _field_and_protection_issue
 from champions_practice.public_lifecycle import public_protection_plan
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.uncertain_fixture import opponent_team
@@ -45,7 +45,7 @@ def main():
             branch = {'p1_choice': p1, 'p2_choice': p2, 'include_state': True}
             following = worker.branch_many(state=current, branches=[branch])[0]['state']
             if index in {4, 6, 11}:
-                assert unsupported_present_mechanics(view, ledger) is None
+                assert _field_and_protection_issue(view, ledger) is None
                 rebuilt = worker.materialize_present_hypotheses(state=root, current_view=view,
                     protection_plan=public_protection_plan(view, ledger),
                     mechanics_plan=opening_terrain_plan(view, ledger))

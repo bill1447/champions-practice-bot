@@ -1,5 +1,71 @@
 # Present-state production support
 
+## Closed persistent-state contract after the #237–#239 review
+
+The former gate rejected named problem mechanics and otherwise admitted a
+matching projection. The independent review demonstrated wrong native worlds
+for opponent Fake Out, own sleep and own Flash Fire. Its review covers
+#237–#239 and stands in for the #240 review gate. Those old admission and win
+reports must not be used as proof of mechanical correctness.
+
+`persistent_support.py` now classifies public lifecycle evidence as supported,
+positively absent, or unresolved. A complete opening-to-current channel is
+mandatory. Unknown protocol families and volatiles are unresolved. Absence of
+an effect with a guaranteed public start can be established only from that
+complete channel; silent choice lock cannot be inferred absent from an empty
+reveal list. Explicit move/ability/item support entries are checked for the
+owned inventory and every public-compatible opponent catalog candidate before
+bounded proposal sampling. Unsupported candidates trigger fallback rather than
+being dropped in favor of supported candidates. The catalog is still bounded;
+these checks do not exclude unrepresented real sets or prove historical RNG.
+
+The native admission validator repeats the contract, rejects unrecognized
+native volatiles, and checks native action/field-tenure and PP counters against
+the independently derived public plans. Existing exact own-request/state,
+public opponent constraints, menu equality and prior-set checks stay mandatory.
+
+| Persistent family | Fresh-state decision |
+| --- | --- |
+| Fake Out / First Impression eligibility | Supported ordinary native move/cant entries, switches, and completed endTurn boundaries; ambiguous/called entries are unresolved. |
+| Opponent ordinary PP | Public move uses persist across switches; reconstruct with native deductPP. Pressure, called and PP-changing capabilities are excluded. |
+| Protect chain, terrain, Trick Room, Mega | Existing bounded native lifecycle plans remain necessary; they do not certify other mechanics. |
+| Sleep and toxic | Unresolved counters and histories; reject, including benches. |
+| Flash Fire, Imprison, Taunt, Substitute, confusion, Salt Cure, Perish Song | Positively absent only with complete start-event evidence; observed histories remain unresolved, including ended effects conservatively. |
+| Encore, Stomping Tantrum and other last-move/result-dependent capabilities | Unresolved even without a current volatile; native lifecycle scaffolding does not restore historical last-move/result state. |
+| Choice items | Unresolved silent lock; reject every compatible hypothetical choice set, even if unrevealed. |
+| Unburden on either side, opponent inventory changes, damaged/statused opponent reserves | Unresolved; no fresh-state search. Cached owned Speed alone does not certify an activation lifecycle. |
+| Unknown event, volatile, move, item or ability | Unresolved by default. |
+
+Fake Out in pinned Champions uses `activeMoveActions`; this is not simply
+calendar age. Native `runMove` increments it even for prevented actions, while
+switching resets it. `activeTurns` counts native endTurn boundaries, including
+incoming replacements after upkeep. Construction uses native switchIn,
+endTurn, inert external move entries, and deductPP instead of writing counters
+or importing sealed truth. This scaffolding does **not** reconstruct lastMove
+or moveLastTurnResult; capabilities that depend on them remain excluded.
+
+`persistent_admission_smoke` exercises both sides, return switches, a real KO,
+post-upkeep replacement and a pending/completed Parting Shot pivot. It checks
+current mechanical observations and both menus, native counter/PP equivalence,
+then matched next-turn damage, status, boosts, field tenure and flinch outcomes
+under three fixed native seeds. Sleep and Flash Fire controls arise from actual
+battle moves. The remaining volatile callback controls use isolated synthetic
+inventories; they prove explicit rejection of the observed native state, not
+team-import eligibility or verified historic defects in every listed mechanic.
+
+All lifecycle and admission CI steps use independent `!cancelled()` prerequisite
+guards and retain failure status. Earlier partial lifecycle smokes assert their
+specific field/protection support, never global production eligibility. The
+generic claim that all unsupported counters were excluded has been removed.
+
+The stricter gate intentionally reduces current midgame search. Recover each
+excluded domain with public evidence, preserving multiple possible latent
+states where evidence is not decisive, then establish native next-turn outcome
+equivalence before opening that support entry. No learned-prior or strength
+claim should be built on the old admissions.
+
+## Earlier bounded field and protection domains
+
 Fresh midgame construction currently preserves visible projections but cannot
 establish every latent native counter. A matching own request and legal menu
 therefore remain necessary checks, not sufficient production admission.
@@ -30,7 +96,9 @@ stall chain, including Quick/Wide Guard. Every earlier completed turn needs a
 move-phase completion snapshot. A current replacement window is supported only
 after its channel-visible `upkeep` marker, which proves residual processing has
 finished. Pivot and other unfinished-turn replacement windows remain unsupported.
-One confirmed attempt per actor/turn is supported, including called attempts.
+The protection-only plan supports one confirmed attempt per actor/turn,
+including called attempts. The complete production contract currently rejects
+called actions because their tenure/PP provenance is unresolved.
 Multiple attempts, missing evidence, actor swaps and unrelated native residual
 effects remain unsupported. Side conditions are also conservative:
 the current projection cannot establish unknown durations or hazard layers.
@@ -75,7 +143,9 @@ pseudo-weather other than the bounded Trick Room path below, and side effects
 remain outstanding.
 
 Ordered public Trace disclosures identify the copied ability and opposing donor.
-The supported copy set is the four Surge abilities, inactive Unburden and Pixilate.
+The isolated native copy plan covers the four Surge abilities, inactive
+Unburden and Pixilate. The complete production contract currently blocks any
+Unburden copy until its activation/reset domain has separate native proof.
 Switches and Mega evolution clear current copies. A historical terrain start keeps
 its original Trace source even after that source evolves or leaves the field;
 native terrain start receives the disclosed Surge effect while retaining the
