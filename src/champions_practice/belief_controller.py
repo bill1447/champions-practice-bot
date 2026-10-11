@@ -1672,6 +1672,7 @@ class BeliefDecisionEngine:
         batches: tuple[int, ...],
         deadline: float | None = None,
         witness_seed_window: int = 0,
+        allow_partial_finite_recovery: bool = False,
         progress_callback: Callable[
             [tuple[BeliefParticle, ...], tuple[str, ...]],
             None,
@@ -1900,7 +1901,7 @@ class BeliefDecisionEngine:
         if (
             unresolved
             and finite_public_actions
-            and not sampled_matched_worlds
+            and (allow_partial_finite_recovery or not sampled_matched_worlds)
             and not unsupported_public_evidence
             and (deadline is None or perf_counter() < deadline - 0.5)
         ):
