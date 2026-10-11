@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import json
 
+from champions_practice.public_lifecycle import ordered_public_lifecycle, public_protection_plan
+
 
 def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
     """Observed native ability starts or continuous public opening terrain."""
@@ -20,40 +22,44 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
     if any(snapshot.get("public_event_delta", {}).get("unsupported")
            for _, snapshot in parsed):
         return None
+    if any(event[0] in {"-item", "-enditem"} and "terrainextender" in event[2:]
+           for _, snapshot in parsed
+           for event in snapshot.get("public_event_delta", {}).get("events", [])):
+        return None  # public extension inventory changes need a timing domain
     start = None
-    seen_starts = set()
-    for observed_turn, snapshot in parsed:
-        delta = snapshot.get("public_event_delta", {})
-        for event in delta.get("events", []):
+    ordered = ordered_public_lifecycle(view, ledger)
+    if ordered is not None:
+        observed_terrain = parsed[0][1].get("terrain")
+        for source_turn, event, actors in ordered:
+            if len(event) >= 2 and event[1].startswith("move:") and event[1].endswith("terrain"):
+                effect = event[1][5:]
+                if event[0] == "-fieldstart":
+                    observed_terrain = effect
+                elif event[0] == "-fieldend" and observed_terrain == effect:
+                    observed_terrain = None
+                    start = None
             if len(event) < 2 or event[:2] != ["-fieldstart", "move:" + terrain]:
                 continue
-            key = (delta.get("turn"), tuple(event))
-            if key in seen_starts:
-                continue
-            seen_starts.add(key)
             source = next((token[5:] for token in event if token.startswith("[of]:")), "")
             ability = next((token[15:] for token in event
                             if token.startswith("[from]:ability:")), "")
-            if source not in {"p1a", "p1b", "p2a", "p2b"} or ability not in {
+            if source not in actors or ability not in {
                 "psychicsurge", "grassysurge", "electricsurge", "mistysurge",
-            } or snapshot.get("terrain") != terrain:
+            }:
                 return None
-            side = "player" if source.startswith("p2") else "opponent"
-            species = snapshot.get("active_species", {}).get(side, [None, None])[
-                0 if source.endswith("a") else 1
-            ]
-            if not species or type(delta.get("turn")) is not int:
-                return None
-            start = (observed_turn, delta["turn"], side, species, ability)
-    if start is not None:
-        observed_turn, source_turn, side, species, ability = start
-        recent = [(turn, snapshot) for turn, snapshot in parsed if turn >= observed_turn]
-        if any(snapshot.get("terrain") != terrain for _, snapshot in recent) or {
-            turn for turn, _ in recent
-        } != set(range(observed_turn, view["turn"] + 1)):
+            start = (source_turn, source, actors[source], ability)
+        if observed_terrain != terrain:
             return None
-        return {"opening_terrain": terrain, "residual_turns": view["turn"] - source_turn,
-                "source_side": side, "source_species": species, "source_ability": ability}
+        if start is not None:
+            source_turn, source, species, ability = start
+            return {"opening_terrain": terrain, "residual_turns": view["turn"] - source_turn,
+                    "source_side": "player" if source.startswith("p2") else "opponent",
+                    "source_species": species, "source_ability": ability}
+    # Legacy snapshots do not have ordered source identity. They can authorize
+    # continuous opening terrain only, never a later start's final-slot guess.
+    if any(event[:2] == ["-fieldstart", "move:" + terrain] for _, snapshot in parsed
+           for event in snapshot.get("public_event_delta", {}).get("events", [])):
+        return None
     if any(snapshot.get("terrain") != terrain for _, snapshot in parsed) or {
         turn for turn, _ in parsed
     } != set(range(1, view["turn"] + 1)):
@@ -110,6 +116,11 @@ def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
         if side["side_conditions"]:
             return "unsupported-public-effect-duration"
 
+    # Ordered public lifecycle can certify switch-only turns as well as moves;
+    # a retained execution delta alone cannot do that.
+    if public_protection_plan(view, ledger) is not None:
+        return None
+
     delta = view.get("public_execution_delta")
     turn = view.get("turn")
     if (
@@ -134,6 +145,8 @@ def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
             # preceding turn's duration-1 stall expires on this residual.
             continue
         if move in PROTECTION_CHAIN_MOVES:
+            if public_protection_plan(view, ledger) is not None:
+                continue
             return "unsupported-public-protection-chain"
         # A prevented unidentified action cannot prove chain state either.
         if not isinstance(move, str) or not move:

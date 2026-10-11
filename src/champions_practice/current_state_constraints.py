@@ -35,6 +35,7 @@ def _species_id(value: str) -> str:
 def _field_snapshot(view: dict[str, Any]) -> str:
     return _canonical({
         **view["field"],
+        "phase": view["phase"],
         "public_event_delta": view["public_event_delta"],
         "active_species": {
             "player": [mon.get("species") if mon else None

@@ -1138,6 +1138,13 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(path, "entries must be non-empty strings")
 
     event = value[0]
+    if event in {"switch", "drag", "move", "cant"}:
+        if len(value) != 3 or not _canonical_actor(value[1]) or (
+            value[2] not in _PUBLIC_PREVENTION_IDENTITIES if event == "cant"
+            else not re.fullmatch(r"[a-z0-9]+", value[2])
+        ):
+            return _schema_error(path, "invalid public lifecycle event")
+        return None
     if event not in _PUBLIC_MECHANICS_EVENTS:
         return _schema_error(f"{path}[0]", "contains an unsupported mechanics event")
 

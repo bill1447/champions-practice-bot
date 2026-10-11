@@ -5,6 +5,7 @@ and its independent ledger; no native counters or hidden sets enter inference.
 """
 
 from copy import deepcopy
+from dataclasses import replace
 
 from champions_practice.belief_controller import BeliefDecisionEngine
 from champions_practice.config import CHAMPIONS_FORMAT
@@ -12,6 +13,7 @@ from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 from champions_practice.present_mechanics import opening_terrain_plan, unsupported_present_mechanics
+from champions_practice.public_lifecycle import public_protection_plan
 
 
 def main():
@@ -88,6 +90,20 @@ def main():
                         "stall" not in candidate["sides"][1]["pokemon"][slot]["volatiles"]
                         for slot in protected
                     )
+                    plan = public_protection_plan(view, ledger)
+                    assert plan is not None
+                    repaired = worker.materialize_present_hypotheses(
+                        state=opening, current_view=view, limit=4, protection_plan=plan,
+                    )
+                    assert repaired["outcomes"], repaired.get("reason")
+                    for entry in repaired["outcomes"]:
+                        for slot in protected:
+                            actual = entry["state"]["sides"][1]["pokemon"][slot]["volatiles"]["stall"]
+                            expected = oracle["sides"][1]["pokemon"][slot]["volatiles"]["stall"]
+                            assert (actual["counter"], actual["duration"]) == (expected["counter"], expected["duration"])
+                    assert unsupported_present_mechanics(view, ledger) is None
+                    ledger = replace(ledger, field_snapshots=())
+                    print("Pinned protection recovery: native restart/expiry restores public chain")
 
                 bot = BeliefDecisionEngine(
                     ".", battle_format=CHAMPIONS_FORMAT, ai_team=SMOKE_TEAM,

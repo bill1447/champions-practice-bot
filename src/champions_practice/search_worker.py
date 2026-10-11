@@ -525,11 +525,13 @@ class HypotheticalSearchWorker:
         self, *, state: dict[str, Any], current_view: dict[str, Any],
         limit: int = 4,
         mechanics_plan: dict[str, Any] | None = None,
+        protection_plan: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Bounded public-only pinned-native current-state hypothesis builder."""
         return self.__worker.materialize_present_hypotheses(
             state=state, current_view=current_view, limit=limit,
             mechanics_plan=mechanics_plan,
+            protection_plan=protection_plan,
         )
 
     def enumerate_finite_transition(
@@ -1379,6 +1381,7 @@ class ShowdownSearchWorker:
         self, *, state: dict[str, Any], current_view: dict[str, Any],
         limit: int = 4,
         mechanics_plan: dict[str, Any] | None = None,
+        protection_plan: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Pinned-native positive present hypotheses; no live-session access.
 
@@ -1395,6 +1398,7 @@ class ShowdownSearchWorker:
             "materialize_present_hypotheses",
             state=state, current_view=current_view, limit=limit,
             mechanics_plan=mechanics_plan,
+            protection_plan=protection_plan,
         )
         if not isinstance(result, dict) or not isinstance(result.get("outcomes"), list):
             raise RuntimeError("pinned Showdown returned invalid present hypotheses")

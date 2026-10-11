@@ -10,6 +10,7 @@ any historical RNG sequence, and never excludes unrepresented worlds.
 from __future__ import annotations
 
 from champions_practice.present_mechanics import opening_terrain_plan
+from champions_practice.public_lifecycle import public_protection_plan
 
 import hashlib
 import json
@@ -296,6 +297,8 @@ def build_present_rebase(
                 limit=min(4, max_particles - len(found)),
                 **({"mechanics_plan": opening_terrain_plan(current_view, ledger)}
                    if opening_terrain_plan(current_view, ledger) is not None else {}),
+                **({"protection_plan": public_protection_plan(current_view, ledger)}
+                   if public_protection_plan(current_view, ledger) is not None else {}),
             )
             if not report["outcomes"]:
                 diagnostic = report.get("own_speed_diagnostic")

@@ -2,6 +2,14 @@
 
 ### October 10 correctness remediation — production support gate
 
+The follow-up protection recovery retains ordered public lifecycle events and
+requires complete turn boundaries. Pinned start/restart/residual operations now
+restore observed stall chains and switch/interrupt resets. Exact own reserve order
+is restored through native switch permutations, and benched Mega eligibility uses
+the Champions-native API rather than treating the stone's target mapping as a name.
+Additional terrain source/reactivation controls are in
+`reviews/terrain-assumptions-review-2026-10-10.md`; terrain remains limited support.
+
 The project review at merge #236 reproduced both reset repeat-Protect counters
 and stale Psychic Terrain duration in projection-compatible native candidates.
 The live decision engine now rejects fresh states with unsupported persistent

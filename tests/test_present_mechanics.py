@@ -46,15 +46,15 @@ def test_public_ability_start_restores_changed_terrain_age():
     current["turn"] = 2
     current["public_execution_delta"]["turn"] = 1
     current["field"]["terrain"] = "grassyterrain"
-    snapshot = {**current["field"], "active_species": {"opponent": ["Rillaboom", None]},
-        "public_event_delta": {"turn": 1, "events": [["-fieldstart", "move:grassyterrain",
+    snapshot = {**current["field"], "phase": "move", "active_species": {"opponent": ["Rillaboom", None]},
+        "public_event_delta": {"turn": 1, "events": [["switch", "p1a", "rillaboom"], ["-fieldstart", "move:grassyterrain",
             "[from]:ability:grassysurge", "[of]:p1a"]], "unsupported": []}}
     ledger = SimpleNamespace(current_turn=2, records=(), field_snapshots=(
         (1, json.dumps({"terrain": "psychicterrain"})), (2, json.dumps(snapshot)),
     ))
     assert opening_terrain_plan(current, ledger) == {
         "opening_terrain": "grassyterrain", "residual_turns": 1,
-        "source_side": "opponent", "source_species": "Rillaboom",
+        "source_side": "opponent", "source_species": "rillaboom",
         "source_ability": "grassysurge",
     }
     assert unsupported_present_mechanics(current, ledger) is None
