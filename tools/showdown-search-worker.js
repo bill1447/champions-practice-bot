@@ -428,10 +428,25 @@ function publicMechanicsEventDelta(battle, sideId) {
 
     if (event === "move") {
       actionContext = publicMoveActionContext(parts, sideId);
+      const actor = protocolSlotIdentity(parts[2]);
+      if (actor) current.events.push(['move', `${actor.side}${String.fromCharCode(96 + actor.slot)}`, toId(parts[3])]);
       continue;
     }
     if (event === "cant") {
       actionContext = null;
+      const actor = protocolSlotIdentity(parts[2]);
+      if (actor) current.events.push(['cant', `${actor.side}${String.fromCharCode(96 + actor.slot)}`, canonicalProtocolIdentity(parts[3])]);
+      continue;
+    }
+    if (event === 'switch' || event === 'drag') {
+      const actor = protocolSlotIdentity(parts[2]);
+      if (actor) current.events.push([event, `${actor.side}${String.fromCharCode(96 + actor.slot)}`,
+        toId(String(parts[3] || '').split(',', 1)[0])]);
+      actionContext = null;
+      continue;
+    }
+    if (event === 'swap') {
+      if (!current.unsupported.includes('swap')) current.unsupported.push('swap');
       continue;
     }
     if (!event.startsWith("-")) continue;
@@ -1923,7 +1938,7 @@ function materializePresentHypotheses(request) {
     };
   }
   const asId = (value) => toId(value || "");
-  const exact = (value) => JSON.stringify(value);
+  const exact = stableJson;
   // Diagnostic only: reveal a FIELD PATH, never the live value or hidden state.
   // Keep exact-JSON equality as the admission requirement.
   function firstMismatchPath(actual, expected, path) {
@@ -1946,10 +1961,42 @@ function materializePresentHypotheses(request) {
     }
     return path;
   }
-  const ownRequested = JSON.stringify(view.request);
+  const ownRequested = exact(view.request);
   const supportedBoosts = new Set(["atk", "def", "spa", "spd", "spe", "accuracy", "evasion"]);
   const candidates = [];
   const original = Battle.fromJSON(JSON.stringify(request.state));
+  const terrainPlan = request.mechanics_plan;
+  let terrainSource = null;
+  let terrainSourceItem = null;
+  if (terrainPlan != null) {
+    const sourced = terrainPlan.source_species != null;
+    const expectedKeys = sourced
+      ? 'opening_terrain,residual_turns,source_ability,source_side,source_species'
+      : 'opening_terrain,residual_turns';
+    if (Object.keys(terrainPlan).sort().join(',') !== expectedKeys ||
+        terrainPlan.opening_terrain !== view.field.terrain ||
+        (!sourced && original.field.terrain !== terrainPlan.opening_terrain) ||
+        !Number.isInteger(terrainPlan.residual_turns) ||
+        (!sourced && terrainPlan.residual_turns !== view.turn - 1) ||
+        terrainPlan.residual_turns < 1 || terrainPlan.residual_turns > 7 ||
+        view.field.weather || view.field.pseudo_weather.length ||
+        view.player.side_conditions.length || view.opponent.side_conditions.length) {
+      return why('unsupported-opening-terrain-plan');
+    }
+    if (sourced) {
+      const side = terrainPlan.source_side === 'player' ? original.p2
+        : terrainPlan.source_side === 'opponent' ? original.p1 : null;
+      const sources = side?.pokemon.filter((mon) =>
+        asId(mon.species.name) === asId(terrainPlan.source_species) &&
+        mon.ability === terrainPlan.source_ability) || [];
+      if (sources.length !== 1) return why('unsupported-terrain-source');
+      terrainSource = sources[0];
+    } else {
+      terrainSource = original.field.terrainState.source;
+    }
+    if (!terrainSource) return why('unsupported-terrain-source');
+    terrainSourceItem = terrainSource.item;
+  }
   original.restart(() => {});
   try {
     if (original.turn !== 1 || original.requestState !== "move" || original.ended ||
@@ -2063,12 +2110,11 @@ function materializePresentHypotheses(request) {
       if (!mon || mon.isActive ||
           asId(mon.set.species) !== asId(species.baseSpecies) ||
           asId(mon.item) !== asId(observed.item) ||
-          !original.dex.items.get(mon.item).megaStone ||
-          asId(original.dex.items.get(mon.item).megaStone) !== asId(species.name)) {
+          asId(original.actions.canMegaEvo(mon)) !== asId(species.name)) {
         return why("unsupported-native-own-benched-mega", path);
       }
       if (asId(mon.species.name) === asId(species.name)) continue;
-      const slot = own.active.findIndex((active) => active && active.hp > 0);
+      const slot = own.active.findIndex((active) => active && active.hp > 0 && active.ability !== 'unburden');
       if (slot < 0) return why("unsupported-native-own-benched-mega", path);
       const displaced = own.active[slot];
       if (original.actions.switchIn(mon, slot) !== true ||
@@ -2093,6 +2139,71 @@ function materializePresentHypotheses(request) {
           !original.actions.runMegaEvo(mon) ||
           asId(mon.species.name) !== asId(species.name)) {
         return why("unsupported-native-opponent-mega-evolution");
+      }
+    }
+
+    // Native switch permutations preserve the exact fully observed OWN bench
+    // ordering. Matching species/abilities by final active slots alone cannot
+    // establish request.side.pokemon identity at reserve positions.
+    for (let index = own.active.length; index < view.player.team.length; index++) {
+      const desired = find(own, view.player.team[index].species);
+      const occupant = own.pokemon[index];
+      if (desired === occupant) continue;
+      const slot = own.active.findIndex((mon) => mon && mon.hp > 0 && mon.ability !== 'unburden');
+      if (!desired || desired.isActive || !occupant || occupant.isActive || slot < 0) {
+        return why('unsupported-native-own-bench-order');
+      }
+      const displaced = own.active[slot];
+      for (const incoming of [desired, occupant, displaced]) {
+        if (original.actions.switchIn(incoming, slot) !== true) {
+          return why('unsupported-native-own-bench-order');
+        }
+      }
+      if (own.pokemon[index] !== desired || own.active[slot] !== displaced) {
+        return why('unsupported-native-own-bench-order');
+      }
+    }
+    original.queue.clear();
+
+    // Finish the final native switch-in lifecycle after Mega/bench staging.
+    // Exact request equality cannot establish isStarted/ability start state.
+    for (const mon of [...foe.active, ...own.active]) {
+      if (mon && !mon.isStarted) original.actions.runSwitch(mon);
+    }
+
+    if (request.protection_plan != null) {
+      const plan = request.protection_plan;
+      if (!Array.isArray(plan) || plan.length > 4) return why('unsupported-protection-plan');
+      const seen = new Set();
+      const targets = [];
+      for (const entry of plan) {
+        const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
+        const key = `${entry.side}:${entry.slot}`;
+        const mon = side?.active[entry.slot];
+        if (Object.keys(entry).sort().join(',') !== 'side,slot,species,successes' ||
+            !Number.isInteger(entry.slot) || entry.slot < 0 || entry.slot > 1 ||
+            !Number.isInteger(entry.successes) || entry.successes < 0 || entry.successes > 6 ||
+            !mon || ![asId(mon.set.species), asId(mon.species.name)].includes(asId(entry.species)) || seen.has(key)) {
+          return why('unsupported-protection-plan');
+        }
+        seen.add(key);
+        mon.removeVolatile('stall');
+        for (let count = 0; count < entry.successes; count++) {
+          if (!mon.addVolatile('stall')) return why('unsupported-native-protection-restart');
+        }
+        if (entry.successes) targets.push(mon);
+      }
+      if (targets.length) {
+        // Native expiry runs before exact current HP/status/boost restoration.
+        // Do not run unrelated Pokemon residual handlers while aging stall.
+        if (targets.some((mon) => original.findPokemonEventHandlers(mon, 'onResidual', 'duration')
+            .some((handler) => handler.effect.id !== 'stall'))) {
+          return why('unsupported-protection-residual-effects');
+        }
+        original.field.clearTerrain();
+        original.field.clearWeather();
+        for (const effect of Object.keys(original.field.pseudoWeather)) original.field.removePseudoWeather(effect);
+        original.fieldEvent('Residual', targets);
       }
     }
 
@@ -2328,6 +2439,25 @@ function materializePresentHypotheses(request) {
         if (!side.sideConditions[effect] && !side.addSideCondition(effect, source)) {
           return why("unsupported-native-side-effect");
         }
+      }
+    }
+
+    if (terrainPlan != null) {
+      // Restore after all native switching, which can overwrite terrain.
+      // An extender lost since activation needs a separate public domain.
+      if (terrainSourceItem === 'terrainextender' && terrainSource.item !== terrainSourceItem) {
+        return why('unsupported-terrain-extension-history');
+      }
+      original.field.clearTerrain();
+      if (!original.field.setTerrain(terrainPlan.opening_terrain, terrainSource)) {
+        return why('unsupported-native-terrain-start');
+      }
+      // Native field lifecycle; empty targets exclude Pokemon residuals.
+      for (let age = 0; age < terrainPlan.residual_turns; age++) {
+        original.fieldEvent('Residual', []);
+      }
+      if (original.field.terrain !== terrainPlan.opening_terrain) {
+        return why('opening-terrain-expired');
       }
     }
 

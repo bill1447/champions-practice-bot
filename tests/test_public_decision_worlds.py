@@ -93,7 +93,14 @@ def test_turn_two_uses_fresh_native_constructor_instead_of_skipping(monkeypatch)
     from champions_practice.present_rebase import PresentRebaseReport
 
     bot = engine()
-    bot.last_public_view = {"turn": 2, "request": {}}
+    bot.last_public_view = {
+        "turn": 2, "request": {},
+        "field": {"weather": None, "terrain": None, "pseudo_weather": []},
+        "player": {"side_conditions": []}, "opponent": {"side_conditions": []},
+        "public_execution_delta": {
+            "turn": 1, "actions": [{"outcome": "executed", "move": "psychic"}],
+        },
+    }
     bot.public_constraint_ledger = SimpleNamespace(
         current_turn=2, current_signature="fresh-turn-two",
     )

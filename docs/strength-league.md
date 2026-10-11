@@ -31,6 +31,7 @@ portable Elo-like strength.
 A run ID binds:
 
 - repository commit SHA;
+- runtime source SHA-256 and whether those sources have uncommitted changes;
 - pinned Showdown revision;
 - format ID;
 - fixture ID;
@@ -44,7 +45,13 @@ A run ID binds:
 - decision and conditioning budgets.
 
 The report also stores every generated battle seed and particle seed. Re-running the same
-configuration on the same commit reuses the immutable report unless `-Refresh` is supplied.
+configuration on the same commit and runtime source content reuses the immutable
+report unless `-Refresh` is supplied. The fingerprint includes tracked and new
+files under `src` and `tools`, plus `pyproject.toml` and `showdown-version.txt`.
+Changed source content gets a different run ID even before committing. A source
+change during gameplay prevents publication of a complete report; its partial
+evidence remains available. Reports, review documents and generated runtime
+files do not change the source fingerprint.
 
 Generated reports live under:
 

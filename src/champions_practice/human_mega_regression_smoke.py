@@ -1,4 +1,4 @@
-"""Pinned public-only Mega-on-turn-one continuous-search regression.
+"""Pinned public-only Mega-on-turn-one ledger and production-gate regression.
 
 Seed 7 is an explicit deterministic fixture seed, not an imported replay file.
 No opponent private state is supplied to the bot decision engine.
@@ -8,6 +8,8 @@ from __future__ import annotations
 
 from champions_practice.belief_controller import SealedBattleFacade
 from champions_practice.config import CHAMPIONS_FORMAT
+from champions_practice.current_state_constraints import PublicConstraintLedger
+from champions_practice.present_mechanics import unsupported_present_mechanics
 from champions_practice.demo_fixture import (
     DEMO_AI_PREVIEW_CHOICE, DEMO_AI_TEAM, DEMO_HUMAN_TEAM, demo_public_priors,
 )
@@ -21,6 +23,7 @@ def main() -> None:
     config = LeagueConfig(battles=1, seed=7, max_decisions=8)
     modes: list[str] = []
     failures: list[str] = []
+    guarded = 0
     with SealedBattleFacade(
         battle_format=CHAMPIONS_FORMAT,
         ai_team=DEMO_AI_TEAM,
@@ -58,6 +61,7 @@ def main() -> None:
         preview = gardevoir_leads[0]
         battle.commit_preview(human_choice=preview)
         mega_selected = False
+        public_ledger = None
         for turn_index in range(config.max_decisions):
             choices = battle.legal_human_choices()
             if not choices:
@@ -74,6 +78,15 @@ def main() -> None:
                 mega_selected = True
             else:
                 choice = _baseline_choice(choices)
+            public_before = battle.diagnostic_ai_public_checkpoint()
+            public_ledger = (
+                PublicConstraintLedger.from_public_view(public_before)
+                if public_ledger is None else public_ledger.advance(public_before)
+            )
+            expected_gate = (
+                unsupported_present_mechanics(public_before, public_ledger)
+                if public_before["turn"] >= 2 else None
+            )
             ready = battle.lock_ai_action()
             result = battle.commit_human_action(
                 token=ready.token, human_choice=choice,
@@ -81,6 +94,10 @@ def main() -> None:
             modes.append(result.decision.mode)
             if result.decision.fallback_reason:
                 failures.append(result.decision.fallback_reason)
+            if expected_gate and result.decision.mode != "forced-wait":
+                if result.decision.fallback_reason != "fresh-public-world:" + expected_gate:
+                    raise SystemExit("ERROR: unsafe Mega checkpoint bypassed production support gate")
+                guarded += 1
             if result.terminal:
                 break
 
@@ -92,11 +109,12 @@ def main() -> None:
         raise SystemExit("ERROR: human-Mega regression did not exercise a midgame")
     if any("public-ledger-unavailable" in reason for reason in failures):
         raise SystemExit("ERROR: opponent Mega quarantined the public ledger")
-    # Deliberately modest: catches near-total search collapse without
-    # confusing a limited 8-turn probe with a competitive win-rate result.
-    if search_count < 2:
+    # Retain the original coverage regression check for supported states.
+    # Exact, independently predicted safety-gate fallbacks are intentional;
+    # they must not be relabeled as successful reconstruction or search.
+    if search_count < 2 and (not failures or guarded != len(failures)):
         raise SystemExit("ERROR: human Mega disabled tactical search after turn one")
-    print("RESULT: human Mega maintained public ledger and multiple search decisions")
+    print(f"RESULT: human Mega public ledger intact; search={search_count}; safety_fallback={guarded}")
 
 
 if __name__ == "__main__":

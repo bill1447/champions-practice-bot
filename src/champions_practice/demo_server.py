@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import json
+import secrets
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import RLock
@@ -29,6 +30,13 @@ from champions_practice.demo_fixture import (
 
 
 FacadeFactory = Callable[[], SealedBattleFacade]
+MAX_DEMO_REQUEST_BYTES = 64 * 1024
+
+
+class DemoHTTPInputError(ValueError):
+    def __init__(self, message: str, status: HTTPStatus):
+        super().__init__(message)
+        self.status = status
 
 
 def _decision_payload(decision: BeliefDecision) -> dict[str, object]:
@@ -1307,6 +1315,9 @@ function render(next) {
 async function request(path, method="GET", body=null) {
   document.getElementById("error").textContent = "";
   const options = {method, headers: {}};
+  if (method !== "GET") {
+    options.headers["X-Demo-CSRF-Token"] = "__DEMO_CSRF_TOKEN__";
+  }
   if (body !== null) {
     options.headers["Content-Type"] = "application/json";
     options.body = JSON.stringify(body);
@@ -1486,7 +1497,9 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def _send_html(self) -> None:
-        encoded = DEMO_HTML.encode("utf-8")
+        encoded = DEMO_HTML.replace(
+            "__DEMO_CSRF_TOKEN__", self.server.mutation_token,
+        ).encode("utf-8")
         self.send_response(HTTPStatus.OK)
         self.send_header("Content-Type", "text/html; charset=utf-8")
         self.send_header("Content-Length", str(len(encoded)))
@@ -1495,14 +1508,51 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(encoded)
 
     def _read_json(self) -> dict[str, object]:
-        length = int(self.headers.get("Content-Length", "0"))
-        if length <= 0:
+        if self.headers.get("Transfer-Encoding") is not None:
+            raise DemoHTTPInputError("unsupported request transfer encoding", HTTPStatus.BAD_REQUEST)
+        try:
+            length = int(self.headers.get("Content-Length", "0"))
+        except ValueError as error:
+            raise DemoHTTPInputError("invalid Content-Length", HTTPStatus.BAD_REQUEST) from error
+        if length < 0:
+            raise DemoHTTPInputError("invalid Content-Length", HTTPStatus.BAD_REQUEST)
+        if length > MAX_DEMO_REQUEST_BYTES:
+            raise DemoHTTPInputError("request body too large", HTTPStatus.REQUEST_ENTITY_TOO_LARGE)
+        if length == 0:
             return {}
         raw = self.rfile.read(length)
-        payload = json.loads(raw.decode("utf-8"))
+        if len(raw) != length:
+            raise DemoHTTPInputError("incomplete request body", HTTPStatus.BAD_REQUEST)
+        try:
+            payload = json.loads(raw.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise DemoHTTPInputError("invalid JSON request body", HTTPStatus.BAD_REQUEST) from error
         if not isinstance(payload, dict):
-            raise ValueError("request body must be a JSON object")
+            raise DemoHTTPInputError("request body must be a JSON object", HTTPStatus.BAD_REQUEST)
         return payload
+
+    def _validate_host(self) -> str:
+        host = self.headers.get("Host", "").lower()
+        port = self.server.server_address[1]
+        allowed = {f"127.0.0.1:{port}", f"localhost:{port}"}
+        if port == 80:
+            allowed.update({"127.0.0.1", "localhost"})
+        if host not in allowed:
+            raise DemoHTTPInputError("invalid local Host", HTTPStatus.FORBIDDEN)
+        return host
+
+    def _validate_mutation(self) -> None:
+        host = self._validate_host()
+        origin = self.headers.get("Origin")
+        if origin is not None and origin != f"http://{host}":
+            raise DemoHTTPInputError("invalid request origin", HTTPStatus.FORBIDDEN)
+        if self.headers.get("Sec-Fetch-Site") == "cross-site":
+            raise DemoHTTPInputError("invalid request origin", HTTPStatus.FORBIDDEN)
+        if self.headers.get_content_type() != "application/json":
+            raise DemoHTTPInputError("JSON content type required", HTTPStatus.UNSUPPORTED_MEDIA_TYPE)
+        token = self.headers.get("X-Demo-CSRF-Token", "")
+        if not secrets.compare_digest(token.encode("utf-8"), self.server.mutation_token.encode("ascii")):
+            raise DemoHTTPInputError("invalid request token", HTTPStatus.FORBIDDEN)
 
     @staticmethod
     def _choice(payload: dict[str, object]) -> str:
@@ -1514,6 +1564,11 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
         return choice
 
     def do_GET(self) -> None:
+        try:
+            self._validate_host()
+        except DemoHTTPInputError as error:
+            self._send_json({"error": str(error)}, status=error.status)
+            return
         if self.path == "/":
             self._send_html()
             return
@@ -1524,6 +1579,7 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
 
     def do_POST(self) -> None:
         try:
+            self._validate_mutation()
             payload = self._read_json()
             if self.path == "/api/start":
                 result = self.app.start()
@@ -1544,16 +1600,13 @@ class DemoRequestHandler(BaseHTTPRequestHandler):
             else:
                 self._send_json({"error": "not found"}, status=HTTPStatus.NOT_FOUND)
                 return
+        except DemoHTTPInputError as error:
+            self._send_json({"error": str(error)}, status=error.status)
+            return
         except (ValueError, RuntimeError) as error:
             self._send_json(
                 {"error": str(error)},
                 status=HTTPStatus.CONFLICT,
-            )
-            return
-        except json.JSONDecodeError:
-            self._send_json(
-                {"error": "invalid JSON request body"},
-                status=HTTPStatus.BAD_REQUEST,
             )
             return
         except Exception as error:
@@ -1576,6 +1629,7 @@ class DemoHTTPServer(ThreadingHTTPServer):
     ) -> None:
         super().__init__(server_address, DemoRequestHandler)
         self.app = app
+        self.mutation_token = secrets.token_urlsafe(32)
 
 
 def main() -> None:

@@ -108,6 +108,20 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m ruff check src tests
 
+      - name: Present-state latent mechanics production gate
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.present_mechanics_smoke
+
+      - name: Public protection and own Mega lifecycle recovery
+        shell: pwsh
+        run: |
+          .\.venv\Scripts\python.exe -m champions_practice.protection_lifecycle_smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\.venv\Scripts\python.exe -m champions_practice.own_mega_lifecycle_smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\.venv\Scripts\python.exe -m champions_practice.terrain_lifecycle_review_smoke
+
       - name: Unit tests
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh

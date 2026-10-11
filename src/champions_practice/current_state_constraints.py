@@ -32,6 +32,20 @@ def _species_id(value: str) -> str:
     return "".join(ch for ch in value.lower() if ch.isalnum())
 
 
+def _field_snapshot(view: dict[str, Any]) -> str:
+    return _canonical({
+        **view["field"],
+        "phase": view["phase"],
+        "public_event_delta": view["public_event_delta"],
+        "active_species": {
+            "player": [mon.get("species") if mon else None
+                       for mon in view["player"].get("active_details", [])],
+            "opponent": [mon.get("species") if mon else None
+                         for mon in view["opponent"]["active"]],
+        },
+    })
+
+
 @dataclass(frozen=True)
 class KnownPublicSet:
     """Only positively revealed static facts; no negative move/item inference."""
@@ -78,6 +92,7 @@ class PublicConstraintLedger:
     known_sets: tuple[KnownPublicSet, ...]
     records: tuple[PublicEvidenceRecord, ...] = ()
     schema: str = PUBLIC_CONSTRAINT_LEDGER_SCHEMA
+    field_snapshots: tuple[tuple[int, str], ...] = ()
 
     @classmethod
     def from_public_view(cls, view: dict[str, Any]) -> "PublicConstraintLedger":
@@ -99,6 +114,7 @@ class PublicConstraintLedger:
             own_request=_canonical(view["request"]),
             known_sets=known,
             records=_new_records(view, ()),
+            field_snapshots=((view["turn"], _field_snapshot(view)),),
         )
 
     def advance(self, view: dict[str, Any]) -> "PublicConstraintLedger":
@@ -145,6 +161,7 @@ class PublicConstraintLedger:
             own_request=_canonical(view["request"]),
             known_sets=tuple(known),
             records=_new_records(view, self.records),
+            field_snapshots=(*self.field_snapshots, (view["turn"], _field_snapshot(view))),
         )
 
     def matches_current_public_projection(self, view: dict[str, Any]) -> bool:

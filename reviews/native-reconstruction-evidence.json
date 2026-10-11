@@ -1,0 +1,50 @@
+{
+  "turn": 2,
+  "outcomes": 1,
+  "reason": null,
+  "live_terrain_duration": 4,
+  "live_own_volatiles": {
+    "unburden": {
+      "id": "unburden",
+      "name": "Unburden",
+      "target": "[Pokemon:p2a]",
+      "effectOrder": 9,
+      "source": "[Pokemon:p2a]",
+      "sourceSlot": "p2a",
+      "sourceEffect": "[Ability:unburden]"
+    },
+    "stall": {
+      "id": "stall",
+      "name": "stall",
+      "target": "[Pokemon:p2a]",
+      "effectOrder": 13,
+      "source": "[Pokemon:p2a]",
+      "sourceSlot": "p2a",
+      "sourceEffect": {
+        "hit": 1,
+        "totalDamage": 0,
+        "lastHit": true,
+        "hitTargets": [
+          "[Pokemon:p2a]"
+        ],
+        "move": "[Move:protect]"
+      },
+      "duration": 1,
+      "counter": 3
+    }
+  },
+  "candidate_terrain_duration": 5,
+  "candidate_own_volatiles": {
+    "unburden": {
+      "id": "unburden",
+      "name": "Unburden",
+      "target": "[Pokemon:p2a]",
+      "effectOrder": 9,
+      "source": "[Pokemon:p2a]",
+      "sourceSlot": "p2a",
+      "sourceEffect": "[Ability:unburden]"
+    }
+  },
+  "same_legal_choices": true,
+  "python_admission_rejection": null
+}
