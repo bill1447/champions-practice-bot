@@ -1369,6 +1369,10 @@ def test_pinned_move_request_variants_remain_supported(move):
         ["-resisted", "p2a", "1"],
         ["-supereffective", "p2a", "2"],
         ["-weather", "raindance"],
+        ["-enditem", "p1a", "shucaberry", "[weaken]"],
+        ["-enditem", "p2b", "chilanberry", "[weaken]"],
+        ["-fail", "p2b", "unboost", "atk", "[from]:ability:innerfocus", "[of]:p2b"],
+        ["-fail", "p1a", "unboost", "[from]:ability:clearbody", "[of]:p1a"],
     ),
 )
 def test_supported_canonical_mechanics_event_shapes_remain_valid(event):
@@ -1377,6 +1381,24 @@ def test_supported_canonical_mechanics_event_shapes_remain_valid(event):
     view["public_event_delta"]["events"] = [event]
 
     assert public_reachability_observation_issue(view) is None
+
+
+@pytest.mark.parametrize("event", (
+    ["-item", "p1a", "shucaberry", "[weaken]"],
+    ["-enditem", "p1a", "sitrusberry", "[weaken]"],
+    ["-enditem", "p1a", "shucaberry", "[weaken]", "[eat]"],
+    ["-enditem", "p1a", "shucaberry", "[weaken]:private"],
+    ["-enditem", "p1a", "shucaberry", "[future]"],
+    ["-fail", "p2b", "unboost", "def", "[from]:ability:innerfocus", "[of]:p2b"],
+    ["-fail", "p2b", "unboost", "atk", "[from]:ability:innerfocus", "[of]:p1a"],
+    ["-fail", "p2b", "unboost", "atk", "[from]:ability:blaze", "[of]:p2b"],
+    ["-fail", "p2b", "unboost", "atk", "[from]:ability:clearbody", "[of]:p2b"],
+    ["-fail", "p2b", "unboost", "[from]:ability:innerfocus", "[of]:p2b"],
+))
+def test_new_item_and_stat_failure_domains_reject_unproven_shapes(event):
+    view = _valid_public_view()
+    view["public_event_delta"].update(turn=1, events=[event])
+    assert public_reachability_observation_issue(view) is not None
 
 
 def _v5_prior_invalid_mutators():

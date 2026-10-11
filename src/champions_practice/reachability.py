@@ -1395,6 +1395,20 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
             or not _known_item_id(value[2])
         ):
             return _schema_error(path, f"{event} requires actor and pinned item")
+        if "[weaken]" in value[3:]:
+            # Pinned resistance-berry onSourceModifyDamage emits this exact
+            # additional event after eatItem. It is public item evidence,
+            # not permission for arbitrary markers on arbitrary items.
+            resistance_berries = {
+                "babiriberry", "chartiberry", "chilanberry", "chopleberry",
+                "cobaberry", "colburberry", "habanberry", "kasibberry",
+                "kebiaberry", "occaberry", "passhoberry", "payapaberry",
+                "rindoberry", "roseliberry", "shucaberry", "tangaberry",
+                "wacanberry", "yacheberry",
+            }
+            if event == "-enditem" and value[2] in resistance_berries and value[3:] == ["[weaken]"]:
+                return None
+            return _schema_error(path, "weaken requires an exact pinned resistance-berry end event")
         return _event_modifier_tail(
             value[3:],
             path=f"{path}.modifiers",
@@ -1822,6 +1836,23 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return None
 
     if event == "-fail":
+        if len(value) >= 3 and value[2] == "unboost":
+            # Exact pinned ability producers, including Inner Focus blocking
+            # Intimidate. Preserve the stat/source relationship rather than
+            # accepting 'unboost' as an unrestricted action identity.
+            blocked_stats = {
+                "bigpecks": "def", "hypercutter": "atk", "illuminate": "accuracy",
+                "innerfocus": "atk", "keeneye": "accuracy", "mindseye": "accuracy",
+                "oblivious": "atk", "owntempo": "atk", "scrappy": "atk",
+                "clearbody": None, "fullmetalbody": None, "whitesmoke": None,
+            }
+            if len(value) in {5, 6} and _canonical_slot(value[1]):
+                source = value[-2].removeprefix("[from]:ability:")
+                if (source in blocked_stats and value[-2] == "[from]:ability:" + source
+                        and value[-1] == "[of]:" + value[1]
+                        and value[3:-2] == ([] if blocked_stats[source] is None else [blocked_stats[source]])):
+                    return None
+            return _schema_error(path, "unboost failure requires a pinned ability/stat/self-source producer")
         if len(value) < 2 or not _canonical_slot(value[1]):
             return _schema_error(path, "-fail requires a canonical actor")
         tail = value[2:]

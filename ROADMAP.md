@@ -2,6 +2,12 @@
 
 ### October 10 correctness remediation — production support gate
 
+The October 11 public-ledger recovery recognizes exact native resistance-berry
+weaken markers and ability-protected stat-drop failures, preserving the ledger
+through the previously affected balance game. Frozen native replay retains all
+29 decisions' evidence. See `reviews/public-ledger-recovery-2026-10-11.md` for
+recovery measurements and remaining owned-menu/field-duration work.
+
 The admission/diversity audit reconciles the two frozen runs and independently
 admits all 70 saved midgame action checkpoints. New explicit admission telemetry
 and a nine-game, three-roster/three-policy matrix expose broader limits: weather
