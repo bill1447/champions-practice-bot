@@ -1,5 +1,9 @@
 # Protection and own Mega recovery — 2026-10-10
 
+Subsequent replacement and terrain timing recovery, with newer paired benchmark
+results, is recorded in [replacement recovery](replacement-recovery-2026-10-10.md).
+The figures below are the earlier milestone and are preserved as comparison evidence.
+
 Implemented public protection-chain reconstruction and repaired the observed own Mega/ability materialization failures. This is a recovery milestone, not a declaration of universal mechanic support or production readiness.
 
 ## Implementation

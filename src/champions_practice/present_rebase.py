@@ -10,7 +10,7 @@ any historical RNG sequence, and never excludes unrepresented worlds.
 from __future__ import annotations
 
 from champions_practice.present_mechanics import opening_terrain_plan
-from champions_practice.public_lifecycle import public_protection_plan
+from champions_practice.public_lifecycle import public_post_residual_switch, public_protection_plan
 
 import hashlib
 import json
@@ -224,7 +224,7 @@ def build_present_rebase(
     _require_current_public_input(ledger, current_view)
     if (
         current_view["turn"] < 2
-        or current_view["phase"] != "move"
+        or (current_view["phase"] != "move" and not public_post_residual_switch(current_view))
         or not isinstance(ai_preview_choice, str)
         or not ai_preview_choice.startswith("team ")
     ):

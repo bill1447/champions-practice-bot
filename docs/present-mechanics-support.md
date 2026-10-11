@@ -19,11 +19,15 @@ The following fresh midgame inputs deliberately use a legal fallback:
   `fresh-public-world:unsupported-public-protection-history`.
 - Missing effect projection:
   `fresh-public-world:unsupported-public-effect-projection`.
+- Replacement requests without a current public end-of-turn marker:
+  `fresh-public-world:unsupported-public-switch-boundary`.
 
 Protection now has a public lifecycle support path. Ordered channel-visible
 move, cant, switch/drag and single-turn success/failure events establish the shared
-stall chain, including Quick/Wide Guard. Every completed turn needs a move-phase
-completion snapshot; partial replacement windows cannot authorize a final counter.
+stall chain, including Quick/Wide Guard. Every earlier completed turn needs a
+move-phase completion snapshot. A current replacement window is supported only
+after its channel-visible `upkeep` marker, which proves residual processing has
+finished. Pivot and other unfinished-turn replacement windows remain unsupported.
 One confirmed attempt per actor/turn is supported, including called attempts.
 Multiple attempts, missing evidence, actor swaps and unrelated native residual
 effects remain unsupported. Side conditions are also conservative:
@@ -31,7 +35,7 @@ the current projection cannot establish unknown durations or hazard layers.
 None of these reasons proves a hidden world impossible.
 
 Turn-one native openings and exact native forks remain available. Fresh move
-states without these unsupported mechanics can still use tactical search.
+states and certified post-residual replacement states can use tactical search.
 Old particles are discarded before the gate, so they cannot silently bypass it.
 
 ## Diagnostics versus production
@@ -50,6 +54,10 @@ species, ability and turn. Source identity is tracked through ordered public
 switches rather than assigned from the final occupant of a slot. Repeated start
 occurrences remain distinct; snapshots of a growing delta retain its full prefix.
 Unknown starts, missing turns and unsupported events remain rejected.
+When ordered upkeep markers are available, terrain age counts the residuals
+after activation rather than subtracting turn labels. A Surge activation during
+a replacement after upkeep starts with zero elapsed residuals. This avoids
+premature expiration in later move phases.
 
 The native constructor validates the source against its approved hypothetical
 set, restores terrain after switching, then advances the pinned
@@ -70,6 +78,16 @@ residual. Native `addVolatile('stall')` start/restart callbacks establish observ
 chain counts, capped at the pinned maximum. A native residual transition then
 establishes the current duration before exact HP/status/boost restoration. Native
 counters are never assigned or imported from an oracle.
+
+For certified replacement states, the constructor lets the native turn loop
+process a residual and pause on the fainted slot's replacement request before
+restoring observed current HP/status/field. This establishes the native empty
+queue and mid-turn resume state without copying a historical move queue. Exact
+request, owned projection and legal-menu checks still apply. The replacement
+control verifies that submitting replacements advances to the next turn once
+and does not age terrain or protection a second time. Fainted own active flags
+are checked after native faint resolution, including a fainted Mega and a
+fainted member retained in its slot when no reserve remains.
 
 Recovery is measured by fallback rate and midgame search coverage on both frozen
 fixtures. Do not remove correctness checks to recover benchmark numbers.

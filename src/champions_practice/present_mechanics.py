@@ -9,7 +9,9 @@ from __future__ import annotations
 
 import json
 
-from champions_practice.public_lifecycle import ordered_public_lifecycle, public_protection_plan
+from champions_practice.public_lifecycle import (
+    ordered_public_lifecycle, public_post_residual_switch, public_protection_plan,
+)
 
 
 def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
@@ -29,12 +31,17 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
     start = None
     ordered = ordered_public_lifecycle(view, ledger)
     if ordered is not None:
+        has_boundaries = any(event == ["upkeep"] for _, event, _ in ordered)
+        residuals = 0
         observed_terrain = parsed[0][1].get("terrain")
         for source_turn, event, actors in ordered:
+            if event == ["upkeep"]:
+                residuals += 1
             if len(event) >= 2 and event[1].startswith("move:") and event[1].endswith("terrain"):
                 effect = event[1][5:]
                 if event[0] == "-fieldstart":
                     observed_terrain = effect
+                    residuals = 0
                 elif event[0] == "-fieldend" and observed_terrain == effect:
                     observed_terrain = None
                     start = None
@@ -52,7 +59,8 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
             return None
         if start is not None:
             source_turn, source, species, ability = start
-            return {"opening_terrain": terrain, "residual_turns": view["turn"] - source_turn,
+            return {"opening_terrain": terrain, "residual_turns": residuals if has_boundaries
+                    else view["turn"] - source_turn + int(public_post_residual_switch(view)),
                     "source_side": "player" if source.startswith("p2") else "opponent",
                     "source_species": species, "source_ability": ability}
     # Legacy snapshots do not have ordered source identity. They can authorize
@@ -75,7 +83,9 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
                 "terrain" in str(token).lower() for token in event[1:]
             ):
                 return None
-    return {"opening_terrain": terrain, "residual_turns": view["turn"] - 1}
+    return {"opening_terrain": terrain, "residual_turns": residuals if ordered is not None
+            and has_boundaries else view["turn"] - 1
+            + int(public_post_residual_switch(view))}
 
 
 # Pinned moves.ts: stallingMove users plus Quick/Wide Guard, which also call
@@ -96,6 +106,8 @@ def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
     missing history cannot certify absence of a protection chain. A retained
     older delta is not evidence for the just-completed turn.
     """
+    if view.get("phase") == "switch" and not public_post_residual_switch(view):
+        return "unsupported-public-switch-boundary"
     field = view.get("field")
     player = view.get("player")
     opponent = view.get("opponent")

@@ -41,6 +41,15 @@ Broader source/extension domain coverage remains a follow-up requirement.
 
 ## Validation and support claim
 
+The next replacement-lifecycle update found an additional timing assumption:
+public turn labels do not say whether activation preceded or followed that
+turn's residual. A replacement Surge can start after upkeep while still carrying
+the old turn number. The producer now retains the public upkeep marker; age
+counts markers after the activation event. A frozen native replacement control
+matches the fresh five-turn start and its later one-turn remainder, where turn
+subtraction alone incorrectly predicted expiration. End-of-turn replacement
+controls also verify that resuming the battle does not process a second residual.
+
 Unit controls include activation identity surviving a later slot replacement,
 identical starts around an intervening overwrite, missing/partial history and
 public extender loss. Native controls compare timer counters only as offline
