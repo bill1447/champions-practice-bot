@@ -2,6 +2,13 @@
 
 ### October 10 correctness remediation — production support gate
 
+The next playable-reliability update adds native search roots for replacement
+requests certified by a current public upkeep marker. It fixes owned active-flag
+checks that ran before queued faint resolution and counts terrain residuals after
+activation, including Surge starts during post-upkeep replacements. Unfinished
+turn switches remain unsupported. See the replacement lifecycle smoke and
+`reviews/replacement-recovery-2026-10-10.md` for validation and measured recovery.
+
 The follow-up protection recovery retains ordered public lifecycle events and
 requires complete turn boundaries. Pinned start/restart/residual operations now
 restore observed stall chains and switch/interrupt resets. Exact own reserve order
@@ -19,7 +26,7 @@ that the experimental offline constructor restores those counters.
 
 Terrain recovery now uses public opening observations and canonical Surge starts,
 then pinned native residual lifecycle operations to restore timer age. Opening,
-overwrite, expiration and serialization controls pass; protection, weather,
+overwrite, expiration and serialization controls pass; weather,
 pseudo-weather and side-effect support remains pending. Recovery is measured by
 falling fallback rates and rising midgame search coverage on both frozen fixtures.
 Preserve exact own-state and privacy checks throughout.

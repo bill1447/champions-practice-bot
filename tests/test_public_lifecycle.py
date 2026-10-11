@@ -4,7 +4,7 @@ from types import SimpleNamespace
 import pytest
 
 from champions_practice.present_mechanics import opening_terrain_plan
-from champions_practice.public_lifecycle import public_protection_plan
+from champions_practice.public_lifecycle import public_post_residual_switch, public_protection_plan
 
 
 def fixture(events_by_turn, terrain=None):
@@ -99,3 +99,25 @@ def test_final_projection_cannot_resurrect_ended_or_overwritten_terrain(end):
         ["-fieldstart", "move:grassyterrain", "[from]:ability:grassysurge", "[of]:p1a"], end,
     ]], terrain="grassyterrain")
     assert opening_terrain_plan(view, ledger) is None
+
+
+@pytest.mark.parametrize("after_upkeep,age", [(False, 1), (True, 0)])
+def test_terrain_age_counts_residuals_after_activation_not_turn_labels(after_upkeep, age):
+    start = ["-fieldstart", "move:grassyterrain", "[from]:ability:grassysurge", "[of]:p1a"]
+    events = [["upkeep"], start] if after_upkeep else [start, ["upkeep"]]
+    view, ledger = fixture([events], terrain="grassyterrain")
+    assert opening_terrain_plan(view, ledger)["residual_turns"] == age
+
+
+def test_post_residual_replacement_requires_explicit_current_boundary():
+    view, ledger = fixture([SUCCESS + [["upkeep"]]])
+    delta = {"turn": view["turn"], "events": SUCCESS + [["upkeep"]], "unsupported": []}
+    view.update(phase="switch", public_event_delta=delta)
+    snapshot = json.loads(ledger.field_snapshots[-1][1])
+    snapshot.update(phase="switch", public_event_delta=delta)
+    ledger.field_snapshots += ((view["turn"], json.dumps(snapshot)),)
+    assert public_post_residual_switch(view)
+    assert public_protection_plan(view, ledger)[0]["successes"] == 2
+    delta["events"] = SUCCESS
+    assert not public_post_residual_switch(view)
+    assert public_protection_plan(view, ledger) is None

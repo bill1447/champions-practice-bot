@@ -426,6 +426,12 @@ function publicMechanicsEventDelta(battle, sideId) {
     }
     if (logTurn <= 0) continue;
 
+    if (event === 'upkeep') {
+      current.events.push(['upkeep']);
+      actionContext = null;
+      continue;
+    }
+
     if (event === "move") {
       actionContext = publicMoveActionContext(parts, sideId);
       const actor = protocolSlotIdentity(parts[2]);
@@ -1902,7 +1908,11 @@ function materializePresentHypotheses(request) {
   if (!request.state || !view || !Number.isInteger(limit) || limit < 1 || limit > 4) {
     throw new Error("present hypotheses need a fresh root, public view and limit 1..4");
   }
-  if (view.phase !== "move" || view.ended || !Number.isInteger(view.turn) ||
+  const postResidualSwitch = view.phase === 'switch' &&
+    view.public_event_delta?.turn === view.turn &&
+    stableJson(view.public_event_delta?.events?.at(-1)) === stableJson(['upkeep']) &&
+    view.public_event_delta?.unsupported?.length === 0;
+  if ((view.phase !== "move" && !postResidualSwitch) || view.ended || !Number.isInteger(view.turn) ||
       view.turn < 2 || view.turn > 1000 || !view.request ||
       !view.request.side || !Array.isArray(view.player?.team) ||
       !Array.isArray(view.player?.active_details) ||
@@ -1977,8 +1987,8 @@ function materializePresentHypotheses(request) {
         terrainPlan.opening_terrain !== view.field.terrain ||
         (!sourced && original.field.terrain !== terrainPlan.opening_terrain) ||
         !Number.isInteger(terrainPlan.residual_turns) ||
-        (!sourced && terrainPlan.residual_turns !== view.turn - 1) ||
-        terrainPlan.residual_turns < 1 || terrainPlan.residual_turns > 7 ||
+        (!sourced && terrainPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch)) ||
+        terrainPlan.residual_turns < (sourced ? 0 : 1) || terrainPlan.residual_turns > 7 ||
         view.field.weather || view.field.pseudo_weather.length ||
         view.player.side_conditions.length || view.opponent.side_conditions.length) {
       return why('unsupported-opening-terrain-plan');
@@ -2107,13 +2117,15 @@ function materializePresentHypotheses(request) {
       if (!species.exists || !species.isMega) continue;
       const mon = find(own, observed.species);
       const path = `$.player.team[${teamIndex}].species`;
+      // A fainted Mega can remain in an active slot while its owned active
+      // flag is false. The active-form pass already evolved that member.
+      if (mon && asId(mon.species.name) === asId(species.name)) continue;
       if (!mon || mon.isActive ||
           asId(mon.set.species) !== asId(species.baseSpecies) ||
           asId(mon.item) !== asId(observed.item) ||
           asId(original.actions.canMegaEvo(mon)) !== asId(species.name)) {
         return why("unsupported-native-own-benched-mega", path);
       }
-      if (asId(mon.species.name) === asId(species.name)) continue;
       const slot = own.active.findIndex((active) => active && active.hp > 0 && active.ability !== 'unburden');
       if (slot < 0) return why("unsupported-native-own-benched-mega", path);
       const displaced = own.active[slot];
@@ -2193,7 +2205,7 @@ function materializePresentHypotheses(request) {
         }
         if (entry.successes) targets.push(mon);
       }
-      if (targets.length) {
+      if (targets.length && !postResidualSwitch) {
         // Native expiry runs before exact current HP/status/boost restoration.
         // Do not run unrelated Pokemon residual handlers while aging stall.
         if (targets.some((mon) => original.findPokemonEventHandlers(mon, 'onResidual', 'duration')
@@ -2204,6 +2216,25 @@ function materializePresentHypotheses(request) {
         original.field.clearWeather();
         for (const effect of Object.keys(original.field.pseudoWeather)) original.field.removePseudoWeather(effect);
         original.fieldEvent('Residual', targets);
+      }
+    }
+
+    if (postResidualSwitch) {
+      // Public upkeep proves the residual action has finished and there is
+      // no remaining historical move queue. Establish the same native pause
+      // via turnLoop(), which sets midTurn and emits the switch request.
+      // Do this before restoring current HP/status/field: native residuals
+      // must not run twice against the observed present state.
+      for (const observed of view.player.team) {
+        if (observed.hp === 0) find(own, observed.species)?.faint();
+      }
+      for (const observed of view.opponent.revealed) {
+        if (observed.fainted) find(foe, observed.species)?.faint();
+      }
+      original.faintMessages(false, false, false);
+      original.turnLoop();
+      if (original.requestState !== 'switch' || !original.midTurn || original.queue.peek()) {
+        return why('unsupported-native-post-residual-switch');
       }
     }
 
@@ -2295,7 +2326,6 @@ function materializePresentHypotheses(request) {
         }
         slot.pp = entry.pp;
       }
-      if (observed.active !== mon.isActive) return why("own-active-mismatch", `${ownPath}.active`);
       if (observed.boosts && mon.isActive) {
         if (Object.keys(observed.boosts).some((k) => !supportedBoosts.has(k))) {
           return why("unsupported-own-boost");
@@ -2332,7 +2362,8 @@ function materializePresentHypotheses(request) {
         return why("unsupported-opponent-active", `$.opponent.active[${slot}]`);
       }
       const mon = find(foe, observed.base_species);
-      if (!mon || !mon.isActive || asId(observed.species) !== asId(mon.species.name)) {
+      if (!mon || (!mon.isActive && !(postResidualSwitch && mon.fainted && observed.fainted)) ||
+          asId(observed.species) !== asId(mon.species.name)) {
         return why("unsupported-opponent-active", `$.opponent.active[${slot}].species`);
       }
       if (observed.fainted) {
@@ -2387,6 +2418,15 @@ function materializePresentHypotheses(request) {
     // Without it the public view's fainted slot has status "fnt" while
     // this synthetic current turn has status null, failing exact admission.
     original.checkFainted();
+    // faint() queues a native transition; isActive is cleared by
+    // faintMessages(), even when the fainted member remains in its slot.
+    // Compare exact owned flags only after that lifecycle has completed.
+    for (const [teamIndex, observed] of view.player.team.entries()) {
+      const mon = find(own, observed.species);
+      if (observed.active !== mon.isActive) {
+        return why("own-active-mismatch", `$.player.team[${teamIndex}].active`);
+      }
+    }
     // The natural pinned turn-loop clears an unfulfillable forced switch:
     // with no remaining reserve the fainted member stays in side.active.
     // With a reserve available, this is a forced-switch request, NOT a move
@@ -2394,6 +2434,7 @@ function materializePresentHypotheses(request) {
     for (const side of [original.p1, original.p2]) {
       if (!side.active.some((mon) => mon && mon.fainted)) continue;
       if (original.canSwitch(side)) {
+        if (postResidualSwitch) continue;
         return why("fainted-slot-requires-forced-switch");
       }
       for (const mon of side.active) {
@@ -2509,7 +2550,7 @@ function materializePresentHypotheses(request) {
       original.field.removePseudoWeather("trickroom");
       // Do NOT updateSpeed after native expiry.
     }
-    original.makeRequest("move");
+    original.makeRequest(postResidualSwitch ? 'switch' : 'move');
     const choices = original.p2.activeRequest;
     if (exact(choices) !== ownRequested) {
       return why("exact-own-request-mismatch",

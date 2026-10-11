@@ -3,6 +3,13 @@
 import json
 
 
+def public_post_residual_switch(view):
+    """Only the visible upkeep boundary certifies an empty historical queue."""
+    delta = view.get("public_event_delta", {})
+    return (view.get("phase") == "switch" and delta.get("turn") == view.get("turn")
+            and not delta.get("unsupported") and delta.get("events", [])[-1:] == [["upkeep"]])
+
+
 def ordered_public_lifecycle(view, ledger):
     if ledger is None or ledger.current_turn != view.get("turn"):
         return None
@@ -69,7 +76,7 @@ def public_protection_plan(view, ledger):
         return True
 
     for turn, event, identities in ordered:
-        if turn >= view["turn"]:
+        if turn > view["turn"] or (turn == view["turn"] and not public_post_residual_switch(view)):
             return None  # unresolved partial current-turn effects
         if turn != turn_now:
             if not finish_turn():

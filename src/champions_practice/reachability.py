@@ -1138,6 +1138,8 @@ def _mechanics_event_schema_issue(value: object, *, path: str) -> str | None:
         return _schema_error(path, "entries must be non-empty strings")
 
     event = value[0]
+    if event == "upkeep":
+        return None if len(value) == 1 else _schema_error(path, "invalid public upkeep boundary")
     if event in {"switch", "drag", "move", "cant"}:
         if len(value) != 3 or not _canonical_actor(value[1]) or (
             value[2] not in _PUBLIC_PREVENTION_IDENTITIES if event == "cant"
