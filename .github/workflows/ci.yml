@@ -113,22 +113,45 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.present_mechanics_smoke
 
-      - name: Public protection and own Mega lifecycle recovery
+      - name: Persistent admission and native outcome controls
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
-        run: |
-          .\.venv\Scripts\python.exe -m champions_practice.protection_lifecycle_smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m champions_practice.own_mega_lifecycle_smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m champions_practice.terrain_lifecycle_review_smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m champions_practice.replacement_lifecycle_smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m champions_practice.trace_trick_room_smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m champions_practice.diversity_boundary_smoke
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          .\.venv\Scripts\python.exe -m champions_practice.public_ledger_recovery_smoke
+        run: .\.venv\Scripts\python.exe -m champions_practice.persistent_admission_smoke
+
+      - name: Public protection lifecycle recovery
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.protection_lifecycle_smoke
+
+      - name: Own Mega lifecycle recovery
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.own_mega_lifecycle_smoke
+
+      - name: Terrain lifecycle recovery
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.terrain_lifecycle_review_smoke
+
+      - name: Replacement lifecycle recovery
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.replacement_lifecycle_smoke
+
+      - name: Trace and Trick Room lifecycle recovery
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.trace_trick_room_smoke
+
+      - name: Diverse team native boundaries
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.diversity_boundary_smoke
+
+      - name: Public ledger native event recovery
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.public_ledger_recovery_smoke
 
       - name: Unit tests
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}

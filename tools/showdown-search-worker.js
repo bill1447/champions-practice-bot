@@ -2245,6 +2245,82 @@ function materializePresentHypotheses(request) {
       if (mon && !mon.isStarted) original.actions.runSwitch(mon);
     }
 
+    if (request.active_tenure_plan != null) {
+      // These are PUBLIC lifecycle counts. Re-establish them using pinned
+      // switchIn, endTurn and runMove; never assign native counters. Splash
+      // is an inert external move entry, not a claimed historical command.
+      const plan = request.active_tenure_plan;
+      if (!Array.isArray(plan) || plan.length < 1 || plan.length > 4) {
+        return why('unsupported-active-tenure-plan');
+      }
+      const seen = new Set();
+      const targets = [];
+      for (const entry of plan) {
+        const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
+        const mon = side?.active[entry.slot];
+        const key = `${entry.side}:${entry.slot}`;
+        if (Object.keys(entry).sort().join(',') !== 'active_turns,move_actions,side,slot,species' ||
+            !Number.isInteger(entry.slot) || entry.slot < 0 || entry.slot > 1 || !mon || seen.has(key) ||
+            ![asId(mon.set.species), asId(mon.species.name)].includes(asId(entry.species)) ||
+            !Number.isInteger(entry.move_actions) || entry.move_actions < 0 || entry.move_actions > 1000 ||
+            !Number.isInteger(entry.active_turns) || entry.active_turns < 0 || entry.active_turns > 1000) {
+          return why('unsupported-active-tenure-plan');
+        }
+        seen.add(key);
+        targets.push({entry, mon, side});
+      }
+      const liveCount = [...view.player.active_details, ...view.opponent.active]
+        .filter(mon => mon && !mon.fainted).length;
+      if (targets.length !== liveCount) return why('incomplete-active-tenure-plan');
+      function reset(target) {
+        const {mon, side, entry} = target;
+        const staging = side.pokemon.find(candidate => !candidate.isActive && candidate.hp > 0);
+        if (!staging || original.actions.switchIn(staging, entry.slot) !== true ||
+            original.actions.switchIn(mon, entry.slot) !== true) return false;
+        original.actions.runSwitch(mon);
+        original.queue.clear();
+        if (mon.activeTurns !== 0 || mon.activeMoveActions !== 0) return false;
+        for (let count = 0; count < entry.move_actions; count++) {
+          original.actions.runMove('splash', mon, 0, {externalMove: true});
+        }
+        return true;
+      }
+      // Reset each target at its public entry point on one native endTurn
+      // timeline. All HP, boosts, field effects and requests are restored
+      // and independently checked AFTER this synthetic lifecycle.
+      const maxAge = Math.max(...targets.map(target => target.entry.active_turns));
+      for (let step = 0; step <= maxAge; step++) {
+        for (const target of targets) {
+          if (step === maxAge - target.entry.active_turns && !reset(target)) {
+            return why('unsupported-native-active-tenure-reset');
+          }
+        }
+        if (step < maxAge) original.endTurn();
+      }
+      for (const {entry, mon} of targets) {
+        if (mon.activeTurns !== entry.active_turns || mon.activeMoveActions !== entry.move_actions) {
+          return why('unsupported-native-active-tenure');
+        }
+      }
+    }
+
+    if (request.opponent_pp_plan != null) {
+      const plan = request.opponent_pp_plan;
+      if (!Array.isArray(plan) || plan.length > 16) return why('unsupported-opponent-pp-plan');
+      const seen = new Set();
+      for (const entry of plan) {
+        const mon = find(foe, entry.species);
+        const key = `${asId(entry.species)}:${entry.move}`;
+        const move = mon?.moveSlots.find(slot => slot.id === entry.move);
+        if (Object.keys(entry).sort().join(',') !== 'move,species,uses' || !mon || !move || seen.has(key) ||
+            !Number.isInteger(entry.uses) || entry.uses < 1 || entry.uses > move.maxpp ||
+            mon.deductPP(entry.move, entry.uses) !== entry.uses) {
+          return why('unsupported-native-opponent-pp');
+        }
+        seen.add(key);
+      }
+    }
+
     if (request.trace_plan != null) {
       if (!Array.isArray(request.trace_plan) || request.trace_plan.length > 4) return why('unsupported-trace-plan');
       const seen = new Set();

@@ -10,6 +10,7 @@ from champions_practice.belief_controller import SealedBattleFacade
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_mechanics import unsupported_present_mechanics
+from champions_practice.persistent_support import current_capability_issue
 from champions_practice.demo_fixture import (
     DEMO_AI_PREVIEW_CHOICE, DEMO_AI_TEAM, DEMO_HUMAN_TEAM, demo_public_priors,
 )
@@ -84,7 +85,8 @@ def main() -> None:
                 if public_ledger is None else public_ledger.advance(public_before)
             )
             expected_gate = (
-                unsupported_present_mechanics(public_before, public_ledger)
+                (unsupported_present_mechanics(public_before, public_ledger)
+                 or current_capability_issue(public_before, demo_public_priors()))
                 if public_before["turn"] >= 2 else None
             )
             ready = battle.lock_ai_action()

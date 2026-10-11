@@ -10,6 +10,10 @@ any historical RNG sequence, and never excludes unrepresented worlds.
 from __future__ import annotations
 
 from champions_practice.present_mechanics import opening_terrain_plan, public_trick_room_plan
+from champions_practice.present_mechanics import unsupported_present_mechanics
+from champions_practice.persistent_support import (
+    current_capability_issue, public_active_tenure_plan, public_opponent_pp_plan, static_support_issue,
+)
 from champions_practice.public_lifecycle import (
     public_opponent_mega_plan, public_post_residual_switch, public_protection_plan, public_trace_plan,
 )
@@ -69,7 +73,7 @@ def _first_public_difference(actual: Any, expected: Any, path: str) -> str | Non
     return None if actual == expected else path
 
 
-def _positive_mechanics_rejection(
+def _projection_mechanics_rejection(
     state: dict[str, Any],
     projected: dict[str, Any],
     *,
@@ -151,6 +155,107 @@ def _positive_mechanics_rejection(
                 return "$.opponent.revealed.fainted"
     except (KeyError, IndexError, TypeError, ZeroDivisionError, AttributeError):
         return "$.state.invalid-native-structure"
+    return None
+
+
+def _positive_mechanics_rejection(state, projected, *, current_view, ledger,
+                                  legal_live, hypothetical_legal):
+    """Require the support contract as well as projection/menu equality."""
+    issue = unsupported_present_mechanics(current_view, ledger)
+    if issue:
+        return issue
+    plan = public_active_tenure_plan(current_view, ledger)
+    if plan is None:
+        return 'unsupported-persistent:active-tenure'
+    try:
+        trace_plan = public_trace_plan(current_view, ledger)
+        for side_index, side in enumerate(state['sides']):
+            for slot, mon in enumerate(side['pokemon']):
+                issue = static_support_issue(ability=mon['ability'], item=mon['item'],
+                                             moves=mon['set']['moves'], opponent=side_index == 0)
+                if issue:
+                    return issue
+                if any(effect not in {'stall'}
+                       for effect in mon['volatiles']):
+                    return 'unsupported-persistent:native-volatile'
+                side_view = current_view['player']['active_details'] if side_index == 1 else current_view['opponent']['active']
+                observed_mega = slot < len(side_view) and side_view[slot] and _sid(side_view[slot]['species']) == _sid(mon['set']['species']) + 'mega'
+                if mon['isActive'] and _sid(mon['set']['ability']) == 'trace' and not observed_mega:
+                    entries = [entry for entry in (trace_plan or [])
+                               if entry['side'] == ('player' if side_index == 1 else 'opponent') and entry['slot'] == slot]
+                    if len(entries) != 1 or mon['ability'] != entries[0]['ability']:
+                        return 'unsupported-persistent:trace-copy-unresolved'
+        for entry in plan:
+            mon = state['sides'][1 if entry['side'] == 'player' else 0]['pokemon'][entry['slot']]
+            if (type(mon['activeMoveActions']) is not int or type(mon['activeTurns']) is not int
+                    or mon['activeMoveActions'] != entry['move_actions']
+                    or mon['activeTurns'] != entry['active_turns']):
+                return 'unsupported-persistent:active-tenure-mismatch'
+        for entry in public_protection_plan(current_view, ledger):
+            mon = state['sides'][1 if entry['side'] == 'player' else 0]['pokemon'][entry['slot']]
+            stall = mon['volatiles'].get('stall')
+            # Pinned conditions.ts: start=3, restart triples to 729; one
+            # completed residual leaves duration 1 at both supported pauses.
+            expected = {'counter': 3 ** entry['successes'], 'duration': 1} if entry['successes'] else None
+            actual = {key: stall.get(key) for key in ('counter', 'duration')} if stall else None
+            if _canonical(actual) != _canonical(expected):
+                return 'unsupported-persistent:protection-mismatch'
+        field_issue = _native_field_plan_rejection(state, current_view, ledger)
+        if field_issue:
+            return field_issue
+        pp_plan = public_opponent_pp_plan(current_view, ledger)
+        if pp_plan is None:
+            return 'unsupported-persistent:opponent-pp'
+        pp_counts = {( ''.join(c for c in entry['species'].lower() if c.isalnum()), entry['move']): entry['uses']
+                     for entry in pp_plan}
+        for mon in state['sides'][0]['pokemon']:
+            for move in mon['moveSlots']:
+                used = pp_counts.get((_sid(mon['set']['species']), move['id']), 0)
+                if (type(move['pp']) is not int or type(move['maxpp']) is not int
+                        or move['pp'] != move['maxpp'] - used):
+                    return 'unsupported-persistent:opponent-pp-mismatch'
+    except (KeyError, IndexError, TypeError):
+        return 'unsupported-persistent:invalid-native-capabilities'
+    return _projection_mechanics_rejection(
+        state, projected, current_view=current_view, ledger=ledger,
+        legal_live=legal_live, hypothetical_legal=hypothetical_legal,
+    )
+
+
+def _native_field_plan_rejection(state, view, ledger):
+    """Check public age against each hypothetical source's native item domain.
+
+    Native constructors still set/age effects; this independent check never
+    writes a timer or reads a sealed source. References use pinned sim/state.ts.
+    """
+    def source(effect):
+        ref = effect.get('source')
+        if not isinstance(ref, str) or not ref.startswith('[Pokemon:p') or not ref.endswith(']'):
+            return None
+        address = ref[10:-1]
+        if len(address) != 2 or address[0] not in '12' or address[1] not in 'abcdef':
+            return None
+        return state['sides'][int(address[0]) - 1]['pokemon'][ord(address[1]) - ord('a')]
+
+    for plan, effect, terrain in (
+        (opening_terrain_plan(view, ledger), state['field']['terrainState'], True),
+        (public_trick_room_plan(view, ledger), state['field']['pseudoWeather'].get('trickroom', {}), False),
+    ):
+        if plan is None:
+            continue
+        mon = source(effect)
+        if mon is None:
+            return 'unsupported-persistent:field-source-mismatch'
+        native_form = str(mon.get('species', '')).removeprefix('[Species:').removesuffix(']')
+        if plan.get('source_species') and _sid(plan['source_species']) not in {
+            _sid(mon['set']['species']), _sid(native_form),
+        }:
+            return 'unsupported-persistent:field-source-mismatch'
+        if plan.get('source_side') and int(effect['source'][10]) != (2 if plan['source_side'] == 'player' else 1):
+            return 'unsupported-persistent:field-source-mismatch'
+        duration = (8 if terrain and mon['item'] == 'terrainextender' else 5) - plan['residual_turns']
+        if type(effect.get('duration')) is not int or effect['duration'] != duration:
+            return 'unsupported-persistent:field-duration-mismatch'
     return None
 
 
@@ -255,6 +360,10 @@ def build_present_rebase(
         )
         return PresentRebaseReport((), 0, 0, 0, reason)
 
+    issue = unsupported_present_mechanics(current_view, ledger) or current_capability_issue(current_view, priors)
+    if issue:
+        return PresentRebaseReport((), 0, 0, 0, issue)
+
     batch = build_current_state_set_proposals(
         ledger=ledger, current_view=current_view,
         priors=priors, limit=max_roots,
@@ -297,6 +406,8 @@ def build_present_rebase(
             report = worker.materialize_present_hypotheses(
                 state=opening, current_view=current_view,
                 limit=min(4, max_particles - len(found)),
+                active_tenure_plan=public_active_tenure_plan(current_view, ledger),
+                opponent_pp_plan=public_opponent_pp_plan(current_view, ledger),
                 **({"mechanics_plan": opening_terrain_plan(current_view, ledger)}
                    if opening_terrain_plan(current_view, ledger) is not None else {}),
                 **({"protection_plan": public_protection_plan(current_view, ledger)}

@@ -10,6 +10,7 @@ from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.demo_fixture import DEMO_AI_TEAM, DEMO_AI_PREVIEW_CHOICE, demo_public_priors
 from champions_practice.diversity_league import audit_report
 from champions_practice.present_mechanics import unsupported_present_mechanics
+from champions_practice.persistent_support import current_capability_issue
 from champions_practice.present_rebase import build_present_rebase
 from champions_practice.search_worker import HypotheticalSearchWorker
 from champions_practice.strength_league import _atomic_write_json, _source_identity
@@ -26,11 +27,12 @@ def audit_native(report, root):
                 view = trace["bot_public_before"]
                 ledger = PublicConstraintLedger.from_public_view(view) if ledger is None else ledger.advance(view)
                 if trace["mode"] != "forced-wait" and view["turn"] >= 2:
-                    issue = unsupported_present_mechanics(view, ledger)
+                    priors = public_priors() if report["fixture_id"] == FIXTURE_ID else demo_public_priors()
+                    issue = unsupported_present_mechanics(view, ledger) or current_capability_issue(view, priors)
                     result = None
                     if issue is None:
                         result = build_present_rebase(worker, ledger=ledger, current_view=view,
-                            priors=public_priors() if report["fixture_id"] == FIXTURE_ID else demo_public_priors(),
+                            priors=priors,
                             battle_format=report["format_id"],
                             ai_team=_pin_known_team_genders(DEMO_AI_TEAM, view["request"]),
                             ai_preview_choice=DEMO_AI_PREVIEW_CHOICE,

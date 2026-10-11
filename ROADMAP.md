@@ -1,5 +1,35 @@
 # Champions Practice Bot Roadmap
 
+### October 11 review gate — #237–#239, standing in for #240
+
+The human-supplied independent review reproduced admitted fresh worlds with
+wrong Fake Out, sleep and Flash Fire state. Its P1 findings invalidate the
+previous inference from matching observations/menus and zero fallback counts.
+Keep learned priors, strength claims and arbitrary team import on hold. The
+review was supplied in the conversation; the three referenced `review/` files
+are not present in this checkout. The remediation report is
+`reviews/persistent-admission-remediation-2026-10-11.md`.
+
+Fresh admission now requires a closed public-history/static-capability contract,
+also enforced by the native-candidate validator. Unknown events, volatiles,
+moves, abilities or items fail closed. Every public-compatible prior is checked
+before bounded sampling, so an unsupported unseen opponent mechanic cannot be
+silently discarded. Native move-entry and endTurn operations reconstruct Fake
+Out's action counter and field tenure; native deductPP restores ordinary visible
+opponent move uses. Sleep, toxic, Flash Fire activation, other unrestored
+volatiles, opponent inventory changes and damaged/statused opponent reserves
+remain unresolved. Encore and Stomping Tantrum capabilities need last-move/result
+reconstruction before any fresh admission, even before a new volatile appears.
+
+Native controls cover both Fake Out sides, switch/return, fainted replacements,
+pivots, PP and matched next-turn damage/flinch outcomes. Each lifecycle CI step
+now runs independently after prerequisite success, even if another check fails.
+Re-auditing the two old frozen runs rejects all 70 saved midgame checkpoints;
+this is a safety correction, not a new gameplay or strength result. In the
+eight-decision human-Mega control, one opening searches, one decision waits and
+six use explicit safety fallback. Recover Unburden activation on both sides and consumed-item
+inventory next; retain uncertainty wherever public evidence is not decisive.
+
 ### October 10 correctness remediation — production support gate
 
 The October 11 public-ledger recovery recognizes exact native resistance-berry
@@ -8,8 +38,10 @@ through the previously affected balance game. Frozen native replay retains all
 29 decisions' evidence. See `reviews/public-ledger-recovery-2026-10-11.md` for
 recovery measurements and remaining owned-menu/field-duration work.
 
-The admission/diversity audit reconciles the two frozen runs and independently
-admits all 70 saved midgame action checkpoints. New explicit admission telemetry
+The earlier admission/diversity audit reconciled the two frozen runs and
+admitted all 70 saved midgame action checkpoints under the former checks.
+That result establishes projection compatibility, not mechanical equivalence.
+New explicit admission telemetry
 and a nine-game, three-roster/three-policy matrix expose broader limits: weather
 and side-effect durations, berry protocol ledger retention, pivot boundaries
 and exact owned-menu reconstruction. Intimidate marker parsing and locked
