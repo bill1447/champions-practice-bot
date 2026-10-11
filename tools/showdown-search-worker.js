@@ -3212,6 +3212,7 @@ class NeedFiniteRandomDecision extends Error {
 }
 
 class UnsupportedFiniteRandomDecision extends Error {}
+class ContradictedPublicChancePrefix extends Error {}
 
 function finiteRandomOptions(from, to) {
   if (from === undefined) {
@@ -3246,6 +3247,7 @@ function resolveFiniteTransitionPath(
   viewSide,
   previews,
   path,
+  experimentalChance = null,
 ) {
   const battle = Battle.fromJSON(JSON.stringify(state));
   battle.restart(() => {});
@@ -3254,10 +3256,50 @@ function resolveFiniteTransitionPath(
     p2: [...battle.p2.pokemon],
   };
   let pathIndex = 0;
+  // Offline 11B only: valid finite chance inputs replace unknown random tape.
+  // Production finite reachability retains its existing seed-materialization path.
+  const chanceSampler = experimentalChance?.sampleSeed
+    ? new PRNG(experimentalChance.sampleSeed) : null;
+  if (experimentalChance) path = cloneJson(path);
+  const nativeNext = battle.prng.rng.next.bind(battle.prng.rng);
+  const nativeRandom = battle.prng.random.bind(battle.prng);
 
   function choose(kind, options, metadata) {
+    const expectedDelta = experimentalChance?.expectedPublicDelta;
+    if (expectedDelta) {
+      const partial = publicMechanicsEventDelta(battle, viewSide);
+      // Different-turn ledgers can still be the previous completed turn. Only
+      // compare evidence already emitted for the target ledger's own turn.
+      if (partial.turn === expectedDelta.turn && partial.events.some(
+        (event, index) => stableJson(event) !== stableJson(expectedDelta.events[index]),
+      )) throw new ContradictedPublicChancePrefix();
+    }
     if (pathIndex >= path.length) {
-      throw new NeedFiniteRandomDecision(kind, options, metadata);
+      if (!chanceSampler && !experimentalChance?.traceNative) {
+        throw new NeedFiniteRandomDecision(kind, options, metadata);
+      }
+      let value;
+      if (experimentalChance?.traceNative) {
+        // Privileged validator only. This option is never reachable through the
+        // isolated tracker executable's inbound operations.
+        const guard = battle.prng.rng.next;
+        battle.prng.rng.next = nativeNext;
+        try {
+          value = kind === "chance"
+            ? nativeRandom(metadata.denominator) < metadata.numerator
+            : nativeRandom(metadata.from, metadata.to === null ? undefined : metadata.to);
+        } finally {
+          battle.prng.rng.next = guard;
+        }
+      } else {
+        value = kind === "chance"
+          ? chanceSampler.randomChance(metadata.numerator, metadata.denominator)
+          : chanceSampler.random(metadata.from, metadata.to === null ? undefined : metadata.to);
+      }
+      if (experimentalChance.forceChanceFalse && kind === "chance" && options.includes(false)) {
+        value = false;
+      }
+      path.push({ kind, value, metadata });
     }
     const supplied = path[pathIndex++];
     if (
@@ -3267,6 +3309,7 @@ function resolveFiniteTransitionPath(
     ) {
       throw new Error("finite stochastic decision path no longer matches runtime");
     }
+    if (experimentalChance?.consumeNativeDraws) nativeNext();
     return supplied.value;
   }
 
@@ -3336,8 +3379,12 @@ function resolveFiniteTransitionPath(
       state: battle.toJSON(),
       member_lineage: memberLineage,
       view: playerView(battle, viewSide, effectivePreviews),
+      ...(experimentalChance ? { random_path: path } : {}),
     };
   } catch (error) {
+    if (error instanceof ContradictedPublicChancePrefix) {
+      return { pruned: true, reason: "emitted-public-event-prefix-contradiction" };
+    }
     if (error instanceof NeedFiniteRandomDecision) {
       return {
         complete: false,
@@ -4220,30 +4267,40 @@ function destroySessions() {
   sessionPreviewSpecies.clear();
 }
 
-process.on("exit", destroySessions);
+// The isolated 11B executable imports only hypothetical operations. Importing
+// this module does not start the production transport or expose session objects.
+module.exports = {
+  createBattle, resolveBranch, resolveFiniteTransitionPath, stateView, legalChoices,
+  normalizedPublicObservationForReachability, importTeam, Teams,
+  stableJson,
+};
 
-const rl = readline.createInterface({
-  input: process.stdin,
-  crlfDelay: Infinity,
-});
+if (require.main === module) {
+  process.on("exit", destroySessions);
 
-rl.on("line", (line) => {
-  if (!line.trim()) return;
+  const rl = readline.createInterface({
+    input: process.stdin,
+    crlfDelay: Infinity,
+  });
 
-  let id = null;
-  try {
-    const request = JSON.parse(line);
-    id = request.id ?? null;
-    const result = handle(request);
-    process.stdout.write(JSON.stringify({ id, ok: true, result }) + "\n");
-  } catch (error) {
-    process.stdout.write(
-      JSON.stringify({
-        id,
-        ok: false,
-        error: error instanceof Error ? error.message : String(error),
-        safe_retry: error instanceof Error && error.safeRetry === true,
-      }) + "\n",
-    );
-  }
-});
+  rl.on("line", (line) => {
+    if (!line.trim()) return;
+
+    let id = null;
+    try {
+      const request = JSON.parse(line);
+      id = request.id ?? null;
+      const result = handle(request);
+      process.stdout.write(JSON.stringify({ id, ok: true, result }) + "\n");
+    } catch (error) {
+      process.stdout.write(
+        JSON.stringify({
+          id,
+          ok: false,
+          error: error instanceof Error ? error.message : String(error),
+          safe_retry: error instanceof Error && error.safeRetry === true,
+        }) + "\n",
+      );
+    }
+  });
+}
