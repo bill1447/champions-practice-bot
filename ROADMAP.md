@@ -2,6 +2,14 @@
 
 ### October 10 correctness remediation — production support gate
 
+The admission/diversity audit reconciles the two frozen runs and independently
+admits all 70 saved midgame action checkpoints. New explicit admission telemetry
+and a nine-game, three-roster/three-policy matrix expose broader limits: weather
+and side-effect durations, berry protocol ledger retention, pivot boundaries
+and exact owned-menu reconstruction. Intimidate marker parsing and locked
+Electro Shot public targets have native regression fixes. See
+`reviews/admission-diversity-audit-2026-10-10.md` and `docs/diversity-league.md`.
+
 The next recovery update covers publicly disclosed Trace terrain sources and
 Trick Room timing through ordered upkeep evidence and pinned native lifecycle
 operations. Public opponent Mega events also preserve evolution across bench

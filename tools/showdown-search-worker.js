@@ -741,7 +741,9 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       observation.items.add(toId(parts[4]));
     } else if (event === "-ability") {
       observation.abilities.add(toId(parts[3]));
-      if (parts[4] && !parts[4].startsWith("[")) {
+      // Native Trace discloses a second ability; Intimidate's bare "boost"
+      // protocol marker is not an ability identity.
+      if (parts[4] && battle.dex.abilities.get(parts[4]).exists) {
         observation.abilities.add(toId(parts[4]));
       }
     } else if (event === "faint") {
@@ -1090,7 +1092,7 @@ function moveSlotCandidates(request, slot, gameType) {
     const targets = publicMoveTargetLocations(
       request,
       slot,
-      move.target,
+      move.target || "normal",
       gameType,
     );
     const events = [""];
@@ -1298,7 +1300,10 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
       /^[+-]\d+$/.test(token)
     );
     const targetLoc = targetToken ? Number(targetToken) : 0;
-    const targetIsChoosable = PUBLIC_CHOOSABLE_TARGETS.has(move.target);
+    // Native Side.chooseMove defaults a locked request lacking target metadata
+    // to normal when selecting by move id, before resolving the locked target.
+    const targetType = move.target || "normal";
+    const targetIsChoosable = PUBLIC_CHOOSABLE_TARGETS.has(targetType);
 
     if (targetIsChoosable && request.active.length >= 2) {
       if (!targetLoc) return false;
@@ -1306,7 +1311,7 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
         !publicValidTargetLoc(
           targetLoc,
           slot,
-          move.target,
+          targetType,
           request.active.length,
           gameType,
         )
