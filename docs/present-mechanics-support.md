@@ -11,7 +11,7 @@ counter, opponent private set or historical particle.
 
 The following fresh midgame inputs deliberately use a legal fallback:
 
-- Active weather, unsupported terrain, pseudo-weather or side conditions:
+- Active weather, unsupported terrain, unsupported pseudo-weather or side conditions:
   `fresh-public-world:unsupported-public-effect-duration`.
 - Protection history whose complete ordered success/reset evidence is unavailable:
   `fresh-public-world:unsupported-public-protection-chain`.
@@ -21,6 +21,8 @@ The following fresh midgame inputs deliberately use a legal fallback:
   `fresh-public-world:unsupported-public-effect-projection`.
 - Replacement requests without a current public end-of-turn marker:
   `fresh-public-world:unsupported-public-switch-boundary`.
+- Unrepresented current Trace copies or their activation histories:
+  `fresh-public-world:unsupported-public-trace-state`.
 
 Protection now has a public lifecycle support path. Ordered channel-visible
 move, cant, switch/drag and single-turn success/failure events establish the shared
@@ -64,13 +66,36 @@ set, restores terrain after switching, then advances the pinned
 `fieldEvent('Residual', [])` lifecycle. Pokemon residual callbacks are excluded.
 Native expiration rejects the proposal; timers are never assigned directly.
 Extension items remain native set hypotheses. Public Terrain Extender inventory
-changes are unsupported pending an extension timing domain. Copied-ability
-sources such as Trace can also fail the native source check. Native controls
+changes are unsupported pending an extension timing domain. Native controls
 cover opening and overwrite starts, same-terrain entry without refresh,
 reactivation after another terrain, retained extenders, several remaining
 durations, expiration and serialization. This is limited terrain support,
 not a claim that every source or duration domain has been covered. Weather,
-pseudo-weather and side effects remain outstanding.
+pseudo-weather other than the bounded Trick Room path below, and side effects
+remain outstanding.
+
+Ordered public Trace disclosures identify the copied ability and opposing donor.
+The supported copy set is the four Surge abilities, inactive Unburden and Pixilate.
+Switches and Mega evolution clear current copies. A historical terrain start keeps
+its original Trace source even after that source evolves or leaves the field;
+native terrain start receives the disclosed Surge effect while retaining the
+source's current ability. Current copies use native `setAbility`. Lost-item
+Unburden activation and other borrowed abilities remain unsupported. Public Mega
+events restore opponent evolution and its disclosed stone, including benched Mega
+members. Public returning Mega identities use static native species metadata.
+
+Trick Room uses canonical public starts, toggle ends and subsequent upkeep markers.
+Complete evidence establishes zero through four elapsed residuals; unknown starts,
+missing boundaries and extension annotations remain unsupported. The constructor
+uses native `addPseudoWeather` and field residual operations. Joint terrain and
+Trick Room reconstruction activates younger effects later in the same residual
+timeline, so restoring one does not over-age the other. Native Persistent sources
+are rejected until their extension domain is represented. Expired Trick Room can
+leave mixed signed owned speed caches after replacements; only owned members whose
+observed cache is negative receive native speed updates under temporary Trick Room.
+No speed or duration counter is assigned directly. Native controls cover both
+sides, reactivation, source switch, expiration, retained terrain extension, Mega
+bench/return and a measured forced-replacement sequence.
 
 A publicly prevented action with a pinned `cant` reason, such as flinching,
 cannot refresh native stall. The prior duration-one stall expires on that turn's

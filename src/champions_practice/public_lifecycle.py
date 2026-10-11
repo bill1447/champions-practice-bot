@@ -2,6 +2,71 @@
 
 import json
 
+SURGE_ABILITIES = frozenset({"psychicsurge", "grassysurge", "electricsurge", "mistysurge"})
+TRACE_ABILITIES = SURGE_ABILITIES | {"unburden", "pixilate"}
+
+
+def public_trace_copy(event, actors, abilities=SURGE_ABILITIES):
+    """One positively disclosed native Trace copy, with an identified donor."""
+    if (len(event) < 6 or event[0] != "-ability" or event[3] != "trace"
+            or "[from]:ability:trace" not in event or event[2] not in abilities):
+        return None
+    donor = next((token[5:] for token in event if token.startswith("[of]:")), None)
+    if event[1] not in actors or donor not in actors or donor[:2] == event[1][:2]:
+        return None
+    return event[2]
+
+
+def public_trace_plan(view, ledger):
+    """Current disclosed Surge copies; switch and native Mega end that copy."""
+    ordered = ordered_public_lifecycle(view, ledger)
+    if ordered is None:
+        return None
+    copies = {}
+    identities = {}
+    for _, event, identities in ordered:
+        actor = event[1] if len(event) > 1 else None
+        if event[0] in {"switch", "drag", "-mega"}:
+            copies.pop(actor, None)
+        elif event[0] == "-ability":
+            copied = public_trace_copy(event, identities, TRACE_ABILITIES)
+            copies.pop(actor, None)
+            if "[from]:ability:trace" in event:
+                copies[actor] = copied
+        elif event[0] in {"-endability", "-transform", "-formechange"} and actor in copies:
+            return None
+        elif event[0] in {"-item", "-enditem"} and copies.get(actor) == "unburden":
+            return None  # Lost-item activation needs a separate opponent speed domain.
+    result = []
+    for side, prefix, entries in (
+        ("player", "p2", view["player"].get("active_details", [])),
+        ("opponent", "p1", view["opponent"].get("active", [])),
+    ):
+        for slot, mon in enumerate(entries):
+            actor = prefix + chr(97 + slot)
+            if mon and not mon.get("fainted") and actor in copies:
+                if copies[actor] is None:
+                    return None
+                result.append({"side": side, "slot": slot, "species": identities[actor],
+                               "ability": copies[actor]})
+    return result
+
+
+def public_opponent_mega_plan(view, ledger):
+    """A channel-visible Mega event proves the evolution and its stone."""
+    ordered = ordered_public_lifecycle(view, ledger)
+    if ordered is None:
+        return None
+    result = {}
+    for _, event, actors in ordered:
+        if event[0] != "-mega" or not event[1].startswith("p1"):
+            continue
+        if len(event) != 4 or event[1] not in actors:
+            return None
+        species = event[2]
+        result[species] = {"species": species, "item": event[3]}
+    return list(result.values())
+
 
 def public_post_residual_switch(view):
     """Only the visible upkeep boundary certifies an empty historical queue."""

@@ -547,6 +547,7 @@ def run_game(
     project_root: Path,
     baseline_selector: Callable[[tuple[str, ...]], str] = _baseline_choice,
     trace_sink: Callable[[tuple[dict[str, Any], ...], str], None] | None = None,
+    fixture_override: dict[str, Any] | None = None,
 ) -> GameResult:
     session_seed = _sodium_seed(config.seed, game_index)
     particle_seed = _particle_seed(config.seed, game_index)
@@ -560,6 +561,9 @@ def run_game(
     opponent_priors = (
         uncertain_public_priors() if uncertain else demo_public_priors()
     )
+    fixture = fixture_override or {}
+    opponent_team = fixture.get("opponent_team", opponent_team)
+    opponent_priors = fixture.get("opponent_priors", opponent_priors)
 
     decision_seconds: list[float] = []
     conditioning_seconds: list[float] = []
@@ -583,8 +587,8 @@ def run_game(
     with SealedBattleFacade(
         project_root=project_root,
         battle_format=CHAMPIONS_FORMAT,
-        ai_team=DEMO_AI_TEAM,
-        ai_preview_choice=DEMO_AI_PREVIEW_CHOICE,
+        ai_team=fixture.get("ai_team", DEMO_AI_TEAM),
+        ai_preview_choice=fixture.get("ai_preview", DEMO_AI_PREVIEW_CHOICE),
         opponent_priors=opponent_priors,
         world_limit=config.world_limit,
         particles_per_world=config.particles_per_world,
@@ -608,7 +612,7 @@ def run_game(
         preview_choices = battle.legal_human_choices()
         baseline_preview = _resolve_preview_choice(
             preview_choices,
-            DEMO_AI_PREVIEW_CHOICE,
+            fixture.get("opponent_preview", DEMO_AI_PREVIEW_CHOICE),
         )
         battle.commit_preview(human_choice=baseline_preview)
 
@@ -680,6 +684,10 @@ def run_game(
                 "post_decision_conditioning_seconds": result.conditioning_seconds,
                 "degraded": bool(result.degraded),
                 "terminal": bool(result.terminal),
+                "native_admission": (
+                    {"schema": "native-admission-v1", "path": "forced-wait", "status": "not-required"}
+                    if decision.mode == "forced-wait" else battle.diagnostic_ai_native_admission()
+                ),
             })
             if trace_sink is not None:
                 trace_sink(tuple(decision_trace), "decision-complete")

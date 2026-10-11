@@ -3,7 +3,7 @@
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_mechanics import opening_terrain_plan, unsupported_present_mechanics
-from champions_practice.public_lifecycle import public_protection_plan
+from champions_practice.public_lifecycle import public_protection_plan, public_trace_plan
 from champions_practice.search_worker import ShowdownSearchWorker
 from champions_practice.teams import SMOKE_TEAM
 
@@ -15,7 +15,10 @@ def main():
     with ShowdownSearchWorker() as worker:
         for guard, preview in (("protect", "team 2135"), ("endure", "team 2135"),
                                ("wideguard", "team 4135")):
-            team = SMOKE_TEAM.replace('- Protect', '- Endure') if guard == 'endure' else SMOKE_TEAM
+            # Isolate stall lifecycle from unsupported Trace/Flash Fire activation.
+            team = SMOKE_TEAM.replace('Ability: Trace', 'Ability: Pixilate')
+            if guard == 'endure':
+                team = team.replace('- Protect', '- Endure')
             for seed in range(1, 5):
                 root = worker.create_state(battle_format=CHAMPIONS_FORMAT, p1_team=team, p2_team=team,
                     p1_preview=preview, p2_preview=preview,
@@ -33,9 +36,10 @@ def main():
                     ledger = ledger.advance(view)
                     plan = public_protection_plan(view, ledger)
                     assert plan is not None, (guard, seed, view['public_event_delta'])
-                    assert unsupported_present_mechanics(view, ledger) is None
+                    assert unsupported_present_mechanics(view, ledger) is None, (guard, seed, view['public_event_delta'], unsupported_present_mechanics(view, ledger))
                     repaired = worker.materialize_present_hypotheses(state=root, current_view=view,
-                        protection_plan=plan, mechanics_plan=opening_terrain_plan(view, ledger), limit=4)
+                        protection_plan=plan, mechanics_plan=opening_terrain_plan(view, ledger),
+                        trace_plan=public_trace_plan(view, ledger), limit=4)
                     assert repaired['outcomes'], repaired.get('reason')
                     for entry in repaired['outcomes']:
                         candidate = entry['state']
