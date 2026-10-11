@@ -10,7 +10,8 @@ from __future__ import annotations
 import json
 
 from champions_practice.public_lifecycle import (
-    ordered_public_lifecycle, public_post_residual_switch, public_protection_plan,
+    SURGE_ABILITIES, ordered_public_lifecycle, public_post_residual_switch,
+    public_protection_plan, public_trace_copy, public_trace_plan,
 )
 
 
@@ -33,8 +34,17 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
     if ordered is not None:
         has_boundaries = any(event == ["upkeep"] for _, event, _ in ordered)
         residuals = 0
+        traced = {}
         observed_terrain = parsed[0][1].get("terrain")
         for source_turn, event, actors in ordered:
+            actor = event[1] if len(event) > 1 else None
+            if event[0] in {"switch", "drag", "-mega", "-endability"}:
+                traced.pop(actor, None)
+            elif event[0] == "-ability":
+                traced.pop(actor, None)
+                copied = public_trace_copy(event, actors)
+                if copied:
+                    traced[actor] = copied
             if event == ["upkeep"]:
                 residuals += 1
             if len(event) >= 2 and event[1].startswith("move:") and event[1].endswith("terrain"):
@@ -50,19 +60,18 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
             source = next((token[5:] for token in event if token.startswith("[of]:")), "")
             ability = next((token[15:] for token in event
                             if token.startswith("[from]:ability:")), "")
-            if source not in actors or ability not in {
-                "psychicsurge", "grassysurge", "electricsurge", "mistysurge",
-            }:
+            if source not in actors or ability not in SURGE_ABILITIES:
                 return None
-            start = (source_turn, source, actors[source], ability)
+            start = (source_turn, source, actors[source], ability, traced.get(source) == ability)
         if observed_terrain != terrain:
             return None
         if start is not None:
-            source_turn, source, species, ability = start
+            source_turn, source, species, ability, trace_origin = start
             return {"opening_terrain": terrain, "residual_turns": residuals if has_boundaries
                     else view["turn"] - source_turn + int(public_post_residual_switch(view)),
                     "source_side": "player" if source.startswith("p2") else "opponent",
-                    "source_species": species, "source_ability": ability}
+                    "source_species": species, "source_ability": ability,
+                    **({"source_origin_ability": "trace"} if trace_origin else {})}
     # Legacy snapshots do not have ordered source identity. They can authorize
     # continuous opening terrain only, never a later start's final-slot guess.
     if any(event[:2] == ["-fieldstart", "move:" + terrain] for _, snapshot in parsed
@@ -86,6 +95,39 @@ def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
     return {"opening_terrain": terrain, "residual_turns": residuals if ordered is not None
             and has_boundaries else view["turn"] - 1
             + int(public_post_residual_switch(view))}
+
+
+def public_trick_room_plan(view: dict, ledger=None) -> dict | None:
+    """A complete public start/end timeline for ordinary five-turn Trick Room."""
+    if view.get("field", {}).get("pseudo_weather") != ["trickroom"]:
+        return None
+    ordered = ordered_public_lifecycle(view, ledger)
+    if ordered is None:
+        return None
+    start = None
+    residuals = 0
+    for turn, event, actors in ordered:
+        if event == ["upkeep"] and start is not None:
+            residuals += 1
+        elif event[:2] == ["-fieldstart", "move:trickroom"]:
+            source = next((token[5:] for token in event if token.startswith("[of]:")), None)
+            if source not in actors or len(event) != 3:
+                return None  # Persistent and unknown extension domains stay unsupported.
+            start = (turn, source, actors[source])
+            residuals = 0
+        elif event[:2] == ["-fieldend", "move:trickroom"]:
+            start = None
+    if start is None or residuals > 4:
+        return None
+    turn, source, species = start
+    # Unlike legacy opening terrain, this new domain requires explicit upkeep
+    # for every elapsed source turn. Missing boundaries cannot shorten its age.
+    expected = set(range(turn, view["turn"] + int(public_post_residual_switch(view))))
+    observed = [t for t, event, _ in ordered if t >= turn and event == ["upkeep"]]
+    if set(observed) != expected or len(observed) != len(expected):
+        return None
+    return {"source_side": "player" if source.startswith("p2") else "opponent",
+            "source_species": species, "residual_turns": residuals}
 
 
 # Pinned moves.ts: stallingMove users plus Quick/Wide Guard, which also call
@@ -115,7 +157,7 @@ def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
         return "unsupported-public-effect-projection"
     if not {"weather", "terrain", "pseudo_weather"} <= field.keys():
         return "unsupported-public-effect-projection"
-    if field["weather"] or field["pseudo_weather"] or (
+    if field["weather"] or (field["pseudo_weather"] and public_trick_room_plan(view, ledger) is None) or (
         field["terrain"] and opening_terrain_plan(view, ledger) is None
     ):
         return "unsupported-public-effect-duration"
@@ -127,6 +169,9 @@ def unsupported_present_mechanics(view: dict, ledger=None) -> str | None:
         # as exact present mechanics would require a separate proof.
         if side["side_conditions"]:
             return "unsupported-public-effect-duration"
+
+    if ordered_public_lifecycle(view, ledger) is not None and public_trace_plan(view, ledger) is None:
+        return "unsupported-public-trace-state"
 
     # Ordered public lifecycle can certify switch-only turns as well as moves;
     # a retained execution delta alone cannot do that.

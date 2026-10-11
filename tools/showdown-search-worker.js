@@ -691,8 +691,18 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
 
     if (slot && ["switch", "drag", "replace"].includes(event)) {
       const species = String(parts[3] || "").split(",", 1)[0];
-      const speciesKey = toId(species);
-      const observation = observations.get(speciesKey);
+      let speciesKey = toId(species);
+      let observation = observations.get(speciesKey);
+      if (!observation) {
+        // A publicly named returning Mega retains its preview member. Use
+        // public Dex metadata only; ordinary formes such as Indeedee-F must
+        // never collapse to their Pokedex base or to a prior slot occupant.
+        const visibleSpecies = battle.dex.species.get(species);
+        if (visibleSpecies.isMega) {
+          speciesKey = toId(visibleSpecies.baseSpecies);
+          observation = observations.get(speciesKey);
+        }
+      }
       if (observation) {
         observation.seen = true;
         const condition = publicCondition(parts[4]);
@@ -1976,31 +1986,51 @@ function materializePresentHypotheses(request) {
   const candidates = [];
   const original = Battle.fromJSON(JSON.stringify(request.state));
   const terrainPlan = request.mechanics_plan;
+  const trickRoomPlan = request.trick_room_plan;
   let terrainSource = null;
   let terrainSourceItem = null;
+  let trickRoomSource = null;
+  function publicSource(sideName, species) {
+    const side = sideName === 'player' ? original.p2 : sideName === 'opponent' ? original.p1 : null;
+    const nativeSpecies = original.dex.species.get(species);
+    const base = nativeSpecies.isMega ? asId(nativeSpecies.baseSpecies) : asId(species);
+    const sources = side?.pokemon.filter((mon) => asId(mon.set.species) === base) || [];
+    return sources.length === 1 ? sources[0] : null;
+  }
+  if (trickRoomPlan != null) {
+    if (Object.keys(trickRoomPlan).sort().join(',') !== 'residual_turns,source_side,source_species' ||
+        !Number.isInteger(trickRoomPlan.residual_turns) ||
+        trickRoomPlan.residual_turns < 0 || trickRoomPlan.residual_turns > 4 ||
+        stableJson(view.field.pseudo_weather) !== stableJson(['trickroom']) ||
+        view.field.weather || (view.field.terrain && terrainPlan == null)) {
+      return why('unsupported-trick-room-plan');
+    }
+    trickRoomSource = publicSource(trickRoomPlan.source_side, trickRoomPlan.source_species);
+    if (!trickRoomSource || trickRoomSource.ability === 'persistent') {
+      return why('unsupported-trick-room-source');
+    }
+  }
   if (terrainPlan != null) {
     const sourced = terrainPlan.source_species != null;
-    const expectedKeys = sourced
+    let expectedKeys = sourced
       ? 'opening_terrain,residual_turns,source_ability,source_side,source_species'
       : 'opening_terrain,residual_turns';
+    const traceOrigin = terrainPlan.source_origin_ability === 'trace';
+    if (traceOrigin && sourced) expectedKeys = 'opening_terrain,residual_turns,source_ability,source_origin_ability,source_side,source_species';
     if (Object.keys(terrainPlan).sort().join(',') !== expectedKeys ||
         terrainPlan.opening_terrain !== view.field.terrain ||
         (!sourced && original.field.terrain !== terrainPlan.opening_terrain) ||
         !Number.isInteger(terrainPlan.residual_turns) ||
         (!sourced && terrainPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch)) ||
         terrainPlan.residual_turns < (sourced ? 0 : 1) || terrainPlan.residual_turns > 7 ||
-        view.field.weather || view.field.pseudo_weather.length ||
+        view.field.weather || (view.field.pseudo_weather.length && trickRoomPlan == null) ||
         view.player.side_conditions.length || view.opponent.side_conditions.length) {
       return why('unsupported-opening-terrain-plan');
     }
     if (sourced) {
-      const side = terrainPlan.source_side === 'player' ? original.p2
-        : terrainPlan.source_side === 'opponent' ? original.p1 : null;
-      const sources = side?.pokemon.filter((mon) =>
-        asId(mon.species.name) === asId(terrainPlan.source_species) &&
-        mon.ability === terrainPlan.source_ability) || [];
-      if (sources.length !== 1) return why('unsupported-terrain-source');
-      terrainSource = sources[0];
+      terrainSource = publicSource(terrainPlan.source_side, terrainPlan.source_species);
+      if (!terrainSource || (traceOrigin ? asId(terrainSource.set.ability) !== 'trace'
+          : terrainSource.ability !== terrainPlan.source_ability)) return why('unsupported-terrain-source');
     } else {
       terrainSource = original.field.terrainState.source;
     }
@@ -2138,6 +2168,32 @@ function materializePresentHypotheses(request) {
       }
     }
 
+    if (request.opponent_mega_plan != null) {
+      const plan = request.opponent_mega_plan;
+      if (!Array.isArray(plan) || plan.length > 1) return why('unsupported-opponent-mega-history');
+      for (const entry of plan) {
+        const mon = find(foe, entry.species);
+        if (Object.keys(entry).sort().join(',') !== 'item,species' || !mon ||
+            asId(mon.item) !== asId(entry.item)) return why('unsupported-opponent-mega-history');
+        if (mon.species.isMega) continue;
+        if (mon.isActive) {
+          if (!original.actions.runMegaEvo(mon)) return why('unsupported-native-opponent-mega-history');
+        } else {
+          // A public historical Mega remains evolved while benched. Stage
+          // only through native switch/evolution operations, preserving the
+          // final active slots and Unburden's volatile on an existing actor.
+          const slot = foe.active.findIndex((active) => active && active.hp > 0 && active.ability !== 'unburden');
+          if (slot < 0) return why('unsupported-native-opponent-mega-history');
+          const displaced = foe.active[slot];
+          if (original.actions.switchIn(mon, slot) !== true ||
+              !original.actions.runMegaEvo(mon) ||
+              original.actions.switchIn(displaced, slot) !== true || mon.isActive) {
+            return why('unsupported-native-opponent-mega-history');
+          }
+        }
+      }
+    }
+
     // An opponent Mega is PUBLIC form information, never a license to
     // synthesize an unobserved stone. Only an approved hypothetical set
     // capable of native Mega Evolution can establish the corresponding form.
@@ -2146,6 +2202,7 @@ function materializePresentHypotheses(request) {
       const species = original.dex.species.get(observed.species);
       if (!species.exists || !species.isMega) continue;
       const mon = find(foe, observed.base_species);
+      if (mon && asId(mon.species.name) === asId(species.name)) continue;
       if (!mon || !mon.isActive ||
           asId(mon.set.species) !== asId(species.baseSpecies) ||
           !original.actions.runMegaEvo(mon) ||
@@ -2181,6 +2238,28 @@ function materializePresentHypotheses(request) {
     // Exact request equality cannot establish isStarted/ability start state.
     for (const mon of [...foe.active, ...own.active]) {
       if (mon && !mon.isStarted) original.actions.runSwitch(mon);
+    }
+
+    if (request.trace_plan != null) {
+      if (!Array.isArray(request.trace_plan) || request.trace_plan.length > 4) return why('unsupported-trace-plan');
+      const seen = new Set();
+      for (const entry of request.trace_plan) {
+        const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
+        const mon = side?.active[entry.slot];
+        const key = `${entry.side}:${entry.slot}`;
+        if (Object.keys(entry).sort().join(',') !== 'ability,side,slot,species' ||
+            !Number.isInteger(entry.slot) || entry.slot < 0 || entry.slot > 1 || !mon ||
+            seen.has(key) || asId(mon.set.species) !== asId(entry.species) ||
+            asId(mon.set.ability) !== 'trace' || mon.species.isMega ||
+            !['psychicsurge', 'grassysurge', 'electricsurge', 'mistysurge', 'unburden', 'pixilate'].includes(entry.ability)) {
+          return why('unsupported-trace-plan');
+        }
+        seen.add(key);
+        if (mon.ability !== entry.ability &&
+            (!mon.setAbility(entry.ability, null, original.dex.abilities.get('trace')) || mon.ability !== entry.ability)) {
+          return why('unsupported-native-trace-copy');
+        }
+      }
     }
 
     if (request.protection_plan != null) {
@@ -2483,22 +2562,37 @@ function materializePresentHypotheses(request) {
       }
     }
 
-    if (terrainPlan != null) {
+    if (terrainPlan != null || trickRoomPlan != null) {
       // Restore after all native switching, which can overwrite terrain.
       // An extender lost since activation needs a separate public domain.
       if (terrainSourceItem === 'terrainextender' && terrainSource.item !== terrainSourceItem) {
         return why('unsupported-terrain-extension-history');
       }
       original.field.clearTerrain();
-      if (!original.field.setTerrain(terrainPlan.opening_terrain, terrainSource)) {
-        return why('unsupported-native-terrain-start');
+      original.field.removePseudoWeather('trickroom');
+      // Rebuild both effects on one native residual timeline. Starting a
+      // younger effect later prevents aging one effect while restoring the
+      // other. Empty targets exclude Pokemon HP/status/volatile residuals.
+      const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0);
+      for (let step = 0; step <= age; step++) {
+        if (terrainPlan && step === age - terrainPlan.residual_turns &&
+            !original.field.setTerrain(terrainPlan.opening_terrain, terrainSource,
+              terrainPlan.source_ability ? original.dex.abilities.get(terrainPlan.source_ability) : null)) {
+          return why('unsupported-native-terrain-start');
+        }
+        if (trickRoomPlan && step === age - trickRoomPlan.residual_turns) {
+          if (trickRoomSource.hasAbility('persistent') ||
+              !original.field.addPseudoWeather('trickroom', trickRoomSource)) {
+            return why('unsupported-native-trick-room-start');
+          }
+        }
+        if (step < age) original.fieldEvent('Residual', []);
       }
-      // Native field lifecycle; empty targets exclude Pokemon residuals.
-      for (let age = 0; age < terrainPlan.residual_turns; age++) {
-        original.fieldEvent('Residual', []);
-      }
-      if (original.field.terrain !== terrainPlan.opening_terrain) {
+      if (terrainPlan && original.field.terrain !== terrainPlan.opening_terrain) {
         return why('opening-terrain-expired');
+      }
+      if (trickRoomPlan && !original.field.pseudoWeather['trickroom']) {
+        return why('public-trick-room-expired');
       }
     }
 
@@ -2546,7 +2640,12 @@ function materializePresentHypotheses(request) {
       if (!source || !original.field.addPseudoWeather("trickroom", source)) {
         return why("expired-trick-room-cache-unavailable");
       }
-      original.updateSpeed();
+      // A replacement entering after expiry can have a positive cache while
+      // its partner retains a negative one. Refresh only owned actors whose
+      // exact public cache requires the expired native inversion.
+      for (let slot = 0; slot < view.player.active_details.length; slot++) {
+        if (view.player.active_details[slot]?.speed < 0) own.active[slot]?.updateSpeed();
+      }
       original.field.removePseudoWeather("trickroom");
       // Do NOT updateSpeed after native expiry.
     }

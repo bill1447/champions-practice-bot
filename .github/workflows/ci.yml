@@ -123,6 +123,8 @@ jobs:
           .\.venv\Scripts\python.exe -m champions_practice.terrain_lifecycle_review_smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           .\.venv\Scripts\python.exe -m champions_practice.replacement_lifecycle_smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\.venv\Scripts\python.exe -m champions_practice.trace_trick_room_smoke
 
       - name: Unit tests
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
