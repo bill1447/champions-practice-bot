@@ -2,6 +2,21 @@
 
 ### October 10 correctness remediation — production support gate
 
+The admission/diversity audit reconciles the two frozen runs and independently
+admits all 70 saved midgame action checkpoints. New explicit admission telemetry
+and a nine-game, three-roster/three-policy matrix expose broader limits: weather
+and side-effect durations, berry protocol ledger retention, pivot boundaries
+and exact owned-menu reconstruction. Intimidate marker parsing and locked
+Electro Shot public targets have native regression fixes. See
+`reviews/admission-diversity-audit-2026-10-10.md` and `docs/diversity-league.md`.
+
+The next recovery update covers publicly disclosed Trace terrain sources and
+Trick Room timing through ordered upkeep evidence and pinned native lifecycle
+operations. Public opponent Mega events also preserve evolution across bench
+returns. The support domains and remaining exclusions are documented in
+`docs/present-mechanics-support.md`; paired measurement is recorded in
+`reviews/trace-trick-room-recovery-2026-10-10.md`.
+
 The next playable-reliability update adds native search roots for replacement
 requests certified by a current public upkeep marker. It fixes owned active-flag
 checks that ran before queued faint resolution and counts terrain residuals after
@@ -27,7 +42,7 @@ that the experimental offline constructor restores those counters.
 Terrain recovery now uses public opening observations and canonical Surge starts,
 then pinned native residual lifecycle operations to restore timer age. Opening,
 overwrite, expiration and serialization controls pass; weather,
-pseudo-weather and side-effect support remains pending. Recovery is measured by
+pseudo-weather beyond bounded Trick Room and side-effect support remain pending. Recovery is measured by
 falling fallback rates and rising midgame search coverage on both frozen fixtures.
 Preserve exact own-state and privacy checks throughout.
 See `docs/present-mechanics-support.md` and the project review in `reviews/`.

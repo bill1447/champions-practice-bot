@@ -934,6 +934,7 @@ class BeliefDecisionEngine:
         # Fresh per-decision worlds are disposable. Only the public ledger persists.
         self.last_public_world_failure_reason: str | None = None
         self.last_own_speed_diagnostics: tuple[dict[str, object], ...] = ()
+        self.last_native_admission: dict[str, object] = {}
         self.last_own_speed_transport_issues: tuple[dict[str, str], ...] = ()
         self.particles: tuple[BeliefParticle, ...] = ()
         self.last_public_view: dict | None = None
@@ -2827,6 +2828,13 @@ class BeliefDecisionEngine:
         if result is not None and not timed_out:
             self.last_own_speed_diagnostics = result.own_speed_diagnostics
             self.last_own_speed_transport_issues = result.own_speed_transport_issues
+            self.last_native_admission.update(
+                roots_tried=result.roots_tried, native_candidates=result.native_candidates,
+                positive_matches=result.positive_matches,
+                rejection_reasons=dict(result.rejection_reasons),
+                historical_witnesses=result.historical_witnesses,
+                exhaustively_excluded_worlds=result.exhaustively_excluded_worlds,
+            )
         if timed_out or result is None or not result.particles:
             self.last_public_world_failure_reason = (
                 "time-budget" if timed_out
@@ -2836,6 +2844,7 @@ class BeliefDecisionEngine:
             return False
 
         self.last_public_world_failure_reason = None
+        self.last_native_admission.update(status="admitted", admitted_particles=len(result.particles))
         self.particles = resample_particles_by_world(
             result.particles,
             limit=self.max_particles,
@@ -2857,6 +2866,7 @@ class BeliefDecisionEngine:
         legal_live: list[str],
     ) -> BeliefDecision:
         started = perf_counter()
+        self.last_native_admission = {"schema": "native-admission-v1", "path": "opening", "status": "not-attempted"}
         decision_deadline = started + self.decision_budget_seconds
         if not legal_live:
             raise RuntimeError("AI has no legal live-session choices")
@@ -2869,10 +2879,12 @@ class BeliefDecisionEngine:
             and self._public_ai_preview_choice is not None
         )
         if use_current_public_worlds:
+            self.last_native_admission.update(path="present-public", status="attempting")
             self._discard_decision_hypotheses()
             if not self._try_present_public_rebase(
                 deadline=decision_deadline, legal_live=legal_live,
             ):
+                self.last_native_admission.update(status="rejected", reason=self.last_public_world_failure_reason)
                 self.degraded = True
                 return self._fallback_decision(
                     legal_live, started=started,
@@ -3989,6 +4001,11 @@ class _BeliefBattleCoordinator:
                 raise RuntimeError("AI public checkpoint is not initialized")
             return deepcopy(view)
 
+    def diagnostic_ai_native_admission(self) -> dict:
+        """Detached counts/reasons only; no native states or private set values."""
+        with self._state_lock:
+            return deepcopy(getattr(self._engine, "last_native_admission", {}))
+
     def diagnostic_ai_public_choices(self) -> list[str]:
         """Public-request p2 choices for offline diagnostics only."""
         with self._state_lock:
@@ -4499,6 +4516,9 @@ class SealedBattleFacade:
     def diagnostic_ai_public_checkpoint(self) -> dict:
         """Offline-only sanitized p2 checkpoint; never native or sealed truth."""
         return self.__coordinator.diagnostic_ai_public_checkpoint()
+
+    def diagnostic_ai_native_admission(self) -> dict:
+        return self.__coordinator.diagnostic_ai_native_admission()
 
     def diagnostic_ai_public_choices(self) -> tuple[str, ...]:
         """Offline-only p2 choices derived from its public request."""
