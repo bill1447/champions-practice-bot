@@ -84,7 +84,7 @@ def fixtures():
     }
 
 
-def run_cell(*, name, policy, seed, max_decisions, budget):
+def run_cell(*, name, policy, seed, max_decisions, budget, queue_aware=False, capacity=24):
     team, priors, preview = fixtures()[name]
     selector = policy_selector(policy, seed)
     shadow = BeliefDecisionEngine(
@@ -126,16 +126,33 @@ def run_cell(*, name, policy, seed, max_decisions, budget):
         battle.commit_preview(human_choice=selector(tuple(battle.legal_human_choices())))
         before = battle.diagnostic_ai_public_checkpoint()
         shadow.initialize_preview(view=before, ai_choice=preview)
+        queued_shadow = None
+        if queue_aware:
+            from champions_practice.queue_shadow import QueueShadow
+
+            queued_shadow = QueueShadow(
+                team=team,
+                priors=priors,
+                preview=preview,
+                view=before,
+                budget=budget,
+                seed=_particle_seed(seed, 1),
+                capacity=capacity,
+            )
         opening_worlds = len({p.world_id for p in shadow.particles})
         unpruned_witnesses = shadow.particles
         if not shadow.particles:
             blocked = "opening-no-match"
         with HypotheticalSearchWorker(startup_deadline=perf_counter() + 60) as verifier:
+            terminal = False
             for index in range(max_decisions):
                 choices = battle.legal_human_choices()
                 if not choices:
                     break
                 own_menu = battle.diagnostic_ai_public_choices()
+                queue_aligned = (
+                    queued_shadow.checkpoint(verifier, before, own_menu) if queued_shadow else None
+                )
                 aligned = not blocked and bool(shadow.particles)
                 if aligned:
                     for particle in shadow.particles:
@@ -170,6 +187,7 @@ def run_cell(*, name, policy, seed, max_decisions, budget):
                     "shadow_worlds_before": len({p.world_id for p in shadow.particles}),
                     "shadow_failure": blocked,
                     "shadow_queued_alternatives": queued_alternatives(shadow.particles),
+                    "queue_shadow_current_public_and_menu_match": queue_aligned,
                 }
                 if not blocked:
                     start = perf_counter()
@@ -262,13 +280,22 @@ def run_cell(*, name, policy, seed, max_decisions, budget):
                             except (RuntimeError, ValueError, TimeoutError) as error:
                                 row["unpruned_probe"] = {"error": type(error).__name__}
                 trace.append(row)
+                if queued_shadow:
+                    row["queue_shadow_transition"] = queued_shadow.advance(
+                        own_choice=result.decision.choice,
+                        before=before,
+                        after=after,
+                        index=index,
+                    )
                 print(
                     f"{name}/{policy} decision={index + 1} production={result.decision.mode} "
-                    f"shadow_current={aligned} transition={blocked or 'witnessed'}",
+                    f"shadow_current={aligned} transition={blocked or 'witnessed'} "
+                    f"queue_current={queue_aligned} queue_transition={queued_shadow.failure if queued_shadow else 'disabled'}",
                     flush=True,
                 )
                 before = after
                 if result.terminal:
+                    terminal = True
                     break
     actionable = [row for row in trace if row["production_mode"] != "forced-wait"]
     return {
@@ -286,6 +313,29 @@ def run_cell(*, name, policy, seed, max_decisions, budget):
             row["shadow_current_public_and_menu_match"] for row in actionable
         ),
         "shadow_first_failure": blocked,
+        "terminal": terminal,
+        "termination_reason": "battle-ended" if terminal else "decision-limit-or-no-human-choice",
+        "production_fallback_percent_actionable": 100
+        * sum(row["production_mode"] == "fallback" for row in actionable)
+        / len(actionable)
+        if actionable
+        else None,
+        "production_fallback_percent_all_decisions": 100
+        * sum(row["production_mode"] == "fallback" for row in trace)
+        / len(trace)
+        if trace
+        else None,
+        "baseline_shadow_unavailable_percent_actionable": 100
+        * sum(not row["shadow_current_public_and_menu_match"] for row in actionable)
+        / len(actionable)
+        if actionable
+        else None,
+        "queue_shadow_unavailable_percent_actionable": 100
+        * sum(not row["queue_shadow_current_public_and_menu_match"] for row in actionable)
+        / len(actionable)
+        if actionable and queued_shadow
+        else None,
+        "queue_shadow_first_failure": queued_shadow.failure if queued_shadow else None,
         "trace": trace,
     }
 
@@ -294,20 +344,26 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-decisions", type=int, default=8)
     parser.add_argument("--budget", type=float, default=8)
+    parser.add_argument("--queue-aware", action="store_true")
+    parser.add_argument("--capacity", type=int, default=24)
     parser.add_argument(
         "--output", type=Path, default=Path("runs/state-maintenance-audit/report.json")
     )
     args = parser.parse_args()
-    if args.max_decisions <= 0 or not 0 < args.budget <= 60:
+    if args.max_decisions <= 0 or not 0 < args.budget <= 60 or not 1 <= args.capacity <= 128:
         parser.error("positive decisions and a budget of at most 60 seconds required")
     root = Path.cwd()
     report = {
-        "schema": "offline-state-maintenance-audit-v1",
+        "schema": "offline-state-maintenance-audit-v2"
+        if args.queue_aware
+        else "offline-state-maintenance-audit-v1",
         "parent_commit": _git_commit(root),
         "runtime_source": _source_identity(root),
         "showdown_revision": _showdown_revision(root),
         "budget_seconds": args.budget,
         "max_decisions": args.max_decisions,
+        "queue_aware": args.queue_aware,
+        "queue_capacity": args.capacity,
         "scope": "passive public-only shadow, same production trajectory; no live authority or strength comparison",
         "cells": [],
     }
@@ -324,6 +380,8 @@ def main():
                 seed=seed,
                 max_decisions=args.max_decisions,
                 budget=args.budget,
+                queue_aware=args.queue_aware,
+                capacity=args.capacity,
             )
         )
         _atomic_write_json(args.output, report)

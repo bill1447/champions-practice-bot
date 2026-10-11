@@ -1,0 +1,156 @@
+{
+  "budget_seconds": 8,
+  "cells": [
+    {
+      "actionable_decisions": 25,
+      "baseline_shadow_unavailable_percent_actionable": 88.0,
+      "decisions": 29,
+      "fixture": "bounded",
+      "opening_shadow_worlds": 2,
+      "policy": "attack-first",
+      "production_fallback_percent_actionable": 72.0,
+      "production_fallback_percent_all_decisions": 62.06896551724138,
+      "production_fallbacks": {
+        "fresh-public-world:unsupported-own-status:$.player.team[3].status": 17,
+        "fresh-public-world:unsupported-public-switch-boundary": 1
+      },
+      "production_modes": {
+        "belief-search": 7,
+        "fallback": 18,
+        "forced-wait": 4
+      },
+      "queue_shadow_first_failure": "partial-world-witness",
+      "queue_shadow_unavailable_percent_actionable": 88.0,
+      "seed": 24101,
+      "shadow_current_actionable_checkpoints": 3,
+      "shadow_first_failure": "no-complete-witness",
+      "terminal": true,
+      "termination_reason": "battle-ended"
+    },
+    {
+      "actionable_decisions": 8,
+      "baseline_shadow_unavailable_percent_actionable": 62.5,
+      "decisions": 10,
+      "fixture": "bounded",
+      "opening_shadow_worlds": 2,
+      "policy": "seeded-mixed",
+      "production_fallback_percent_actionable": 0.0,
+      "production_fallback_percent_all_decisions": 0.0,
+      "production_fallbacks": {},
+      "production_modes": {
+        "belief-search": 8,
+        "forced-wait": 2
+      },
+      "queue_shadow_first_failure": "no-complete-witness",
+      "queue_shadow_unavailable_percent_actionable": 62.5,
+      "seed": 24102,
+      "shadow_current_actionable_checkpoints": 3,
+      "shadow_first_failure": "no-complete-witness",
+      "terminal": true,
+      "termination_reason": "battle-ended"
+    },
+    {
+      "actionable_decisions": 22,
+      "baseline_shadow_unavailable_percent_actionable": 63.63636363636363,
+      "decisions": 26,
+      "fixture": "balance",
+      "opening_shadow_worlds": 4,
+      "policy": "support-switch",
+      "production_fallback_percent_actionable": 95.45454545454545,
+      "production_fallback_percent_all_decisions": 80.76923076923077,
+      "production_fallbacks": {
+        "fresh-public-world:unsupported-persistent:move:stompingtantrum": 18,
+        "fresh-public-world:unsupported-persistent:opponent-bench": 1,
+        "fresh-public-world:unsupported-public-switch-boundary": 2
+      },
+      "production_modes": {
+        "belief-search": 1,
+        "fallback": 21,
+        "forced-wait": 4
+      },
+      "queue_shadow_first_failure": "conditioning-timeout",
+      "queue_shadow_unavailable_percent_actionable": 86.36363636363636,
+      "seed": 24103,
+      "shadow_current_actionable_checkpoints": 8,
+      "shadow_first_failure": "no-complete-witness",
+      "terminal": true,
+      "termination_reason": "battle-ended"
+    },
+    {
+      "actionable_decisions": 6,
+      "baseline_shadow_unavailable_percent_actionable": 66.66666666666667,
+      "decisions": 8,
+      "fixture": "mirror",
+      "opening_shadow_worlds": 4,
+      "policy": "attack-first",
+      "production_fallback_percent_actionable": 83.33333333333333,
+      "production_fallback_percent_all_decisions": 62.5,
+      "production_fallbacks": {
+        "fresh-public-world:unsupported-persistent:owned-unburden": 2,
+        "fresh-public-world:unsupported-persistent:volatile:flashfire": 2,
+        "fresh-public-world:unsupported-public-trace-state": 1
+      },
+      "production_modes": {
+        "belief-search": 1,
+        "fallback": 5,
+        "forced-wait": 2
+      },
+      "queue_shadow_first_failure": "no-complete-witness",
+      "queue_shadow_unavailable_percent_actionable": 66.66666666666667,
+      "seed": 7,
+      "shadow_current_actionable_checkpoints": 2,
+      "shadow_first_failure": "no-complete-witness",
+      "terminal": true,
+      "termination_reason": "battle-ended"
+    }
+  ],
+  "correctness_controls": {
+    "false_exclusions": 0,
+    "native_queue_cases": 3,
+    "scope": "bounded oracle controls; no general production correctness percentage",
+    "tested_native_fields_and_continuations_equivalent": true,
+    "true_histories_retained_and_witnessed": 3
+  },
+  "max_decisions": 64,
+  "parent_commit": "be79f9725911149c440741b50a888cd3de51c7ac",
+  "queue_aware": true,
+  "queue_capacity": 24,
+  "runtime_source": {
+    "dirty": true,
+    "schema": "runtime-source-sha256-v1",
+    "sha256": "07e685096f31e6b7dfc9a435e0b5ce16c4b05675cdb8899432c6c2a63149d1bf"
+  },
+  "schema": "offline-state-maintenance-audit-v2",
+  "scope": "passive public-only shadow, same production trajectory; no live authority or strength comparison",
+  "showdown_revision": "a5df8274e85b0889bf2a9b3422a08b39732374fc",
+  "summary": {
+    "actionable_decisions": 61,
+    "all_decisions": 73,
+    "baseline_current_actionable_checkpoints": 16,
+    "complete_games": 4,
+    "production_fallback_percent_actionable": 72.1311475409836,
+    "production_fallback_percent_all_decisions": 60.273972602739725,
+    "production_fallback_reasons": {
+      "fresh-public-world:unsupported-own-status:$.player.team[3].status": 17,
+      "fresh-public-world:unsupported-persistent:move:stompingtantrum": 18,
+      "fresh-public-world:unsupported-persistent:opponent-bench": 1,
+      "fresh-public-world:unsupported-persistent:owned-unburden": 2,
+      "fresh-public-world:unsupported-persistent:volatile:flashfire": 2,
+      "fresh-public-world:unsupported-public-switch-boundary": 3,
+      "fresh-public-world:unsupported-public-trace-state": 1
+    },
+    "production_modes": {
+      "belief-search": 17,
+      "fallback": 44,
+      "forced-wait": 12
+    },
+    "queue_current_actionable_checkpoints": 11
+  },
+  "validation": {
+    "persistent_admission_smoke": "passed",
+    "pytest_passed": 1589,
+    "queue_native_smoke": "passed",
+    "recovery_soundness_smoke": "passed",
+    "ruff": "passed"
+  }
+}

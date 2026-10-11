@@ -118,6 +118,11 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.persistent_admission_smoke
 
+      - name: Offline queue retention correctness and outcome controls
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.queue_retention_smoke
+
       - name: Public protection lifecycle recovery
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh

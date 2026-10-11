@@ -11,11 +11,19 @@ opponent commands; probing the unpruned native witness batch recovers a complete
 posterior for the remaining set worlds. Other stochastic transitions remain
 unresolved. Do not revert #197 or bypass the closed fresh support contract.
 
-Next, prototype discrete queued-command retention offline, separately bounding
-RNG history. Require public-only complete continuations and native true-world
-survival across pauses before any maintained-world production admission. Then
-evaluate a hybrid with explicit fresh-recovery support. Unburden and consumed
-inventory remain fresh-path priorities; they are not the whole architecture.
+The offline queue-retention prototype and controls are recorded in
+`reviews/queue-retention-correctness-2026-10-11.md`. Three native true-history
+controls pass, including tested next-boundary equivalence, but four complete
+games show worse shadow coverage in the final run: baseline is current at 16/61
+actionable checkpoints and the queue prototype at 11/61. Production falls back
+at 44/61 (72.1%), excluding 12 forced waits.
+The prototype remains offline. Next, diagnose the unresolved native history
+distinctions at the two pivot failures rather than enabling queue retention on
+the strength of its small controls. Own-status and Stomping Tantrum history
+account for 35/44 measured production rejections and need exact lifecycle
+support evidence. Unburden and consumed inventory remain fresh-path priorities;
+they are not the whole architecture. Require public-only complete continuations
+and native true-world survival before evaluating a maintained/fresh hybrid.
 Measure complete-game search coverage alongside correctness. The proposed
 playable gate is 12 complete games over two supported compositions, three
 policies and two seeds, at least 90% actionable search, no illegal actions or
