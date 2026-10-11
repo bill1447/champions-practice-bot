@@ -1,5 +1,34 @@
 # Champions Practice Bot Roadmap
 
+### Current priority — continuous native state maintenance, Phase 11B
+
+Fresh reconstruction remains operational under its closed admission contract,
+but is no longer the default development architecture. Do not add new fresh
+mechanic reconstruction during this milestone. Previous fresh-recovery priorities
+below are historical context and do not override this direction.
+
+The unknown-RNG experiment is isolated from production. It receives known teams,
+submitted commands and public observations; oracle seed/state access is confined
+to validation. Its complete-game tests establish that valid native chance tapes
+and correct lifecycle execution alone do not provide adequate history coverage
+under the tested budgets. See
+`docs/continuous-native-stochastic-maintenance.md` and
+`reviews/continuous-native-stochastic-maintenance-2026-10-11.md`.
+
+The bounded public-event guided follow-up raises witnesses from 35/196 to
+68/196 checkpoints and preserves mechanically matching ancestry through 2/10
+complete games, compared with 0/10 for sampling. It remains offline and is not a
+production fallback or strength result. Next, diversify the early chance-prefix
+frontier against the same fixed games and budgets, starting with the first
+public-conditioning/mechanical coverage loss in each game. Preserve unresolved
+outcomes and independent ancestry. Do not
+raise the particle cap as the primary remedy without evidence of selection loss.
+Retain distinctions such as native damage history and speed order until future
+continuation tests justify equivalence. Seed-realizability of finite tapes and
+uncalibrated proposal weights remain explicit open questions. Hidden-team/action
+inference and production promotion wait for complete-game correctness and
+resource evidence.
+
 ### October 11 architecture gate — measure state maintenance before more isolated fixes
 
 The public-only offline comparison in

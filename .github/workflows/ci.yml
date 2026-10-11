@@ -454,6 +454,16 @@ jobs:
         shell: pwsh
         run: .\battle-smoke.ps1
 
+      - name: Isolated unknown-RNG native ancestry audit (11B)
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --output runs/native-stochastic/report.json
+
+      - name: Public-event guided native generation audit (11B follow-up)
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation guided --output runs/native-stochastic/guided-report.json
+
       - name: Heuristic opponent smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
