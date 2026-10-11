@@ -1,5 +1,26 @@
 # Champions Practice Bot Roadmap
 
+### October 11 architecture gate — measure state maintenance before more isolated fixes
+
+The public-only offline comparison in
+`reviews/state-maintenance-audit-2026-10-11.md` confirms production deliberately
+discards successful worlds each turn (#197); persistent conditioning does not
+drive current midgame decisions. Neither approach dominates the four bounded
+audit cells. At two pivot boundaries, ordinary pruning loses distinct queued
+opponent commands; probing the unpruned native witness batch recovers a complete
+posterior for the remaining set worlds. Other stochastic transitions remain
+unresolved. Do not revert #197 or bypass the closed fresh support contract.
+
+Next, prototype discrete queued-command retention offline, separately bounding
+RNG history. Require public-only complete continuations and native true-world
+survival across pauses before any maintained-world production admission. Then
+evaluate a hybrid with explicit fresh-recovery support. Unburden and consumed
+inventory remain fresh-path priorities; they are not the whole architecture.
+Measure complete-game search coverage alongside correctness. The proposed
+playable gate is 12 complete games over two supported compositions, three
+policies and two seeds, at least 90% actionable search, no illegal actions or
+observed unsafe admissions, and no measured false true-world exclusions.
+
 ### October 11 review gate — #237–#239, standing in for #240
 
 The human-supplied independent review reproduced admitted fresh worlds with
