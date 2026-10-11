@@ -1,4 +1,4 @@
-"""Pinned Showdown midgame: an opposing fainted slot must not erase search.
+"""Pinned fainted-slot projection control and incomplete-history admission denial.
 
 Public evidence comes ONLY from p2's sanitized session view; the constructor
 receives a separate fresh public-prior opening, never the live session state.
@@ -13,6 +13,7 @@ from champions_practice.belief_worlds import PublicSetCandidate
 from champions_practice.config import CHAMPIONS_FORMAT
 from champions_practice.current_state_constraints import PublicConstraintLedger
 from champions_practice.present_rebase import build_present_rebase
+from champions_practice.native_projection_smoke import NoNativeConstruction, probe_present_projection
 from champions_practice.search_worker import FORCED_WAIT_CHOICE, ShowdownSearchWorker
 from champions_practice.sealed_transition_smoke import SELF_KO_TEAM
 
@@ -126,7 +127,17 @@ def main() -> None:
             # separate fresh Showdown root must not change the known own
             # request.details (e.g. Chandelure's M/F flag).
             pinned_ai_team = _pin_known_team_genders(GHOST_TEAM, view["request"])
-            report = build_present_rebase(
+            denied = build_present_rebase(
+                NoNativeConstruction(), ledger=ledger, current_view=view,
+                priors=public_priors(), battle_format=CHAMPIONS_FORMAT,
+                ai_team=pinned_ai_team, ai_preview_choice=PREVIEW,
+                legal_live=tuple(legal), max_roots=2, max_particles=4,
+            )
+            if denied.particles or denied.unresolved_reason != "unsupported-public-protection-chain":
+                raise SystemExit(f"ERROR: incomplete Protect history not rejected: {denied.unresolved_reason}")
+            # Isolated native projection only. This single-view fixture lacks
+            # lifecycle evidence and includes unsupported static capabilities.
+            report = probe_present_projection(
                 worker, ledger=ledger, current_view=view,
                 priors=public_priors(), battle_format=CHAMPIONS_FORMAT,
                 ai_team=pinned_ai_team, ai_preview_choice=PREVIEW,
@@ -157,10 +168,10 @@ def main() -> None:
                     raise SystemExit("ERROR: serialized native faint status not authoritative")
                 if not set(worker.legal_choices(state=particle.state, side="p2")) == set(legal):
                     raise SystemExit("ERROR: fainted-slot witness changed legal moves")
-            print("RESULT: native fainted opponent slot admitted for exact search")
+            print("RESULT: native fainted-slot projection retained; incomplete-history production admission rejected")
             print(f"Current public turn: {view['turn']}")
             print(f"Fainted active slot: {dead[0]}")
-            print(f"Admitted native hypotheses: {len(report.particles)}")
+            print(f"Offline projection witnesses: {len(report.particles)}")
             print("Exact own request and legal choices retained: YES")
             print("Live hidden session copied into constructor: NO")
         finally:

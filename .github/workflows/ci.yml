@@ -309,7 +309,7 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.selected_prior_smoke
 
-      - name: Pinned fainted-opponent active-slot current-state admission smoke test
+      - name: Pinned fainted-slot projection and incomplete-history denial
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.fainted_active_present_smoke
@@ -319,7 +319,7 @@ jobs:
         shell: pwsh
         run: .\\.venv\\Scripts\\python.exe -m champions_practice.human_mega_regression_smoke
 
-      - name: Pinned Psychic Seed Unburden switch-lifecycle public-world smoke test
+      - name: Pinned Unburden lifecycle projections and unsupported-state denial
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.unburden_present_smoke
