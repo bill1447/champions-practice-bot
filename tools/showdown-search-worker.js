@@ -3263,6 +3263,8 @@ function resolveFiniteTransitionPath(
   if (experimentalChance) path = cloneJson(path);
   const nativeNext = battle.prng.rng.next.bind(battle.prng.rng);
   const nativeRandom = battle.prng.random.bind(battle.prng);
+  let stratumOrdinal = experimentalChance?.stratumIndex;
+  let stratifiedForks = 0;
 
   function choose(kind, options, metadata) {
     const expectedDelta = experimentalChance?.expectedPublicDelta;
@@ -3291,6 +3293,14 @@ function resolveFiniteTransitionPath(
         } finally {
           battle.prng.rng.next = guard;
         }
+      } else if (Number.isSafeInteger(stratumOrdinal) && stratumOrdinal >= 0 &&
+                 stratifiedForks < 3 && options.length > 1) {
+        // Offline frontier experiment: distribute early finite choices across
+        // mixed-radix strata, then sample the remaining native chance tape.
+        // This is proposal coverage, not a probability or exhaustive certificate.
+        value = options[stratumOrdinal % options.length];
+        stratumOrdinal = Math.floor(stratumOrdinal / options.length);
+        stratifiedForks++;
       } else {
         value = kind === "chance"
           ? chanceSampler.randomChance(metadata.numerator, metadata.denominator)

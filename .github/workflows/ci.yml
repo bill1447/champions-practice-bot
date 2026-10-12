@@ -464,6 +464,31 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation guided --output runs/native-stochastic/guided-report.json
 
+      - name: Public-first diverse native frontier audit
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation frontier --output runs/native-frontier/frontier-report.json
+
+      - name: Verify paired native frontier evidence
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe scripts/native_frontier_compare.py --baseline runs/native-stochastic/guided-report.json --candidate runs/native-frontier/frontier-report.json --output runs/native-frontier/comparison.json
+
+      - name: Guided native validation with additional seed and mixed policy
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation guided --oracle-seed-offset 1 --include-mixed-policy --output runs/native-frontier/guided-validation.json
+
+      - name: Frontier native validation with additional seed and mixed policy
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation frontier --oracle-seed-offset 1 --include-mixed-policy --output runs/native-frontier/frontier-validation.json
+
+      - name: Verify paired native validation evidence
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe scripts/native_frontier_compare.py --baseline runs/native-frontier/guided-validation.json --candidate runs/native-frontier/frontier-validation.json --output runs/native-frontier/validation-comparison.json
+
       - name: Heuristic opponent smoke test
         if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
         shell: pwsh

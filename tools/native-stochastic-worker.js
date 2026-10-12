@@ -22,6 +22,17 @@ function mechanics(state) {
 function signature(view) {
   return JSON.stringify(core.normalizedPublicObservationForReachability(view));
 }
+function damageHistory(state) {
+  return { totalDamage: state.lastMove?.totalDamage,
+    sides: state.sides.map(side => side.pokemon.map(pokemon => ({
+      lastDamage: pokemon.lastDamage, attackedBy: pokemon.attackedBy,
+      lastMoveTargetLoc: pokemon.lastMoveTargetLoc,
+    }))) };
+}
+function diversity(states) {
+  return { speed_order_classes: new Set(states.map(state => hash(state.speedOrder))).size,
+    damage_history_classes: new Set(states.map(state => hash(damageHistory(state)))).size };
+}
 function rejectPrivate(value) {
   if (!value || typeof value !== "object") return;
   for (const [key, child] of Object.entries(value)) {
@@ -90,34 +101,65 @@ function advance(request) {
   const config = limits(request);
   const wasBlocked = blocked;
   const generation = request.generation ?? "sampled";
-  if (!["sampled", "guided"].includes(generation)) throw new Error("unknown generation strategy");
+  if (!["sampled", "guided", "stratified", "spread", "frontier"].includes(generation)) throw new Error("unknown generation strategy");
   const started = performance.now(), deadline = started + config.milliseconds;
   const parents = particles;
+  const parentCalls = parents.map(() => 0);
   const retained = new Map();
   const mismatches = {};
   const publicMatchMechanics = new Set();
+  const publicSpeedOrders = new Set(), publicDamageHistories = new Set();
   let generated = 0, matched = 0, unsupported = 0, selectionLoss = 0, bytes = 0;
   let depth = 0;
   let pruned = 0, incomplete = 0;
+  let firstPublicMatch = null;
   const parentClasses = new Map();
   for (const parent of parents) {
     const key = core.stableJson(mechanics(parent.state));
     if (!parentClasses.has(key)) parentClasses.set(key, parent);
   }
   const pending = [...parentClasses.values()].map(parent => ({ parent, chance: [] }));
+  const distinctParents = [...parentClasses.values()];
+  const lanes = generation === "frontier" ? [
+    { pending: [...pending], restart: 0, parentClass: null, calls: 0 },
+    ...[...distinctParents].reverse().map((parent, parentClass) => ({
+      pending: [{ parent, chance: [] }], restart: 1, parentClass, calls: 0,
+    })),
+  ] : Array.from({ length: 4 }, (_, restart) =>
+    [...distinctParents].reverse().map((parent, parentClass) => ({
+      pending: [{ parent, chance: [] }], restart, parentClass, calls: 0,
+    }))).flat();
+  let laneIndex = 0, quantumUsed = 0;
+  const fair = ["spread", "frontier"].includes(generation);
+  const totalPending = () => fair
+    ? lanes.reduce((sum, lane) => sum + lane.pending.length, 0) : pending.length;
   let pendingCap = false;
   if (!blocked) {
     for (let attempt = 0; attempt < config.samples; attempt++) {
       if (performance.now() >= deadline) break;
-      if (generation === "guided" && !pending.length) break;
-      const work = generation === "guided" ? pending.pop() : null;
-      const parent = work ? work.parent : parents[attempt % parents.length];
+      if ((generation === "guided" || fair) && !totalPending()) break;
+      let lane = null;
+      if (fair) {
+        while ((quantumUsed >= 24 && !(generation === "frontier" && firstPublicMatch === null)) ||
+               !lanes[laneIndex].pending.length) {
+          laneIndex = (laneIndex + 1) % lanes.length; quantumUsed = 0;
+        }
+        lane = lanes[laneIndex]; lane.calls++; quantumUsed++;
+      }
+      const work = lane ? lane.pending.pop() : generation === "guided" ? pending.pop() : null;
+      const parent = work ? work.parent : generation === "stratified"
+        ? distinctParents[attempt % distinctParents.length] : parents[attempt % parents.length];
+      parentCalls[parents.indexOf(parent)]++;
       let result;
       try {
         result = core.resolveFiniteTransitionPath(parent.state, request.p1_choice,
           request.p2_choice, "p1", previews, work?.chance ?? [], {
             ...(work ? { expectedPublicDelta: request.view.public_event_delta }
               : { sampleSeed: ownSeed(`proposal:${proposal++}`) }), consumeNativeDraws: true,
+            ...(generation === "stratified" ? {
+              expectedPublicDelta: request.view.public_event_delta,
+              stratumIndex: Math.floor(attempt / distinctParents.length),
+            } : {}),
             forceChanceFalse: request.force_chance_false === true,
           });
       } catch (error) {
@@ -132,12 +174,13 @@ function advance(request) {
         incomplete++;
         // Independent deterministic option ordering avoids always preferring
         // the lowest roll. This is enumeration, not a calibrated posterior.
-        const options = [...result.decision.options].sort((a, b) =>
-          hash({ chance: work.chance, value: a }).localeCompare(hash({ chance: work.chance, value: b })));
-        if (pending.length + options.length > 4096 || work.chance.length >= 128) {
+        const orderKey = value => hash({ chance: work.chance, value,
+          ...(lane?.restart ? { restart: lane.restart } : {}) });
+        const options = [...result.decision.options].sort((a, b) => orderKey(a).localeCompare(orderKey(b)));
+        if (totalPending() + options.length > 4096 || work.chance.length >= 128) {
           pendingCap = true; break;
         }
-        for (const value of options) pending.push({ parent, chance: [...work.chance,
+        for (const value of options) (lane ? lane.pending : pending).push({ parent, chance: [...work.chance,
           { kind: result.decision.kind, value, metadata: result.decision.metadata }] });
         continue;
       }
@@ -148,6 +191,14 @@ function advance(request) {
         continue;
       }
       matched++;
+      if (firstPublicMatch === null) {
+        firstPublicMatch = generated;
+        // Preserve ordinary guided discovery until a public match exists.
+        // Only then share its remaining budget with alternate prefix lanes.
+        if (generation === "frontier") quantumUsed = 24;
+      }
+      publicSpeedOrders.add(hash(result.state.speedOrder));
+      publicDamageHistories.add(hash(damageHistory(result.state)));
       const key = createHash("sha256").update(core.stableJson(mechanics(result.state))).digest("hex");
       publicMatchMechanics.add(key);
       if (retained.has(key)) continue;
@@ -166,12 +217,23 @@ function advance(request) {
   else blocked = true;
   return { outcome: retained.size ? "public-witness" : "unresolved", current: retained.size > 0,
     reason: retained.size ? null : generated === 0 ? (wasBlocked ? "stale-after-unresolved" : "deadline-exhausted")
-      : unsupported === generated ? "branch-generation-unsupported-domain"
-        : generation === "guided" ? "public-conditioning-enumeration-incomplete" : "public-conditioning-sampling-incomplete",
+      : matched > 0 && selectionLoss > 0 ? "particle-storage-budget-exhausted"
+        : unsupported === generated ? "branch-generation-unsupported-domain"
+        : generation === "guided" || fair ? "public-conditioning-enumeration-incomplete" : "public-conditioning-sampling-incomplete",
     generated_branches: generated, public_matches: matched, unsupported_branches: unsupported,
     generation, public_prefix_pruned: pruned, incomplete_prefixes: incomplete,
+    public_match_diversity: { speed_order_classes: publicSpeedOrders.size,
+      damage_history_classes: publicDamageHistories.size, native_mechanical_classes: publicMatchMechanics.size },
+    retained_diversity: diversity([...retained.values()].map(particle => particle.state)),
+    parent_diversity: diversity(parents.map(particle => particle.state)),
+    first_public_match_call: firstPublicMatch,
+    parent_call_counts: parentCalls, distinct_parent_classes: distinctParents.length,
+    frontier_lanes: fair ? lanes.map(lane => ({
+      parent_class: lane.parentClass, restart: lane.restart, calls: lane.calls, pending: lane.pending.length,
+    })) : [],
     completed_branches: generated - pruned - unsupported - incomplete,
-    pending_paths: generation === "guided" ? pending.length : 0, pending_cap_exhausted: pendingCap,
+    pending_paths: generation === "guided" || fair ? totalPending() : 0,
+    pending_cap_exhausted: pendingCap,
     maximum_chance_depth: depth, parent_particles: parents.length, selection_losses: selectionLoss,
     coverage_exhaustive: false, sampled_miss_disproved: false,
     deadline_exhausted: !wasBlocked && performance.now() >= deadline,

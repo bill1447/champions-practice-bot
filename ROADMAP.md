@@ -18,9 +18,14 @@ under the tested budgets. See
 The bounded public-event guided follow-up raises witnesses from 35/196 to
 68/196 checkpoints and preserves mechanically matching ancestry through 2/10
 complete games, compared with 0/10 for sampling. It remains offline and is not a
-production fallback or strength result. Next, diversify the early chance-prefix
-frontier against the same fixed games and budgets, starting with the first
-public-conditioning/mechanical coverage loss in each game. Preserve unresolved
+production fallback or strength result. The frontier-diversity follow-up improves
+original checkpoint witnesses to 86/196 but regresses on additional seeds and
+mixed policy from 106/255 to 94/255; complete-game ancestry does not improve.
+Keep guided as the reference. See `reviews/native-frontier-generation-2026-10-11.md`.
+Next, instrument generated children before deduplication/retention and preserve
+equivalent-child predecessor provenance while testing parent-balanced discovery.
+The probe proves guided parent starvation in two cases; 24 frontier calls to the
+matching parent still do not preserve its ancestry. Preserve unresolved
 outcomes and independent ancestry. Do not
 raise the particle cap as the primary remedy without evidence of selection loss.
 Retain distinctions such as native damage history and speed order until future

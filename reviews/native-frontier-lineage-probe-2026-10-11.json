@@ -1,0 +1,94 @@
+{
+  "source_identity": {
+    "schema": "runtime-source-sha256-v1",
+    "sha256": "e82d996972a113d169c3799155dde64bab07dceec097a883b626c804154cfcb4",
+    "dirty": true
+  },
+  "oracle_verdict_feedback_to_tracker": false,
+  "results": [
+    {
+      "fixture": "rain",
+      "generation": "guided",
+      "reference_trace_fingerprint": "517f8d7796dc4dccef308771bb5527f1bf58d8eb4a9c735bf8cf40c24d5adbf7",
+      "completed_reference_game": true,
+      "first_ancestry_loss": {
+        "checkpoint": 4,
+        "current_mechanical_witnesses": 1,
+        "previous_matching_parents": [
+          {
+            "lineage": "8bfd5134f582a6b75a52ffebfe47bdfa26259747b988f47f6fc505206cf339ac",
+            "native_calls": 0
+          }
+        ],
+        "all_matching_parents_starved": true,
+        "current_witness_parent_lineages": [
+          "c4bdf53e86051d9b25f7c1ecf3deda1d3c73b07af15a0afdca09616057c2976d"
+        ],
+        "scope": "starvation is proven only for zero-call parents; otherwise generation versus dedup remains unresolved"
+      }
+    },
+    {
+      "fixture": "pivot-queue",
+      "generation": "guided",
+      "reference_trace_fingerprint": "8f583ff0e92138416aa514a2589d5b2e47950c0e246ccde0895e2f0472a9a48e",
+      "completed_reference_game": true,
+      "first_ancestry_loss": {
+        "checkpoint": 3,
+        "current_mechanical_witnesses": 1,
+        "previous_matching_parents": [
+          {
+            "lineage": "50d496ddb43f6960bf4c9a855cfd06dced211720f13a9b1cc54bd1b665d9e4df",
+            "native_calls": 0
+          }
+        ],
+        "all_matching_parents_starved": true,
+        "current_witness_parent_lineages": [
+          "3a2e116c56cd2deed7ea672bc00a40f3c6e465f093493ed592d602117efbce83"
+        ],
+        "scope": "starvation is proven only for zero-call parents; otherwise generation versus dedup remains unresolved"
+      }
+    },
+    {
+      "fixture": "rain",
+      "generation": "frontier",
+      "reference_trace_fingerprint": "517f8d7796dc4dccef308771bb5527f1bf58d8eb4a9c735bf8cf40c24d5adbf7",
+      "completed_reference_game": true,
+      "first_ancestry_loss": {
+        "checkpoint": 4,
+        "current_mechanical_witnesses": 1,
+        "previous_matching_parents": [
+          {
+            "lineage": "5e6c54ef6681743e905a18f8d9c312edf235b5125dbef0175e62a15bdd47a55e",
+            "native_calls": 24
+          }
+        ],
+        "all_matching_parents_starved": false,
+        "current_witness_parent_lineages": [
+          "81745cf5fdcb9d43dbd30f891dd8af23c2ef1102491e6333f1776f1a11d2e1ad"
+        ],
+        "scope": "starvation is proven only for zero-call parents; otherwise generation versus dedup remains unresolved"
+      }
+    },
+    {
+      "fixture": "pivot-queue",
+      "generation": "frontier",
+      "reference_trace_fingerprint": "8f583ff0e92138416aa514a2589d5b2e47950c0e246ccde0895e2f0472a9a48e",
+      "completed_reference_game": true,
+      "first_ancestry_loss": {
+        "checkpoint": 3,
+        "current_mechanical_witnesses": 1,
+        "previous_matching_parents": [
+          {
+            "lineage": "738aaab1c170054258099d92da4025a92c37e0edc8263b406117469d2ff84b58",
+            "native_calls": 24
+          }
+        ],
+        "all_matching_parents_starved": false,
+        "current_witness_parent_lineages": [
+          "b008815789dc6ceb8d2ebb1d4b049023aeb1cfba5ab437a5c82f6c3c1edf76b9"
+        ],
+        "scope": "starvation is proven only for zero-call parents; otherwise generation versus dedup remains unresolved"
+      }
+    }
+  ]
+}

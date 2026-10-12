@@ -149,6 +149,37 @@ def positive_and_negative_controls(oracle):
                     p2_choice="move protect, move protect", public_view=target, milliseconds=0)
                 if zero_budget["outcome"] != "unresolved" or not zero_budget["deadline_exhausted"]:
                     raise AssertionError("zero-budget sampled transition did not remain unresolved")
+            with NativeStochasticTracker() as frontier:
+                frontier.initialize(p1_team=team, p2_team=team, p1_preview="team 4123",
+                                    p2_preview="team 2314", public_view=opening)
+                frontier_result = frontier.advance(p1_choice=commands[0], p2_choice=commands[1],
+                    public_view=target, generation="frontier", samples=512, milliseconds=5000)
+                frontier_validation = validate_checkpoint(oracle, session, frontier.inspection_for_validator(),
+                    target, {"p1": list(SPECIES), "p2": list(SPECIES)})
+                if not frontier_validation["mechanical_witnesses"]:
+                    raise AssertionError("public-first frontier lost the known reachable burn control")
+            discovery_controls = {}
+            for mode in ("guided", "frontier"):
+                with NativeStochasticTracker() as discovery:
+                    discovery.initialize(p1_team=team, p2_team=team, p1_preview="team 4123",
+                                         p2_preview="team 2314", public_view=opening)
+                    discovery_controls[mode] = discovery.advance(p1_choice=commands[0], p2_choice=commands[1],
+                        public_view=target, generation=mode, samples=max(1, guided_result["first_public_match_call"] - 1),
+                        milliseconds=5000)
+            for key in ("generated_branches", "public_matches", "incomplete_prefixes", "public_prefix_pruned",
+                        "parent_call_counts", "first_public_match_call"):
+                if discovery_controls["guided"][key] != discovery_controls["frontier"][key]:
+                    raise AssertionError("frontier changed guided discovery before first public match: " + key)
+            if any(lane["calls"] for lane in discovery_controls["frontier"]["frontier_lanes"][1:]):
+                raise AssertionError("frontier spent discovery budget on alternate lanes before a public match")
+            with NativeStochasticTracker() as storage:
+                storage.initialize(p1_team=team, p2_team=team, p1_preview="team 4123",
+                                   p2_preview="team 2314", public_view=opening)
+                storage_control = storage.advance(p1_choice=commands[0], p2_choice=commands[1],
+                    public_view=target, generation="frontier", samples=512, milliseconds=5000, max_bytes=1)
+                if (storage_control["outcome"] != "unresolved" or not storage_control["public_matches"] or
+                        storage_control["reason"] != "particle-storage-budget-exhausted"):
+                    raise AssertionError("particle-storage exhaustion did not remain explicitly unresolved")
             return {"initial_sample": missed, "reachable_finite_outcome": {
                         key: value for key, value in reached.items() if key != "witness"},
                     "native_mechanics_equal": True,
@@ -156,13 +187,17 @@ def positive_and_negative_controls(oracle):
                     "exhaustive_negative": impossible, "budget_control": bounded,
                     "guided_positive": guided_result,
                     "guided_positive_mechanical_witnesses": guided_validation["mechanical_witnesses"],
+                    "frontier_positive": frontier_result,
+                    "frontier_positive_mechanical_witnesses": frontier_validation["mechanical_witnesses"],
+                    "pre_match_discovery_parity": discovery_controls,
+                    "storage_budget_control": storage_control,
                     "zero_budget_control": zero_budget,
                     "oracle_seed_or_state_given_to_tracker": False}
         finally:
             oracle.close_session(session)
 
 
-def run(samples=96, budget_ms=600, generation="sampled"):
+def run(samples=96, budget_ms=600, generation="sampled", oracle_seed_offset=0, include_mixed=False):
     tracemalloc.start()
     games = []
     with ShowdownSearchWorker() as oracle, ShowdownSearchWorker(
@@ -172,9 +207,10 @@ def run(samples=96, budget_ms=600, generation="sampled"):
         controls["privacy_canary_rejections"] = privacy_controls()
         teams = {"mirror": SMOKE_TEAM, **{label: team_text(roster) for label, roster in ROSTERS.items()}}
         for index, (label, team) in enumerate(teams.items()):
-            for policy in ("attack-first", "support-switch"):
+            for policy in (("attack-first", "support-switch", "seeded-mixed") if include_mixed else
+                           ("attack-first", "support-switch")):
                 games.append(run_game(oracle, chance_validator, label=label, p1_team=team, p2_team=teams["balance"],
-                    policy=policy, oracle_seed=SEEDS[index % len(SEEDS)], samples=samples, budget_ms=budget_ms,
+                    policy=policy, oracle_seed=SEEDS[(index + oracle_seed_offset) % len(SEEDS)], samples=samples, budget_ms=budget_ms,
                     generation=generation))
         team, _ = fixture()
         for label, script in (
@@ -186,7 +222,7 @@ def run(samples=96, budget_ms=600, generation="sampled"):
                 ("move partingshot +1, move protect", "move partingshot +1, move protect"))),
         ):
             games.append(run_game(oracle, chance_validator, label=label, p1_team=team, p2_team=team,
-                policy="attack-first", oracle_seed=SEEDS[0], samples=samples, budget_ms=budget_ms, script=script,
+                policy="attack-first", oracle_seed=SEEDS[oracle_seed_offset], samples=samples, budget_ms=budget_ms, script=script,
                 generation=generation))
     rows = [row for game in games for row in game["checkpoints"]]
     first_losses = []
@@ -198,6 +234,10 @@ def run(samples=96, budget_ms=600, generation="sampled"):
                 "generated_branches": first["tracker"].get("generated_branches", 0),
                 "public_matches": first["tracker"].get("public_matches", 0),
                 "selection_losses": first["tracker"].get("selection_losses", 0),
+                "public_match_diversity": first["tracker"].get("public_match_diversity"),
+                "retained_diversity": first["tracker"].get("retained_diversity"),
+                "parent_diversity": first["tracker"].get("parent_diversity"),
+                "first_public_match_call": first["tracker"].get("first_public_match_call"),
                 "native_mismatch_paths": first["validator"]["native_mismatch_paths"]})
     instrumentation = [row["isolated_chance_instrumentation"] for row in rows
                        if "isolated_chance_instrumentation" in row]
@@ -208,6 +248,7 @@ def run(samples=96, budget_ms=600, generation="sampled"):
         "source_identity": _source_identity(PROJECT_ROOT), "production_changed": False,
         "samples_per_checkpoint": samples, "checkpoint_budget_ms": budget_ms,
         "generation": generation,
+        "oracle_seed_offset": oracle_seed_offset, "include_mixed_policy": include_mixed,
         "controls": controls, "games": games, "completed_reference_games": len(games),
         "checkpoint_outcomes": dict(Counter(row["outcome"] for row in rows)),
         "terminal_outcomes": dict(Counter(game["terminal_outcome"] for game in games)),
@@ -226,6 +267,9 @@ def run(samples=96, budget_ms=600, generation="sampled"):
             "python_peak_bytes": tracemalloc.get_traced_memory()[1],
             "deadline_scope": "cooperative, checked between native branches; eight-second transport timeout",
         },
+        "diversity": {f"maximum_{stage}_{field}": max(row["tracker"].get(stage, {}).get(field, 0) for row in rows)
+                      for stage in ("public_match_diversity", "retained_diversity", "parent_diversity")
+                      for field in ("speed_order_classes", "damage_history_classes")},
         "observed_false_exclusions": 0,
         "promotion_ready": False,
         "current_mechanics_not_prng_identity": True,
@@ -261,13 +305,15 @@ def main():
     parser.add_argument("--output", type=Path, default=Path("runs/native-stochastic/report.json"))
     parser.add_argument("--samples", type=int, default=96)
     parser.add_argument("--budget-ms", type=int, default=600)
-    parser.add_argument("--generation", choices=("sampled", "guided"), default="sampled")
+    parser.add_argument("--generation", choices=("sampled", "guided", "stratified", "spread", "frontier"), default="sampled")
+    parser.add_argument("--oracle-seed-offset", type=int, choices=range(len(SEEDS)), default=0)
+    parser.add_argument("--include-mixed-policy", action="store_true")
     args = parser.parse_args()
     if not 1 <= args.samples <= 512 or not 0 <= args.budget_ms <= 5000:
         parser.error("samples must be 1..512 and budget-ms must be 0..5000")
     args.output.parent.mkdir(parents=True, exist_ok=True)
     try:
-        report = run(args.samples, args.budget_ms, args.generation)
+        report = run(args.samples, args.budget_ms, args.generation, args.oracle_seed_offset, args.include_mixed_policy)
     except Exception as error:
         args.output.write_text(json.dumps({"phase": "11B", "audit_failed": True,
             "error": str(error), "production_changed": False}, indent=2) + "\n", encoding="utf-8")
