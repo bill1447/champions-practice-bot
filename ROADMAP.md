@@ -2,6 +2,13 @@
 
 ### Current priority — independent public-state V2 player
 
+PR #248 adds an explicit offline risk-aware joint-action candidate: evaluate our
+complete command against plausible enemy joint responses, including Protect and
+support, with nominal and downside estimates. Keep the original V2 default and
+production unchanged. Freeze paired pressure/protective-guard evidence and selected
+native controls; investigate guard losses and independent opponents before promotion.
+See `docs/risk-aware-joint-actions.md` and `reviews/risk-aware-joint-actions-2026-10-12.md`.
+
 The frozen 100-game competitive evaluation compares V2 with the full production
 bot: V2 wins 39/40 direct games and 11/30 versus the common pressure challenger,
 while production wins 0/30 against that challenger. Production falls back on
