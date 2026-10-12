@@ -504,6 +504,16 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/v2_spread_smoke.py
 
+      - name: Frozen V2 versus production side-swapped evaluation
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.competitive_evaluation --smoke --seeds 1 --budget 8 --output runs/competitive-evaluation
+
+      - name: Validate paired competitive telemetry
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe scripts/competitive_evaluation_report.py runs/competitive-evaluation/report.json --output runs/competitive-evaluation/analysis.json
+
       - name: Capture status and logs
         if: always()
         continue-on-error: true

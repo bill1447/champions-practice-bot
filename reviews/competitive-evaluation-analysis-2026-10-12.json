@@ -1,0 +1,121 @@
+{
+  "schema": "paired-competitive-analysis-v1",
+  "source_identity": {
+    "schema": "runtime-source-sha256-v1",
+    "sha256": "84d10d8ee3346c442b8a923270f9ce3692e0db358cf26015da3c3a6a1ad41d0a",
+    "dirty": true
+  },
+  "policy_sha256": "c52bcb397bcf1632a675bec8e3d72ac0680efcbd32416c90827634556963d0e0",
+  "production_sha256": "c12154bad68b383d06e7e5bedf2ff3354244a67eaa9305ffe0dad6d536f102a8",
+  "validated_games": 100,
+  "statuses": {
+    "complete": 100
+  },
+  "pairing_verified": true,
+  "equal_budgets_verified": true,
+  "strata": {
+    "heldout-direct": {
+      "completed_games": 30,
+      "seed_team_clusters": 15,
+      "agents": {
+        "v2": {
+          "completed_games": 30,
+          "wins": 30,
+          "draws": 0,
+          "score_rate": 1.0,
+          "seed_team_cluster_resampling_95band": [
+            1.0,
+            1.0
+          ],
+          "resampling_degenerate": true
+        },
+        "production": {
+          "completed_games": 30,
+          "wins": 0,
+          "draws": 0,
+          "score_rate": 0.0,
+          "seed_team_cluster_resampling_95band": [
+            0.0,
+            0.0
+          ],
+          "resampling_degenerate": true
+        }
+      }
+    },
+    "reference-direct": {
+      "completed_games": 10,
+      "seed_team_clusters": 5,
+      "agents": {
+        "v2": {
+          "completed_games": 10,
+          "wins": 9,
+          "draws": 0,
+          "score_rate": 0.9,
+          "seed_team_cluster_resampling_95band": [
+            0.7,
+            1.0
+          ],
+          "resampling_degenerate": false
+        },
+        "production": {
+          "completed_games": 10,
+          "wins": 1,
+          "draws": 0,
+          "score_rate": 0.1,
+          "seed_team_cluster_resampling_95band": [
+            0.0,
+            0.3
+          ],
+          "resampling_degenerate": false
+        }
+      }
+    },
+    "common-pressure": {
+      "completed_games": 60,
+      "seed_team_clusters": 15,
+      "agents": {
+        "v2": {
+          "completed_games": 30,
+          "wins": 11,
+          "draws": 0,
+          "score_rate": 0.36666666666666664,
+          "seed_team_cluster_resampling_95band": [
+            0.23333333333333334,
+            0.5
+          ],
+          "resampling_degenerate": false
+        },
+        "production": {
+          "completed_games": 30,
+          "wins": 0,
+          "draws": 0,
+          "score_rate": 0.0,
+          "seed_team_cluster_resampling_95band": [
+            0.0,
+            0.0
+          ],
+          "resampling_degenerate": true
+        }
+      }
+    }
+  },
+  "promotion_ready": false,
+  "interval_scope": "descriptive resampling over tested team/seed clusters, not a population confidence interval; constant observed scores give a degenerate band",
+  "production_diagnostics": {
+    "fallback_reasons": {
+      "public-rebase-unresolved": 16,
+      "fresh-public-world:unsupported-public-effect-duration": 214,
+      "fresh-public-world:unsupported-persistent:move:phantomforce": 48,
+      "fresh-public-world:unsupported-persistent:status:slp": 21,
+      "fresh-public-world:unsupported-persistent:move:earthquake": 82,
+      "fresh-public-world:unsupported-persistent:move:stompingtantrum": 95,
+      "fresh-public-world:unsupported-public-trace-state": 7,
+      "fresh-public-world:unsupported-persistent:owned-unburden": 15
+    },
+    "conditioning_budget_overruns": 16,
+    "search_decisions": 74,
+    "search_bounded_material_flags": 10,
+    "search_shadow_v2_material_dominance": 10,
+    "scope": "hindsight fixed-response two-sample material comparisons; not proof V2 beats admitted search generally"
+  }
+}
