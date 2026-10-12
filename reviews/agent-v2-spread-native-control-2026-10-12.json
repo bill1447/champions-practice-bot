@@ -1,0 +1,17 @@
+{
+  "native_targets": {
+    "earthquake": "allAdjacent",
+    "surf": "allAdjacent",
+    "rockslide": "allAdjacentFoes"
+  },
+  "catalog_sha256": "a3796bc8d5f8b2b052415d81c3dea0b3ae4d4c7bd91d530fa3811be1ae678326",
+  "legal_command": "move earthquake, move psychicfangs +1",
+  "partner_hp_before": 157,
+  "partner_hp_after": 43,
+  "policy_reasons": [
+    "spread friendly-fire risk to partner; protection, ability and switch order uncertified",
+    "earthquake: public typing, base power, accuracy and target health proxy",
+    "psychicfangs: public typing, base power, accuracy and target health proxy"
+  ],
+  "native_control_passed": true
+}

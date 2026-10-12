@@ -4,6 +4,7 @@ from time import perf_counter
 import pytest
 
 from champions_practice.agent_v2 import DecisionInput, PokemonFact, PublicCatalog, decide, observe
+from champions_practice.agent_v2.policy import rank_action
 
 
 @pytest.fixture
@@ -83,3 +84,33 @@ def test_input_adapter_drops_nonpublic_data(board, catalog):
 def test_no_legal_menu_rejected(board):
     with pytest.raises(ValueError, match="legal"):
         replace(board, legal_actions=())
+
+
+@pytest.mark.parametrize("move_id,move_type", [("earthquake", "Ground"), ("surf", "Water")])
+def test_spread_friendly_fire_changes_choice(board, catalog, move_id, move_type):
+    catalog.moves[move_id] = {"category": "Physical", "type": move_type, "power": 100,
+                              "accuracy": 100, "target": "allAdjacent"}
+    partner = PokemonFact("Fish", 25, False, None)
+    candidate = replace(board, owned_active=(board.owned_active[0], partner),
+                        legal_actions=(f"move {move_id}, wait", "move water +1, wait"))
+    assert decide(candidate, catalog).action == "move water +1, wait"
+    exposed = rank_action(candidate.legal_actions[0], candidate, catalog)
+    empty = replace(candidate, owned_active=(board.owned_active[0], None))
+    assert rank_action(candidate.legal_actions[0], empty, catalog).score > exposed.score
+    assert any("friendly-fire" in reason for reason in exposed.reasons)
+
+
+def test_opponent_only_spread_not_penalized(board, catalog):
+    catalog.moves["rockslide"] = {"category": "Physical", "type": "Rock", "power": 75,
+                                 "accuracy": 90, "target": "allAdjacentFoes"}
+    candidate = replace(board, owned_active=(board.owned_active[0], PokemonFact("Fish", 1, False, None)))
+    assert rank_action("move rockslide, wait", candidate, catalog).score == rank_action(
+        "move rockslide, wait", board, catalog).score
+
+
+def test_protect_and_switch_do_not_certify_spread_safety(board, catalog):
+    catalog.moves["surf"] = {"category": "Special", "type": "Water", "power": 90,
+                            "accuracy": 100, "target": "allAdjacent"}
+    candidate = replace(board, owned_active=(board.owned_active[0], PokemonFact("Fish", 1, False, None)))
+    for action in ("move surf, move protect", "move surf, switch 1"):
+        assert any("friendly-fire" in reason for reason in rank_action(action, candidate, catalog).reasons)
