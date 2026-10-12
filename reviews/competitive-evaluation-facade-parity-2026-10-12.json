@@ -1,0 +1,55 @@
+{
+  "case": "direct-0-0-p1",
+  "full_trace_parity": true,
+  "winner": "P1",
+  "rows": [
+    {
+      "checkpoint": 0,
+      "v2_action": "move rockslide, move psychicfangs +1 mega",
+      "production_action": "move surf, move wavecrash +2",
+      "mode": "belief-search"
+    },
+    {
+      "checkpoint": 1,
+      "v2_action": "wait",
+      "production_action": "switch 4, pass",
+      "mode": "fallback"
+    },
+    {
+      "checkpoint": 2,
+      "v2_action": "move dragonclaw +2, move psychicfangs +1",
+      "production_action": "move sludgebomb +2, move wavecrash +2",
+      "mode": "fallback"
+    },
+    {
+      "checkpoint": 3,
+      "v2_action": "pass, switch 3",
+      "production_action": "wait",
+      "mode": "forced-wait"
+    },
+    {
+      "checkpoint": 4,
+      "v2_action": "move earthquake, move dragonclaw +2",
+      "production_action": "move sludgebomb +2, move wavecrash +2",
+      "mode": "fallback"
+    },
+    {
+      "checkpoint": 5,
+      "v2_action": "wait",
+      "production_action": "switch 3, pass",
+      "mode": "fallback"
+    },
+    {
+      "checkpoint": 6,
+      "v2_action": "move earthquake, move dragonclaw +1",
+      "production_action": "move flashcannon +2, pass",
+      "mode": "fallback"
+    },
+    {
+      "checkpoint": 7,
+      "v2_action": "move earthquake, move dragonclaw +1",
+      "production_action": "move flashcannon +2, pass",
+      "mode": "fallback"
+    }
+  ]
+}

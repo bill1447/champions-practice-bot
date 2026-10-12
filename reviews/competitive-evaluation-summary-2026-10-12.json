@@ -1,0 +1,1514 @@
+{
+  "schema": "competitive-evaluation-v1",
+  "baseline_commit": "680a005315e0e30812c121405cdf9780ea3fa3ce",
+  "showdown_revision": "a5df8274e85b0889bf2a9b3422a08b39732374fc",
+  "source_identity": {
+    "schema": "runtime-source-sha256-v1",
+    "sha256": "84d10d8ee3346c442b8a923270f9ce3692e0db358cf26015da3c3a6a1ad41d0a",
+    "dirty": true
+  },
+  "policy_sha256": "c52bcb397bcf1632a675bec8e3d72ac0680efcbd32416c90827634556963d0e0",
+  "production_sha256": "c12154bad68b383d06e7e5bedf2ff3354244a67eaa9305ffe0dad6d536f102a8",
+  "team_sha256": {
+    "ground-spread": "81a6f3f2d1bdbe8cb1e5686798ef429e29f67416dc2e10028f2c854590502579",
+    "rain-bulk": "e86c0c9b409500d4cbf545b84ae2a7f3c6e316602525a4092e0bca68c489fcd1",
+    "psychic-control": "c98ffa747a812dc31124276123135a8c6493429d47ccbc08041f6d44be726dac",
+    "mirror-reference": "35e8c417e3e7ddc6151c1bd262b7babaedc2355985adacaf5f3095fd2ad7343a",
+    "balance-reference": "7c2bf9c62de0c96eaa8cc34479c0a1d23da20fe94cf8f24213b7ba7e7a719244"
+  },
+  "prior_sha256": "6fe56ddaf7236106df4ca98651fb1201f45a04c5927d14019feb1b8b659446bf",
+  "budget_seconds": 8,
+  "cases": [
+    {
+      "id": "direct-0-0-p1",
+      "pair": "direct-0-0",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,d72ad053a672a6d302b3ccb4c23783e85a3b5b537c036baaae8fbdeafb716d17",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-0-0-p1-v2",
+      "pair": "pressure-0-0-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,d72ad053a672a6d302b3ccb4c23783e85a3b5b537c036baaae8fbdeafb716d17",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-0-p1-production",
+      "pair": "pressure-0-0-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,d72ad053a672a6d302b3ccb4c23783e85a3b5b537c036baaae8fbdeafb716d17",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-0-p2",
+      "pair": "direct-0-0",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,d72ad053a672a6d302b3ccb4c23783e85a3b5b537c036baaae8fbdeafb716d17",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-0-0-p2-v2",
+      "pair": "pressure-0-0-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,d72ad053a672a6d302b3ccb4c23783e85a3b5b537c036baaae8fbdeafb716d17",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-0-p2-production",
+      "pair": "pressure-0-0-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,d72ad053a672a6d302b3ccb4c23783e85a3b5b537c036baaae8fbdeafb716d17",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-1-p1",
+      "pair": "direct-0-1",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,ddac7a234549065d0a2dc4df7f317ac4ea50fe766d40183f605398d5db403113",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-0-1-p1-v2",
+      "pair": "pressure-0-1-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,ddac7a234549065d0a2dc4df7f317ac4ea50fe766d40183f605398d5db403113",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-1-p1-production",
+      "pair": "pressure-0-1-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,ddac7a234549065d0a2dc4df7f317ac4ea50fe766d40183f605398d5db403113",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-1-p2",
+      "pair": "direct-0-1",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,ddac7a234549065d0a2dc4df7f317ac4ea50fe766d40183f605398d5db403113",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-0-1-p2-v2",
+      "pair": "pressure-0-1-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,ddac7a234549065d0a2dc4df7f317ac4ea50fe766d40183f605398d5db403113",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-1-p2-production",
+      "pair": "pressure-0-1-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,ddac7a234549065d0a2dc4df7f317ac4ea50fe766d40183f605398d5db403113",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-2-p1",
+      "pair": "direct-0-2",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,00a1aa5bed518aee2446429dc0f8b618c2dcfc2cf2ad63d92af16d18a3cddf0b",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-0-2-p1-v2",
+      "pair": "pressure-0-2-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,00a1aa5bed518aee2446429dc0f8b618c2dcfc2cf2ad63d92af16d18a3cddf0b",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-2-p1-production",
+      "pair": "pressure-0-2-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,00a1aa5bed518aee2446429dc0f8b618c2dcfc2cf2ad63d92af16d18a3cddf0b",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-2-p2",
+      "pair": "direct-0-2",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,00a1aa5bed518aee2446429dc0f8b618c2dcfc2cf2ad63d92af16d18a3cddf0b",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-0-2-p2-v2",
+      "pair": "pressure-0-2-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,00a1aa5bed518aee2446429dc0f8b618c2dcfc2cf2ad63d92af16d18a3cddf0b",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-2-p2-production",
+      "pair": "pressure-0-2-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,00a1aa5bed518aee2446429dc0f8b618c2dcfc2cf2ad63d92af16d18a3cddf0b",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-3-p1",
+      "pair": "direct-0-3",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,c99953612226ea88f66ed4c56bfce11df2bbb4da90d4defc765bda185486b079",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-0-3-p1-v2",
+      "pair": "pressure-0-3-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,c99953612226ea88f66ed4c56bfce11df2bbb4da90d4defc765bda185486b079",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-3-p1-production",
+      "pair": "pressure-0-3-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,c99953612226ea88f66ed4c56bfce11df2bbb4da90d4defc765bda185486b079",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-3-p2",
+      "pair": "direct-0-3",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,c99953612226ea88f66ed4c56bfce11df2bbb4da90d4defc765bda185486b079",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-0-3-p2-v2",
+      "pair": "pressure-0-3-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,c99953612226ea88f66ed4c56bfce11df2bbb4da90d4defc765bda185486b079",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-3-p2-production",
+      "pair": "pressure-0-3-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,c99953612226ea88f66ed4c56bfce11df2bbb4da90d4defc765bda185486b079",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-4-p1",
+      "pair": "direct-0-4",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,26d4b58df0cdeef44a852169ead29d66379b0f84f17d2a592941adb71789a384",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-0-4-p1-v2",
+      "pair": "pressure-0-4-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,26d4b58df0cdeef44a852169ead29d66379b0f84f17d2a592941adb71789a384",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-4-p1-production",
+      "pair": "pressure-0-4-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,26d4b58df0cdeef44a852169ead29d66379b0f84f17d2a592941adb71789a384",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-0-4-p2",
+      "pair": "direct-0-4",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,26d4b58df0cdeef44a852169ead29d66379b0f84f17d2a592941adb71789a384",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-0-4-p2-v2",
+      "pair": "pressure-0-4-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,26d4b58df0cdeef44a852169ead29d66379b0f84f17d2a592941adb71789a384",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-0-4-p2-production",
+      "pair": "pressure-0-4-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "ground-spread",
+        "p2": "rain-bulk"
+      },
+      "battle_seed": "sodium,26d4b58df0cdeef44a852169ead29d66379b0f84f17d2a592941adb71789a384",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-0-p1",
+      "pair": "direct-1-0",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,dd1ec3d7c058b5cc6449863a890d52bf9bb4c4a9c80ae7349bdb5b663e116964",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-1-0-p1-v2",
+      "pair": "pressure-1-0-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,dd1ec3d7c058b5cc6449863a890d52bf9bb4c4a9c80ae7349bdb5b663e116964",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-0-p1-production",
+      "pair": "pressure-1-0-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,dd1ec3d7c058b5cc6449863a890d52bf9bb4c4a9c80ae7349bdb5b663e116964",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-0-p2",
+      "pair": "direct-1-0",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,dd1ec3d7c058b5cc6449863a890d52bf9bb4c4a9c80ae7349bdb5b663e116964",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-1-0-p2-v2",
+      "pair": "pressure-1-0-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,dd1ec3d7c058b5cc6449863a890d52bf9bb4c4a9c80ae7349bdb5b663e116964",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-0-p2-production",
+      "pair": "pressure-1-0-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,dd1ec3d7c058b5cc6449863a890d52bf9bb4c4a9c80ae7349bdb5b663e116964",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-1-p1",
+      "pair": "direct-1-1",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,9b28075a216b25297955d402124554669634824347f07630a6301958f1ce546f",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-1-1-p1-v2",
+      "pair": "pressure-1-1-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,9b28075a216b25297955d402124554669634824347f07630a6301958f1ce546f",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-1-p1-production",
+      "pair": "pressure-1-1-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,9b28075a216b25297955d402124554669634824347f07630a6301958f1ce546f",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-1-p2",
+      "pair": "direct-1-1",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,9b28075a216b25297955d402124554669634824347f07630a6301958f1ce546f",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-1-1-p2-v2",
+      "pair": "pressure-1-1-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,9b28075a216b25297955d402124554669634824347f07630a6301958f1ce546f",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-1-p2-production",
+      "pair": "pressure-1-1-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,9b28075a216b25297955d402124554669634824347f07630a6301958f1ce546f",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-2-p1",
+      "pair": "direct-1-2",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,500bb2e87eb2b69bde4fec642b2e3b288d33d0ec401e24e5fff10e31f2c9a5ea",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-1-2-p1-v2",
+      "pair": "pressure-1-2-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,500bb2e87eb2b69bde4fec642b2e3b288d33d0ec401e24e5fff10e31f2c9a5ea",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-2-p1-production",
+      "pair": "pressure-1-2-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,500bb2e87eb2b69bde4fec642b2e3b288d33d0ec401e24e5fff10e31f2c9a5ea",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-2-p2",
+      "pair": "direct-1-2",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,500bb2e87eb2b69bde4fec642b2e3b288d33d0ec401e24e5fff10e31f2c9a5ea",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-1-2-p2-v2",
+      "pair": "pressure-1-2-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,500bb2e87eb2b69bde4fec642b2e3b288d33d0ec401e24e5fff10e31f2c9a5ea",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-2-p2-production",
+      "pair": "pressure-1-2-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,500bb2e87eb2b69bde4fec642b2e3b288d33d0ec401e24e5fff10e31f2c9a5ea",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-3-p1",
+      "pair": "direct-1-3",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,93e9feb23dc62f47da4f827844beae7bafea8c2f3e51682b4ace82f370b1d724",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-1-3-p1-v2",
+      "pair": "pressure-1-3-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,93e9feb23dc62f47da4f827844beae7bafea8c2f3e51682b4ace82f370b1d724",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-3-p1-production",
+      "pair": "pressure-1-3-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,93e9feb23dc62f47da4f827844beae7bafea8c2f3e51682b4ace82f370b1d724",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-3-p2",
+      "pair": "direct-1-3",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,93e9feb23dc62f47da4f827844beae7bafea8c2f3e51682b4ace82f370b1d724",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-1-3-p2-v2",
+      "pair": "pressure-1-3-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,93e9feb23dc62f47da4f827844beae7bafea8c2f3e51682b4ace82f370b1d724",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-3-p2-production",
+      "pair": "pressure-1-3-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,93e9feb23dc62f47da4f827844beae7bafea8c2f3e51682b4ace82f370b1d724",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-4-p1",
+      "pair": "direct-1-4",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,1e2c33c70d73dad731757496484e5cc065a093082269ed465dee891f8b5181aa",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-1-4-p1-v2",
+      "pair": "pressure-1-4-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,1e2c33c70d73dad731757496484e5cc065a093082269ed465dee891f8b5181aa",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-4-p1-production",
+      "pair": "pressure-1-4-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,1e2c33c70d73dad731757496484e5cc065a093082269ed465dee891f8b5181aa",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-1-4-p2",
+      "pair": "direct-1-4",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,1e2c33c70d73dad731757496484e5cc065a093082269ed465dee891f8b5181aa",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-1-4-p2-v2",
+      "pair": "pressure-1-4-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,1e2c33c70d73dad731757496484e5cc065a093082269ed465dee891f8b5181aa",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-1-4-p2-production",
+      "pair": "pressure-1-4-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "rain-bulk",
+        "p2": "psychic-control"
+      },
+      "battle_seed": "sodium,1e2c33c70d73dad731757496484e5cc065a093082269ed465dee891f8b5181aa",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-0-p1",
+      "pair": "direct-2-0",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,a4d91a702e4f762c4d1fd22258723b178b935856d47170f4f8be59f526fd7784",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-2-0-p1-v2",
+      "pair": "pressure-2-0-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,a4d91a702e4f762c4d1fd22258723b178b935856d47170f4f8be59f526fd7784",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-0-p1-production",
+      "pair": "pressure-2-0-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,a4d91a702e4f762c4d1fd22258723b178b935856d47170f4f8be59f526fd7784",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-0-p2",
+      "pair": "direct-2-0",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,a4d91a702e4f762c4d1fd22258723b178b935856d47170f4f8be59f526fd7784",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-2-0-p2-v2",
+      "pair": "pressure-2-0-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,a4d91a702e4f762c4d1fd22258723b178b935856d47170f4f8be59f526fd7784",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-0-p2-production",
+      "pair": "pressure-2-0-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,a4d91a702e4f762c4d1fd22258723b178b935856d47170f4f8be59f526fd7784",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-1-p1",
+      "pair": "direct-2-1",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,b8c0cccdfa651be8a3664c56772604e52cee747203a16a318afec542d83153f4",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-2-1-p1-v2",
+      "pair": "pressure-2-1-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,b8c0cccdfa651be8a3664c56772604e52cee747203a16a318afec542d83153f4",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-1-p1-production",
+      "pair": "pressure-2-1-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,b8c0cccdfa651be8a3664c56772604e52cee747203a16a318afec542d83153f4",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-1-p2",
+      "pair": "direct-2-1",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,b8c0cccdfa651be8a3664c56772604e52cee747203a16a318afec542d83153f4",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-2-1-p2-v2",
+      "pair": "pressure-2-1-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,b8c0cccdfa651be8a3664c56772604e52cee747203a16a318afec542d83153f4",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-1-p2-production",
+      "pair": "pressure-2-1-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,b8c0cccdfa651be8a3664c56772604e52cee747203a16a318afec542d83153f4",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-2-p1",
+      "pair": "direct-2-2",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,8633b50581498ca66970d61aeb939590563e25d7bd73a68ff30a90cd0b86f86b",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-2-2-p1-v2",
+      "pair": "pressure-2-2-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,8633b50581498ca66970d61aeb939590563e25d7bd73a68ff30a90cd0b86f86b",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-2-p1-production",
+      "pair": "pressure-2-2-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,8633b50581498ca66970d61aeb939590563e25d7bd73a68ff30a90cd0b86f86b",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-2-p2",
+      "pair": "direct-2-2",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,8633b50581498ca66970d61aeb939590563e25d7bd73a68ff30a90cd0b86f86b",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-2-2-p2-v2",
+      "pair": "pressure-2-2-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,8633b50581498ca66970d61aeb939590563e25d7bd73a68ff30a90cd0b86f86b",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-2-p2-production",
+      "pair": "pressure-2-2-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,8633b50581498ca66970d61aeb939590563e25d7bd73a68ff30a90cd0b86f86b",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-3-p1",
+      "pair": "direct-2-3",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,5595ace8d54d2cc86ee000d54f567071110d3925c59d36ffe5d9109504726513",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-2-3-p1-v2",
+      "pair": "pressure-2-3-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,5595ace8d54d2cc86ee000d54f567071110d3925c59d36ffe5d9109504726513",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-3-p1-production",
+      "pair": "pressure-2-3-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,5595ace8d54d2cc86ee000d54f567071110d3925c59d36ffe5d9109504726513",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-3-p2",
+      "pair": "direct-2-3",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,5595ace8d54d2cc86ee000d54f567071110d3925c59d36ffe5d9109504726513",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-2-3-p2-v2",
+      "pair": "pressure-2-3-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,5595ace8d54d2cc86ee000d54f567071110d3925c59d36ffe5d9109504726513",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-3-p2-production",
+      "pair": "pressure-2-3-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,5595ace8d54d2cc86ee000d54f567071110d3925c59d36ffe5d9109504726513",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-4-p1",
+      "pair": "direct-2-4",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,0299e31a515d97de33f8d39b0613c0ef0019b84a49166cb61caf8e1bad83d612",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "pressure-2-4-p1-v2",
+      "pair": "pressure-2-4-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,0299e31a515d97de33f8d39b0613c0ef0019b84a49166cb61caf8e1bad83d612",
+      "agents": {
+        "p1": "v2",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-4-p1-production",
+      "pair": "pressure-2-4-p1",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,0299e31a515d97de33f8d39b0613c0ef0019b84a49166cb61caf8e1bad83d612",
+      "agents": {
+        "p1": "production",
+        "p2": "pressure"
+      }
+    },
+    {
+      "id": "direct-2-4-p2",
+      "pair": "direct-2-4",
+      "category": "heldout-direct",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,0299e31a515d97de33f8d39b0613c0ef0019b84a49166cb61caf8e1bad83d612",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "pressure-2-4-p2-v2",
+      "pair": "pressure-2-4-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,0299e31a515d97de33f8d39b0613c0ef0019b84a49166cb61caf8e1bad83d612",
+      "agents": {
+        "p2": "v2",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "pressure-2-4-p2-production",
+      "pair": "pressure-2-4-p2",
+      "category": "common-pressure",
+      "teams": {
+        "p1": "psychic-control",
+        "p2": "ground-spread"
+      },
+      "battle_seed": "sodium,0299e31a515d97de33f8d39b0613c0ef0019b84a49166cb61caf8e1bad83d612",
+      "agents": {
+        "p2": "production",
+        "p1": "pressure"
+      }
+    },
+    {
+      "id": "direct-3-0-p1",
+      "pair": "direct-3-0",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,51a5b3ece5bc32b2838ac8d474ead0fb2913f3596b08385e70aeebd9763c4f88",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "direct-3-0-p2",
+      "pair": "direct-3-0",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,51a5b3ece5bc32b2838ac8d474ead0fb2913f3596b08385e70aeebd9763c4f88",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "direct-3-1-p1",
+      "pair": "direct-3-1",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,7e7095470c3e0c205f5c551873f84c9aa7ef6f389edf38c65072e250467d31ec",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "direct-3-1-p2",
+      "pair": "direct-3-1",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,7e7095470c3e0c205f5c551873f84c9aa7ef6f389edf38c65072e250467d31ec",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "direct-3-2-p1",
+      "pair": "direct-3-2",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,c74f0d5f0434411d31a5f6f3411aad50dfdc2c9b11f6cefbd2cfa23e7bd30ea2",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "direct-3-2-p2",
+      "pair": "direct-3-2",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,c74f0d5f0434411d31a5f6f3411aad50dfdc2c9b11f6cefbd2cfa23e7bd30ea2",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "direct-3-3-p1",
+      "pair": "direct-3-3",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,45014850cb4475e0af27b539416f56e0c822b034485d74a90a6f31a8094edf68",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "direct-3-3-p2",
+      "pair": "direct-3-3",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,45014850cb4475e0af27b539416f56e0c822b034485d74a90a6f31a8094edf68",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    },
+    {
+      "id": "direct-3-4-p1",
+      "pair": "direct-3-4",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,2332152f8164f6d0479ffc7db5ac13aea3dc326098d28fe3de3d0462ee1b468c",
+      "agents": {
+        "p1": "v2",
+        "p2": "production"
+      }
+    },
+    {
+      "id": "direct-3-4-p2",
+      "pair": "direct-3-4",
+      "category": "reference-direct",
+      "teams": {
+        "p1": "mirror-reference",
+        "p2": "balance-reference"
+      },
+      "battle_seed": "sodium,2332152f8164f6d0479ffc7db5ac13aea3dc326098d28fe3de3d0462ee1b468c",
+      "agents": {
+        "p2": "v2",
+        "p1": "production"
+      }
+    }
+  ],
+  "production_changed": false,
+  "limitations": [
+    "small paired head-to-head diagnostic, not a strength promotion",
+    "side swaps exchange policy assignment with fixed teams and seed",
+    "oracle diagnostics never feed actions; bounded fixed-response samples are not optimality",
+    "production p1 uses public-label adapter; failed games are not losses"
+  ],
+  "summary": {
+    "statuses": {
+      "complete": 100
+    },
+    "agents": {
+      "v2": {
+        "appearances": 70,
+        "completed": 70,
+        "wins": 50,
+        "losses": 20,
+        "draws": 0,
+        "completed_score_rate": 0.7142857142857143,
+        "actionable_decisions": 544,
+        "fallbacks": 0,
+        "fallback_rate": 0.0,
+        "search_decisions": 0,
+        "budget_overruns": 0,
+        "latency_p50_seconds": 0.0005266000516712666,
+        "latency_p95_seconds": 0.0012858000118285418,
+        "latency_max_seconds": 0.0019165999256074429,
+        "bounded_material_mistakes": 46,
+        "diagnosed_decisions": 432
+      },
+      "production": {
+        "appearances": 70,
+        "completed": 70,
+        "wins": 1,
+        "losses": 69,
+        "draws": 0,
+        "completed_score_rate": 0.014285714285714285,
+        "actionable_decisions": 572,
+        "fallbacks": 498,
+        "fallback_rate": 0.8706293706293706,
+        "search_decisions": 74,
+        "budget_overruns": 0,
+        "latency_p50_seconds": 0.00046200002543628216,
+        "latency_p95_seconds": 5.377351199975237,
+        "latency_max_seconds": 7.783660800079815,
+        "bounded_material_mistakes": 214,
+        "diagnosed_decisions": 451
+      },
+      "pressure": {
+        "appearances": 60,
+        "completed": 60,
+        "wins": 49,
+        "losses": 11,
+        "draws": 0,
+        "completed_score_rate": 0.8166666666666667,
+        "actionable_decisions": 480,
+        "fallbacks": 0,
+        "fallback_rate": 0.0,
+        "search_decisions": 0,
+        "budget_overruns": 0,
+        "latency_p50_seconds": 0.0005565000465139747,
+        "latency_p95_seconds": 0.001284099998883903,
+        "latency_max_seconds": 0.00236909999512136,
+        "bounded_material_mistakes": 57,
+        "diagnosed_decisions": 385
+      }
+    },
+    "transport_timeouts": 0,
+    "strata": {
+      "common-pressure": {
+        "completed": 60,
+        "v2_wins": 11,
+        "production_wins": 0
+      },
+      "heldout-direct": {
+        "completed": 30,
+        "v2_wins": 30,
+        "production_wins": 0
+      },
+      "reference-direct": {
+        "completed": 10,
+        "v2_wins": 9,
+        "production_wins": 1
+      }
+    },
+    "promotion_ready": false
+  },
+  "archive": "competitive-evaluation-2026-10-12.json.gz",
+  "archive_sha256": "726d2b02853a2dc7d9d456a62840e91719d0026faab3a258b106922e14d6f69d",
+  "uncompressed_sha256": "0096227c005957ba3ee48ab1eb9b5c5a7def7d37586a466b6951310abc636df9",
+  "uncompressed_bytes": 23100553
+}

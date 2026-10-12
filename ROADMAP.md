@@ -2,6 +2,15 @@
 
 ### Current priority — independent public-state V2 player
 
+The frozen 100-game competitive evaluation compares V2 with the full production
+bot: V2 wins 39/40 direct games and 11/30 versus the common pressure challenger,
+while production wins 0/30 against that challenger. Production falls back on
+498/572 actionable decisions (87.1%); V2 has zero deadline fallbacks. See
+`reviews/competitive-evaluation-2026-10-12.md`. Neither policy changes in this
+evaluation. Next improve V2 targeting, threat/survival reasoning and positioning
+against preserved losses, then test against independent opponents and additional
+held-out teams. Keep V2 isolated; do not add reconstruction to the critical path.
+
 Build gameplay competence independently of simulator reconstruction. The
 controlled migration preserves production, safeguards and native research while
 adding a typed public-state policy in `agent_v2`, initially in offline shadow and
