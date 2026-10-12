@@ -186,6 +186,18 @@ def rank_action(action, board, catalog):
                       for target in targets)
         if len(targets) > 1:
             utility *= 0.75
+        if move["target"] == "allAdjacent":
+            # Penalize exposed partners without declaring typing/Protect/ability
+            # guesses to be certified immunity. Switching also has uncertain order.
+            for partner_slot, partner in enumerate(board.owned_active):
+                if partner_slot == slot or partner is None or partner.fainted:
+                    continue
+                exposure = catalog.effectiveness(move["type"], partner.species)
+                # Unknown ability/type changes can invalidate a Dex immunity.
+                exposure = max(0.25, exposure)
+                health = partner.hp_percent if partner.hp_percent is not None else 100
+                utility -= min(3, exposure) * (1 + (100 - health) / 100)
+                reasons.append("spread friendly-fire risk to partner; protection, ability and switch order uncertified")
         score += min(power, 150) / 10 * stab * utility * move["accuracy"] / 100
         if own and own.status == "brn" and move["category"] == "Physical":
             score -= 3

@@ -17,7 +17,11 @@ not inferred from private sets here.
 The policy establishes a legal incumbent, then ranks complete joint commands.
 Its heuristic uses static public move data, species typing assumptions, visible
 health, target identity, own STAB, burn, switches, support and redundant Tailwind.
-It penalizes deliberate damaging ally targets. It does not calculate damage,
+It penalizes deliberate damaging ally targets.
+It also discounts partner exposure for moves whose pinned target is
+`allAdjacent`; `allAdjacentFoes` does not receive this penalty. Partner Protect,
+switching or assumed typing immunity cannot certify safety in this heuristic.
+It does not calculate damage,
 KO likelihood, threat responses, protection history or win probability. Utility
 and score margin are uncalibrated. Typing, ability effects, variable-power moves
 and other interactions can make its pressure proxy wrong; explanations disclose

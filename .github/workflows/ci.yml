@@ -499,6 +499,11 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.agent_v2.audit --output runs/agent-v2/pilot.json
 
+      - name: Native V2 spread friendly-fire regression
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe scripts/v2_spread_smoke.py
+
       - name: Capture status and logs
         if: always()
         continue-on-error: true
