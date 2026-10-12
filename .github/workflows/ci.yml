@@ -469,6 +469,11 @@ jobs:
         shell: pwsh
         run: .\ai-smoke.ps1
 
+      - name: Independent V2 shadow and paired full-battle pilot
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.agent_v2.audit --output runs/agent-v2/pilot.json
+
       - name: Capture status and logs
         if: always()
         continue-on-error: true

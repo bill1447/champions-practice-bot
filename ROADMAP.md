@@ -1,6 +1,16 @@
 # Champions Practice Bot Roadmap
 
-### Current priority — continuous native state maintenance, Phase 11B
+### Current priority — independent public-state V2 player
+
+Build gameplay competence independently of simulator reconstruction. The
+controlled migration preserves production, safeguards and native research while
+adding a typed public-state policy in `agent_v2`, initially in offline shadow and
+paired pilot battles. See `docs/agent-v2-migration.md`. The next gate is broader
+held-out gameplay, legality and latency evidence before a production fallback
+integration. Utility margins are not confidence probabilities; exact search and
+learned models remain optional capabilities requiring measured improvement.
+
+### Research context — continuous native state maintenance, Phase 11B
 
 Fresh reconstruction remains operational under its closed admission contract,
 but is no longer the default development architecture. Do not add new fresh
