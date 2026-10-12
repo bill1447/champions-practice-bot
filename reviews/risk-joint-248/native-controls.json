@@ -1,0 +1,130 @@
+{
+  "catalog_sha256": "fc0c7248cd8cc3e92a27c6164e701ab3edd18d033292293191849ebe5c2827a4",
+  "scope": "selected simple native controls, not global mechanics certification",
+  "repeated_protect": [
+    {
+      "seed_index": 0,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        47,
+        81
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 1,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        36,
+        0
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 2,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        31,
+        79
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 3,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        0,
+        79
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 4,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        33,
+        0
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 5,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        34,
+        120
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 6,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        33,
+        0
+      ],
+      "modeled_success_and_failure_retained": true
+    },
+    {
+      "seed_index": 7,
+      "first_shields_successful": true,
+      "repeat_damage": [
+        36,
+        79
+      ],
+      "modeled_success_and_failure_retained": true
+    }
+  ],
+  "redirection": {
+    "metagross_preserved": true,
+    "indeedee_took_redirected_hits": true
+  },
+  "spread": {
+    "native_partner_damage": 99,
+    "conditional_model_range": [
+      68.8041,
+      121.419
+    ],
+    "native_damage_within_selected_control_range": true,
+    "owned_stats_copied": [
+      [
+        "atk",
+        63
+      ],
+      [
+        "def",
+        120
+      ],
+      [
+        "spa",
+        161
+      ],
+      [
+        "spd",
+        90
+      ],
+      [
+        "spe",
+        117
+      ]
+    ]
+  },
+  "priority": [
+    {
+      "psychic_terrain": false,
+      "native_opponent_hp_percent_lost": 24,
+      "priority_before_regular_attack": true,
+      "modeled_priority_block_agrees": true
+    },
+    {
+      "psychic_terrain": true,
+      "native_opponent_hp_percent_lost": 0,
+      "priority_before_regular_attack": true,
+      "modeled_priority_block_agrees": true
+    }
+  ],
+  "retargeting": {
+    "selected_garchomp_fainted": true,
+    "second_attack_hit_surviving_dragonite": true
+  }
+}

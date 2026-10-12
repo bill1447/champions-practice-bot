@@ -514,6 +514,21 @@ jobs:
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/competitive_evaluation_report.py runs/competitive-evaluation/report.json --output runs/competitive-evaluation/analysis.json
 
+      - name: Native risk evaluator mechanics controls
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe scripts/risk_joint_native_controls.py
+
+      - name: Risk candidate paired pressure and protective-guard smoke
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe -m champions_practice.risk_joint_audit --smoke --seeds 1 --output runs/risk-joint-ci
+
+      - name: Verify risk candidate paired telemetry
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        shell: pwsh
+        run: .\.venv\Scripts\python.exe scripts/risk_joint_report.py runs/risk-joint-ci/report.json --output runs/risk-joint-ci/analysis.json
+
       - name: Capture status and logs
         if: always()
         continue-on-error: true

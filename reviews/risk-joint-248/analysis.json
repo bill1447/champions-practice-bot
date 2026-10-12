@@ -1,0 +1,93 @@
+{
+  "schema": "risk-joint-paired-analysis-v1",
+  "source_identity": {
+    "schema": "risk-runtime-graph-sha256-v1",
+    "sha256": "a129592a2c241990ccdd652c1b7c210ef94528fae5215bc7518379fc8324647a",
+    "baseline": "dccbe8ce006f15a8ad626e0b2da59194c663b5d1",
+    "files": {
+      "src/champions_practice/agent_v2/policy.py": "2f6bf6a9597384e99e817d2a69a0eb8ccfaccb0b202e899546293003be0f3592",
+      "src/champions_practice/agent_v2/joint.py": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c",
+      "src/champions_practice/risk_joint_audit.py": "0dec308990683bdc55ba19e45ace655c74e8d04ae502536a2917e9cb16c782dd",
+      "tools/agent-v2-catalog.js": "c699f47199bdb2c70e4165bab27668d5653b5b1646791fa724acb1b894d1fcfd"
+    },
+    "showdown": "a5df8274e85b0889bf2a9b3422a08b39732374fc"
+  },
+  "games_completed": 96,
+  "paired_cases": 48,
+  "strata": {
+    "baseline:pressure": {
+      "games": 24,
+      "wins": 9,
+      "decisions": 223,
+      "deadline_exhaustions": 0,
+      "budget_overruns": 0,
+      "p50_seconds": 0.00020620005670934916,
+      "p95_seconds": 0.0012762000551447272,
+      "maximum_seconds": 0.001827700063586235,
+      "guard_protect_decisions": 0
+    },
+    "risk:pressure": {
+      "games": 24,
+      "wins": 14,
+      "decisions": 253,
+      "deadline_exhaustions": 0,
+      "budget_overruns": 0,
+      "p50_seconds": 0.01350759994238615,
+      "p95_seconds": 0.09466970001813024,
+      "maximum_seconds": 0.16332679998595268,
+      "guard_protect_decisions": 0
+    },
+    "baseline:guard": {
+      "games": 24,
+      "wins": 12,
+      "decisions": 244,
+      "deadline_exhaustions": 0,
+      "budget_overruns": 0,
+      "p50_seconds": 0.0005441999528557062,
+      "p95_seconds": 0.0012716000201180577,
+      "maximum_seconds": 0.0016214000061154366,
+      "guard_protect_decisions": 67
+    },
+    "risk:guard": {
+      "games": 24,
+      "wins": 11,
+      "decisions": 308,
+      "deadline_exhaustions": 0,
+      "budget_overruns": 0,
+      "p50_seconds": 0.013162300107069314,
+      "p95_seconds": 0.0999541999772191,
+      "maximum_seconds": 0.12686319998465478,
+      "guard_protect_decisions": 95
+    }
+  },
+  "paired_outcomes": {
+    "pressure": {
+      "both_lose": 10,
+      "both_win": 9,
+      "risk_only_win": 5
+    },
+    "guard": {
+      "risk_only_win": 4,
+      "baseline_only_win": 5,
+      "both_win": 7,
+      "both_lose": 8
+    }
+  },
+  "promotion_ready": false,
+  "limitations": [
+    "Small related synthetic opponents; not a competitive strength claim.",
+    "Approximate conditional outcomes; no certified KO or calibrated response probabilities."
+  ],
+  "artifacts": [
+    {
+      "path": "suite-1.json.gz",
+      "uncompressed_sha256": "63732ee0908dfc6277d3421da9a090b8864122646c188de22349a87436eb8662",
+      "compressed_sha256": "f20d55954adb867e9c7ae07140523fc733ec045bfabdab6389ca58e9fb07f356"
+    },
+    {
+      "path": "suite-2.json.gz",
+      "uncompressed_sha256": "506db8b73ee6d2454ca0a231d8da9c800acf14c7293484eaf87d4c29a88ca0f1",
+      "compressed_sha256": "c46edfc6075559f7688fa93a4dd3a06a68ffa5287916563d1c51fbd9f04b95e1"
+    }
+  ]
+}

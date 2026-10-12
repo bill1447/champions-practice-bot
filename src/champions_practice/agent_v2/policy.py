@@ -1,6 +1,6 @@
 """Public-only board-aware heuristic; scores are utilities, not damage or odds."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import hashlib
 import json
 import math
@@ -26,6 +26,20 @@ class PokemonFact:
     boosts: tuple[tuple[str, int], ...] = ()
     hp: int | None = None
     maxhp: int | None = None
+    stats: tuple[tuple[str, int], ...] = ()
+    move_targets: tuple[tuple[str, str], ...] = ()
+
+
+@dataclass(frozen=True)
+class OpponentEvidence:
+    species: str
+    revealed_moves: tuple[str, ...] = ()
+    protect_tendency: str = "unknown"
+    recent_protect: bool = False
+
+    def __post_init__(self):
+        if self.protect_tendency not in {"unknown", "low", "high"}:
+            raise ValueError("Protect tendency must be descriptive, not a probability")
 
 
 @dataclass(frozen=True)
@@ -41,6 +55,11 @@ class DecisionInput:
     own_side_conditions: tuple[str, ...]
     legal_actions: tuple[str, ...]
     deadline: float
+    opponent_evidence: tuple[OpponentEvidence, ...] = ()
+    opponent_preview: tuple[str, ...] = ()
+    opponent_side_conditions: tuple[str, ...] = ()
+    recent_own_protect: tuple[int, ...] = ()
+    public_own_moves: tuple[tuple[int, str], ...] = ()
 
     def __post_init__(self):
         if not self.legal_actions or not all(isinstance(a, str) and a for a in self.legal_actions):
@@ -48,7 +67,7 @@ class DecisionInput:
         if not math.isfinite(self.deadline):
             raise ValueError("deadline must be finite monotonic time")
         if any(mon and (mon.moves or mon.speed is not None or mon.item or mon.ability or
-                        mon.hp is not None or mon.maxhp is not None)
+                        mon.hp is not None or mon.maxhp is not None or mon.stats or mon.move_targets)
                for mon in self.opponents):
             raise ValueError("opponent active facts must not contain private set data")
 
@@ -75,6 +94,7 @@ class Decision:
         "Species typing is a public Dex assumption; effects, abilities and type changes may invalidate it.",
         "Opponent stats, unrevealed moves, intentions and historical counters remain unknown.",
     )
+    joint_analysis: tuple[dict, ...] = ()
 
 
 class PublicCatalog:
@@ -82,6 +102,8 @@ class PublicCatalog:
         self.moves = data["moves"]
         self.species = data["species"]
         self.types = data["types"]
+        self.base_stats = data.get("base_stats", {})
+        self.support = data.get("support", {})
         self.fingerprint = hashlib.sha256(json.dumps(data, sort_keys=True).encode()).hexdigest()
 
     @classmethod
@@ -112,12 +134,49 @@ def observe(view, legal_actions, *, deadline):
                            tuple(sorted(mon.get("boosts", {}).items())),
                            mon.get("hp") if owned else None, mon.get("maxhp") if owned else None)
     field, player = view.get("field", {}), view["player"]
+    request_team = view.get("request", {}).get("side", {}).get("pokemon", [])
+    owned = []
+    for i, mon in enumerate(player["team"]):
+        value = fact(mon, owned=True)
+        stats = request_team[i].get("stats", {}) if i < len(request_team) else {}
+        owned.append(replace(value, stats=tuple(sorted(stats.items()))))
+    active = tuple(next((m for m in owned if m.species == mon["species"]), fact(mon, owned=True))
+                   if mon else None for mon in player["active_details"])
+    request_active = view.get("request", {}).get("active", [])
+    active = tuple(replace(mon, move_targets=tuple((m.get("id", ident(m.get("move", ""))), m["target"])
+                   for m in request_active[i].get("moves", []) if "target" in m))
+                   if mon and i < len(request_active) else mon for i, mon in enumerate(active))
+    side = view.get("request", {}).get("side", {}).get("id")
+    own_protect, foe_protect = set(), set()
+    public_moves = set()
+    delta = view.get("public_event_delta", {})
+    events = delta.get("events", []) if isinstance(delta, dict) else delta
+    for event in events:
+        if len(event) >= 2 and event[0] in {"switch", "drag", "replace", "faint"}:
+            actor = str(event[1])
+            if len(actor) == 3 and actor[2] in "ab" and side:
+                (own_protect if actor[:2] == side else foe_protect).discard(ord(actor[2])-ord("a"))
+                if actor[:2] == side:
+                    public_moves = {entry for entry in public_moves if entry[0] != ord(actor[2])-ord("a")}
+        if len(event) >= 3 and event[0] == "move" and side:
+            actor = str(event[1])
+            if len(actor) == 3 and actor[:2] == side and actor[2] in "ab":
+                public_moves.add((ord(actor[2])-ord("a"), ident(event[2])))
+        if len(event) >= 3 and event[0] == "-singleturn" and event[2] in {"protect", "detect"}:
+            actor = str(event[1])
+            if len(actor) == 3 and actor[2] in "ab" and side:
+                (own_protect if actor[:2] == side else foe_protect).add(ord(actor[2]) - ord("a"))
+    revealed = {ident(m["species"]): tuple(ident(move) for move in m.get("moves", []))
+                for m in view["opponent"].get("revealed", [])}
+    evidence = tuple(OpponentEvidence(mon["species"], revealed.get(ident(mon.get("base_species") or mon["species"]), ()),
+                      recent_protect=i in foe_protect) for i, mon in enumerate(view["opponent"]["active"]) if mon)
     return DecisionInput(view["turn"], view["phase"],
-        tuple(fact(m, owned=True) for m in player["active_details"]),
-        tuple(fact(m, owned=True) for m in player["team"]),
+        active, tuple(owned),
         tuple(fact(m) for m in view["opponent"]["active"]),
         field.get("weather"), field.get("terrain"), tuple(field.get("pseudo_weather", ())),
-        tuple(player.get("side_conditions", ())), tuple(legal_actions), deadline)
+        tuple(player.get("side_conditions", ())), tuple(legal_actions), deadline,
+        evidence, tuple(view["opponent"].get("preview_species", ())),
+        tuple(view["opponent"].get("side_conditions", ())), tuple(sorted(own_protect)), tuple(sorted(public_moves)))
 
 
 def rank_action(action, board, catalog):
@@ -209,7 +268,7 @@ def rank_action(action, board, catalog):
     return RankedAction(action, score, tuple(reasons))
 
 
-def decide(board, catalog):
+def decide_baseline(board, catalog):
     started = perf_counter()
     # A legal incumbent exists before any ranking. No reconstruction is attempted.
     best = RankedAction(board.legal_actions[0], 0, ("deadline incumbent from authoritative menu",))
@@ -225,3 +284,14 @@ def decide(board, catalog):
     return Decision(best.action, top, top[0].score - top[1].score if len(top) > 1 else None,
                     len(ranked), len(board.legal_actions), len(ranked) < len(board.legal_actions),
                     (perf_counter() - started) * 1000, best.reasons)
+
+
+def decide(board, catalog):
+    return decide_baseline(board, catalog)
+
+
+def decide_risk(board, catalog):
+    if board.phase != "move" or not catalog.base_stats:
+        return decide_baseline(board, catalog)
+    from .joint import decide_joint
+    return decide_joint(board, catalog)
