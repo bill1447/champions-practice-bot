@@ -9,6 +9,8 @@ console.log(JSON.stringify({
     category: m.category, type: m.type, power: m.basePower, priority: m.priority,
     accuracy: m.accuracy === true ? 100 : m.accuracy, target: m.target,
     protect: !!m.flags.protect,
+    charge: !!m.flags.charge,
+    modifiesMove: typeof m.onModifyMove === "function",
   }])),
   species: Object.fromEntries(dex.species.all().filter(s => s.exists).map(s => [s.id, s.types])),
   base_stats: Object.fromEntries(dex.species.all().filter(s => s.exists).map(s => [s.id, s.baseStats])),

@@ -109,6 +109,7 @@ CURRENT_FACT_MOVES = frozenset(
         "energyball",
         "extremespeed",
         "dragonclaw",
+        "earthquake",
         "hydropump",
         "thunderbolt",
         "willowisp",
@@ -173,6 +174,8 @@ CURRENT_FACT_ITEMS = frozenset(
         "sitrusberry",
         "lumberry",
         "terrainextender",
+        "damprock",
+        "smoothrock",
         "babiriberry",
         "chartiberry",
         "chilanberry",
@@ -436,17 +439,22 @@ def public_opponent_pp_plan(view, ledger):
     ]
 
 
-def static_support_issue(*, ability, item, moves, opponent=False):
+def static_support_issue(*, ability, item, moves, opponent=False, inactive=False):
     """Check exact owned or hypothetical set, never inferred unseen absence."""
     if sid(ability) not in CURRENT_FACT_ABILITIES:
         return "unsupported-persistent:ability:" + sid(ability)
-    # An owned cached Speed is not itself a lifecycle proof of activation
-    # either. Keep both sides closed until a public/native flag domain is tested.
-    if sid(ability) == "unburden":
+    # Active Unburden needs a tested lifecycle domain. An owned inactive
+    # holder has the separate native switch-reset certificate below.
+    if sid(ability) == "unburden" and (opponent or not inactive):
         return "unsupported-persistent:" + ("opponent-unburden" if opponent else "owned-unburden")
     if sid(item) not in CURRENT_FACT_ITEMS:
         return "unsupported-persistent:item:" + sid(item)
     for move in moves:
+        # Native switch-out clearVolatile resets the last-move result; a
+        # currently inactive holder cannot attack before native switch-in.
+        # Active holders and any observed Stomping history remain unsupported.
+        if sid(move) in {'stompingtantrum', 'electroshot', 'phantomforce'} and inactive:
+            continue
         if sid(move) not in CURRENT_FACT_MOVES:
             return "unsupported-persistent:move:" + sid(move)
     return None
@@ -469,7 +477,8 @@ def current_capability_issue(view, priors):
         if not {"ability", "item", "move_pp"} <= mon.keys():
             return "unsupported-persistent:owned-capabilities"
         issue = static_support_issue(
-            ability=mon["ability"], item=mon["item"], moves=[move["id"] for move in mon["move_pp"]]
+            ability=mon["ability"], item=mon["item"], moves=[move["id"] for move in mon["move_pp"]],
+            inactive=mon.get('active') is False,
         )
         if issue:
             return issue
@@ -486,7 +495,8 @@ def current_capability_issue(view, priors):
             return "unsupported-persistent:opponent-capabilities"
         for candidate in possible:
             issue = static_support_issue(
-                ability=candidate.ability, item=candidate.item, moves=candidate.moves, opponent=True
+                ability=candidate.ability, item=candidate.item, moves=candidate.moves, opponent=True,
+                inactive=pokemon.active_slot is None or pokemon.fainted,
             )
             if issue:
                 return issue

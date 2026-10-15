@@ -168,6 +168,21 @@ def test_unrevealed_choice_prior_cannot_be_dropped_by_bounded_sampling():
     )
 
 
+def test_dormant_capabilities_do_not_authorize_active_state():
+    facts = {'ability': 'Inner Focus', 'item': '', 'moves': ['Stomping Tantrum']}
+    assert static_support_issue(**facts, inactive=True) is None
+    assert static_support_issue(**facts) == 'unsupported-persistent:move:stompingtantrum'
+    facts = {'ability': 'Unburden', 'item': 'Psychic Seed', 'moves': ['Protect']}
+    assert static_support_issue(**facts, inactive=True) is None
+    assert static_support_issue(**facts) == 'unsupported-persistent:owned-unburden'
+    assert static_support_issue(**facts, inactive=True, opponent=True) == 'unsupported-persistent:opponent-unburden'
+    assert static_support_issue(ability='Inner Focus', item='', moves=['Earthquake']) is None
+    assert static_support_issue(ability='Inner Focus', item='', moves=['Dig']) == 'unsupported-persistent:move:dig'
+    for move in ('Phantom Force', 'Electro Shot'):
+        assert static_support_issue(ability='Inner Focus', item='', moves=[move], inactive=True) is None
+        assert static_support_issue(ability='Inner Focus', item='', moves=[move]) is not None
+
+
 def test_inventory_and_damaged_foe_bench_are_explicitly_unresolved():
     view, ledger = evidence([["-enditem", "p1a", "shucaberry", "[weaken]"]])
     assert (

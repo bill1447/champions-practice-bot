@@ -1,0 +1,86 @@
+{
+  "evidence": [
+    {
+      "archive": "runs\\v2-coordination\\frozen-scoped\\games.json.gz",
+      "sha256": "22a8c37be346cb4ee3c31a249ed8492ab3d6027b0b3f1d22a1206141d210d714",
+      "baseline_ref": "9cca093",
+      "team_suite": "original",
+      "baseline_policy_sha256": "50b3b91c132c6372f28f485a66d2b89536c4c9a7914caffa833198e5c0f3ff93",
+      "tested_candidate_policy_sha256": "843a1ba1bbb39eb4c51a74e8cf0b445142845daca888f77567ea0e7edd87f91c",
+      "strata": {
+        "pressure": {
+          "pairs": 48,
+          "baseline_wins": 17,
+          "candidate_wins": 24,
+          "candidate_only_wins": 7,
+          "baseline_only_wins": 0
+        },
+        "guard": {
+          "pairs": 48,
+          "baseline_wins": 23,
+          "candidate_wins": 30,
+          "candidate_only_wins": 7,
+          "baseline_only_wins": 0
+        }
+      },
+      "decisions": 1705,
+      "budget_overruns": 0,
+      "deadline_exhaustions": 0,
+      "pairs_with_first_action_change": 14,
+      "public_default_action_parity": 856,
+      "candidate_ms": {
+        "median": 0.34690002212300897,
+        "p95": 1.4656001003459096,
+        "max": 7.171600009314716
+      }
+    },
+    {
+      "archive": "runs\\v2-coordination\\recombined\\games.json.gz",
+      "sha256": "67c290e5b0c6b7f267d5d894cc2198908f8f93d52e2bd4864410443bf5099554",
+      "baseline_ref": "9cca093",
+      "team_suite": "recombined",
+      "baseline_policy_sha256": "50b3b91c132c6372f28f485a66d2b89536c4c9a7914caffa833198e5c0f3ff93",
+      "tested_candidate_policy_sha256": "843a1ba1bbb39eb4c51a74e8cf0b445142845daca888f77567ea0e7edd87f91c",
+      "strata": {
+        "pressure": {
+          "pairs": 24,
+          "baseline_wins": 10,
+          "candidate_wins": 13,
+          "candidate_only_wins": 3,
+          "baseline_only_wins": 0
+        },
+        "guard": {
+          "pairs": 24,
+          "baseline_wins": 14,
+          "candidate_wins": 15,
+          "candidate_only_wins": 1,
+          "baseline_only_wins": 0
+        }
+      },
+      "decisions": 836,
+      "budget_overruns": 0,
+      "deadline_exhaustions": 0,
+      "pairs_with_first_action_change": 8,
+      "public_default_action_parity": 418,
+      "candidate_ms": {
+        "median": 0.5608500214293599,
+        "p95": 4.03129996266216,
+        "max": 21.147700026631355
+      }
+    }
+  ],
+  "current_runtime_sha256": {
+    "src/champions_practice/agent_v2/policy.py": "ae45194c65880ecc4b517fd992a48fc1ce7aad6838b27417a34dbdb12424070a",
+    "src/champions_practice/agent_v2/joint.py": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c",
+    "tools/agent-v2-catalog.js": "b57e1b7878997a3e30ea6074fbf5c56f626dccb7b4b7e2bbad126bf30f53f6a0",
+    "src/champions_practice/competitive_evaluation.py": "37c1c10a63a58dc11646993d8e04589ec5b656728a152a4691057672357f9e86",
+    "src/champions_practice/risk_joint_audit.py": "0dec308990683bdc55ba19e45ace655c74e8d04ae502536a2917e9cb16c782dd",
+    "scripts/v2_repair_gameplay.py": "e187103011198deb07fa06f665131eb85b0171239610b96543ad59f40bdd89c4"
+  },
+  "catalog_sha256": "6dcb530e623d290bc7446206f049526f40a6c358d48985ab9dc641f2d861e70c",
+  "limitations": [
+    "Related synthetic opponents; team and seed outcomes are correlated.",
+    "Action parity verifies default routing, not a new independent gameplay sample.",
+    "No sealed final holdout accessed; no competitive strength claim."
+  ]
+}

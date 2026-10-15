@@ -616,7 +616,7 @@ function publicLastOpponentActions(battle, sideId) {
     .sort((left, right) => left.slot - right.slot);
 }
 
-function publicOpponentKnowledge(battle, sideId, previewSpecies) {
+function publicOpponentKnowledge(battle, sideId, previewSpecies, origin = null) {
   const opponentPrefix = sideId === "p1" ? "p2" : "p1";
   const channel = sideId === "p1" ? 1 : 2;
   const observations = new Map();
@@ -635,6 +635,31 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       status: null,
       fainted: false,
       seen: false,
+    });
+  }
+
+  // Epistemic annotation only: reconstructors have helper logs, not observed
+  // battle history. Seed known public facts and scan only real fork events.
+  if (origin) {
+    for (const known of origin.revealed) {
+      const entry = observations.get(toId(known.species));
+      if (!entry) throw new Error('public origin species absent from preview');
+      entry.moves = new Set(known.moves || []);
+      entry.items = new Set(known.items || []);
+      entry.abilities = new Set(known.abilities || []);
+      entry.hpPercent = known.hp_percent;
+      entry.status = known.status;
+      entry.fainted = known.fainted;
+      entry.seen = known.seen;
+    }
+    origin.active.forEach((known, index) => {
+      if (!known) return;
+      const slot = `${opponentPrefix}${String.fromCharCode(97 + index)}`;
+      const key = toId(known.base_species);
+      if (!observations.has(key)) throw new Error('public origin active absent from preview');
+      slotSpecies.set(slot, key);
+      slotVisibleSpecies.set(slot, known.species);
+      slotConditions.set(slot, {hpPercent: known.hp_percent, fainted: known.fainted, status: known.status});
     });
   }
 
@@ -809,7 +834,7 @@ function publicSideConditions(side) {
   return Object.keys(side.sideConditions || {}).sort();
 }
 
-function playerView(battle, sideId = "p1", previews = null) {
+function playerView(battle, sideId = "p1", previews = null, publicOrigin = null) {
   if (sideId !== "p1" && sideId !== "p2") {
     throw new Error("side must be p1 or p2");
   }
@@ -819,26 +844,40 @@ function playerView(battle, sideId = "p1", previews = null) {
   const opponentPreview = previews ? previews[opponentId] : opponent.pokemon.map(
     (mon) => mon.set.species,
   );
+  let projection = battle;
+  let hasNewEvents = true;
+  if (publicOrigin) {
+    const offset = publicOrigin.log_offset;
+    if (!Number.isInteger(offset) || offset < 0 || offset > battle.log.length ||
+        !publicOrigin.view?.opponent || !Number.isInteger(publicOrigin.view.turn)) {
+      throw new Error('invalid public-origin annotation');
+    }
+    const tail = battle.log.slice(offset);
+    hasNewEvents = tail.length > 0;
+    projection = Object.create(battle);
+    projection.log = [`|turn|${publicOrigin.view.turn}`, ...tail];
+  }
   const opponentKnowledge = publicOpponentKnowledge(
-    battle,
+    projection,
     sideId,
     opponentPreview,
+    publicOrigin?.view.opponent || null,
   );
 
   return {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
-    opponent_last_actions: publicLastOpponentActions(battle, sideId),
+    opponent_last_actions: !hasNewEvents ? cloneJson(publicOrigin.view.opponent_last_actions || []) : publicLastOpponentActions(projection, sideId),
     // Selected commands are not proof of execution. This channel-sanitized
     // ledger preserves the ordered, both-side public execution sequence, including
     // called-move provenance, prevention, and public failure effects. Raw protocol
     // animation targets are intentionally excluded; selected target intent is already
     // represented by sealed/resolved commands and opponent_last_actions.
-    public_execution_delta: publicExecutionEventDelta(battle, sideId),
+    public_execution_delta: !hasNewEvents ? cloneJson(publicOrigin.view.public_execution_delta) : publicExecutionEventDelta(projection, sideId),
     // This bounded per-turn ledger is derived only from the requesting side's
     // Showdown-visible channel. It preserves quantitative and historical mechanics
     // evidence even when later effects restore the same reduced final state.
-    public_event_delta: publicMechanicsEventDelta(battle, sideId),
+    public_event_delta: !hasNewEvents ? cloneJson(publicOrigin.view.public_event_delta) : publicMechanicsEventDelta(projection, sideId),
     ended: battle.ended,
     winner: battle.winner || null,
     field: {
@@ -885,6 +924,11 @@ function summarize(battle) {
       status: mon.status || null,
       boosts: { ...mon.boosts },
       speed: mon.speed,
+      // Summary-only contract: legacy speed is a cached action-order value.
+      // getStat includes boosts/status/abilities/Tailwind, but not Trick Room.
+      effectiveSpeed: mon.getStat('spe', false, false),
+      actionOrderSpeed: mon.getActionSpeed(),
+      cachedActionOrderSpeed: mon.speed,
       grounded: !!mon.isGrounded(),
       moveTypes: [...moveTypes],
     };
@@ -1335,6 +1379,18 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
   // constraints depend only on the side's public request, not hidden opponent state.
   if (new Set(switchSlots).size !== switchSlots.length) return false;
   if (transformationCount > 1) return false;
+  if (request?.forceSwitch) {
+    const ordinarySlots = request.forceSwitch
+      .map((required, slot) => ({ required, slot }))
+      .filter(({ required, slot }) => required && !request.side.pokemon[slot]?.reviving);
+    const replacements = ordinarySlots.filter(({ slot }) =>
+      commands[slot].startsWith("switch ")
+    ).length;
+    // With two fainted actives and one reserve, exactly one vacancy is legal.
+    // Allowing pass in either slot must not allow passing in BOTH slots.
+    // This count uses only the owned public request, never hidden-state probing.
+    if (replacements !== Math.min(ordinarySlots.length, healthySwitches.size)) return false;
+  }
   return true;
 }
 
@@ -1992,6 +2048,9 @@ function materializePresentHypotheses(request) {
   const original = Battle.fromJSON(JSON.stringify(request.state));
   const terrainPlan = request.mechanics_plan;
   const trickRoomPlan = request.trick_room_plan;
+  const weatherPlan = request.weather_plan;
+  let weatherSource = null;
+  let weatherSourceItem = null;
   let terrainSource = null;
   let terrainSourceItem = null;
   let trickRoomSource = null;
@@ -2007,13 +2066,29 @@ function materializePresentHypotheses(request) {
         !Number.isInteger(trickRoomPlan.residual_turns) ||
         trickRoomPlan.residual_turns < 0 || trickRoomPlan.residual_turns > 4 ||
         stableJson(view.field.pseudo_weather) !== stableJson(['trickroom']) ||
-        view.field.weather || (view.field.terrain && terrainPlan == null)) {
+        (view.field.weather && weatherPlan == null) || (view.field.terrain && terrainPlan == null)) {
       return why('unsupported-trick-room-plan');
     }
     trickRoomSource = publicSource(trickRoomPlan.source_side, trickRoomPlan.source_species);
     if (!trickRoomSource || trickRoomSource.ability === 'persistent') {
       return why('unsupported-trick-room-source');
     }
+  }
+  if (weatherPlan != null) {
+    const abilities = {raindance: 'drizzle', sandstorm: 'sandstream'};
+    const sourced = weatherPlan.source_species != null;
+    const keys = sourced ? 'residual_turns,source_ability,source_side,source_species,weather' : 'residual_turns,weather';
+    if (Object.keys(weatherPlan).sort().join(',') !== keys ||
+        weatherPlan.weather !== view.field.weather || !abilities[weatherPlan.weather] ||
+        (sourced && abilities[weatherPlan.weather] !== weatherPlan.source_ability) ||
+        (!sourced && (original.field.weather !== weatherPlan.weather ||
+          weatherPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch))) ||
+        !Number.isInteger(weatherPlan.residual_turns) || weatherPlan.residual_turns < 0 || weatherPlan.residual_turns > 7) {
+      return why('unsupported-public-weather-plan');
+    }
+    weatherSource = sourced ? publicSource(weatherPlan.source_side, weatherPlan.source_species) : original.field.weatherState.source;
+    if (!weatherSource || weatherSource.ability !== abilities[weatherPlan.weather]) return why('unsupported-weather-source');
+    weatherSourceItem = weatherSource.item;
   }
   if (terrainPlan != null) {
     const sourced = terrainPlan.source_species != null;
@@ -2028,7 +2103,7 @@ function materializePresentHypotheses(request) {
         !Number.isInteger(terrainPlan.residual_turns) ||
         (!sourced && terrainPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch)) ||
         terrainPlan.residual_turns < (sourced ? 0 : 1) || terrainPlan.residual_turns > 7 ||
-        view.field.weather || (view.field.pseudo_weather.length && trickRoomPlan == null) ||
+        (view.field.weather && weatherPlan == null) || (view.field.pseudo_weather.length && trickRoomPlan == null) ||
         view.player.side_conditions.length || view.opponent.side_conditions.length) {
       return why('unsupported-opening-terrain-plan');
     }
@@ -2643,7 +2718,10 @@ function materializePresentHypotheses(request) {
       }
     }
 
-    if (terrainPlan != null || trickRoomPlan != null) {
+    if (terrainPlan != null || trickRoomPlan != null || weatherPlan != null) {
+      if (weatherPlan && weatherSource.item !== weatherSourceItem &&
+          ['damprock', 'smoothrock'].includes(weatherSourceItem)) return why('unsupported-weather-extension-history');
+      if (weatherPlan) original.field.clearWeather();
       // Restore after all native switching, which can overwrite terrain.
       // An extender lost since activation needs a separate public domain.
       if (terrainSourceItem === 'terrainextender' && terrainSource.item !== terrainSourceItem) {
@@ -2654,8 +2732,12 @@ function materializePresentHypotheses(request) {
       // Rebuild both effects on one native residual timeline. Starting a
       // younger effect later prevents aging one effect while restoring the
       // other. Empty targets exclude Pokemon HP/status/volatile residuals.
-      const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0);
+      const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0, weatherPlan?.residual_turns || 0);
       for (let step = 0; step <= age; step++) {
+        if (weatherPlan && step === age - weatherPlan.residual_turns &&
+            !original.field.setWeather(weatherPlan.weather, weatherSource, original.dex.abilities.get(weatherPlan.source_ability || weatherSource.ability))) {
+          return why('unsupported-native-weather-start');
+        }
         if (terrainPlan && step === age - terrainPlan.residual_turns &&
             !original.field.setTerrain(terrainPlan.opening_terrain, terrainSource,
               terrainPlan.source_ability ? original.dex.abilities.get(terrainPlan.source_ability) : null)) {
@@ -2667,11 +2749,25 @@ function materializePresentHypotheses(request) {
             return why('unsupported-native-trick-room-start');
           }
         }
-        if (step < age) original.fieldEvent('Residual', []);
+        if (step < age) {
+          // fieldEvent's [] excludes Pokemon residual handlers but Weather's
+          // field handler calls eachEvent('Weather') independently. Build the
+          // field-only timeline with empty active slots so sand cannot damage
+          // or activate abilities/items on already reconstructed Pokemon.
+          // Restore the slot references even if native field aging rejects.
+          const activeSlots = original.sides.map(side => side.active);
+          try {
+            for (const side of original.sides) side.active = [];
+            original.fieldEvent('Residual', []);
+          } finally {
+            original.sides.forEach((side, index) => { side.active = activeSlots[index]; });
+          }
+        }
       }
       if (terrainPlan && original.field.terrain !== terrainPlan.opening_terrain) {
         return why('opening-terrain-expired');
       }
+      if (weatherPlan && original.field.weather !== weatherPlan.weather) return why('public-weather-expired');
       if (trickRoomPlan && !original.field.pseudoWeather['trickroom']) {
         return why('public-trick-room-expired');
       }
@@ -2863,7 +2959,7 @@ function stateView(request) {
     };
     return {
       side: sideId,
-      view: playerView(battle, sideId, previews),
+      view: playerView(battle, sideId, previews, request.public_origin || null),
     };
   } finally {
     battle.destroy();

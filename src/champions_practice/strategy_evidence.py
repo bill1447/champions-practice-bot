@@ -15,6 +15,7 @@ from champions_practice.belief_search import (
 )
 from champions_practice.exact_search import SideId, score_exact_summary_breakdown
 from champions_practice.recommendations import SCREENING_RNG_SEEDS
+from champions_practice.native_speed import effective_speeds
 from champions_practice.strategy import (
     PlanWorldOutcome,
     StrategicAssessment,
@@ -283,18 +284,12 @@ def _favorable_speed_control(summary: dict[str, Any], side: SideId) -> bool:
     if not own_active or not opponent_active:
         return False
 
-    own_tailwind = "tailwind" in _side_conditions(summary, own)
-    opponent_tailwind = "tailwind" in _side_conditions(summary, opponent)
     trick_room = "trickroom" in _pseudo_weather(summary)
 
-    own_speeds = [
-        int(pokemon.get("speed", 0)) * (2 if own_tailwind else 1)
-        for pokemon in own_active
-    ]
-    opponent_speeds = [
-        int(pokemon.get("speed", 0)) * (2 if opponent_tailwind else 1)
-        for pokemon in opponent_active
-    ]
+    own_speeds = effective_speeds(own_active)
+    opponent_speeds = effective_speeds(opponent_active)
+    if own_speeds is None or opponent_speeds is None:
+        return False
 
     advantage = 0
     for own_speed in own_speeds:

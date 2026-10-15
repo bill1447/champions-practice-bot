@@ -1,0 +1,427 @@
+{
+  "archive_sha256": "21759b475fc912dcc543ab5a69bea247a917b67708dee80ddc48edab4c4d3505",
+  "manifest_sha256": "7386a116188c31d7feb48d1ba629dc13be31cd002ae5590e48af2bdff04fd9bc",
+  "summary": {
+    "statuses": {
+      "complete": 192
+    },
+    "complete_pairs": 96,
+    "strata": {
+      "pre249": {
+        "games": 96,
+        "wins": 46,
+        "decisions": 656,
+        "deadline_exhaustions": 0,
+        "budget_overruns": 0,
+        "opponent_fallbacks": 2,
+        "opponent_budget_overruns": 0
+      },
+      "post249": {
+        "games": 96,
+        "wins": 48,
+        "decisions": 654,
+        "deadline_exhaustions": 0,
+        "budget_overruns": 0,
+        "opponent_fallbacks": 8,
+        "opponent_budget_overruns": 0
+      }
+    },
+    "post_only_wins": 2,
+    "pre_only_wins": 0
+  },
+  "fallback_free_pairs": {
+    "pairs": 88,
+    "pre249": 40,
+    "post249": 42,
+    "post_only_wins": 2,
+    "pre_only_wins": 0
+  },
+  "fallbacks": [
+    {
+      "game": "0-1-p2-pre249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "0-1-p2-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "0-1-p2-mirrored-pre249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "0-1-p2-mirrored-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "2-2-p2-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "2-2-p2-mirrored-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "2-4-p2-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "2-4-p2-mirrored-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "2-6-p2-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    },
+    {
+      "game": "2-6-p2-mirrored-post249",
+      "turn": 2,
+      "phase": "switch",
+      "reason": "ValueError"
+    }
+  ],
+  "matchups_by_side": {
+    "rain-grass / ground-pivot": {
+      "pre249": {
+        "p1-games": 8,
+        "p1-wins": 8,
+        "p2-games": 8,
+        "p2-wins": 0
+      },
+      "post249": {
+        "p1-games": 8,
+        "p1-wins": 8,
+        "p2-games": 8,
+        "p2-wins": 0
+      }
+    },
+    "ground-pivot / rain-grass": {
+      "pre249": {
+        "p2-games": 8,
+        "p2-wins": 8,
+        "p1-games": 8,
+        "p1-wins": 0
+      },
+      "post249": {
+        "p2-games": 8,
+        "p2-wins": 8,
+        "p1-games": 8,
+        "p1-wins": 0
+      }
+    },
+    "psychic-room / sand-pivot": {
+      "pre249": {
+        "p1-games": 8,
+        "p1-wins": 0,
+        "p2-games": 8,
+        "p2-wins": 8
+      },
+      "post249": {
+        "p1-games": 8,
+        "p1-wins": 1,
+        "p2-games": 8,
+        "p2-wins": 8
+      }
+    },
+    "sand-pivot / psychic-room": {
+      "pre249": {
+        "p2-games": 8,
+        "p2-wins": 0,
+        "p1-games": 8,
+        "p1-wins": 8
+      },
+      "post249": {
+        "p2-games": 8,
+        "p2-wins": 1,
+        "p1-games": 8,
+        "p1-wins": 8
+      }
+    },
+    "armarouge-support / grass-balance": {
+      "pre249": {
+        "p1-games": 8,
+        "p1-wins": 1,
+        "p2-games": 8,
+        "p2-wins": 6
+      },
+      "post249": {
+        "p1-games": 8,
+        "p1-wins": 1,
+        "p2-games": 8,
+        "p2-wins": 6
+      }
+    },
+    "grass-balance / armarouge-support": {
+      "pre249": {
+        "p2-games": 8,
+        "p2-wins": 1,
+        "p1-games": 8,
+        "p1-wins": 6
+      },
+      "post249": {
+        "p2-games": 8,
+        "p2-wins": 1,
+        "p1-games": 8,
+        "p1-wins": 6
+      }
+    }
+  },
+  "opponent_identity": {
+    "package": "poke-env",
+    "version": "0.16.1",
+    "upstream_baselines_sha256": "8e5812fa9bbb879aaeec32c706f3eee9bd8bf7de0ae102eff0be3d1c0f6a8e85",
+    "champions_dex_sha256": "0d345c01ab83f0bef71584c51415e24607ab4b5aa55bc14225e4005898fd2e97",
+    "adapter_sha256": "3e8b1d3dd44f8e626468f75221084bd1c6f2c5d7615beb983c50806644584445"
+  },
+  "controlled_team_results": {
+    "rain-grass": {
+      "pre249": {
+        "games": 16,
+        "wins": 16
+      },
+      "post249": {
+        "games": 16,
+        "wins": 16
+      }
+    },
+    "ground-pivot": {
+      "pre249": {
+        "games": 16,
+        "wins": 0
+      },
+      "post249": {
+        "games": 16,
+        "wins": 0
+      }
+    },
+    "psychic-room": {
+      "pre249": {
+        "games": 16,
+        "wins": 0
+      },
+      "post249": {
+        "games": 16,
+        "wins": 2
+      }
+    },
+    "sand-pivot": {
+      "pre249": {
+        "games": 16,
+        "wins": 16
+      },
+      "post249": {
+        "games": 16,
+        "wins": 16
+      }
+    },
+    "armarouge-support": {
+      "pre249": {
+        "games": 16,
+        "wins": 2
+      },
+      "post249": {
+        "games": 16,
+        "wins": 2
+      }
+    },
+    "grass-balance": {
+      "pre249": {
+        "games": 16,
+        "wins": 12
+      },
+      "post249": {
+        "games": 16,
+        "wins": 12
+      }
+    }
+  },
+  "validated_mirror_groups": 48,
+  "policy_identities": {
+    "pre249": {
+      "commit": "567556a00267697e08d54bfcc75fb4312660ac35",
+      "source_sha256": {
+        "policy": "2f6bf6a9597384e99e817d2a69a0eb8ccfaccb0b202e899546293003be0f3592",
+        "joint": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c"
+      }
+    },
+    "post249": {
+      "commit": "e0ae72308f77b7ea7e9cb12629804bca46ce4a18",
+      "source_sha256": {
+        "policy": "ae45194c65880ecc4b517fd992a48fc1ce7aad6838b27417a34dbdb12424070a",
+        "joint": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c"
+      }
+    }
+  },
+  "validated_public_type_matchups": 324,
+  "versions_frozen_no_policy_tuning": true,
+  "limitations": [
+    "Adapted upstream simple heuristic, not a proven competitive opponent.",
+    "No Mega augmentation: upstream heuristic does not normally select Mega.",
+    "Seeded random legal fallback is explicit; failures are not silently scored as losses.",
+    "Fixed selected-four sequences isolate play; not full team-preview evaluation.",
+    "Opponents and team/seed pairs are correlated; no competitive-strength certification."
+  ],
+  "loss_witness": {
+    "case": "1-0-p1-post249",
+    "turn": 1,
+    "selected": "move psychic +2, move mysticalfire +2 mega",
+    "fixed_enemy_response": "move crunch +1, move ironhead +2",
+    "scope": "Eight coupled futures of actual sealed native state; fixed enemy response, not optimality or win probabilities.",
+    "samples": {
+      "move psychic +2, move mysticalfire +2 mega": [
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        }
+      ],
+      "move trickroom, move protect mega": [
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        }
+      ],
+      "move followme, move mysticalfire +2 mega": [
+        {
+          "own_survivors": 3,
+          "foe_survivors": 3
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 3
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 3
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 3
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 3
+        },
+        {
+          "own_survivors": 3,
+          "foe_survivors": 4
+        }
+      ],
+      "move psychic +2, move protect mega": [
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        },
+        {
+          "own_survivors": 4,
+          "foe_survivors": 4
+        }
+      ]
+    }
+  }
+}

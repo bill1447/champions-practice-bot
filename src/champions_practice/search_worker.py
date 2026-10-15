@@ -528,6 +528,7 @@ class HypotheticalSearchWorker:
         protection_plan: list[dict[str, Any]] | None = None,
         trace_plan: list[dict[str, Any]] | None = None,
         trick_room_plan: dict[str, Any] | None = None,
+        weather_plan: dict[str, Any] | None = None,
         opponent_mega_plan: list[dict[str, Any]] | None = None,
         active_tenure_plan: list[dict[str, Any]] | None = None,
         opponent_pp_plan: list[dict[str, Any]] | None = None,
@@ -539,6 +540,7 @@ class HypotheticalSearchWorker:
             protection_plan=protection_plan,
             trace_plan=trace_plan,
             trick_room_plan=trick_room_plan,
+            weather_plan=weather_plan,
             opponent_mega_plan=opponent_mega_plan,
             active_tenure_plan=active_tenure_plan,
             opponent_pp_plan=opponent_pp_plan,
@@ -575,11 +577,13 @@ class HypotheticalSearchWorker:
         state: dict[str, Any],
         side: str,
         previews: dict[str, list[str]] | None = None,
+        public_origin: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self.__worker.state_view(
             state=state,
             side=side,
             previews=previews,
+            **({"public_origin": public_origin} if public_origin is not None else {}),
         )
 
     def legal_choices(
@@ -1394,6 +1398,7 @@ class ShowdownSearchWorker:
         protection_plan: list[dict[str, Any]] | None = None,
         trace_plan: list[dict[str, Any]] | None = None,
         trick_room_plan: dict[str, Any] | None = None,
+        weather_plan: dict[str, Any] | None = None,
         opponent_mega_plan: list[dict[str, Any]] | None = None,
         active_tenure_plan: list[dict[str, Any]] | None = None,
         opponent_pp_plan: list[dict[str, Any]] | None = None,
@@ -1416,6 +1421,7 @@ class ShowdownSearchWorker:
             protection_plan=protection_plan,
             trace_plan=trace_plan,
             trick_room_plan=trick_room_plan,
+            weather_plan=weather_plan,
             opponent_mega_plan=opponent_mega_plan,
             active_tenure_plan=active_tenure_plan,
             opponent_pp_plan=opponent_pp_plan,
@@ -1632,11 +1638,14 @@ class ShowdownSearchWorker:
         state: dict[str, Any],
         side: str,
         previews: dict[str, list[str]] | None = None,
+        public_origin: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Return the sanitized player view for any exact Showdown snapshot."""
+        """Return the sanitized player view; optional origin is public annotation only."""
         payload: dict[str, Any] = {"state": state, "side": side}
         if previews is not None:
             payload["previews"] = previews
+        if public_origin is not None:
+            payload['public_origin'] = public_origin
         result = self.request("state_view", **payload)
         view = result.get("view")
         if not isinstance(view, dict):

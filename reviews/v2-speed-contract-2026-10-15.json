@@ -1,0 +1,637 @@
+{
+  "summary": {
+    "retained": {
+      "all": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 11,
+        "candidate_only": 1,
+        "control_only": 0,
+        "changed_openings": 4
+      },
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 11,
+        "candidate_only": 1,
+        "control_only": 0,
+        "changed_openings": 4
+      }
+    },
+    "heldout-compositions": {
+      "all": {
+        "pairs": 24,
+        "control_wins": 11,
+        "candidate_wins": 13,
+        "candidate_only": 2,
+        "control_only": 0,
+        "changed_openings": 8
+      },
+      "fallback_free": {
+        "pairs": 22,
+        "control_wins": 9,
+        "candidate_wins": 11,
+        "candidate_only": 2,
+        "control_only": 0,
+        "changed_openings": 8
+      }
+    }
+  },
+  "native_controls": [
+    {
+      "name": "normal",
+      "baseline_effective_speed": 130,
+      "own": {
+        "species": "Gardevoir",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 130,
+        "effectiveSpeed": 130,
+        "actionOrderSpeed": 130,
+        "cachedActionOrderSpeed": 130,
+        "grounded": false,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "foe": {
+        "species": "Dragonite",
+        "hp": 168,
+        "maxhp": 168,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 132,
+        "effectiveSpeed": 132,
+        "actionOrderSpeed": 132,
+        "cachedActionOrderSpeed": 132,
+        "grounded": false,
+        "moveTypes": [
+          "normal",
+          "dragon"
+        ]
+      },
+      "actual_actor_order": [
+        "p2a",
+        "p1a"
+      ],
+      "score": {
+        "total": -0.4,
+        "terminal": 0.0,
+        "material": 0.0,
+        "position": 0.0,
+        "speed": -0.4
+      },
+      "field": {
+        "weather": null,
+        "terrain": "psychicterrain",
+        "pseudoWeather": []
+      },
+      "native_status": null,
+      "boosts": {
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    },
+    {
+      "name": "trick-room",
+      "baseline_effective_speed": 130,
+      "own": {
+        "species": "Gardevoir",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": -130,
+        "effectiveSpeed": 130,
+        "actionOrderSpeed": -130,
+        "cachedActionOrderSpeed": -130,
+        "grounded": false,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "foe": {
+        "species": "Dragonite",
+        "hp": 168,
+        "maxhp": 168,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": -132,
+        "effectiveSpeed": 132,
+        "actionOrderSpeed": -132,
+        "cachedActionOrderSpeed": -132,
+        "grounded": false,
+        "moveTypes": [
+          "normal",
+          "dragon"
+        ]
+      },
+      "actual_actor_order": [
+        "p1a",
+        "p2a"
+      ],
+      "score": {
+        "total": 0.4,
+        "terminal": 0.0,
+        "material": 0.0,
+        "position": 0.0,
+        "speed": 0.4
+      },
+      "field": {
+        "weather": null,
+        "terrain": "psychicterrain",
+        "pseudoWeather": [
+          "trickroom"
+        ]
+      },
+      "native_status": null,
+      "boosts": {
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    },
+    {
+      "name": "tailwind",
+      "baseline_effective_speed": 130,
+      "own": {
+        "species": "Gardevoir",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 260,
+        "effectiveSpeed": 260,
+        "actionOrderSpeed": 260,
+        "cachedActionOrderSpeed": 260,
+        "grounded": true,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "foe": {
+        "species": "Dragonite",
+        "hp": 168,
+        "maxhp": 168,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 132,
+        "effectiveSpeed": 132,
+        "actionOrderSpeed": 132,
+        "cachedActionOrderSpeed": 132,
+        "grounded": false,
+        "moveTypes": [
+          "normal",
+          "dragon"
+        ]
+      },
+      "actual_actor_order": [
+        "p1a",
+        "p2a"
+      ],
+      "score": {
+        "total": 50.0,
+        "terminal": 0.0,
+        "material": 0.0,
+        "position": 30.0,
+        "speed": 20.0
+      },
+      "field": {
+        "weather": "raindance",
+        "terrain": null,
+        "pseudoWeather": []
+      },
+      "native_status": null,
+      "boosts": {
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    },
+    {
+      "name": "paralysis",
+      "baseline_effective_speed": 130,
+      "own": {
+        "species": "Gardevoir",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": "par",
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 65,
+        "effectiveSpeed": 65,
+        "actionOrderSpeed": 65,
+        "cachedActionOrderSpeed": 65,
+        "grounded": false,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "foe": {
+        "species": "Rotom-Wash",
+        "hp": 127,
+        "maxhp": 127,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 138,
+        "effectiveSpeed": 138,
+        "actionOrderSpeed": 138,
+        "cachedActionOrderSpeed": 138,
+        "grounded": false,
+        "moveTypes": [
+          "water",
+          "electric"
+        ]
+      },
+      "actual_actor_order": [
+        "p2a",
+        "p1a"
+      ],
+      "score": {
+        "total": -19.719047619047707,
+        "terminal": 0.0,
+        "material": -5.119047619047706,
+        "position": 0.0,
+        "speed": -14.6
+      },
+      "field": {
+        "weather": null,
+        "terrain": "psychicterrain",
+        "pseudoWeather": []
+      },
+      "native_status": "par",
+      "boosts": {
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    },
+    {
+      "name": "boost",
+      "baseline_effective_speed": 132,
+      "own": {
+        "species": "Dragonite",
+        "hp": 168,
+        "maxhp": 168,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 1,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 1,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 198,
+        "effectiveSpeed": 198,
+        "actionOrderSpeed": 198,
+        "cachedActionOrderSpeed": 198,
+        "grounded": false,
+        "moveTypes": [
+          "normal",
+          "dragon"
+        ]
+      },
+      "foe": {
+        "species": "Gardevoir",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 130,
+        "effectiveSpeed": 130,
+        "actionOrderSpeed": 130,
+        "cachedActionOrderSpeed": 130,
+        "grounded": true,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "actual_actor_order": [
+        "p1a",
+        "p2a"
+      ],
+      "score": {
+        "total": 13.6,
+        "terminal": 0.0,
+        "material": 0.0,
+        "position": 0.0,
+        "speed": 13.6
+      },
+      "field": {
+        "weather": null,
+        "terrain": "psychicterrain",
+        "pseudoWeather": []
+      },
+      "native_status": null,
+      "boosts": {
+        "atk": 1,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 1,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    },
+    {
+      "name": "mega",
+      "baseline_effective_speed": 130,
+      "own": {
+        "species": "Gardevoir-Mega",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 150,
+        "effectiveSpeed": 150,
+        "actionOrderSpeed": 150,
+        "cachedActionOrderSpeed": 150,
+        "grounded": true,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "foe": {
+        "species": "Dragonite",
+        "hp": 168,
+        "maxhp": 168,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": 132,
+        "effectiveSpeed": 132,
+        "actionOrderSpeed": 132,
+        "cachedActionOrderSpeed": 132,
+        "grounded": false,
+        "moveTypes": [
+          "normal",
+          "dragon"
+        ]
+      },
+      "actual_actor_order": [
+        "p1a",
+        "p2a"
+      ],
+      "score": {
+        "total": 21.6,
+        "terminal": 0.0,
+        "material": 0.0,
+        "position": 18.0,
+        "speed": 3.6
+      },
+      "field": {
+        "weather": null,
+        "terrain": "psychicterrain",
+        "pseudoWeather": []
+      },
+      "native_status": null,
+      "boosts": {
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    },
+    {
+      "name": "tailwind-room",
+      "baseline_effective_speed": 130,
+      "own": {
+        "species": "Gardevoir",
+        "hp": 147,
+        "maxhp": 147,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": -260,
+        "effectiveSpeed": 260,
+        "actionOrderSpeed": -260,
+        "cachedActionOrderSpeed": -260,
+        "grounded": true,
+        "moveTypes": [
+          "psychic",
+          "normal",
+          "fire"
+        ]
+      },
+      "foe": {
+        "species": "Dragonite",
+        "hp": 168,
+        "maxhp": 168,
+        "fainted": false,
+        "status": null,
+        "boosts": {
+          "atk": 0,
+          "def": 0,
+          "spa": 0,
+          "spd": 0,
+          "spe": 0,
+          "accuracy": 0,
+          "evasion": 0
+        },
+        "speed": -132,
+        "effectiveSpeed": 132,
+        "actionOrderSpeed": -132,
+        "cachedActionOrderSpeed": -132,
+        "grounded": false,
+        "moveTypes": [
+          "normal",
+          "dragon"
+        ]
+      },
+      "actual_actor_order": [
+        "p2a",
+        "p1a"
+      ],
+      "score": {
+        "total": 28.0,
+        "terminal": 0.0,
+        "material": 0.0,
+        "position": 48.0,
+        "speed": -20.0
+      },
+      "field": {
+        "weather": "raindance",
+        "terrain": "psychicterrain",
+        "pseudoWeather": [
+          "trickroom"
+        ]
+      },
+      "native_status": null,
+      "boosts": {
+        "atk": 0,
+        "def": 0,
+        "spa": 0,
+        "spd": 0,
+        "spe": 0,
+        "accuracy": 0,
+        "evasion": 0
+      }
+    }
+  ],
+  "weight_functions_unchanged": [
+    "BranchWorker",
+    "ExactRngSample",
+    "ExactBranchScore",
+    "ExactChoiceScore",
+    "ExactSearchResult",
+    "ExactScoreBreakdown",
+    "_side_material",
+    "_active_position_value",
+    "_pseudo_weather_ids",
+    "_speed_position_value",
+    "score_exact_summary_breakdown",
+    "score_exact_summary",
+    "search_exact_turn"
+  ],
+  "archive_sha256": {
+    "runs\\v2-speed-contract\\gameplay-v1\\games.json.gz": "e562ecc7eecf9b92c6df1cf93582f758c98bf6321041f0a5d59b95ed427e9c55",
+    "runs\\v2-speed-contract\\native-v1\\controls.json": "2c7b90abb051578e9aab3d6b3f5ffb8dce2759b3198d5b296d1da8054f6c0b40"
+  },
+  "scope": "Opening-only native 8/3, one turn. Legacy native scorer reads preserved cached speed; corrected scorer reads effectiveSpeed. Same native mechanics, candidates, responses, world proposals and RNG. All later own actions frozen e0ae723 V2. No strategic labels or weight changes.",
+  "new_unique_games": 36,
+  "new_simulated_game_records": 52,
+  "reused_retained_games": 24,
+  "identical_action_retained_pairs": 20
+}

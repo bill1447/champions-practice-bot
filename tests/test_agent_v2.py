@@ -114,3 +114,35 @@ def test_protect_and_switch_do_not_certify_spread_safety(board, catalog):
     candidate = replace(board, owned_active=(board.owned_active[0], PokemonFact("Fish", 1, False, None)))
     for action in ("move surf, move protect", "move surf, switch 1"):
         assert any("friendly-fire" in reason for reason in rank_action(action, candidate, catalog).reasons)
+
+
+@pytest.mark.parametrize("numeric", [False, True])
+def test_steel_roller_without_terrain_does_not_receive_attack_credit(board, catalog, numeric):
+    catalog.moves["steelroller"] = {"category": "Physical", "type": "Steel", "power": 130,
+                                   "accuracy": 100, "target": "normal"}
+    own = replace(board.owned_active[0], moves=("Steel Roller", "Water"))
+    roller = "move 1 +1" if numeric else "move steelroller +1"
+    candidate = replace(board, owned_active=(own,), legal_actions=(roller, "move water +1"))
+    assert decide(candidate, catalog).action == "move water +1"
+    assert rank_action(roller, candidate, catalog).score == 0
+    assert rank_action(roller, replace(candidate, terrain="psychicterrain"), catalog).score > 0
+
+
+@pytest.mark.parametrize("partner_command,ability,credited", [
+    ("move protect", "psychicsurge", False),
+    ("switch 2", "psychicsurge", True),
+    ("switch 2", "levitate", False),
+    ("switch 2", None, True),
+    ("move psychicterrain", "levitate", True),
+    ("move 1", "levitate", True),
+])
+def test_steel_roller_keeps_possible_own_terrain_plans(board, catalog, partner_command, ability, credited):
+    catalog.moves["steelroller"] = {"category": "Physical", "type": "Steel", "power": 130,
+                                   "accuracy": 100, "target": "normal"}
+    partner = PokemonFact("Fish", 100, False, None, ("Psychic Terrain",), ability=ability)
+    candidate = replace(board, owned_active=(board.owned_active[0], partner),
+                        owned_team=(board.owned_active[0], partner))
+    score = rank_action("move steelroller +1, " + partner_command, candidate, catalog).score
+    # Compare to the same partner command so its switch/status utility cancels.
+    without_attack = rank_action("pass, " + partner_command, candidate, catalog).score
+    assert (score > without_attack) == credited

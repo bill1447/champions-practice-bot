@@ -1,0 +1,309 @@
+{
+  "scope": "Public weather-duration admission; no evaluator, candidate, response, horizon or default V2 changes.",
+  "before": {
+    "usable": 0,
+    "reasons": {
+      "fresh-public-world:unsupported-public-effect-duration": 8,
+      "fresh-public-world:unsupported-persistent:owned-unburden": 2,
+      "fresh-public-world:unsupported-persistent:move:stompingtantrum": 2
+    }
+  },
+  "after": {
+    "usable": 0,
+    "reasons": {
+      "fresh-public-world:unsupported-persistent:move:earthquake": 7,
+      "fresh-public-world:unsupported-persistent:owned-unburden": 2,
+      "fresh-public-world:unsupported-persistent:volatile:confusion": 1,
+      "fresh-public-world:unsupported-persistent:move:stompingtantrum": 2
+    }
+  },
+  "native_controls": [
+    {
+      "weather": "raindance",
+      "particles_per_item_domain": [
+        4,
+        4
+      ],
+      "native_remaining_hypotheses": [
+        4,
+        7
+      ],
+      "both_source_item_teams_legal": true,
+      "public_projection_and_legal_menu_match": true,
+      "corrupted_timer_rejected": true
+    },
+    {
+      "weather": "sandstorm",
+      "particles_per_item_domain": [
+        7,
+        7
+      ],
+      "native_remaining_hypotheses": [
+        4,
+        7
+      ],
+      "both_source_item_teams_legal": true,
+      "public_projection_and_legal_menu_match": true,
+      "corrupted_timer_rejected": true
+    }
+  ],
+  "positions": [
+    {
+      "id": "familiar:development-0-0-p1-one-turn",
+      "family": "familiar",
+      "game": "development-0-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.27674210000259336,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:development-1-0-p1-one-turn",
+      "family": "familiar",
+      "game": "development-1-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.27280810000229394,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:owned-unburden",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:owned-unburden"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:development-2-0-p1-one-turn",
+      "family": "familiar",
+      "game": "development-2-0-p1-one-turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 1.5630714999933844,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:validation-0-0-p1-one-turn",
+      "family": "familiar",
+      "game": "validation-0-0-p1-one-turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.6838044000032824,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:volatile:confusion",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:volatile:confusion"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:validation-1-0-p1-one-turn",
+      "family": "familiar",
+      "game": "validation-1-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.2737187999955495,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:validation-2-0-p1-one-turn",
+      "family": "familiar",
+      "game": "validation-2-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.2721056000009412,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:stompingtantrum",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:stompingtantrum"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-0-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-development-0-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.2801843999986886,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-1-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-development-1-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.270069300000614,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:owned-unburden",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:owned-unburden"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-2-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-development-2-0-p1-one_turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 8.149370500002988,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-0-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-validation-0-0-p1-one_turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.6829972000050475,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-1-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-validation-1-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.28220219999639085,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:earthquake",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:earthquake"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-2-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-validation-2-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.28100480000284733,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:stompingtantrum",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:stompingtantrum"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    }
+  ],
+  "source_sha256": {
+    "scripts/public_duration_probe.py": "82d63ffcbacd6691b01194db4cab2c07e7db1239c233104c90381a8242718ee8",
+    "src/champions_practice/belief_controller.py": "c12154bad68b383d06e7e5bedf2ff3354244a67eaa9305ffe0dad6d536f102a8",
+    "src/champions_practice/present_rebase.py": "df3f7c04da1e0d5b8484d9f83b0943b3e9d7c538f5730e0674ffee2b304a274e",
+    "src/champions_practice/tactical_consequences.py": "cff72df10be5bb7342bb187a763960da5380ee21387cd123617767b88b0fc559",
+    "src/champions_practice/present_mechanics.py": "669fafb68b781ad32e0f4007e113f9a5da987586af7138633aef07ba039f1e3b",
+    "src/champions_practice/persistent_support.py": "84fe8041e218f1c9ec0ed9eb94ef3379e8b44552a0a785208ed4cf7f8779c980",
+    "src/champions_practice/search_worker.py": "a7d3bd06c6a44c80164bcf380ad26c1f3786dcc30d259cbe13e537ed9d8aedc3",
+    "tools/showdown-search-worker.js": "fda14703fb9ce8cf15ba2a303bed865652691f22ebbc3b1707c33310bd1b6d2a"
+  },
+  "limitations": [
+    "A passed timer gate is not usable full-state admission. All 12 positions still unavailable at other persistent mechanics gates.",
+    "Weather durations are conditional on legal native item/set hypotheses; no live opponent item or snapshot used to pick a duration.",
+    "Controls submit both item alternatives separately against one public observation. Existing bounded global proposal sampler can omit alternatives; this is not exhaustive uncertainty coverage.",
+    "Support bounded to rain/Drizzle and sand/Sand Stream, plus existing terrain/Trick Room; other weather, side conditions, unknown inventory changes and incomplete histories remain unsupported.",
+    "No gameplay win-rate claim or full-game native deployment."
+  ]
+}

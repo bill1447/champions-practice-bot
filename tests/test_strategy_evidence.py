@@ -33,7 +33,7 @@ def _mon(species: str, hp: int) -> dict:
         "fainted": hp == 0,
         "status": None,
         "boosts": {},
-        "speed": 100,
+        "effectiveSpeed": 100,
         "grounded": True,
         "moveTypes": ["normal"],
     }
@@ -497,13 +497,13 @@ def test_unresolved_failure_condition_blocks_sampled_robust_status() -> None:
 
 def _speed_summary(*, trick_room: bool, foe_a_hp: int) -> dict:
     indeedee = _mon("Indeedee-F", 100)
-    indeedee["speed"] = 80
+    indeedee["effectiveSpeed"] = 80
     sneasler = _mon("Sneasler", 100)
-    sneasler["speed"] = 190
+    sneasler["effectiveSpeed"] = 190
     foe_a = _mon("FoeA", foe_a_hp)
-    foe_a["speed"] = 120
+    foe_a["effectiveSpeed"] = 120
     foe_b = _mon("FoeB", 100)
-    foe_b["speed"] = 110
+    foe_b["effectiveSpeed"] = 110
     return {
         "ended": False,
         "winner": None,

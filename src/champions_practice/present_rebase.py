@@ -9,7 +9,7 @@ any historical RNG sequence, and never excludes unrepresented worlds.
 
 from __future__ import annotations
 
-from champions_practice.present_mechanics import opening_terrain_plan, public_trick_room_plan
+from champions_practice.present_mechanics import opening_terrain_plan, public_trick_room_plan, public_weather_plan
 from champions_practice.present_mechanics import unsupported_present_mechanics
 from champions_practice.persistent_support import (
     current_capability_issue, public_active_tenure_plan, public_opponent_pp_plan, static_support_issue,
@@ -172,9 +172,13 @@ def _positive_mechanics_rejection(state, projected, *, current_view, ledger,
         for side_index, side in enumerate(state['sides']):
             for slot, mon in enumerate(side['pokemon']):
                 issue = static_support_issue(ability=mon['ability'], item=mon['item'],
-                                             moves=mon['set']['moves'], opponent=side_index == 0)
+                                             moves=mon['set']['moves'], opponent=side_index == 0,
+                                             inactive=not mon['isActive'])
                 if issue:
                     return issue
+                if not mon['isActive'] and any(_sid(move) == 'stompingtantrum' for move in mon['set']['moves']):
+                    if mon.get('moveLastTurnResult') is not None:
+                        return 'unsupported-persistent:inactive-last-move-result'
                 if any(effect not in {'stall'}
                        for effect in mon['volatiles']):
                     return 'unsupported-persistent:native-volatile'
@@ -240,6 +244,7 @@ def _native_field_plan_rejection(state, view, ledger):
     for plan, effect, terrain in (
         (opening_terrain_plan(view, ledger), state['field']['terrainState'], True),
         (public_trick_room_plan(view, ledger), state['field']['pseudoWeather'].get('trickroom', {}), False),
+        (public_weather_plan(view, ledger), state['field']['weatherState'], False),
     ):
         if plan is None:
             continue
@@ -253,7 +258,8 @@ def _native_field_plan_rejection(state, view, ledger):
             return 'unsupported-persistent:field-source-mismatch'
         if plan.get('source_side') and int(effect['source'][10]) != (2 if plan['source_side'] == 'player' else 1):
             return 'unsupported-persistent:field-source-mismatch'
-        duration = (8 if terrain and mon['item'] == 'terrainextender' else 5) - plan['residual_turns']
+        extender = 'terrainextender' if terrain else {'raindance': 'damprock', 'sandstorm': 'smoothrock'}.get(plan.get('weather'))
+        duration = (8 if extender and mon['item'] == extender else 5) - plan['residual_turns']
         if type(effect.get('duration')) is not int or effect['duration'] != duration:
             return 'unsupported-persistent:field-duration-mismatch'
     return None
@@ -414,6 +420,8 @@ def build_present_rebase(
                    if public_protection_plan(current_view, ledger) is not None else {}),
                 **({"trace_plan": public_trace_plan(current_view, ledger)}
                    if public_trace_plan(current_view, ledger) else {}),
+                **({"weather_plan": public_weather_plan(current_view, ledger)}
+                   if public_weather_plan(current_view, ledger) is not None else {}),
                 **({"trick_room_plan": public_trick_room_plan(current_view, ledger)}
                    if public_trick_room_plan(current_view, ledger) is not None else {}),
                 **({"opponent_mega_plan": public_opponent_mega_plan(current_view, ledger)}

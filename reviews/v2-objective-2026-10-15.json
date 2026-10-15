@@ -1,0 +1,243 @@
+{
+  "archives_sha256": {
+    "runs/v2-objective/v1/results.json.gz": "2b955cfc064d6f2e1a89dbabd138b97e1c0c263f98cb459bf3a0180090fcc39f",
+    "runs/v2-objective/continuations-v1/results.json.gz": "81f67d577ed7ca76651eb976587ae8e13fb00ed76f4405bab7d0797e7c4d27dc"
+  },
+  "summary": {
+    "min": {
+      "games": 24,
+      "wins": 10,
+      "changed_actions": 0,
+      "candidate_only": 0,
+      "control_only": 0,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 10
+      }
+    },
+    "risk_75": {
+      "games": 24,
+      "wins": 12,
+      "changed_actions": 20,
+      "candidate_only": 4,
+      "control_only": 2,
+      "fallback_free": {
+        "pairs": 20,
+        "control_wins": 10,
+        "candidate_wins": 8
+      }
+    },
+    "risk_50": {
+      "games": 24,
+      "wins": 12,
+      "changed_actions": 20,
+      "candidate_only": 4,
+      "control_only": 2,
+      "fallback_free": {
+        "pairs": 20,
+        "control_wins": 10,
+        "candidate_wins": 8
+      }
+    },
+    "risk_25": {
+      "games": 24,
+      "wins": 12,
+      "changed_actions": 20,
+      "candidate_only": 4,
+      "control_only": 2,
+      "fallback_free": {
+        "pairs": 20,
+        "control_wins": 10,
+        "candidate_wins": 8
+      }
+    },
+    "scenario_mean": {
+      "games": 24,
+      "wins": 12,
+      "changed_actions": 20,
+      "candidate_only": 4,
+      "control_only": 2,
+      "fallback_free": {
+        "pairs": 20,
+        "control_wins": 10,
+        "candidate_wins": 8
+      }
+    },
+    "world_mean": {
+      "games": 24,
+      "wins": 10,
+      "changed_actions": 0,
+      "candidate_only": 0,
+      "control_only": 0,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 10
+      }
+    },
+    "material_only": {
+      "games": 24,
+      "wins": 12,
+      "changed_actions": 4,
+      "candidate_only": 2,
+      "control_only": 0,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 12
+      }
+    },
+    "no_position": {
+      "games": 24,
+      "wins": 12,
+      "changed_actions": 4,
+      "candidate_only": 2,
+      "control_only": 0,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 12
+      }
+    },
+    "no_speed": {
+      "games": 24,
+      "wins": 10,
+      "changed_actions": 0,
+      "candidate_only": 0,
+      "control_only": 0,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 10
+      }
+    },
+    "no_hp": {
+      "games": 24,
+      "wins": 7,
+      "changed_actions": 12,
+      "candidate_only": 1,
+      "control_only": 4,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 7
+      }
+    },
+    "no_living": {
+      "games": 24,
+      "wins": 10,
+      "changed_actions": 0,
+      "candidate_only": 0,
+      "control_only": 0,
+      "fallback_free": {
+        "pairs": 24,
+        "control_wins": 10,
+        "candidate_wins": 10
+      }
+    }
+  },
+  "continuations": [
+    {
+      "pair": "development-0-0-p1",
+      "action": "move psychic +2, switch 3",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -16.91964236288078,
+      "second_turn_mean": -1705.9624395752137,
+      "second_turn_survivor_difference": -1.5833333333333333
+    },
+    {
+      "pair": "development-0-0-p1",
+      "action": "move followme, move mysticalfire +2 mega",
+      "samples": 24,
+      "clean_samples": 21,
+      "first_turn_mean": 294.6218943869277,
+      "second_turn_mean": -551.5830957940728,
+      "second_turn_survivor_difference": -0.5238095238095238
+    },
+    {
+      "pair": "development-0-0-p1",
+      "action": "move trickroom, move protect mega",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -27.633236288865728,
+      "second_turn_mean": 362.4701093431723,
+      "second_turn_survivor_difference": 0.3333333333333333
+    },
+    {
+      "pair": "development-0-0-p1",
+      "action": "move psychic +2, move mysticalfire +2 mega",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -730.3329824122766,
+      "second_turn_mean": -2547.8473740394975,
+      "second_turn_survivor_difference": -2.3333333333333335
+    },
+    {
+      "pair": "validation-1-1-p1",
+      "action": "move protect mega, move trickroom",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -29.789309735193637,
+      "second_turn_mean": 349.50325435258856,
+      "second_turn_survivor_difference": 0.3333333333333333
+    },
+    {
+      "pair": "validation-1-1-p1",
+      "action": "move mysticalfire +1 mega, move followme",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -5.374217134208614,
+      "second_turn_mean": -1795.1469962796762,
+      "second_turn_survivor_difference": -1.6666666666666667
+    },
+    {
+      "pair": "validation-1-1-p1",
+      "action": "switch 3, move psychic +1",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -31.917788607057375,
+      "second_turn_mean": -160.29237272672566,
+      "second_turn_survivor_difference": -0.125
+    },
+    {
+      "pair": "validation-1-1-p1",
+      "action": "move mysticalfire +1 mega, move psychic +1",
+      "samples": 24,
+      "clean_samples": 24,
+      "first_turn_mean": -749.6527851253497,
+      "second_turn_mean": -1294.8596957774573,
+      "second_turn_survivor_difference": -1.1666666666666667
+    },
+    {
+      "pair": "validation-2-0-p1",
+      "action": "move trickroom, move protect",
+      "samples": 32,
+      "clean_samples": 32,
+      "first_turn_mean": 19.89975282485869,
+      "second_turn_mean": 262.1057275418862,
+      "second_turn_survivor_difference": 0.1875
+    },
+    {
+      "pair": "validation-2-0-p1",
+      "action": "move followme, move armorcannon +1",
+      "samples": 32,
+      "clean_samples": 32,
+      "first_turn_mean": 609.676284427966,
+      "second_turn_mean": -447.85600085396896,
+      "second_turn_survivor_difference": -0.40625
+    },
+    {
+      "pair": "validation-2-0-p1",
+      "action": "move psychic +1, move armorcannon +1",
+      "samples": 32,
+      "clean_samples": 32,
+      "first_turn_mean": -273.5738739186089,
+      "second_turn_mean": -1111.852159467184,
+      "second_turn_survivor_difference": -1.03125
+    }
+  ],
+  "continuation_samples": 288,
+  "continuation_fallback_samples": 3
+}

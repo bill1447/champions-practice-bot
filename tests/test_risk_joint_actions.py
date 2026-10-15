@@ -3,7 +3,7 @@ from time import perf_counter
 
 import pytest
 
-from champions_practice.agent_v2.policy import DecisionInput, OpponentEvidence, PokemonFact, PublicCatalog, decide_risk, observe
+from champions_practice.agent_v2.policy import DecisionInput, OpponentEvidence, PokemonFact, PublicCatalog, decide, decide_baseline, decide_coordination, decide_risk, observe
 from champions_practice.agent_v2.joint import Part, Response, assess, candidates, parse, responses, simulate
 
 
@@ -161,3 +161,65 @@ def test_counterresponse_weights_do_not_see_our_private_stats(board, catalog):
     second = assess(board.legal_actions[0], private_changed, catalog, reply)[1]
     assert [r["priority_weight"] for r in first["responses"]] == [r["priority_weight"] for r in second["responses"]]
     assert first["response_forecast_uses_private_owned_stats"] is False
+
+
+def test_coordination_only_changes_exact_top_ties(board, catalog):
+    # Different health creates different baseline utilities; no joint override.
+    old = decide_baseline(board, catalog)
+    new = decide_coordination(board, catalog)
+    assert old.action == new.action and not new.joint_analysis
+
+
+def test_coordination_protect_counterexample_splits_tied_attacks(board, catalog, monkeypatch):
+    tied = replace(board, opponents=(board.opponents[1], board.opponents[1]),
+                   legal_actions=board.legal_actions[:2])
+    monkeypatch.setattr('champions_practice.agent_v2.joint.responses', lambda *_: (
+        Response('shield A', (Part('move', 'protect'), Part('move', 'hit', 1)), 1),))
+    assert decide_baseline(tied, catalog).action == tied.legal_actions[0]
+    result = decide_coordination(tied, catalog)
+    assert result.action == tied.legal_actions[1]
+    assert result.alternatives[0].action == result.action
+    assert len(result.joint_analysis) == 2
+    assert result.elapsed_ms >= 0
+    assert decide(tied, catalog).action == result.action
+
+
+def test_coordination_incomplete_comparison_keeps_incumbent(board, catalog, monkeypatch):
+    tied = replace(board, opponents=(board.opponents[1], board.opponents[1]),
+                   legal_actions=board.legal_actions[:2])
+    monkeypatch.setattr('champions_practice.agent_v2.joint.assess', lambda *_: None)
+    assert decide_coordination(tied, catalog).action == tied.legal_actions[0]
+    assert not decide_coordination(tied, catalog).joint_analysis
+
+
+def test_coordination_expired_deadline_keeps_legal_incumbent(board, catalog):
+    expired = replace(board, deadline=perf_counter()-1)
+    result = decide_coordination(expired, catalog)
+    assert result.action == expired.legal_actions[0] and result.deadline_exhausted
+
+
+def test_coordination_prefers_combined_knockout_without_shield(board, catalog, monkeypatch):
+    tied = replace(board, opponents=(board.opponents[0], board.opponents[0]),
+                   legal_actions=(board.legal_actions[1], board.legal_actions[0]))
+    monkeypatch.setattr('champions_practice.agent_v2.joint.responses', lambda *_: (
+        Response('attacks', (Part('move', 'hit', 1), Part('move', 'hit', 2)), 1),))
+    assert decide_baseline(tied, catalog).action == tied.legal_actions[0]
+    assert decide_coordination(tied, catalog).action == tied.legal_actions[1]
+
+
+@pytest.mark.parametrize('change', ['charge', 'spread', 'request_spread', 'dynamic'])
+def test_coordination_avoids_unsupported_attack_families(board, catalog, change):
+    tied = replace(board, opponents=(board.opponents[1], board.opponents[1]),
+                   legal_actions=board.legal_actions[:2])
+    if change == 'charge':
+        catalog.moves['hit']['charge'] = True
+    elif change == 'dynamic':
+        catalog.moves['hit']['modifiesMove'] = True
+    elif change == 'spread':
+        catalog.moves['hit']['target'] = 'allAdjacentFoes'
+    else:
+        tied = replace(tied, owned_active=tuple(replace(m, move_targets=(('hit', 'allAdjacentFoes'),))
+                                               for m in tied.owned_active))
+    result = decide_coordination(tied, catalog)
+    assert result.action == decide_baseline(tied, catalog).action
+    assert not result.joint_analysis

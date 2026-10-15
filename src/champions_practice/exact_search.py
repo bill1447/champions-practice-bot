@@ -6,6 +6,8 @@ from dataclasses import dataclass
 from statistics import fmean
 from typing import Any, Literal, Protocol
 
+from champions_practice.native_speed import effective_speeds
+
 SideId = Literal["p1", "p2"]
 
 
@@ -153,11 +155,7 @@ def _pseudo_weather_ids(field: dict[str, Any]) -> set[str]:
 
 
 def _average_active_speed(side: dict[str, Any]) -> float | None:
-    speeds = [
-        float(pokemon["speed"])
-        for pokemon in side.get("active", [])
-        if pokemon and not pokemon.get("fainted") and "speed" in pokemon
-    ]
+    speeds = effective_speeds(side.get("active", []))
     return fmean(speeds) if speeds else None
 
 

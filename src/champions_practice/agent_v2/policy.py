@@ -179,6 +179,32 @@ def observe(view, legal_actions, *, deadline):
         tuple(view["opponent"].get("side_conditions", ())), tuple(sorted(own_protect)), tuple(sorted(public_moves)))
 
 
+def _may_establish_own_terrain(action, board):
+    """Retain possible terrain plans; this does not certify execution or order."""
+    setters = {"electricterrain", "grassyterrain", "mistyterrain", "psychicterrain"}
+    surges = {"electricsurge", "grassysurge", "mistysurge", "psychicsurge"}
+    for slot, command in enumerate(action.split(",")):
+        parts = command.strip().split()
+        if len(parts) < 2:
+            continue
+        if parts[0] == "switch":
+            index = int(parts[1]) - 1
+            if 0 <= index < len(board.owned_team):
+                ability = board.owned_team[index].ability
+                if ability is None or ident(ability) in surges:
+                    return True
+        elif parts[0] == "move":
+            move = ident(parts[1])
+            if parts[1].isdigit() and slot < len(board.owned_active):
+                own = board.owned_active[slot]
+                index = int(parts[1]) - 1
+                if own and 0 <= index < len(own.moves):
+                    move = ident(own.moves[index])
+            if move in setters:
+                return True
+    return False
+
+
 def rank_action(action, board, catalog):
     score, reasons = 0.0, []
     for slot, command in enumerate(action.split(",")):
@@ -206,6 +232,11 @@ def rank_action(action, board, catalog):
         if not move:
             reasons.append("unknown move metadata; neutral utility")
             continue
+        if move_id == "steelroller" and not board.terrain:
+            if not _may_establish_own_terrain(action, board):
+                reasons.append("steelroller: no current or planned own terrain; withhold damage utility, opponent terrain changes unknown")
+                continue
+            reasons.append("steelroller: own terrain establishment possible; execution and order uncertified")
         if move["category"] == "Status":
             value = 0.0
             if move_id == "tailwind":
@@ -287,7 +318,7 @@ def decide_baseline(board, catalog):
 
 
 def decide(board, catalog):
-    return decide_baseline(board, catalog)
+    return decide_coordination(board, catalog)
 
 
 def decide_risk(board, catalog):
@@ -295,3 +326,58 @@ def decide_risk(board, catalog):
         return decide_baseline(board, catalog)
     from .joint import decide_joint
     return decide_joint(board, catalog)
+
+
+def decide_coordination(board, catalog):
+    """Resolve exact top-utility target-allocation ties with bounded joint estimates."""
+    started = perf_counter()
+    baseline = decide_baseline(board, catalog)
+    def retained():
+        return replace(baseline, elapsed_ms=(perf_counter() - started) * 1000)
+    if (baseline.deadline_exhausted or board.phase != "move" or
+            not catalog.base_stats or len(baseline.alternatives) < 2 or
+            baseline.alternatives[0].score != baseline.alternatives[1].score):
+        return retained()
+    from .joint import assess, move_data, parse, responses
+    def signature(action):
+        plan = parse(action, board)
+        if len(plan) != 2:
+            return None
+        result = []
+        for slot, part in enumerate(plan):
+            mon = board.owned_active[slot] if slot < len(board.owned_active) else None
+            if not mon or mon.fainted or part.kind != "move" or part.target not in (1, 2):
+                return None
+            data = move_data(part.move, mon, catalog)
+            if (data["category"] == "Status" or data["target"] != "normal" or
+                    data.get("charge") or data.get("modifiesMove") or not data["power"]):
+                return None
+            result.append((part.move, "mega" in action.split(",")[slot].split()))
+        return tuple(result)
+    baseline_signature = signature(baseline.action)
+    if baseline_signature is None:
+        return retained()
+    top_score = baseline.alternatives[0].score
+    tied = []
+    for action in board.legal_actions:
+        if perf_counter() >= board.deadline:
+            return retained()
+        candidate = rank_action(action, board, catalog)
+        if candidate.score == top_score and signature(action) == baseline_signature:
+            tied.append(candidate)
+    if len(tied) < 2:
+        return retained()
+    scenarios = responses(board, catalog)
+    evaluated = []
+    for candidate in tied:
+        evaluation = assess(candidate.action, board, catalog, scenarios)
+        if evaluation is None:
+            return retained()  # Incomplete tie comparisons never change the incumbent.
+        evaluated.append((candidate, evaluation))
+    selected, _ = max(evaluated, key=lambda item: item[1][0].score)
+    detail = tuple(item[1][1] for item in evaluated)
+    alternatives = (selected,) + tuple(c for c in baseline.alternatives if c.action != selected.action)
+    return replace(baseline, action=selected.action,
+                   alternatives=alternatives[:3], elapsed_ms=(perf_counter() - started) * 1000,
+                   explanation=selected.reasons + ("exact baseline utility tie resolved by approximate joint responses",),
+                   joint_analysis=detail)

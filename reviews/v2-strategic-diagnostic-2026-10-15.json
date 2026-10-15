@@ -1,0 +1,4592 @@
+{
+  "scope": "Diagnostic only: 24 reconstructed previews/openings and 12 existing midgame checkpoints. Public views and known own roster only; no winners, actual replies, native snapshots or tactical rankings passed to the planner.",
+  "catalog_fingerprint": "6dcb530e623d290bc7446206f049526f40a6c358d48985ab9dc641f2d861e70c",
+  "source_sha256": {
+    "runs/v2-consequences/one-turn/games.json.gz": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+    "runs/v2-coverage/unfamiliar-v1/games.json.gz": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+    "runs/v2-coverage/midgame-v1/positions.json": "690c94eb679a93c270a99866bf3b342af2fe5b9030b991ea72ea406ecd15643f",
+    "src/champions_practice/strategic_diagnostic.py": "f5c7a6d8789f97f92fc741d27230a24b1609b078f03dc21ccf851c82a190f1e0",
+    "scripts/strategic_diagnostic_review.py": "8d36c0b0c0d9d1edea16b261cbc319e8d91f357d4575172a2e7c8d75029eb4fe"
+  },
+  "plans_archive_sha256": "4c61ec40b6eb942421ffb1fecabdf0a0ef1c101774f09a34e0ea2672982048c3",
+  "records": [
+    {
+      "case": "development-0-0-p1",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Venusaur: energyball"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-0-0-p2",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Venusaur: energyball"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-0-1-p1",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Venusaur: energyball"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-0-1-p2",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Venusaur: energyball"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-1-0-p1",
+      "turn": 1,
+      "anchor": "Sneasler",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Sneasler is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Garchomp",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Poison": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon"
+          ],
+          "typing_multipliers": {
+            "Poison": 0.0,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Pelipper",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Fighting"
+          ],
+          "possible_answers": [
+            "Sneasler: rockslide"
+          ],
+          "typing_multipliers": {
+            "Fighting": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Sneasler",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-1-0-p2",
+      "turn": 1,
+      "anchor": "Sneasler",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Sneasler is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Garchomp",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Poison": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon"
+          ],
+          "typing_multipliers": {
+            "Poison": 0.0,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Pelipper",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Fighting"
+          ],
+          "possible_answers": [
+            "Sneasler: rockslide"
+          ],
+          "typing_multipliers": {
+            "Fighting": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Sneasler",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-1-1-p1",
+      "turn": 1,
+      "anchor": "Sneasler",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Sneasler is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Garchomp",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Poison": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon"
+          ],
+          "typing_multipliers": {
+            "Poison": 0.0,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Pelipper",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Fighting"
+          ],
+          "possible_answers": [
+            "Sneasler: rockslide"
+          ],
+          "typing_multipliers": {
+            "Fighting": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Sneasler",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-1-1-p2",
+      "turn": 1,
+      "anchor": "Sneasler",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Sneasler is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Garchomp",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Poison": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon"
+          ],
+          "typing_multipliers": {
+            "Poison": 0.0,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Pelipper",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Fighting"
+          ],
+          "possible_answers": [
+            "Sneasler: rockslide"
+          ],
+          "typing_multipliers": {
+            "Fighting": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Sneasler",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-2-0-p1",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide",
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-2-0-p2",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide",
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-2-1-p1",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide",
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "development-2-1-p2",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide",
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-0-0-p1",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rillaboom",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-0-0-p2",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rillaboom",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-0-1-p1",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rillaboom",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-0-1-p2",
+      "turn": 1,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rillaboom",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-1-0-p1",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-1-0-p2",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-1-1-p1",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-1-1-p2",
+      "turn": 1,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-2-0-p1",
+      "turn": 1,
+      "anchor": "Armarouge",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Armarouge is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.25
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "public preview/reveal",
+          "qualification": "Possible terrain replacement if Grassy Surge is available; ability and entry timing require evidence.",
+          "possible_answers": [
+            "Compare preserving/re-entering our setter with attacking immediately."
+          ]
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-2-0-p2",
+      "turn": 1,
+      "anchor": "Armarouge",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Armarouge is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.25
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "public preview/reveal",
+          "qualification": "Possible terrain replacement if Grassy Surge is available; ability and entry timing require evidence.",
+          "possible_answers": [
+            "Compare preserving/re-entering our setter with attacking immediately."
+          ]
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-2-1-p1",
+      "turn": 1,
+      "anchor": "Armarouge",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Armarouge is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.25
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "public preview/reveal",
+          "qualification": "Possible terrain replacement if Grassy Surge is available; ability and entry timing require evidence.",
+          "possible_answers": [
+            "Compare preserving/re-entering our setter with attacking immediately."
+          ]
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "validation-2-1-p2",
+      "turn": 1,
+      "anchor": "Armarouge",
+      "update": "replan: previous anchor fainted, unselected, or no longer a damage candidate",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Armarouge is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.25
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "public preview/reveal",
+          "qualification": "Possible terrain replacement if Grassy Surge is available; ability and entry timing require evidence.",
+          "possible_answers": [
+            "Compare preserving/re-entering our setter with attacking immediately."
+          ]
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "familiar:development-0-0-p1-one-turn",
+      "turn": 2,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Venusaur: energyball"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "familiar:development-1-0-p1-one-turn",
+      "turn": 2,
+      "anchor": "Sneasler",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Sneasler is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Garchomp",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Poison": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon"
+          ],
+          "typing_multipliers": {
+            "Poison": 0.0,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Pelipper",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Fighting"
+          ],
+          "possible_answers": [
+            "Sneasler: rockslide"
+          ],
+          "typing_multipliers": {
+            "Fighting": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Sneasler",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "familiar:development-2-0-p1-one-turn",
+      "turn": 2,
+      "anchor": "Dragonite",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Dragonite is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Normal"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake"
+          ],
+          "typing_multipliers": {
+            "Normal": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Basculegion",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Normal"
+          ],
+          "possible_answers": [
+            "Incineroar: darkestlariat",
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Normal": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Normal"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Normal": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "familiar:validation-0-0-p1-one-turn",
+      "turn": 2,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rillaboom",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "familiar:validation-1-0-p1-one-turn",
+      "turn": 2,
+      "anchor": "Gardevoir-Mega",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir-Mega is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir-Mega: mysticalfire",
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir-Mega: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Gardevoir-Mega",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "familiar:validation-2-0-p1-one-turn",
+      "turn": 2,
+      "anchor": "Armarouge",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Armarouge is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.25
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "public preview/reveal",
+          "qualification": "Possible terrain replacement if Grassy Surge is available; ability and entry timing require evidence.",
+          "possible_answers": [
+            "Compare preserving/re-entering our setter with attacking immediately."
+          ]
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unfamiliar:unfamiliar-development-0-0-p1-one_turn",
+      "turn": 2,
+      "anchor": "Gardevoir",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Venusaur: energyball"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir: mysticalfire",
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Gardevoir",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unfamiliar:unfamiliar-development-1-0-p1-one_turn",
+      "turn": 2,
+      "anchor": "Sneasler",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Sneasler is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Garchomp",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Poison": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Poison",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon"
+          ],
+          "typing_multipliers": {
+            "Poison": 0.0,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Pelipper",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Fighting"
+          ],
+          "possible_answers": [
+            "Sneasler: rockslide"
+          ],
+          "typing_multipliers": {
+            "Fighting": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Sneasler",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unfamiliar:unfamiliar-development-2-0-p1-one_turn",
+      "turn": 2,
+      "anchor": "Dragonite",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Dragonite is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Normal"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake"
+          ],
+          "typing_multipliers": {
+            "Normal": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Basculegion",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Normal"
+          ],
+          "possible_answers": [
+            "Incineroar: darkestlariat",
+            "Rotom-Wash: thunderbolt"
+          ],
+          "typing_multipliers": {
+            "Normal": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Normal"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Normal": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Basculegion with raindance.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently raindance.",
+          "unknowns": "Selection beyond observed entrants, Swift Swim, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unfamiliar:unfamiliar-validation-0-0-p1-one_turn",
+      "turn": 2,
+      "anchor": "Garchomp",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Garchomp is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Pelipper",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Ground"
+          ],
+          "possible_answers": [
+            "Garchomp: rockslide"
+          ],
+          "typing_multipliers": {
+            "Ground": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Archaludon",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Dragon",
+            "Rock"
+          ],
+          "possible_answers": [
+            "Dragonite: earthquake",
+            "Garchomp: earthquake",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz",
+            "Rillaboom: highhorsepower"
+          ],
+          "typing_multipliers": {
+            "Dragon": 0.5,
+            "Rock": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Garchomp",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Rillaboom",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Dragonite",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unfamiliar:unfamiliar-validation-1-0-p1-one_turn",
+      "turn": 2,
+      "anchor": "Gardevoir-Mega",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Gardevoir-Mega is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Excadrill",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Fairy",
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir-Mega: mysticalfire",
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Fairy": 0.5,
+            "Psychic": 0.5
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Tyranitar",
+          "presence": "active",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Gardevoir-Mega: hypervoice",
+            "Metagross: earthquake",
+            "Metagross: steelroller",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Metagross: earthquake",
+            "Rotom-Wash: hydropump"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Enable Excadrill with sandstorm.",
+          "status": "hypothesis",
+          "evidence": "Both species are in public preview; weather currently sandstorm.",
+          "unknowns": "Selection beyond observed entrants, Sand Rush, items, moves and effective speed remain unverified.",
+          "test": "Compare removing the attacker, denying weather, changing speed order and racing; do not automatically stall."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Gardevoir-Mega",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Rotom-Wash",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Metagross",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    },
+    {
+      "case": "unfamiliar:unfamiliar-validation-2-0-p1-one_turn",
+      "turn": 2,
+      "anchor": "Armarouge",
+      "update": "retained living anchor",
+      "requirements": [
+        {
+          "name": "anchor available",
+          "state": "observed",
+          "evidence": "Armarouge is living."
+        },
+        {
+          "name": "safe attacking window",
+          "state": "unverified",
+          "evidence": "Compare attack/KO, partner intervention, trade, switch and defense against plausible replies."
+        },
+        {
+          "name": "favorable speed order",
+          "state": "unverified",
+          "evidence": "Trick Room reverses order; it is useful only when the resulting order advances this plan."
+        },
+        {
+          "name": "Psychic Terrain for Expanding Force",
+          "state": "observed",
+          "evidence": "Terrain alone does not prove the attacker is grounded, duration, or safe execution."
+        }
+      ],
+      "blockers": [
+        {
+          "species": "Metagross",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [
+            "Armarouge: armorcannon",
+            "Incineroar: darkestlariat",
+            "Incineroar: flareblitz"
+          ],
+          "typing_multipliers": {
+            "Psychic": 0.25
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Incineroar",
+          "presence": "preview possibility",
+          "resisted_attack_types": [
+            "Psychic"
+          ],
+          "possible_answers": [],
+          "typing_multipliers": {
+            "Psychic": 0.0
+          },
+          "qualification": "Base typing, assuming our declared Mega/Pixilate transition where applicable; not a damage, PP, ability, KO, or selected-four certificate."
+        },
+        {
+          "species": "Rillaboom",
+          "presence": "public preview/reveal",
+          "qualification": "Possible terrain replacement if Grassy Surge is available; ability and entry timing require evidence.",
+          "possible_answers": [
+            "Compare preserving/re-entering our setter with attacking immediately."
+          ]
+        }
+      ],
+      "opponent_plans": [
+        {
+          "objective": "Opponent win condition unresolved.",
+          "status": "unknown",
+          "evidence": "No supported weather pairing or revealed speed-control plan identified."
+        }
+      ],
+      "available_answers": [
+        {
+          "resource": "Indeedee-F",
+          "role": "redirection",
+          "moves": [
+            "followme"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "speed control",
+          "moves": [
+            "trickroom"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "setup denial",
+          "moves": [
+            "imprison"
+          ]
+        },
+        {
+          "resource": "Indeedee-F",
+          "role": "Psychic Terrain",
+          "moves": []
+        },
+        {
+          "resource": "Armarouge",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        },
+        {
+          "resource": "Incineroar",
+          "role": "pivot",
+          "moves": [
+            "partingshot"
+          ]
+        },
+        {
+          "resource": "Venusaur",
+          "role": "temporary defense",
+          "moves": [
+            "protect"
+          ]
+        }
+      ]
+    }
+  ]
+}
