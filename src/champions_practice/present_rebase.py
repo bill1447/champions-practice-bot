@@ -33,6 +33,7 @@ from champions_practice.current_state_proposals import (
 )
 from champions_practice.current_state_reconstruction import _matches_approved_prior
 from champions_practice.search_worker import OwnSpeedDiagnosticTransportError
+from champions_practice.public_inventory import public_inventory_plan, native_inventory_rejection
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     identity_member_lineage,
@@ -168,6 +169,9 @@ def _positive_mechanics_rejection(state, projected, *, current_view, ledger,
     if plan is None:
         return 'unsupported-persistent:active-tenure'
     try:
+        inventory_issue = native_inventory_rejection(state, public_inventory_plan(current_view, ledger))
+        if inventory_issue:
+            return inventory_issue
         trace_plan = public_trace_plan(current_view, ledger)
         for side_index, side in enumerate(state['sides']):
             for slot, mon in enumerate(side['pokemon']):
@@ -414,6 +418,8 @@ def build_present_rebase(
                 limit=min(4, max_particles - len(found)),
                 active_tenure_plan=public_active_tenure_plan(current_view, ledger),
                 opponent_pp_plan=public_opponent_pp_plan(current_view, ledger),
+                **({'inventory_plan': public_inventory_plan(current_view, ledger)}
+                   if public_inventory_plan(current_view, ledger) else {}),
                 **({"mechanics_plan": opening_terrain_plan(current_view, ledger)}
                    if opening_terrain_plan(current_view, ledger) is not None else {}),
                 **({"protection_plan": public_protection_plan(current_view, ledger)}

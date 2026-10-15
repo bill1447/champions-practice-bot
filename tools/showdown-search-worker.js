@@ -2320,6 +2320,67 @@ function materializePresentHypotheses(request) {
       if (mon && !mon.isStarted) original.actions.runSwitch(mon);
     }
 
+    const inventoryPlan = request.inventory_plan ?? [];
+    if (!Array.isArray(inventoryPlan) || inventoryPlan.length > 4) return why('unsupported-inventory-plan');
+    const inventoryTargets = [];
+    const inventorySeen = new Set();
+    for (const entry of inventoryPlan) {
+      const mon = find(foe, entry.species);
+      if (Object.keys(entry).sort().join(',') !== 'ate_berry,item,species,used_this_turn' || !mon ||
+          inventorySeen.has(mon) || typeof entry.used_this_turn !== 'boolean' ||
+          (entry.used_this_turn && !postResidualSwitch) ||
+          !['sitrusberry', 'shucaberry', 'colburberry', 'focussash'].includes(entry.item) ||
+          entry.ate_berry !== (entry.item !== 'focussash') ||
+          asId(mon.set.item) !== entry.item || mon.item !== entry.item || mon.lastItem ||
+          mon.ateBerry || mon.usedItemThisTurn ||
+          !['intimidate', 'grassysurge', 'psychicsurge', 'drizzle', 'levitate', 'innerfocus',
+            'clearbody', 'sandrush', 'swiftswim', 'chlorophyll', 'roughskin', 'stamina'].includes(mon.ability)) {
+        return why('unsupported-inventory-source');
+      }
+      inventorySeen.add(mon);
+      inventoryTargets.push({entry, mon});
+    }
+    let inventoryFailure = 'unsupported-native-inventory-consumption';
+    function consumeInventory({entry, mon}) {
+      const wasActive = mon.isActive;
+      const displaced = foe.active[0];
+      if (!wasActive) {
+        if (entry.used_this_turn || original.actions.switchIn(mon, 0) !== true) {
+          inventoryFailure += ':inactive-or-switch';
+          return false;
+        }
+        original.actions.runSwitch(mon);
+        original.queue.clear();
+      }
+      // Execute pinned native consumption APIs, including Eat/AfterUseItem,
+      // lastItem, ateBerry, usedItemThisTurn and item effect-state cleanup.
+      // Temporary HP and switch effects are restored and checked later.
+      if (entry.item === 'sitrusberry') mon.sethp(Math.max(1, Math.floor(mon.maxhp / 2)));
+      const consumed = entry.ate_berry ? mon.eatItem() : mon.useItem();
+      if (!consumed) {
+        inventoryFailure += ':native-use-refused';
+        return false;
+      }
+      if (mon.item || mon.lastItem !== entry.item ||
+          mon.ateBerry !== entry.ate_berry || !mon.usedItemThisTurn) {
+        inventoryFailure += ':flags';
+        return false;
+      }
+      if (!wasActive) {
+        if (original.actions.switchIn(displaced, 0) !== true) return false;
+        original.actions.runSwitch(displaced);
+        original.queue.clear();
+      }
+      return true;
+    }
+    const oldConsumptions = inventoryTargets.filter(target => !target.entry.used_this_turn);
+    for (const target of oldConsumptions) {
+      if (!consumeInventory(target)) return why(inventoryFailure);
+    }
+    // Native endTurn resets usedItemThisTurn. Do this before reconstructing
+    // exact active tenure, PP, protection, fields, HP and requests.
+    if (oldConsumptions.length) original.endTurn();
+
     if (request.active_tenure_plan != null) {
       // These are PUBLIC lifecycle counts. Re-establish them using pinned
       // switchIn, endTurn and runMove; never assign native counters. Splash
@@ -2452,6 +2513,12 @@ function materializePresentHypotheses(request) {
         for (const effect of Object.keys(original.field.pseudoWeather)) original.field.removePseudoWeather(effect);
         original.fieldEvent('Residual', targets);
       }
+    }
+
+    // Current-turn consumption at a post-residual replacement pause retains
+    // usedItemThisTurn until endTurn or switching out. No extra turn is aged.
+    for (const target of inventoryTargets.filter(target => target.entry.used_this_turn)) {
+      if (!consumeInventory(target)) return why(inventoryFailure);
     }
 
     if (postResidualSwitch) {

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 import json
 
 from champions_practice.public_lifecycle import ordered_public_lifecycle, public_protection_plan
+from champions_practice.public_inventory import public_inventory_plan
 
 
 def sid(value):
@@ -336,12 +337,15 @@ def public_support_contract(view, ledger):
                     "opponent-bench", "unresolved", "damaged/statused reserve is not reconstructed"
                 )
     observed = set()
+    inventory = public_inventory_plan(view, ledger)
+    if inventory is None:
+        record('opponent-inventory', 'unresolved', 'unsupported or ambiguous inventory lifecycle')
+    elif inventory:
+        record('opponent-inventory', 'supported', 'bounded public consumption; native state checked separately')
     for _, event, _ in ordered:
         kind = event[0]
         if kind in {"-item", "-enditem"} and event[1].startswith("p1"):
-            record(
-                "opponent-inventory", "unresolved", "observed inventory lifecycle not reconstructed"
-            )
+            continue
         if kind in STATELESS_EVENTS:
             continue
         if kind == "move":

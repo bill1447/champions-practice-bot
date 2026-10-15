@@ -1,0 +1,1179 @@
+{
+  "archive_sha256": "330a08367e2082c3d48120a6e4659ee6ef8ee16e18cd784ef2d3ef3c86efef34",
+  "baseline": {
+    "commit": "e0ae72308f77b7ea7e9cb12629804bca46ce4a18",
+    "source_sha256": {
+      "policy": "ae45194c65880ecc4b517fd992a48fc1ce7aad6838b27417a34dbdb12424070a",
+      "joint": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c"
+    }
+  },
+  "source_sha256": {
+    "scripts/inventory_admission_probe.py": "6a2b239edd498c9d5e1be009577857f7d18038f1631c726deda5189963f3ac07",
+    "src/champions_practice/public_inventory.py": "9f17109a95b1da87ccf88e335525be1366f5af564b5189c877511e2a1079e653",
+    "src/champions_practice/persistent_support.py": "337cf8472569c151ec60c5f5ca116a96d46d46b82cad2492eab251b05eff0e45",
+    "src/champions_practice/present_rebase.py": "1a16ebd961f1fe4fd3d0615c4c8995c207a8b81e7aaea999be7f2364826566ca",
+    "src/champions_practice/search_worker.py": "92f4395306c93c9d1bd3eaec95959f95a1686dcd3bb75db3209b3768085fe933",
+    "src/champions_practice/experimental_native_player.py": "7d01056ecff132c173ce1f3b74ec4b94c7dfa6e376d668d8b0844aa3fe048f02",
+    "src/champions_practice/tactical_consequences.py": "27db610478218e65aacd6e565a94d96fb24a56b816816dd95243e35aa568d96d",
+    "src/champions_practice/exact_search.py": "ffa868b9436cf959fe484a9b4f91e516377a4764e1108e0bc0e50e2bd834f1ac",
+    "src/champions_practice/public_origin.py": "47f6a12fe8a9442f94f7be9fda69840287e7aadebd662fae498e7bb6c8e094b9",
+    "tools/showdown-search-worker.js": "d603e5f066771923e3ebc4d838362c8d371648f932bffd306b5a4692b70442f0"
+  },
+  "priors_sha256": "6fe56ddaf7236106df4ca98651fb1201f45a04c5927d14019feb1b8b659446bf",
+  "strategic_weights_changed": false,
+  "probe_archive": "runs\\v2-inventory-admission\\frozen-v2\\positions.json.gz",
+  "probe_archive_sha256": "2db361d16a90ed0e6af5fcf5a04fe12dce29e3dd300111b3159fae847f64805a",
+  "positions": [
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 2,
+      "turn": 2,
+      "phase": "switch",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": true
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "pass, switch 4",
+      "action": "pass, switch 4",
+      "disagreement": false,
+      "elapsed_seconds": 0.009519899991573766,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move steelroller +1, move energyball +1",
+      "action": "move steelroller +1, move energyball +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.009783999994397163,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move psychicfangs +1, move energyball +1",
+      "action": "move psychicfangs +1, move energyball +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.015597099991282448,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 6,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move psychicfangs +2, move sludgebomb +2",
+      "action": "move psychicfangs +2, move sludgebomb +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.00908069999422878,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "switch",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "pass, switch 3",
+      "action": "pass, switch 3",
+      "disagreement": false,
+      "elapsed_seconds": 0.00672419999318663,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 8,
+      "turn": 6,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "pass, move psychic +2",
+      "action": "pass, move psychic +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.007461700006388128,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 4,
+      "turn": 3,
+      "phase": "switch",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Incineroar",
+            "item": "shucaberry",
+            "ate_berry": true,
+            "used_this_turn": true
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "pass, switch 4",
+      "action": "pass, switch 4",
+      "disagreement": false,
+      "elapsed_seconds": 0.0072102999984053895,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Incineroar",
+            "item": "shucaberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:owned-unburden",
+      "admitted_worlds": 0,
+      "incumbent": "pass, move closecombat +1",
+      "action": "pass, move closecombat +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.00838960001419764,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:owned-unburden",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 4,
+      "phase": "switch",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "pelipper",
+            "item": "focussash",
+            "ate_berry": false,
+            "used_this_turn": true
+          }
+        ]
+      },
+      "status": "search",
+      "reason": "",
+      "admitted_worlds": 2,
+      "incumbent": "pass, switch 4",
+      "action": "pass, switch 4",
+      "disagreement": false,
+      "elapsed_seconds": 0.34271180001087487,
+      "admission": {
+        "roots_tried": 1,
+        "native_candidates": 2,
+        "positive_matches": 2,
+        "unresolved_reason": null,
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 2
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "pelipper",
+            "item": "focussash",
+            "ate_berry": false,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "search",
+      "reason": "",
+      "admitted_worlds": 2,
+      "incumbent": "move expandingforce +2, move energyball +2",
+      "action": "move expandingforce +2, move protect",
+      "disagreement": true,
+      "elapsed_seconds": 0.5662623999960488,
+      "admission": {
+        "roots_tried": 1,
+        "native_candidates": 2,
+        "positive_matches": 2,
+        "unresolved_reason": null,
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 48
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 8,
+      "turn": 6,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "pelipper",
+            "item": "focussash",
+            "ate_berry": false,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "search",
+      "reason": "",
+      "admitted_worlds": 2,
+      "incumbent": "move armorcannon +1, move sludgebomb +1",
+      "action": "move armorcannon +1, move sludgebomb +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.4886892000067746,
+      "admission": {
+        "roots_tried": 1,
+        "native_candidates": 2,
+        "positive_matches": 2,
+        "unresolved_reason": null,
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 48
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "indeedeef",
+            "item": "colburberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:move:electroshot",
+      "admitted_worlds": 0,
+      "incumbent": "move dragonclaw +1, move darkestlariat +1",
+      "action": "move dragonclaw +1, move darkestlariat +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.01080530000035651,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:move:electroshot",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 8,
+      "turn": 5,
+      "phase": "switch",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "indeedeef",
+            "item": "colburberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:move:electroshot",
+      "admitted_worlds": 0,
+      "incumbent": "switch 3, pass",
+      "action": "switch 3, pass",
+      "disagreement": false,
+      "elapsed_seconds": 0.007902299999841489,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:move:electroshot",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 9,
+      "turn": 6,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "indeedeef",
+            "item": "colburberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:move:electroshot",
+      "admitted_worlds": 0,
+      "incumbent": "move dragonclaw +2, move flareblitz +2",
+      "action": "move dragonclaw +2, move flareblitz +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.007563099992694333,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:move:electroshot",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 2,
+      "turn": 2,
+      "phase": "switch",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": true
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "switch 4, pass",
+      "action": "switch 4, pass",
+      "disagreement": false,
+      "elapsed_seconds": 0.00867629999993369,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move steelroller +2, move hydropump +1",
+      "action": "move steelroller +2, move hydropump +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.009246399989933707,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move psychicfangs +2, move hydropump +1",
+      "action": "move psychicfangs +2, move hydropump +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.00919330000760965,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 4,
+      "phase": "switch",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "switch 3, pass",
+      "action": "switch 3, pass",
+      "disagreement": false,
+      "elapsed_seconds": 0.008417300006840378,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move psychic +2, move hydropump +1",
+      "action": "move psychic +2, move hydropump +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.009291900001699105,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 2,
+      "turn": 2,
+      "phase": "switch",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": true
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "switch 3, switch 4",
+      "action": "switch 3, switch 4",
+      "disagreement": false,
+      "elapsed_seconds": 0.007997200009413064,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move hydropump +1, move steelroller +2",
+      "action": "move hydropump +1, move steelroller +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.00905399999464862,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move hydropump +1, move psychicfangs +2",
+      "action": "move hydropump +1, move psychicfangs +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.008372500000405125,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move hydropump +1, move psychicfangs +2",
+      "action": "move hydropump +1, move psychicfangs +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.008143400002154522,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 8,
+      "turn": 6,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move hydropump +1, pass",
+      "action": "move hydropump +1, pass",
+      "disagreement": false,
+      "elapsed_seconds": 0.0077160999935586005,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 9,
+      "turn": 7,
+      "phase": "move",
+      "prior_items_covered": false,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Excadrill",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "move thunderbolt +2, pass",
+      "action": "move thunderbolt +2, pass",
+      "disagreement": false,
+      "elapsed_seconds": 0.00749540000106208,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-2-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "pelipper",
+            "item": "focussash",
+            "ate_berry": false,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:move:stompingtantrum",
+      "admitted_worlds": 0,
+      "incumbent": "move psychic +1, move expandingforce +1",
+      "action": "move psychic +1, move expandingforce +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.00916660000802949,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:move:stompingtantrum",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Rillaboom",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:move:stompingtantrum",
+      "admitted_worlds": 0,
+      "incumbent": "move flareblitz +1, move armorcannon +1",
+      "action": "move flareblitz +1, move armorcannon +1",
+      "disagreement": false,
+      "elapsed_seconds": 0.010405900000478141,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:move:stompingtantrum",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "Rillaboom",
+            "item": "sitrusberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "search",
+      "reason": "",
+      "admitted_worlds": 2,
+      "incumbent": "move flareblitz +2, move armorcannon +2",
+      "action": "move flareblitz +2, move protect",
+      "disagreement": true,
+      "elapsed_seconds": 0.860463000004529,
+      "admission": {
+        "roots_tried": 2,
+        "native_candidates": 2,
+        "positive_matches": 2,
+        "unresolved_reason": null,
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 78
+    },
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 6,
+      "turn": 5,
+      "phase": "move",
+      "prior_items_covered": true,
+      "control": {
+        "native_inventory_matches": true,
+        "corruptions_rejected": 4,
+        "plan": [
+          {
+            "species": "incineroar",
+            "item": "shucaberry",
+            "ate_berry": true,
+            "used_this_turn": false
+          }
+        ]
+      },
+      "status": "fallback",
+      "reason": "unsupported-persistent:opponent-capabilities",
+      "admitted_worlds": 0,
+      "incumbent": "pass, move energyball +2",
+      "action": "pass, move energyball +2",
+      "disagreement": false,
+      "elapsed_seconds": 0.009856199991190806,
+      "admission": {
+        "roots_tried": 0,
+        "native_candidates": 0,
+        "positive_matches": 0,
+        "unresolved_reason": "unsupported-persistent:opponent-capabilities",
+        "historical_witnesses": 0,
+        "exhaustively_excluded_worlds": 0,
+        "rejection_reasons": [],
+        "own_speed_diagnostics": [],
+        "own_speed_transport_issues": []
+      },
+      "branch_count": 0
+    }
+  ],
+  "groups": {
+    "all": {
+      "positions": 29,
+      "completed_searches": 4,
+      "fallback_reasons": {
+        "unsupported-persistent:opponent-capabilities": 19,
+        "unsupported-persistent:owned-unburden": 1,
+        "unsupported-persistent:move:electroshot": 3,
+        "unsupported-persistent:move:stompingtantrum": 2
+      },
+      "action_disagreements": 2,
+      "max_decision_seconds": 0.860463000004529,
+      "eight_second_overruns": 0
+    },
+    "prior_item_covered": {
+      "positions": 12,
+      "completed_searches": 4,
+      "fallback_reasons": {
+        "unsupported-persistent:opponent-capabilities": 2,
+        "unsupported-persistent:owned-unburden": 1,
+        "unsupported-persistent:move:electroshot": 3,
+        "unsupported-persistent:move:stompingtantrum": 2
+      },
+      "action_disagreements": 2,
+      "max_decision_seconds": 0.860463000004529,
+      "eight_second_overruns": 0
+    },
+    "outside_item_priors": {
+      "positions": 17,
+      "completed_searches": 0,
+      "fallback_reasons": {
+        "unsupported-persistent:opponent-capabilities": 17
+      },
+      "action_disagreements": 0,
+      "max_decision_seconds": 0.015597099991282448,
+      "eight_second_overruns": 0
+    }
+  },
+  "native_controls": {
+    "matched_recorded_public_positions": 29,
+    "inventory_corruptions_rejected": 116
+  },
+  "limitations": [
+    "Position replay only; no new game outcomes or playing-strength estimate.",
+    "Original 15/24 versus 10/24 games remain unchanged.",
+    "All earlier decisions and public observations come from retained paths, not new-player trajectories.",
+    "No new priors, scoring weights, response counts, horizon or decision budget.",
+    "Separate native replay controls use oracle fixture sets/seeds; these never enter admission decisions."
+  ]
+}
