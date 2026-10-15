@@ -173,6 +173,8 @@ CURRENT_FACT_ITEMS = frozenset(
         "sitrusberry",
         "lumberry",
         "terrainextender",
+        "damprock",
+        "smoothrock",
         "babiriberry",
         "chartiberry",
         "chilanberry",

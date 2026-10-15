@@ -15,6 +15,65 @@ from champions_practice.public_lifecycle import (
 )
 
 
+def public_weather_plan(view: dict, ledger=None) -> dict | None:
+    """Public ability activation and complete residual boundaries, never a timer guess.
+
+    The source's hypothetical native item determines duration. Missing starts,
+    continuation-only weather messages, and extension inventory changes cannot
+    authorize a fresh present-state timer.
+    """
+    weather = view.get('field', {}).get('weather')
+    abilities = {'raindance': 'drizzle', 'sandstorm': 'sandstream'}
+    if weather not in abilities:
+        return None
+    ordered = ordered_public_lifecycle(view, ledger)
+    if ordered is None:
+        return None
+    start = None
+    age = 0
+    for turn, event, actors in ordered:
+        if event[0] in {'-item', '-enditem'} and any(
+            rock in event[2:] for rock in ('damprock', 'smoothrock')
+        ):
+            return None
+        if event == ['upkeep'] and start is not None:
+            age += 1
+        if event[0] != '-weather' or len(event) < 2 or '[upkeep]' in event:
+            continue
+        start = None
+        age = 0
+        if event[1] != weather:
+            continue
+        source = next((s[5:] for s in event if s.startswith('[of]:')), None)
+        ability = '[from]:ability:' + abilities[weather]
+        if source not in actors or ability not in event:
+            return None
+        start = (turn, source, actors[source])
+    if start is None:
+        # Turn-one request follows native opening ability activation. Legacy
+        # public archives omit that activation delta; continuous snapshots
+        # plus absence of ANY later weather start/end preserve that origin.
+        snapshots = [(t, json.loads(p)) for t, p in ledger.field_snapshots if t >= 1]
+        if (any(s.get('weather') != weather for _, s in snapshots)
+                or any(e[0] == '-weather' and '[upkeep]' not in e for _, e, _ in ordered)):
+            return None
+        age = sum(e == ['upkeep'] for _, e, _ in ordered)
+        expected = set(range(1, view['turn'] + int(public_post_residual_switch(view))))
+        observed = [t for t, e, _ in ordered if e == ['upkeep']]
+        if set(observed) != expected or len(observed) != len(expected) or age > 7:
+            return None
+        return {'weather': weather, 'residual_turns': age}
+    if age > 7:
+        return None
+    turn, source, species = start
+    observed = [t for t, event, _ in ordered if t >= turn and event == ['upkeep']]
+    expected = set(range(turn, view['turn'] + int(public_post_residual_switch(view))))
+    if set(observed) != expected or len(observed) != len(expected):
+        return None
+    return {'weather': weather, 'source_side': 'player' if source.startswith('p2') else 'opponent',
+            'source_species': species, 'source_ability': abilities[weather], 'residual_turns': age}
+
+
 def opening_terrain_plan(view: dict, ledger=None) -> dict | None:
     """Observed native ability starts or continuous public opening terrain."""
     terrain = view.get("field", {}).get("terrain")
@@ -157,7 +216,7 @@ def _field_and_protection_issue(view: dict, ledger=None) -> str | None:
         return "unsupported-public-effect-projection"
     if not {"weather", "terrain", "pseudo_weather"} <= field.keys():
         return "unsupported-public-effect-projection"
-    if field["weather"] or (field["pseudo_weather"] and public_trick_room_plan(view, ledger) is None) or (
+    if (field["weather"] and public_weather_plan(view, ledger) is None) or (field["pseudo_weather"] and public_trick_room_plan(view, ledger) is None) or (
         field["terrain"] and opening_terrain_plan(view, ledger) is None
     ):
         return "unsupported-public-effect-duration"

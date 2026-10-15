@@ -1992,6 +1992,9 @@ function materializePresentHypotheses(request) {
   const original = Battle.fromJSON(JSON.stringify(request.state));
   const terrainPlan = request.mechanics_plan;
   const trickRoomPlan = request.trick_room_plan;
+  const weatherPlan = request.weather_plan;
+  let weatherSource = null;
+  let weatherSourceItem = null;
   let terrainSource = null;
   let terrainSourceItem = null;
   let trickRoomSource = null;
@@ -2007,13 +2010,29 @@ function materializePresentHypotheses(request) {
         !Number.isInteger(trickRoomPlan.residual_turns) ||
         trickRoomPlan.residual_turns < 0 || trickRoomPlan.residual_turns > 4 ||
         stableJson(view.field.pseudo_weather) !== stableJson(['trickroom']) ||
-        view.field.weather || (view.field.terrain && terrainPlan == null)) {
+        (view.field.weather && weatherPlan == null) || (view.field.terrain && terrainPlan == null)) {
       return why('unsupported-trick-room-plan');
     }
     trickRoomSource = publicSource(trickRoomPlan.source_side, trickRoomPlan.source_species);
     if (!trickRoomSource || trickRoomSource.ability === 'persistent') {
       return why('unsupported-trick-room-source');
     }
+  }
+  if (weatherPlan != null) {
+    const abilities = {raindance: 'drizzle', sandstorm: 'sandstream'};
+    const sourced = weatherPlan.source_species != null;
+    const keys = sourced ? 'residual_turns,source_ability,source_side,source_species,weather' : 'residual_turns,weather';
+    if (Object.keys(weatherPlan).sort().join(',') !== keys ||
+        weatherPlan.weather !== view.field.weather || !abilities[weatherPlan.weather] ||
+        (sourced && abilities[weatherPlan.weather] !== weatherPlan.source_ability) ||
+        (!sourced && (original.field.weather !== weatherPlan.weather ||
+          weatherPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch))) ||
+        !Number.isInteger(weatherPlan.residual_turns) || weatherPlan.residual_turns < 0 || weatherPlan.residual_turns > 7) {
+      return why('unsupported-public-weather-plan');
+    }
+    weatherSource = sourced ? publicSource(weatherPlan.source_side, weatherPlan.source_species) : original.field.weatherState.source;
+    if (!weatherSource || weatherSource.ability !== abilities[weatherPlan.weather]) return why('unsupported-weather-source');
+    weatherSourceItem = weatherSource.item;
   }
   if (terrainPlan != null) {
     const sourced = terrainPlan.source_species != null;
@@ -2028,7 +2047,7 @@ function materializePresentHypotheses(request) {
         !Number.isInteger(terrainPlan.residual_turns) ||
         (!sourced && terrainPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch)) ||
         terrainPlan.residual_turns < (sourced ? 0 : 1) || terrainPlan.residual_turns > 7 ||
-        view.field.weather || (view.field.pseudo_weather.length && trickRoomPlan == null) ||
+        (view.field.weather && weatherPlan == null) || (view.field.pseudo_weather.length && trickRoomPlan == null) ||
         view.player.side_conditions.length || view.opponent.side_conditions.length) {
       return why('unsupported-opening-terrain-plan');
     }
@@ -2643,7 +2662,10 @@ function materializePresentHypotheses(request) {
       }
     }
 
-    if (terrainPlan != null || trickRoomPlan != null) {
+    if (terrainPlan != null || trickRoomPlan != null || weatherPlan != null) {
+      if (weatherPlan && weatherSource.item !== weatherSourceItem &&
+          ['damprock', 'smoothrock'].includes(weatherSourceItem)) return why('unsupported-weather-extension-history');
+      if (weatherPlan) original.field.clearWeather();
       // Restore after all native switching, which can overwrite terrain.
       // An extender lost since activation needs a separate public domain.
       if (terrainSourceItem === 'terrainextender' && terrainSource.item !== terrainSourceItem) {
@@ -2654,8 +2676,12 @@ function materializePresentHypotheses(request) {
       // Rebuild both effects on one native residual timeline. Starting a
       // younger effect later prevents aging one effect while restoring the
       // other. Empty targets exclude Pokemon HP/status/volatile residuals.
-      const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0);
+      const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0, weatherPlan?.residual_turns || 0);
       for (let step = 0; step <= age; step++) {
+        if (weatherPlan && step === age - weatherPlan.residual_turns &&
+            !original.field.setWeather(weatherPlan.weather, weatherSource, original.dex.abilities.get(weatherPlan.source_ability || weatherSource.ability))) {
+          return why('unsupported-native-weather-start');
+        }
         if (terrainPlan && step === age - terrainPlan.residual_turns &&
             !original.field.setTerrain(terrainPlan.opening_terrain, terrainSource,
               terrainPlan.source_ability ? original.dex.abilities.get(terrainPlan.source_ability) : null)) {
@@ -2667,11 +2693,25 @@ function materializePresentHypotheses(request) {
             return why('unsupported-native-trick-room-start');
           }
         }
-        if (step < age) original.fieldEvent('Residual', []);
+        if (step < age) {
+          // fieldEvent's [] excludes Pokemon residual handlers but Weather's
+          // field handler calls eachEvent('Weather') independently. Build the
+          // field-only timeline with empty active slots so sand cannot damage
+          // or activate abilities/items on already reconstructed Pokemon.
+          // Restore the slot references even if native field aging rejects.
+          const activeSlots = original.sides.map(side => side.active);
+          try {
+            for (const side of original.sides) side.active = [];
+            original.fieldEvent('Residual', []);
+          } finally {
+            original.sides.forEach((side, index) => { side.active = activeSlots[index]; });
+          }
+        }
       }
       if (terrainPlan && original.field.terrain !== terrainPlan.opening_terrain) {
         return why('opening-terrain-expired');
       }
+      if (weatherPlan && original.field.weather !== weatherPlan.weather) return why('public-weather-expired');
       if (trickRoomPlan && !original.field.pseudoWeather['trickroom']) {
         return why('public-trick-room-expired');
       }
