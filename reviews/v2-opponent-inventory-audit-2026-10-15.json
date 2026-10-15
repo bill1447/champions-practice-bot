@@ -1,0 +1,4416 @@
+{
+  "positions": [
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 2,
+      "turn": 2,
+      "phase": "switch",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1b",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Tyranitar",
+          "Excadrill",
+          "Rotom-Wash",
+          "Incineroar",
+          "Garchomp",
+          "Dragonite"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Tyranitar",
+            "base_species": "Tyranitar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 37,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 37,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1b",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Tyranitar",
+          "Excadrill",
+          "Rotom-Wash",
+          "Incineroar",
+          "Garchomp",
+          "Dragonite"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Tyranitar",
+            "base_species": "Tyranitar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 37,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 37,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1b",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Tyranitar",
+          "Excadrill",
+          "Rotom-Wash",
+          "Incineroar",
+          "Garchomp",
+          "Dragonite"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Dragonite",
+            "base_species": "Dragonite",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 6,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1b",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Tyranitar",
+          "Excadrill",
+          "Rotom-Wash",
+          "Incineroar",
+          "Garchomp",
+          "Dragonite"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Dragonite",
+            "base_species": "Dragonite",
+            "hp_percent": 82,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": -1,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [
+              "earthquake"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 82,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "switch",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1b",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Tyranitar",
+          "Excadrill",
+          "Rotom-Wash",
+          "Incineroar",
+          "Garchomp",
+          "Dragonite"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Dragonite",
+            "base_species": "Dragonite",
+            "hp_percent": 25,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": -1,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [
+              "earthquake"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 25,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 8,
+      "turn": 6,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1b",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Tyranitar",
+          "Excadrill",
+          "Rotom-Wash",
+          "Incineroar",
+          "Garchomp",
+          "Dragonite"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Dragonite",
+            "base_species": "Dragonite",
+            "hp_percent": 25,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": -1,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [
+              "earthquake"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 25,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 4,
+      "turn": 3,
+      "phase": "switch",
+      "hidden_family_label": "prior",
+      "events": [
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "shucaberry",
+            "[eat]"
+          ],
+          "species_at_event": "Incineroar",
+          "ordinal": 37,
+          "source_item_in_approved_species_priors": true
+        },
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "shucaberry",
+            "[weaken]"
+          ],
+          "species_at_event": "Incineroar",
+          "ordinal": 38,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        },
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P2",
+        "preview_species": [
+          "Incineroar",
+          "Rillaboom",
+          "Garchomp",
+          "Metagross",
+          "Rotom-Wash",
+          "Pelipper"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 24,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 7,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Incineroar",
+            "moves": [
+              "darkestlariat",
+              "flareblitz"
+            ],
+            "items": [
+              "shucaberry"
+            ],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 24,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Garchomp",
+            "moves": [
+              "earthquake"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 7,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Pelipper",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "hidden_family_label": "prior",
+      "events": [
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "shucaberry",
+            "[eat]"
+          ],
+          "species_at_event": "Incineroar",
+          "ordinal": 37,
+          "source_item_in_approved_species_priors": true
+        },
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "shucaberry",
+            "[weaken]"
+          ],
+          "species_at_event": "Incineroar",
+          "ordinal": 38,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        },
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P2",
+        "preview_species": [
+          "Incineroar",
+          "Rillaboom",
+          "Garchomp",
+          "Metagross",
+          "Rotom-Wash",
+          "Pelipper"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 24,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 7,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Incineroar",
+            "moves": [
+              "darkestlariat",
+              "flareblitz"
+            ],
+            "items": [
+              "shucaberry"
+            ],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 24,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Garchomp",
+            "moves": [
+              "earthquake"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 7,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Pelipper",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 4,
+      "phase": "switch",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "focussash"
+          ],
+          "species_at_event": "pelipper",
+          "ordinal": 44,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Incineroar",
+          "Rillaboom",
+          "Garchomp",
+          "Metagross",
+          "Rotom-Wash",
+          "Pelipper"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 83,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Pelipper",
+            "base_species": "Pelipper",
+            "hp_percent": 1,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Incineroar",
+            "moves": [
+              "darkestlariat",
+              "flareblitz"
+            ],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 83,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [
+              "hurricane"
+            ],
+            "items": [
+              "focussash"
+            ],
+            "abilities": [],
+            "hp_percent": 1,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "focussash"
+          ],
+          "species_at_event": "pelipper",
+          "ordinal": 44,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Incineroar",
+          "Rillaboom",
+          "Garchomp",
+          "Metagross",
+          "Rotom-Wash",
+          "Pelipper"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 83,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Pelipper",
+            "base_species": "Pelipper",
+            "hp_percent": 1,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Incineroar",
+            "moves": [
+              "darkestlariat",
+              "flareblitz"
+            ],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 83,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [
+              "hurricane"
+            ],
+            "items": [
+              "focussash"
+            ],
+            "abilities": [],
+            "hp_percent": 1,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 8,
+      "turn": 6,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "focussash"
+          ],
+          "species_at_event": "pelipper",
+          "ordinal": 44,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Incineroar",
+          "Rillaboom",
+          "Garchomp",
+          "Metagross",
+          "Rotom-Wash",
+          "Pelipper"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 20,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Pelipper",
+            "base_species": "Pelipper",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Incineroar",
+            "moves": [
+              "darkestlariat",
+              "flareblitz"
+            ],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 20,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [
+              "hurricane"
+            ],
+            "items": [
+              "focussash"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "prior",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "colburberry",
+            "[eat]"
+          ],
+          "species_at_event": "indeedeef",
+          "ordinal": 48,
+          "source_item_in_approved_species_priors": true
+        },
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "colburberry",
+            "[weaken]"
+          ],
+          "species_at_event": "indeedeef",
+          "ordinal": 49,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        },
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P2",
+        "preview_species": [
+          "Pelipper",
+          "Basculegion",
+          "Archaludon",
+          "Indeedee-F",
+          "Venusaur",
+          "Metagross"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Pelipper",
+            "base_species": "Pelipper",
+            "hp_percent": 2,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": -1,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Archaludon",
+            "base_species": "Archaludon",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Pelipper",
+            "moves": [
+              "hurricane"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 2,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Basculegion",
+            "moves": [
+              "wavecrash"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Archaludon",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Indeedee-F",
+            "moves": [],
+            "items": [
+              "colburberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Venusaur",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 8,
+      "turn": 5,
+      "phase": "switch",
+      "hidden_family_label": "prior",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "colburberry",
+            "[eat]"
+          ],
+          "species_at_event": "indeedeef",
+          "ordinal": 48,
+          "source_item_in_approved_species_priors": true
+        },
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "colburberry",
+            "[weaken]"
+          ],
+          "species_at_event": "indeedeef",
+          "ordinal": 49,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        },
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P2",
+        "preview_species": [
+          "Pelipper",
+          "Basculegion",
+          "Archaludon",
+          "Indeedee-F",
+          "Venusaur",
+          "Metagross"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Pelipper",
+            "base_species": "Pelipper",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Archaludon",
+            "base_species": "Archaludon",
+            "hp_percent": 58,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 1,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Pelipper",
+            "moves": [
+              "hurricane"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Basculegion",
+            "moves": [
+              "wavecrash"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Archaludon",
+            "moves": [
+              "dragonpulse"
+            ],
+            "items": [],
+            "abilities": [
+              "stamina"
+            ],
+            "hp_percent": 58,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Indeedee-F",
+            "moves": [],
+            "items": [
+              "colburberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Venusaur",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 9,
+      "turn": 6,
+      "phase": "move",
+      "hidden_family_label": "prior",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "colburberry",
+            "[eat]"
+          ],
+          "species_at_event": "indeedeef",
+          "ordinal": 48,
+          "source_item_in_approved_species_priors": true
+        },
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1b",
+            "colburberry",
+            "[weaken]"
+          ],
+          "species_at_event": "indeedeef",
+          "ordinal": 49,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        },
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P2",
+        "preview_species": [
+          "Pelipper",
+          "Basculegion",
+          "Archaludon",
+          "Indeedee-F",
+          "Venusaur",
+          "Metagross"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Pelipper",
+            "base_species": "Pelipper",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Archaludon",
+            "base_species": "Archaludon",
+            "hp_percent": 58,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 1,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Pelipper",
+            "moves": [
+              "hurricane"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Basculegion",
+            "moves": [
+              "wavecrash"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Archaludon",
+            "moves": [
+              "dragonpulse"
+            ],
+            "items": [],
+            "abilities": [
+              "stamina"
+            ],
+            "hp_percent": 58,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Indeedee-F",
+            "moves": [],
+            "items": [
+              "colburberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Venusaur",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 2,
+      "turn": 2,
+      "phase": "switch",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 26,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Tyranitar",
+            "base_species": "Tyranitar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "ironhead"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 26,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "crunch"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 26,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Tyranitar",
+            "base_species": "Tyranitar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "ironhead"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 26,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "crunch"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 26,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "highhorsepower",
+              "ironhead"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 26,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "crunch"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 4,
+      "phase": "switch",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 31,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "highhorsepower",
+              "ironhead"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "crunch"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "thunderbolt"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 31,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 31,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "highhorsepower",
+              "ironhead"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "crunch"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "thunderbolt"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 31,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 2,
+      "turn": 2,
+      "phase": "switch",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 32,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Tyranitar",
+            "base_species": "Tyranitar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 32,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 32,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Tyranitar",
+            "base_species": "Tyranitar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 32,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Excadrill",
+            "base_species": "Excadrill",
+            "hp_percent": 32,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": -1,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 32,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 7,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 38,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 38,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 8,
+      "turn": 6,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 90,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 44,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [
+              "flareblitz"
+            ],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 90,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 44,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 9,
+      "turn": 7,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 2,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Excadrill",
+          "ordinal": 23,
+          "source_item_in_approved_species_priors": false
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Excadrill",
+          "Tyranitar",
+          "Dragonite",
+          "Garchomp",
+          "Incineroar",
+          "Rotom-Wash"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 49,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Excadrill",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Tyranitar",
+            "moves": [
+              "rockslide"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Dragonite",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [
+              "flareblitz"
+            ],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 49,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "hidden_family_label": "prior",
+      "events": [
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "focussash"
+          ],
+          "species_at_event": "pelipper",
+          "ordinal": 24,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P2",
+        "preview_species": [
+          "Rillaboom",
+          "Rotom-Wash",
+          "Pelipper",
+          "Garchomp",
+          "Metagross",
+          "Incineroar"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Garchomp",
+            "base_species": "Garchomp",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Rotom-Wash",
+            "base_species": "Rotom-Wash",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [],
+            "items": [
+              "focussash"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Rillaboom",
+          "ordinal": 28,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Rillaboom",
+          "Rotom-Wash",
+          "Pelipper",
+          "Garchomp",
+          "Metagross",
+          "Incineroar"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Metagross",
+            "base_species": "Metagross",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 100,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "highhorsepower",
+              "woodhammer"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Incineroar",
+            "moves": [],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 100,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 3,
+          "event": [
+            "-enditem",
+            "p1a",
+            "sitrusberry",
+            "[eat]"
+          ],
+          "species_at_event": "Rillaboom",
+          "ordinal": 28,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Rillaboom",
+          "Rotom-Wash",
+          "Pelipper",
+          "Garchomp",
+          "Metagross",
+          "Incineroar"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Metagross",
+            "base_species": "Metagross",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 75,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "highhorsepower",
+              "woodhammer"
+            ],
+            "items": [
+              "sitrusberry"
+            ],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Incineroar",
+            "moves": [
+              "darkestlariat"
+            ],
+            "items": [],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 75,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    },
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 6,
+      "turn": 5,
+      "phase": "move",
+      "hidden_family_label": "heldout",
+      "events": [
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1a",
+            "shucaberry",
+            "[eat]"
+          ],
+          "species_at_event": "incineroar",
+          "ordinal": 53,
+          "source_item_in_approved_species_priors": true
+        },
+        {
+          "turn": 4,
+          "event": [
+            "-enditem",
+            "p1a",
+            "shucaberry",
+            "[weaken]"
+          ],
+          "species_at_event": "incineroar",
+          "ordinal": 54,
+          "source_item_in_approved_species_priors": true
+        }
+      ],
+      "unresolved_public_contract": [
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        },
+        {
+          "mechanic": "opponent-inventory",
+          "classification": "unresolved",
+          "evidence": "observed inventory lifecycle not reconstructed"
+        }
+      ],
+      "current_public_opponent": {
+        "name": "P1",
+        "preview_species": [
+          "Rillaboom",
+          "Rotom-Wash",
+          "Pelipper",
+          "Garchomp",
+          "Metagross",
+          "Incineroar"
+        ],
+        "side_conditions": [],
+        "active": [
+          {
+            "species": "Incineroar",
+            "base_species": "Incineroar",
+            "hp_percent": 0,
+            "fainted": true,
+            "status": "fnt",
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          },
+          {
+            "species": "Metagross",
+            "base_species": "Metagross",
+            "hp_percent": 29,
+            "fainted": false,
+            "status": null,
+            "boosts": {
+              "atk": 0,
+              "def": 0,
+              "spa": 0,
+              "spd": 0,
+              "spe": 0,
+              "accuracy": 0,
+              "evasion": 0
+            }
+          }
+        ],
+        "revealed": [
+          {
+            "species": "Rillaboom",
+            "moves": [
+              "woodhammer"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Rotom-Wash",
+            "moves": [
+              "hydropump"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          },
+          {
+            "species": "Pelipper",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Garchomp",
+            "moves": [],
+            "items": [],
+            "abilities": [],
+            "hp_percent": null,
+            "status": null,
+            "fainted": false,
+            "seen": false
+          },
+          {
+            "species": "Metagross",
+            "moves": [
+              "earthquake"
+            ],
+            "items": [],
+            "abilities": [],
+            "hp_percent": 29,
+            "status": null,
+            "fainted": false,
+            "seen": true
+          },
+          {
+            "species": "Incineroar",
+            "moves": [
+              "flareblitz"
+            ],
+            "items": [
+              "shucaberry"
+            ],
+            "abilities": [
+              "intimidate"
+            ],
+            "hp_percent": 0,
+            "status": null,
+            "fainted": true,
+            "seen": true
+          }
+        ]
+      },
+      "only_public_contract_family": true
+    }
+  ],
+  "approved_item_catalog": {
+    "indeedeef": [
+      "colburberry"
+    ],
+    "sneasler": [
+      "psychicseed"
+    ],
+    "gardevoir": [
+      "gardevoirite"
+    ],
+    "armarouge": [
+      "lifeorb"
+    ],
+    "rillaboom": [
+      "sitrusberry"
+    ],
+    "metagross": [
+      "leftovers",
+      "metagrossite"
+    ],
+    "incineroar": [
+      "shucaberry"
+    ],
+    "venusaur": [
+      "cobaberry"
+    ],
+    "dragonite": [
+      "lumberry"
+    ],
+    "rotomwash": [
+      "leftovers"
+    ],
+    "pelipper": [
+      "focussash"
+    ],
+    "archaludon": [
+      "dragonfang"
+    ],
+    "basculegion": [
+      "mysticwater"
+    ],
+    "tyranitar": [
+      "chopleberry"
+    ],
+    "excadrill": [
+      "lifeorb"
+    ],
+    "garchomp": [
+      "habanberry"
+    ]
+  },
+  "summary": {
+    "inventory_fallback_decisions": 29,
+    "games_affected": 9,
+    "distinct_public_events": 12,
+    "distinct_events_by_kind_item": {
+      "-enditem:sitrusberry": 4,
+      "-enditem:shucaberry": 4,
+      "-enditem:focussash": 2,
+      "-enditem:colburberry": 2
+    },
+    "affected_decisions_by_kind_item": {
+      "-enditem:sitrusberry": 19,
+      "-enditem:shucaberry": 3,
+      "-enditem:focussash": 4,
+      "-enditem:colburberry": 3
+    },
+    "other_unresolved_public_families": {},
+    "inventory_only_public_contract_decisions": 29,
+    "decisions_with_source_item_outside_species_priors": 17,
+    "decisions_with_all_source_items_represented": 12,
+    "turns": {
+      "2": 3,
+      "3": 4,
+      "4": 8,
+      "5": 9,
+      "6": 4,
+      "7": 1
+    }
+  },
+  "limitations": [
+    "This diagnoses recorded first-reported inventory fallbacks, not all inventory-blocked positions.",
+    "Public contract checks do not replace static-prior, field, native restoration or positive-admission checks.",
+    "Inventory-only public contract does not imply the position would be admitted after a fix.",
+    "Repeated observations of one event are counted once per game in distinct-event totals.",
+    "No support gate, action score or recorded decision was changed."
+  ],
+  "archive_sha256": "330a08367e2082c3d48120a6e4659ee6ef8ee16e18cd784ef2d3ef3c86efef34",
+  "source_sha256": "6f07d2f76207d5e783c1d995e54e7d0efa3884bd5207eeb6918a931d926658ed"
+}
