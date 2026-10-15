@@ -1,0 +1,1112 @@
+{
+  "disposition": "retain 8/3 as experimental baseline; no default promotion",
+  "runs": {
+    "base": {
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "manifest_sha256": "4ae4819708047646e53fb64dfed4a46b45512802f81adc547c2df0ef33233ed4",
+      "source_sha256": {
+        "src/champions_practice/tactical_consequences.py": "b2596351781edfea1141dea3a5919ff97da05c7265a908c7bfb7f2fb7e4acec1",
+        "src/champions_practice/independent_opponent.py": "82022fea7ac405a3562565661e0542ef15fc2d97748fb263c00fc5cdb169a218",
+        "scripts/tactical_consequences_ablation.py": "927d288edde57b27ad8b86b3718b746426c0a57d1f4dae026305072c741bc9cf",
+        "scripts/tactical_consequences_evaluation.py": "a86c723899ee3895efbae9bbce6ffb575246c483edd4d452a0ea209047b5fb7b"
+      }
+    },
+    "coverage": {
+      "archive_sha256": "c6f53fcf8b311e3ec153e11b836afb20f1c3b38e75959687e0ba8bb9e6c8be8f",
+      "manifest_sha256": "b323f7dd4e9aaa37d9909babcb0e0af7a2f64b439752bf66da681e935bfe411f",
+      "source_sha256": {
+        "src/champions_practice/tactical_consequences.py": "b2596351781edfea1141dea3a5919ff97da05c7265a908c7bfb7f2fb7e4acec1",
+        "src/champions_practice/exact_search.py": "7a9d486a14aa248cd8f500c17d9482d456e9edf04055671bc9f29cc9de6f664c",
+        "src/champions_practice/independent_opponent.py": "82022fea7ac405a3562565661e0542ef15fc2d97748fb263c00fc5cdb169a218",
+        "scripts/tactical_consequences_evaluation.py": "a86c723899ee3895efbae9bbce6ffb575246c483edd4d452a0ea209047b5fb7b",
+        "scripts/tactical_coverage_ablation.py": "bb425cac1fe216ae37b6e39ad6811c5f74ca25bca9ac677971043bb1c7ed7712",
+        "tools/showdown-search-worker.js": "34044f5de358b3a4038dfeb84876686657dabcf826e4686bf419c9edaa3f66cd"
+      }
+    },
+    "unfamiliar": {
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "manifest_sha256": "4a5cb1cf3c13fbfaddd07deda3e51ae02aec30161478cc4e6da9320836c496e4",
+      "source_sha256": {
+        "src/champions_practice/tactical_consequences.py": "b2596351781edfea1141dea3a5919ff97da05c7265a908c7bfb7f2fb7e4acec1",
+        "src/champions_practice/exact_search.py": "7a9d486a14aa248cd8f500c17d9482d456e9edf04055671bc9f29cc9de6f664c",
+        "src/champions_practice/independent_opponent.py": "82022fea7ac405a3562565661e0542ef15fc2d97748fb263c00fc5cdb169a218",
+        "scripts/tactical_consequences_evaluation.py": "a86c723899ee3895efbae9bbce6ffb575246c483edd4d452a0ea209047b5fb7b",
+        "scripts/tactical_unfamiliar_sets.py": "958656aa44ed4b9a4ae5cb03c3b87e8208decba9fb8602e6c89d176438aee1ee"
+      }
+    },
+    "midgame": {
+      "archive_sha256": "690c94eb679a93c270a99866bf3b342af2fe5b9030b991ea72ea406ecd15643f",
+      "manifest_sha256": "01c43ecadff375baeb8e23c501d41c452addab8f65f33bada81e35cc8cbdd1de",
+      "source_sha256": {
+        "scripts/tactical_midgame_probe.py": "d965a6ac514326930ed19eb7c310c1ab4a5fb4223da74e2e470865d450c63f24",
+        "src/champions_practice/belief_controller.py": "c12154bad68b383d06e7e5bedf2ff3354244a67eaa9305ffe0dad6d536f102a8",
+        "src/champions_practice/present_rebase.py": "4b84be7b84c2e8fa04784ddbfba2b7a8f67cb5c6716f16383d7ff19cbdd59032",
+        "src/champions_practice/tactical_consequences.py": "b2596351781edfea1141dea3a5919ff97da05c7265a908c7bfb7f2fb7e4acec1"
+      }
+    }
+  },
+  "nested_candidate_sets_and_unchanged_shared_scores": true,
+  "nested_response_sets_and_nonincreasing_worst_utilities": true,
+  "coverage_summary": {
+    "candidates": {
+      "statuses": {
+        "complete": 24
+      },
+      "wins": 10,
+      "games": 24,
+      "stages": {
+        "development": {
+          "wins": 2,
+          "games": 12
+        },
+        "validation": {
+          "wins": 8,
+          "games": 12
+        }
+      },
+      "search_statuses": {
+        "complete": 24
+      },
+      "search_reasons": {},
+      "max_search_seconds": 1.0732830999986618,
+      "mean_search_seconds": 0.7197892458337568,
+      "budget_overruns": 0,
+      "opponent_fallbacks": 0
+    },
+    "responses": {
+      "statuses": {
+        "complete": 24
+      },
+      "wins": 12,
+      "games": 24,
+      "stages": {
+        "development": {
+          "wins": 4,
+          "games": 12
+        },
+        "validation": {
+          "wins": 8,
+          "games": 12
+        }
+      },
+      "search_statuses": {
+        "complete": 24
+      },
+      "search_reasons": {},
+      "max_search_seconds": 1.1320344000050682,
+      "mean_search_seconds": 0.9044077833332267,
+      "budget_overruns": 0,
+      "opponent_fallbacks": 4
+    },
+    "both": {
+      "statuses": {
+        "complete": 24
+      },
+      "wins": 5,
+      "games": 24,
+      "stages": {
+        "development": {
+          "wins": 2,
+          "games": 12
+        },
+        "validation": {
+          "wins": 3,
+          "games": 12
+        }
+      },
+      "search_statuses": {
+        "complete": 24
+      },
+      "search_reasons": {},
+      "max_search_seconds": 2.456765399998403,
+      "mean_search_seconds": 1.959042104166959,
+      "budget_overruns": 0,
+      "opponent_fallbacks": 0
+    }
+  },
+  "comparisons": {
+    "candidates": {
+      "all": {
+        "pairs": 24,
+        "left_wins": 10,
+        "right_wins": 10,
+        "left_only": 0,
+        "right_only": 0
+      },
+      "pairwise_fallback_free": {
+        "pairs": 24,
+        "left_wins": 10,
+        "right_wins": 10,
+        "left_only": 0,
+        "right_only": 0
+      },
+      "common_fallback_free": {
+        "pairs": 20,
+        "left_wins": 10,
+        "right_wins": 10,
+        "left_only": 0,
+        "right_only": 0
+      }
+    },
+    "responses": {
+      "all": {
+        "pairs": 24,
+        "left_wins": 10,
+        "right_wins": 12,
+        "left_only": 2,
+        "right_only": 4
+      },
+      "pairwise_fallback_free": {
+        "pairs": 20,
+        "left_wins": 10,
+        "right_wins": 8,
+        "left_only": 2,
+        "right_only": 0
+      },
+      "common_fallback_free": {
+        "pairs": 20,
+        "left_wins": 10,
+        "right_wins": 8,
+        "left_only": 2,
+        "right_only": 0
+      }
+    },
+    "both": {
+      "all": {
+        "pairs": 24,
+        "left_wins": 10,
+        "right_wins": 5,
+        "left_only": 6,
+        "right_only": 1
+      },
+      "pairwise_fallback_free": {
+        "pairs": 24,
+        "left_wins": 10,
+        "right_wins": 5,
+        "left_only": 6,
+        "right_only": 1
+      },
+      "common_fallback_free": {
+        "pairs": 20,
+        "left_wins": 10,
+        "right_wins": 4,
+        "left_only": 6,
+        "right_only": 0
+      }
+    }
+  },
+  "coverage": {
+    "base": {
+      "actual_reply_in_every_world": 12,
+      "search_mean_seconds": 0.3472679374999643,
+      "root_changes": 0
+    },
+    "candidates": {
+      "actual_reply_in_every_world": 12,
+      "search_mean_seconds": 0.7197892458337568,
+      "root_changes": 0
+    },
+    "responses": {
+      "actual_reply_in_every_world": 24,
+      "search_mean_seconds": 0.9044077833332267,
+      "root_changes": 20
+    },
+    "both": {
+      "actual_reply_in_every_world": 24,
+      "search_mean_seconds": 1.959042104166959,
+      "root_changes": 24
+    }
+  },
+  "unfamiliar_summary": {
+    "statuses": {
+      "complete": 48
+    },
+    "all": {
+      "pairs": 24,
+      "incumbent_wins": 6,
+      "one_turn_wins": 8,
+      "one_turn_only": 2,
+      "incumbent_only": 0
+    },
+    "fallback_free": {
+      "pairs": 24,
+      "incumbent_wins": 6,
+      "one_turn_wins": 8,
+      "one_turn_only": 2,
+      "incumbent_only": 0
+    },
+    "search_status": {
+      "complete": 24
+    },
+    "search_reasons": {},
+    "search_overruns": 0,
+    "opponent_fallbacks": 0
+  },
+  "midgame_summary": {
+    "familiar": {
+      "unavailable": 6
+    },
+    "unfamiliar": {
+      "unavailable": 6
+    }
+  },
+  "midgame_reasons": {
+    "fresh-public-world:unsupported-public-effect-duration": 8,
+    "fresh-public-world:unsupported-persistent:owned-unburden": 2,
+    "fresh-public-world:unsupported-persistent:move:stompingtantrum": 2
+  },
+  "midgame_positions": [
+    {
+      "id": "familiar:development-0-0-p1-one-turn",
+      "family": "familiar",
+      "game": "development-0-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.27632180000364315,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:development-1-0-p1-one-turn",
+      "family": "familiar",
+      "game": "development-1-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.2718533000006573,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:owned-unburden",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:owned-unburden"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:development-2-0-p1-one-turn",
+      "family": "familiar",
+      "game": "development-2-0-p1-one-turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 1.5682785000026342,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:validation-0-0-p1-one-turn",
+      "family": "familiar",
+      "game": "validation-0-0-p1-one-turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.6793015000002924,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:validation-1-0-p1-one-turn",
+      "family": "familiar",
+      "game": "validation-1-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.2696488000001409,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "familiar:validation-2-0-p1-one-turn",
+      "family": "familiar",
+      "game": "validation-2-0-p1-one-turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-consequences/one-turn/games.json.gz",
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "turn": 2,
+      "preparation_seconds": 0.26809729999513365,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:stompingtantrum",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:stompingtantrum"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-0-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-development-0-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.2742472000027192,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-1-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-development-1-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.27597139999852516,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:owned-unburden",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:owned-unburden"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-2-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-development-2-0-p1-one_turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 8.1514679000029,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-0-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-validation-0-0-p1-one_turn",
+      "checkpoint": 2,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.6873365999999805,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-1-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-validation-1-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.26940770000510383,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-public-effect-duration",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-public-effect-duration"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-2-0-p1-one_turn",
+      "family": "unfamiliar",
+      "game": "unfamiliar-validation-2-0-p1-one_turn",
+      "checkpoint": 1,
+      "archive": "runs/v2-coverage/unfamiliar-v1/games.json.gz",
+      "archive_sha256": "0cb7e9c115c07318ac94bf100fb6b87f91f68df5198100074ed1a919682ea6d4",
+      "turn": 2,
+      "preparation_seconds": 0.27605169999878854,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:stompingtantrum",
+      "native_admission": {
+        "schema": "native-admission-v1",
+        "path": "present-public",
+        "status": "rejected",
+        "reason": "unsupported-persistent:move:stompingtantrum"
+      },
+      "admitted_particles": 0,
+      "status": "unavailable"
+    }
+  ],
+  "native_witness_scope": "Sealed actual states, fixed recorded reply, eight coupled futures; diagnostics only, not win probabilities or deployable inputs.",
+  "native_witnesses": [
+    {
+      "pair": "development-0-0-p1",
+      "fixed_enemy_reply": "move crunch +1, move ironhead +2",
+      "plans": {
+        "base": {
+          "action": "move psychic +2, switch 3",
+          "modeled_worst_utility": -39.974576271186066,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -32.72807604978838
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -31.567618029908864
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -25.70688234466675
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -63.02382458876924
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -40.85575246851628
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -35.596711987180065
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -29.735976301937946
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -36.14219674502798
+            }
+          ],
+          "full_game_win": false,
+          "fallback_affected": false
+        },
+        "candidates": {
+          "action": "move psychic +2, switch 3",
+          "modeled_worst_utility": -39.974576271186066,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -32.72807604978838
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -31.567618029908864
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -25.70688234466675
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -63.02382458876924
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -40.85575246851628
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -35.596711987180065
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -29.735976301937946
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -36.14219674502798
+            }
+          ],
+          "full_game_win": false,
+          "fallback_affected": false
+        },
+        "responses": {
+          "action": "move followme, move mysticalfire +2 mega",
+          "modeled_worst_utility": -995.194292262359,
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": 18.35918367346941
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": 18.35918367346941
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -994.6456291607553
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": 18.35918367346941
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": 18.35918367346941
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": 18.35918367346941
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -990.9557895885621
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": 18.35918367346941
+            }
+          ],
+          "full_game_win": true,
+          "fallback_affected": true
+        },
+        "both": {
+          "action": "move followme, move hypervoice mega",
+          "modeled_worst_utility": -945.3138427019496,
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -968.3322057944899
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -974.8293809357334
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -978.7276860204795
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -974.2144076737018
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1093.822019408688
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -976.67430072183
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -972.230510879236
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -982.4175255926709
+            }
+          ],
+          "full_game_win": false,
+          "fallback_affected": false
+        }
+      }
+    },
+    {
+      "pair": "validation-0-0-p1",
+      "fixed_enemy_reply": "move hurricane +2, move wavecrash +1",
+      "plans": {
+        "base": {
+          "action": "move protect, move woodhammer +2",
+          "modeled_worst_utility": -44.0,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1049.222222222222
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1041.4444444444443
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1042.5555555555554
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1045.8888888888882
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1041.4444444444443
+            }
+          ],
+          "full_game_win": true,
+          "fallback_affected": false
+        },
+        "candidates": {
+          "action": "move protect, move woodhammer +2",
+          "modeled_worst_utility": -44.0,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1049.222222222222
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1041.4444444444443
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1042.5555555555554
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1045.8888888888882
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1041.4444444444443
+            }
+          ],
+          "full_game_win": true,
+          "fallback_affected": false
+        },
+        "responses": {
+          "action": "move protect, move woodhammer +2",
+          "modeled_worst_utility": -59.30000000000024,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1049.222222222222
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1041.4444444444443
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1042.5555555555554
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1039.2222222222229
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1045.8888888888882
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1041.4444444444443
+            }
+          ],
+          "full_game_win": true,
+          "fallback_affected": false
+        },
+        "both": {
+          "action": "move rockslide, move grassyglide +2",
+          "modeled_worst_utility": -54.37777777777782,
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -46.06666666666657
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -33.8444444444442
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -33.8444444444442
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -40.51111111111144
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -49.4000000000002
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -39.40000000000024
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -46.06666666666657
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -43.84444444444416
+            }
+          ],
+          "full_game_win": false,
+          "fallback_affected": false
+        }
+      }
+    },
+    {
+      "pair": "validation-2-0-p1",
+      "fixed_enemy_reply": "move woodhammer +1, move hydropump +2",
+      "plans": {
+        "base": {
+          "action": "move trickroom, move protect",
+          "modeled_worst_utility": 29.8,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -7.82711864406743
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -8.476836158191777
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -7.0832391713752445
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -12.007909604519767
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -9.870433145010136
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            }
+          ],
+          "full_game_win": true,
+          "fallback_affected": false
+        },
+        "candidates": {
+          "action": "move trickroom, move protect",
+          "modeled_worst_utility": 29.8,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -7.82711864406743
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -8.476836158191777
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -7.0832391713752445
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -12.007909604519767
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -9.870433145010136
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            }
+          ],
+          "full_game_win": true,
+          "fallback_affected": false
+        },
+        "responses": {
+          "action": "move psychic +1, move protect",
+          "modeled_worst_utility": 23.284713375796215,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 29.395103578154394
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 26.523163841807627
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 26.250094161959172
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 33.7190207156307
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 27.880979284369342
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 21.607909604519055
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 22.351789077213073
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 22.71902071563027
+            }
+          ],
+          "full_game_win": false,
+          "fallback_affected": false
+        },
+        "both": {
+          "action": "move psychic +1, move protect",
+          "modeled_worst_utility": 23.284713375796215,
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 29.395103578154394
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 26.523163841807627
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 26.250094161959172
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 33.7190207156307
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 27.880979284369342
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 21.607909604519055
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 22.351789077213073
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": 22.71902071563027
+            }
+          ],
+          "full_game_win": false,
+          "fallback_affected": false
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Same previously examined 24 cases, correlated side reversals; a diagnostic ablation, not fresh validation.",
+    "Opening intervention only; later actions use frozen PR249.",
+    "Same two friendly-family hypotheses, RNG sample, scorer and eight-second deadline.",
+    "Candidate expansion changes the root cap; replacement own-choice cap remains two.",
+    "Response expansion applies at the root and intervening replacement/pivot phases.",
+    "Deadline/branch/phase failures retain V2; report these separately from completed search.",
+    "Fresh RNG and hidden item/move combinations, but familiar species, compositions and stat allocations.",
+    "Actual item/move changes stay in the live driver; search priors remain frozen and misspecified.",
+    "Opening-only intervention; later actions use frozen V2. Mirrored outcomes are correlated.",
+    "No unseen-ability/stat-family or midgame policy claim.",
+    "Existing public-prior catalog and admission engine; no new reconstruction logic.",
+    "Eight-second existing admission/search preparation plus separate eight-second tactical diagnostic budget; not a deployment latency result.",
+    "This tests early midgame availability/decisions, not full-game strength or later-turn generalization."
+  ]
+}
