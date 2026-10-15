@@ -616,7 +616,7 @@ function publicLastOpponentActions(battle, sideId) {
     .sort((left, right) => left.slot - right.slot);
 }
 
-function publicOpponentKnowledge(battle, sideId, previewSpecies) {
+function publicOpponentKnowledge(battle, sideId, previewSpecies, origin = null) {
   const opponentPrefix = sideId === "p1" ? "p2" : "p1";
   const channel = sideId === "p1" ? 1 : 2;
   const observations = new Map();
@@ -635,6 +635,31 @@ function publicOpponentKnowledge(battle, sideId, previewSpecies) {
       status: null,
       fainted: false,
       seen: false,
+    });
+  }
+
+  // Epistemic annotation only: reconstructors have helper logs, not observed
+  // battle history. Seed known public facts and scan only real fork events.
+  if (origin) {
+    for (const known of origin.revealed) {
+      const entry = observations.get(toId(known.species));
+      if (!entry) throw new Error('public origin species absent from preview');
+      entry.moves = new Set(known.moves || []);
+      entry.items = new Set(known.items || []);
+      entry.abilities = new Set(known.abilities || []);
+      entry.hpPercent = known.hp_percent;
+      entry.status = known.status;
+      entry.fainted = known.fainted;
+      entry.seen = known.seen;
+    }
+    origin.active.forEach((known, index) => {
+      if (!known) return;
+      const slot = `${opponentPrefix}${String.fromCharCode(97 + index)}`;
+      const key = toId(known.base_species);
+      if (!observations.has(key)) throw new Error('public origin active absent from preview');
+      slotSpecies.set(slot, key);
+      slotVisibleSpecies.set(slot, known.species);
+      slotConditions.set(slot, {hpPercent: known.hp_percent, fainted: known.fainted, status: known.status});
     });
   }
 
@@ -809,7 +834,7 @@ function publicSideConditions(side) {
   return Object.keys(side.sideConditions || {}).sort();
 }
 
-function playerView(battle, sideId = "p1", previews = null) {
+function playerView(battle, sideId = "p1", previews = null, publicOrigin = null) {
   if (sideId !== "p1" && sideId !== "p2") {
     throw new Error("side must be p1 or p2");
   }
@@ -819,26 +844,40 @@ function playerView(battle, sideId = "p1", previews = null) {
   const opponentPreview = previews ? previews[opponentId] : opponent.pokemon.map(
     (mon) => mon.set.species,
   );
+  let projection = battle;
+  let hasNewEvents = true;
+  if (publicOrigin) {
+    const offset = publicOrigin.log_offset;
+    if (!Number.isInteger(offset) || offset < 0 || offset > battle.log.length ||
+        !publicOrigin.view?.opponent || !Number.isInteger(publicOrigin.view.turn)) {
+      throw new Error('invalid public-origin annotation');
+    }
+    const tail = battle.log.slice(offset);
+    hasNewEvents = tail.length > 0;
+    projection = Object.create(battle);
+    projection.log = [`|turn|${publicOrigin.view.turn}`, ...tail];
+  }
   const opponentKnowledge = publicOpponentKnowledge(
-    battle,
+    projection,
     sideId,
     opponentPreview,
+    publicOrigin?.view.opponent || null,
   );
 
   return {
     turn: battle.turn,
     phase: battle.requestState || (battle.ended ? "ended" : ""),
-    opponent_last_actions: publicLastOpponentActions(battle, sideId),
+    opponent_last_actions: !hasNewEvents ? cloneJson(publicOrigin.view.opponent_last_actions || []) : publicLastOpponentActions(projection, sideId),
     // Selected commands are not proof of execution. This channel-sanitized
     // ledger preserves the ordered, both-side public execution sequence, including
     // called-move provenance, prevention, and public failure effects. Raw protocol
     // animation targets are intentionally excluded; selected target intent is already
     // represented by sealed/resolved commands and opponent_last_actions.
-    public_execution_delta: publicExecutionEventDelta(battle, sideId),
+    public_execution_delta: !hasNewEvents ? cloneJson(publicOrigin.view.public_execution_delta) : publicExecutionEventDelta(projection, sideId),
     // This bounded per-turn ledger is derived only from the requesting side's
     // Showdown-visible channel. It preserves quantitative and historical mechanics
     // evidence even when later effects restore the same reduced final state.
-    public_event_delta: publicMechanicsEventDelta(battle, sideId),
+    public_event_delta: !hasNewEvents ? cloneJson(publicOrigin.view.public_event_delta) : publicMechanicsEventDelta(projection, sideId),
     ended: battle.ended,
     winner: battle.winner || null,
     field: {
@@ -2908,7 +2947,7 @@ function stateView(request) {
     };
     return {
       side: sideId,
-      view: playerView(battle, sideId, previews),
+      view: playerView(battle, sideId, previews, request.public_origin || null),
     };
   } finally {
     battle.destroy();

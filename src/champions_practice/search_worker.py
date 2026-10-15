@@ -577,11 +577,13 @@ class HypotheticalSearchWorker:
         state: dict[str, Any],
         side: str,
         previews: dict[str, list[str]] | None = None,
+        public_origin: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         return self.__worker.state_view(
             state=state,
             side=side,
             previews=previews,
+            **({"public_origin": public_origin} if public_origin is not None else {}),
         )
 
     def legal_choices(
@@ -1636,11 +1638,14 @@ class ShowdownSearchWorker:
         state: dict[str, Any],
         side: str,
         previews: dict[str, list[str]] | None = None,
+        public_origin: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
-        """Return the sanitized player view for any exact Showdown snapshot."""
+        """Return the sanitized player view; optional origin is public annotation only."""
         payload: dict[str, Any] = {"state": state, "side": side}
         if previews is not None:
             payload["previews"] = previews
+        if public_origin is not None:
+            payload['public_origin'] = public_origin
         result = self.request("state_view", **payload)
         view = result.get("view")
         if not isinstance(view, dict):

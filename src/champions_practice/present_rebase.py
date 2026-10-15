@@ -172,9 +172,13 @@ def _positive_mechanics_rejection(state, projected, *, current_view, ledger,
         for side_index, side in enumerate(state['sides']):
             for slot, mon in enumerate(side['pokemon']):
                 issue = static_support_issue(ability=mon['ability'], item=mon['item'],
-                                             moves=mon['set']['moves'], opponent=side_index == 0)
+                                             moves=mon['set']['moves'], opponent=side_index == 0,
+                                             inactive=not mon['isActive'])
                 if issue:
                     return issue
+                if not mon['isActive'] and any(_sid(move) == 'stompingtantrum' for move in mon['set']['moves']):
+                    if mon.get('moveLastTurnResult') is not None:
+                        return 'unsupported-persistent:inactive-last-move-result'
                 if any(effect not in {'stall'}
                        for effect in mon['volatiles']):
                     return 'unsupported-persistent:native-volatile'
