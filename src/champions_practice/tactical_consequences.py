@@ -103,6 +103,22 @@ class _Node:
     weight: float
     history: tuple[str, ...] = ()
     view: dict | None = field(default=None, repr=False)
+    leaf_breakdown: dict | None = field(default=None, repr=False)
+
+
+def _leaf_breakdown(summary, side):
+    """Telemetry only: decompose the existing score without changing its value."""
+    value = score_exact_summary_breakdown(summary, side)
+    result = {name: getattr(value, name) for name in ('total', 'terminal', 'material', 'position', 'speed')}
+    def material_parts(team):
+        alive = [m for m in team['pokemon'] if m['hp'] > 0 and not m['fainted']]
+        return (1000.0*len(alive), sum(100.0*m['hp']/max(1, m['maxhp']) for m in alive),
+                -20.0*sum(bool(m.get('status')) for m in alive))
+    other = 'p2' if side == 'p1' else 'p1'
+    own, enemy = material_parts(summary[side]), material_parts(summary[other])
+    result.update({name: 0.0 if value.terminal else a-b
+                   for name, a, b in zip(('living', 'hp', 'status'), own, enemy, strict=True)})
+    return result
 
 
 def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], side,
@@ -168,6 +184,14 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
                 per_reply[reply].append(value)
         return min(fmean(samples) for samples in per_reply.values())
 
+    def component_backup(children, action):
+        by_reply = defaultdict(list)
+        for candidate, reply, child in children:
+            if candidate == action:
+                by_reply[reply].append(child.leaf_breakdown)
+        worst = min(by_reply, key=lambda reply: fmean(b['total'] for b in by_reply[reply]))
+        return {name: fmean(b[name] for b in by_reply[worst]) for name in by_reply[worst][0]}
+
     def extend(nodes, goal, phases):
         nonlocal groups
         check()
@@ -176,6 +200,7 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
         for index, node in enumerate(nodes):
             if node.summary.get('ended') or int(node.summary['turn']) >= goal:
                 values[index] = score_exact_summary_breakdown(node.summary, side).total
+                node.leaf_breakdown = _leaf_breakdown(node.summary, side)
             else:
                 pending[(node.history, observation_key(view(node)))].append(index)
         for indexes in pending.values():
@@ -212,8 +237,9 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             continuation_trace.append({'history': members[0].history, 'action': chosen,
                 'indistinguishable_samples': len(members),
                 'comparisons': {a: min(v[a] for v in by_node) for a in own}})
-            for index, values_by_action in zip(indexes, by_node, strict=True):
+            for index, values_by_action, children in zip(indexes, by_node, lengths, strict=True):
                 values[index] = values_by_action[chosen]
+                nodes[index].leaf_breakdown = component_backup(children, chosen)
         return values
 
     try:
@@ -246,14 +272,18 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             for action in own:
                 reply_scores = defaultdict(list)
                 first_breakdowns = defaultdict(list)
+                leaf_breakdowns = defaultdict(list)
                 for (candidate, reply, child), value in zip(children, values, strict=True):
                     if candidate == action:
                         reply_scores[reply].append(value)
                         first_breakdowns[reply].append(score_exact_summary_breakdown(child.summary, side))
+                        leaf_breakdowns[reply].append(child.leaf_breakdown)
                 per_action[action].append({'world': worlds[node.world].label, 'weight': node.weight,
                     'leaf_utility': backup(children, values, action),
                     'one_turn_utility': backup(children, immediate, action),
                     'sampled_responses': {reply: {'leaf_utility': fmean(scores),
+                        'leaf_breakdown': {component: fmean(b[component] for b in leaf_breakdowns[reply])
+                                           for component in leaf_breakdowns[reply][0]},
                         'first_turn_breakdown': {component: fmean(getattr(b, component) for b in first_breakdowns[reply])
                             for component in ('total', 'terminal', 'material', 'position', 'speed')}}
                         for reply, scores in reply_scores.items()}})
