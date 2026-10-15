@@ -1,4 +1,5 @@
 from dataclasses import replace
+from copy import deepcopy
 from time import perf_counter
 
 import pytest
@@ -106,6 +107,24 @@ def test_incomplete_branch_budget_retains_legal_incumbent(catalog):
                  limits=TacticalLimits(branch_limit=1))
     assert result.status == 'incomplete' and result.action == 'attack' and not result.ranking
     assert result.branch_count == 0
+
+
+def test_optional_leaf_positions_preserve_decisions_scores_and_branch_counts(catalog):
+    def transition(state, action):
+        if state['turn'] == 1:
+            return {'turn': 1, 'phase': 'switch', 'action': action}, summary(1)
+        return {'turn': 2}, summary(2, own=2, foe=1 if state['action'] == 'attack' else 2)
+    worker = Worker(transition, lambda s: ['attack', 'protect'] if s['turn'] == 1 and 'phase' not in s else ['replace'])
+    plain = run(worker, catalog, [{'turn': 1}], ['attack', 'protect'], horizon_turns=1)
+    recorded = run(worker, catalog, [{'turn': 1}], ['attack', 'protect'], horizon_turns=1, include_leaf_positions=True)
+    assert recorded.action == plain.action and recorded.branch_count == plain.branch_count
+    stripped = deepcopy(recorded.ranking)
+    for candidate in stripped:
+        for world in candidate['worlds']:
+            for sample in world['sampled_responses'].values():
+                positions = sample.pop('leaf_positions')
+                assert positions and all(p['turn'] == 2 for p in positions)
+    assert stripped == plain.ranking
 
 
 def test_publicly_inconsistent_hypotheses_are_rejected(catalog):

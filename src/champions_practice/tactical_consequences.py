@@ -104,6 +104,7 @@ class _Node:
     history: tuple[str, ...] = ()
     view: dict | None = field(default=None, repr=False)
     leaf_breakdown: dict | None = field(default=None, repr=False)
+    leaf_positions: tuple[dict, ...] = field(default=(), repr=False)
 
 
 def _leaf_breakdown(summary, side):
@@ -123,7 +124,7 @@ def _leaf_breakdown(summary, side):
 
 def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], side,
                           authoritative_actions, incumbent, catalog, deadline,
-                          limits=TacticalLimits(), horizon_turns=2):
+                          limits=TacticalLimits(), horizon_turns=2, include_leaf_positions=False):
     """Resolve two actual turns, including intervening replacement requests.
 
     Every sampled first response/RNG outcome is extended. Continuation decisions
@@ -201,6 +202,13 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             if node.summary.get('ended') or int(node.summary['turn']) >= goal:
                 values[index] = score_exact_summary_breakdown(node.summary, side).total
                 node.leaf_breakdown = _leaf_breakdown(node.summary, side)
+                if include_leaf_positions:
+                    position = dict(node.summary)
+                    parties = node.state.get('sides', [])
+                    position['ownMegaAvailability'] = {
+                        ''.join(c for c in mon['set']['species'].lower() if c.isalnum()): bool(mon.get('canMegaEvo'))
+                        for mon in (parties[int(side[1])-1]['pokemon'] if parties else [])}
+                    node.leaf_positions = (position,)
             else:
                 pending[(node.history, observation_key(view(node)))].append(index)
         for indexes in pending.values():
@@ -240,6 +248,13 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             for index, values_by_action, children in zip(indexes, by_node, lengths, strict=True):
                 values[index] = values_by_action[chosen]
                 nodes[index].leaf_breakdown = component_backup(children, chosen)
+                if include_leaf_positions:
+                    grouped = defaultdict(list)
+                    for action, reply, child in children:
+                        if action == chosen:
+                            grouped[reply].append(child)
+                    worst = min(grouped, key=lambda r: fmean(c.leaf_breakdown['total'] for c in grouped[r]))
+                    nodes[index].leaf_positions = tuple(p for c in grouped[worst] for p in c.leaf_positions)
         return values
 
     try:
@@ -282,6 +297,9 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
                     'leaf_utility': backup(children, values, action),
                     'one_turn_utility': backup(children, immediate, action),
                     'sampled_responses': {reply: {'leaf_utility': fmean(scores),
+                        **({'leaf_positions': [position for candidate, response, child in children
+                            if candidate == action and response == reply for position in child.leaf_positions]}
+                           if include_leaf_positions else {}),
                         'leaf_breakdown': {component: fmean(b[component] for b in leaf_breakdowns[reply])
                                            for component in leaf_breakdowns[reply][0]},
                         'first_turn_breakdown': {component: fmean(getattr(b, component) for b in first_breakdowns[reply])

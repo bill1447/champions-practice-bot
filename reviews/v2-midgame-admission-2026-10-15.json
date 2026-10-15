@@ -1,0 +1,2667 @@
+{
+  "before_usable": 0,
+  "after_admitted": 8,
+  "after_complete": 8,
+  "cases": 12,
+  "summary": {
+    "familiar": {
+      "complete": 4,
+      "unavailable": 2
+    },
+    "unfamiliar": {
+      "complete": 4,
+      "unavailable": 2
+    }
+  },
+  "remaining_reasons": {
+    "fresh-public-world:unsupported-persistent:move:electroshot": 2,
+    "fresh-public-world:unsupported-persistent:volatile:confusion": 1,
+    "fresh-public-world:unsupported-persistent:opponent-capabilities": 1
+  },
+  "negative_controls": {
+    "inactive-last-result-corruption-rejected": 18,
+    "inactive-unburden-corruption-rejected": 4
+  },
+  "native_switch_controls": [
+    {
+      "name": "native-switch-out-reset",
+      "prior_stomping_failure": true,
+      "benched_last_result_unset": true,
+      "benched_unburden_absent": true
+    },
+    {
+      "name": "native-reentry-without-item",
+      "stomping_failure_not_carried": true,
+      "unburden_not_reactivated": true,
+      "boosted_speed": 344,
+      "returned_speed": 172
+    }
+  ],
+  "archive_sha256": {
+    "runs\\v2-midgame-admission\\v9\\positions.json": "128e060d22865d184304db7461e0faa46cb4cd35dd5abaaab13ac3a1ae19e481",
+    "runs\\v2-midgame-admission\\inactive-controls-v1\\controls.json": "e301d0b2d54fc67b051700b4631e149998454eaebf195b12bb35dfacbcc40b76"
+  },
+  "positions": [
+    {
+      "id": "familiar:development-0-0-p1-one-turn",
+      "family": "familiar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": null,
+      "root_vs_authoritative_differences": [
+        "$.opponent.active[1].hp_percent",
+        "$.opponent.active[1].hp_percent"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-metagross",
+            "resource": "Metagross",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "finish-gardevoir",
+            "resource": "Gardevoir",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move followme, move steelroller +1 mega",
+            "existing_utility": -1056.5164651384575,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move protect mega",
+            "existing_utility": -1067.5859838550355,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move followme, move protect mega",
+            "existing_utility": -1067.5859838550355,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +2, move protect mega",
+            "existing_utility": -1067.5859838550355,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move steelroller +1 mega",
+            "existing_utility": -1185.9840180756426,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +2, move steelroller +1 mega",
+            "existing_utility": -2145.2871657754004,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move steelroller +1 mega",
+            "existing_utility": -2145.2871657754004,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +2, switch 3",
+            "existing_utility": -2178.3164651384577,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "familiar:development-1-0-p1-one-turn",
+      "family": "familiar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": null,
+      "root_vs_authoritative_differences": [
+        "$.opponent.active[1].hp_percent",
+        "$.opponent.active[1].hp_percent"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-armarouge",
+            "resource": "Armarouge",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move armorcannon +2, move psychic +2",
+            "existing_utility": -1074.4444444444448,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move armorcannon +2, move trickroom",
+            "existing_utility": -1074.4444444444448,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move armorcannon +2, move followme",
+            "existing_utility": -1074.4444444444448,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move psychic +2",
+            "existing_utility": -1092.9235668789809,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move wideguard, move psychic +2",
+            "existing_utility": -1128.4374999999998,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move psychic +2",
+            "existing_utility": -1131.2152777777778,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move trickroom",
+            "existing_utility": -1167.03125,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move followme",
+            "existing_utility": -1167.03125,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "familiar:development-2-0-p1-one-turn",
+      "family": "familiar",
+      "status": "unavailable",
+      "turn": 2,
+      "admitted_particles": 0,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:electroshot"
+    },
+    {
+      "id": "familiar:validation-0-0-p1-one-turn",
+      "family": "familiar",
+      "status": "unavailable",
+      "turn": 2,
+      "admitted_particles": 0,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:volatile:confusion"
+    },
+    {
+      "id": "familiar:validation-1-0-p1-one-turn",
+      "family": "familiar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": "$.public_event_delta.events[8][2]",
+      "root_vs_authoritative_differences": [
+        "$.opponent.revealed[0].moves[0]",
+        "$.opponent.revealed[0].moves[0]"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-gardevoir",
+            "resource": "Gardevoir-Mega",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "finish-metagross",
+            "resource": "Metagross",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move mysticalfire +1, switch 3",
+            "existing_utility": -119.2727212064593,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move mysticalfire +1, move psychic +1",
+            "existing_utility": -1065.9816326530613,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 6,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move psychic +1",
+            "existing_utility": -1074.8224489795919,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 0,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 6,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move mysticalfire +1, move trickroom",
+            "existing_utility": -1093.5,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move mysticalfire +1, move followme",
+            "existing_utility": -1093.5,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 4,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 4,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move psychic +1",
+            "existing_utility": -2129.956684491978,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move trickroom",
+            "existing_utility": -2157.630481283422,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move followme",
+            "existing_utility": -2157.630481283422,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 4,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 4,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "familiar:validation-2-0-p1-one-turn",
+      "family": "familiar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": null,
+      "root_vs_authoritative_differences": [
+        "$.opponent.active[0].hp_percent",
+        "$.opponent.active[0].hp_percent"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-armarouge",
+            "resource": "Armarouge",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move followme, move protect",
+            "existing_utility": -1031.9555555555557,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move followme, move armorcannon +1",
+            "existing_utility": -1046.3999999999996,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move armorcannon +1",
+            "existing_utility": -1102.7259887005644,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +1, move armorcannon +1",
+            "existing_utility": -1102.7259887005648,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move armorcannon +1",
+            "existing_utility": -1109.7259887005648,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +1, move wideguard",
+            "existing_utility": -1135.0800376647828,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +1, move protect",
+            "existing_utility": -1137.8578154425609,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move protect",
+            "existing_utility": -1145.9595103578158,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-0-0-p1-one_turn",
+      "family": "unfamiliar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": null,
+      "root_vs_authoritative_differences": [
+        "$.opponent.active[1].hp_percent",
+        "$.opponent.active[1].hp_percent"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-metagross",
+            "resource": "Metagross",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "finish-gardevoir",
+            "resource": "Gardevoir",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move followme, move steelroller +1 mega",
+            "existing_utility": -1059.1487073810408,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move protect mega",
+            "existing_utility": -1070.2182260976188,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move followme, move protect mega",
+            "existing_utility": -1070.2182260976188,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +2, move protect mega",
+            "existing_utility": -1070.2182260976188,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move steelroller +1 mega",
+            "existing_utility": -1204.304662203864,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +2, move steelroller +1 mega",
+            "existing_utility": -2154.5117647058814,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move steelroller +1 mega",
+            "existing_utility": -2154.5117647058814,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +2, switch 3",
+            "existing_utility": -2180.948707381041,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-1-0-p1-one_turn",
+      "family": "unfamiliar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": null,
+      "root_vs_authoritative_differences": [
+        "$.opponent.active[1].hp_percent",
+        "$.opponent.active[1].hp_percent"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-armarouge",
+            "resource": "Armarouge",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move armorcannon +2, move psychic +2",
+            "existing_utility": -1071.666666666667,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move armorcannon +2, move trickroom",
+            "existing_utility": -1071.666666666667,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move armorcannon +2, move followme",
+            "existing_utility": -1071.666666666667,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move psychic +2",
+            "existing_utility": -1093.4791224345365,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move wideguard, move psychic +2",
+            "existing_utility": -1128.9930555555554,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move psychic +2",
+            "existing_utility": -1131.7708333333335,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move trickroom",
+            "existing_utility": -1167.5868055555557,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move followme",
+            "existing_utility": -1167.5868055555557,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "unfamiliar:unfamiliar-development-2-0-p1-one_turn",
+      "family": "unfamiliar",
+      "status": "unavailable",
+      "turn": 2,
+      "admitted_particles": 0,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:opponent-capabilities"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-0-0-p1-one_turn",
+      "family": "unfamiliar",
+      "status": "unavailable",
+      "turn": 2,
+      "admitted_particles": 0,
+      "production_mode": "fallback",
+      "production_fallback_reason": "fresh-public-world:unsupported-persistent:move:electroshot"
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-1-0-p1-one_turn",
+      "family": "unfamiliar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": "$.public_event_delta.events[8][2]",
+      "root_vs_authoritative_differences": [
+        "$.opponent.revealed[0].moves[0]",
+        "$.opponent.revealed[0].moves[0]"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-gardevoir",
+            "resource": "Gardevoir-Mega",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "finish-metagross",
+            "resource": "Metagross",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move mysticalfire +1, switch 3",
+            "existing_utility": -128.31226922905816,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move mysticalfire +1, move psychic +1",
+            "existing_utility": -1065.9816326530613,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 6,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move psychic +1",
+            "existing_utility": -1074.8224489795919,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 0,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 6,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move mysticalfire +1, move trickroom",
+            "existing_utility": -1093.5,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move mysticalfire +1, move followme",
+            "existing_utility": -1093.5,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 4,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 4,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move psychic +1",
+            "existing_utility": -2129.956684491978,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move trickroom",
+            "existing_utility": -2157.630481283422,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 2,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move protect, move followme",
+            "existing_utility": -2157.630481283422,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-gardevoir",
+                "resource": "Gardevoir-Mega",
+                "terminal_wins": 0,
+                "living_samples": 4,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 4,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "finish-metagross",
+                "resource": "Metagross",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 0,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    },
+    {
+      "id": "unfamiliar:unfamiliar-validation-2-0-p1-one_turn",
+      "family": "unfamiliar",
+      "status": "complete",
+      "turn": 2,
+      "admitted_particles": 2,
+      "production_mode": "belief-search",
+      "production_fallback_reason": null,
+      "root_information_difference": null,
+      "root_vs_authoritative_differences": [
+        "$.opponent.active[0].hp_percent",
+        "$.opponent.active[0].hp_percent"
+      ],
+      "projected_root_differences": [
+        null,
+        null
+      ],
+      "public_origin_controls": [
+        "exact-authoritative-root",
+        "parent-state-unchanged",
+        "next-native-events-current-turn",
+        "no-constructor-splash-revelation",
+        "modified-source-observation-rejected"
+      ],
+      "plan_requirements": {
+        "plans": [
+          {
+            "name": "finish-armarouge",
+            "resource": "Armarouge",
+            "status": "unverified hypothesis",
+            "requirements": [
+              "safe entry or active position",
+              "useful damage against relevant survivors",
+              "an actionable speed/survival window"
+            ],
+            "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+            "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+          },
+          {
+            "name": "remaining-material-exchange",
+            "resource": null,
+            "status": "unverified hypothesis",
+            "requirements": [
+              "a favorable remaining exchange or terminal win"
+            ],
+            "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+          }
+        ],
+        "comparisons": [
+          {
+            "action": "move followme, move armorcannon +1",
+            "existing_utility": -1042.5111111111114,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 6,
+                "active_samples": 6,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 6,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +1, move armorcannon +1",
+            "existing_utility": -1112.4811676082866,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "switch 3, move armorcannon +1",
+            "existing_utility": -1112.4811676082866,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move armorcannon +1",
+            "existing_utility": -1119.4811676082866,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 3,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +1, move wideguard",
+            "existing_utility": -2145.766666666667,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move psychic +1, move protect",
+            "existing_utility": -2148.5444444444447,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move trickroom, move protect",
+            "existing_utility": -2152.4333333333334,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 2,
+                "active_samples": 2,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 2,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          },
+          {
+            "action": "move followme, move protect",
+            "existing_utility": -2152.4333333333334,
+            "native_leaf_samples": 6,
+            "routes": [
+              {
+                "name": "finish-armarouge",
+                "resource": "Armarouge",
+                "terminal_wins": 0,
+                "living_samples": 4,
+                "active_samples": 4,
+                "assessment": "route unresolved: living is not an attacking-window certificate",
+                "terrain_ready_samples": 4,
+                "mega_fairy_available_or_evolved_samples": 0,
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              },
+              {
+                "name": "remaining-material-exchange",
+                "resource": null,
+                "terminal_wins": 0,
+                "assessment": "material counts and terminal outcomes only; no material-exchange utility bonus",
+                "minimum_own_remaining": 2,
+                "maximum_opponent_remaining": 4
+              }
+            ]
+          }
+        ],
+        "scope": "Requirement comparison over completed native leaves. No new weights, action ranking, plan commitment, future attack or win-probability claim. Samples share worlds/responses and are correlated."
+      }
+    }
+  ],
+  "scope": "Public-only source checkpoints, native mechanical admission plus authoritative-origin projection, one-turn 8/3 comparisons. Route requirements are descriptive; no new move bonuses or plan-selection policy. No full-game intervention or strength claim."
+}
