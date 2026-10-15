@@ -1,0 +1,937 @@
+{
+  "disposition": "experimental; no default promotion",
+  "runs": {
+    "initial": {
+      "archive_sha256": "8b7c89b56910a91d3f2463cffcd21cbfd9b48568e155969925bc7e8057d8472f",
+      "manifest_sha256": "fb7ab732bfa67c90e3add0160722fe5ddcbe6a65c582534d19b39fadb22ab605",
+      "source_commit": "4508130",
+      "source_sha256": {
+        "src/champions_practice/tactical_consequences.py": "d64f6838e8e0f35d625afbc6a2635539a65f7bf4b661016e60e015b0f8795d14",
+        "src/champions_practice/exact_search.py": "7a9d486a14aa248cd8f500c17d9482d456e9edf04055671bc9f29cc9de6f664c",
+        "scripts/tactical_consequences_evaluation.py": "2c9afc54a48689519a207e0303f173f863c275c539b9fb371d324f676510fab3",
+        "tools/showdown-search-worker.js": "34044f5de358b3a4038dfeb84876686657dabcf826e4686bf419c9edaa3f66cd"
+      }
+    },
+    "two_turn": {
+      "archive_sha256": "ff888988e67032a8fca0702af59237fe99dd42949ff7e8d13cbd136a6e0f98b2",
+      "manifest_sha256": "694e3c3a27b49f02ebc1c68c5a25565a3a2568101af9afa5634a5339c1712b57",
+      "source_commit": "d4e65b6",
+      "source_sha256": {
+        "src/champions_practice/tactical_consequences.py": "84d6ae9114793d061a84229780f9415a1dba698baad6712982c7dfca1922029d",
+        "src/champions_practice/exact_search.py": "7a9d486a14aa248cd8f500c17d9482d456e9edf04055671bc9f29cc9de6f664c",
+        "scripts/tactical_consequences_evaluation.py": "a86c723899ee3895efbae9bbce6ffb575246c483edd4d452a0ea209047b5fb7b",
+        "tools/showdown-search-worker.js": "34044f5de358b3a4038dfeb84876686657dabcf826e4686bf419c9edaa3f66cd"
+      }
+    },
+    "one_turn": {
+      "archive_sha256": "f0a19008e2e58a087dc23b317d71a7ed3f78e80273367800b61c456e6a8fbaa1",
+      "manifest_sha256": "4ae4819708047646e53fb64dfed4a46b45512802f81adc547c2df0ef33233ed4",
+      "source_commit": null,
+      "source_sha256": {
+        "src/champions_practice/tactical_consequences.py": "b2596351781edfea1141dea3a5919ff97da05c7265a908c7bfb7f2fb7e4acec1",
+        "src/champions_practice/independent_opponent.py": "82022fea7ac405a3562565661e0542ef15fc2d97748fb263c00fc5cdb169a218",
+        "scripts/tactical_consequences_ablation.py": "927d288edde57b27ad8b86b3718b746426c0a57d1f4dae026305072c741bc9cf",
+        "scripts/tactical_consequences_evaluation.py": "a86c723899ee3895efbae9bbce6ffb575246c483edd4d452a0ea209047b5fb7b"
+      }
+    }
+  },
+  "initial_summary": {
+    "development": {
+      "statuses": {
+        "complete": 24
+      },
+      "all": {
+        "pairs": 12,
+        "incumbent_wins": 2,
+        "consequences_wins": 2,
+        "consequences_only": 0,
+        "incumbent_only": 0
+      },
+      "fallback_free": {
+        "pairs": 12,
+        "incumbent_wins": 2,
+        "consequences_wins": 2,
+        "consequences_only": 0,
+        "incumbent_only": 0
+      },
+      "search_status": {
+        "complete": 8,
+        "incomplete": 4
+      },
+      "search_reasons": {
+        "replacement/pivot phase limit": 4
+      },
+      "opening_changes": 4,
+      "search_overruns": 0,
+      "max_search_seconds": 5.0138488999982656
+    },
+    "validation": {
+      "statuses": {
+        "complete": 24
+      },
+      "all": {
+        "pairs": 12,
+        "incumbent_wins": 3,
+        "consequences_wins": 7,
+        "consequences_only": 4,
+        "incumbent_only": 0
+      },
+      "fallback_free": {
+        "pairs": 12,
+        "incumbent_wins": 3,
+        "consequences_wins": 7,
+        "consequences_only": 4,
+        "incumbent_only": 0
+      },
+      "search_status": {
+        "complete": 10,
+        "unavailable": 2
+      },
+      "search_reasons": {
+        "public opening conditioning rejected a hypothesis": 2
+      },
+      "opening_changes": 10,
+      "search_overruns": 0,
+      "max_search_seconds": 7.051777000000584
+    }
+  },
+  "two_turn_summary": {
+    "development": {
+      "statuses": {
+        "complete": 24
+      },
+      "all": {
+        "pairs": 12,
+        "incumbent_wins": 2,
+        "consequences_wins": 2,
+        "consequences_only": 0,
+        "incumbent_only": 0
+      },
+      "fallback_free": {
+        "pairs": 12,
+        "incumbent_wins": 2,
+        "consequences_wins": 2,
+        "consequences_only": 0,
+        "incumbent_only": 0
+      },
+      "search_status": {
+        "complete": 12
+      },
+      "search_reasons": {},
+      "opening_changes": 8,
+      "search_overruns": 0,
+      "max_search_seconds": 5.033384599999408
+    },
+    "validation": {
+      "statuses": {
+        "complete": 24
+      },
+      "all": {
+        "pairs": 12,
+        "incumbent_wins": 3,
+        "consequences_wins": 8,
+        "consequences_only": 5,
+        "incumbent_only": 0
+      },
+      "fallback_free": {
+        "pairs": 12,
+        "incumbent_wins": 3,
+        "consequences_wins": 8,
+        "consequences_only": 5,
+        "incumbent_only": 0
+      },
+      "search_status": {
+        "complete": 12
+      },
+      "search_reasons": {},
+      "opening_changes": 12,
+      "search_overruns": 0,
+      "max_search_seconds": 6.977724500000477
+    }
+  },
+  "one_turn_summary": {
+    "development": {
+      "games": 12,
+      "wins": 2,
+      "search_status": {
+        "complete": 12
+      }
+    },
+    "validation": {
+      "games": 12,
+      "wins": 8,
+      "search_status": {
+        "complete": 12
+      }
+    }
+  },
+  "paired_comparisons": {
+    "incumbent:one_turn": {
+      "left_wins": 5,
+      "right_wins": 10,
+      "left_only": 1,
+      "right_only": 6
+    },
+    "incumbent:consequences": {
+      "left_wins": 5,
+      "right_wins": 10,
+      "left_only": 0,
+      "right_only": 5
+    },
+    "one_turn:consequences": {
+      "left_wins": 10,
+      "right_wins": 10,
+      "left_only": 2,
+      "right_only": 2
+    }
+  },
+  "default_decisions_replayed": 522,
+  "opponent_enum_repair_decisions_unchanged": 349,
+  "actual_response_coverage": {
+    "consequences:actual_reply_in_every_world": 12,
+    "one_turn:actual_reply_in_every_world": 12
+  },
+  "opening_choices": {
+    "consequences:move psychic +2, switch 3": 4,
+    "consequences:move armorcannon +2, move trickroom": 4,
+    "consequences:move earthquake, move dragonclaw +1": 4,
+    "consequences:switch 3, move woodhammer +2": 4,
+    "consequences:switch 3, move psychic +1": 4,
+    "consequences:move followme, move armorcannon +1": 4,
+    "one_turn:move psychic +2, switch 3": 4,
+    "one_turn:move protect, move trickroom": 4,
+    "one_turn:move earthquake, move dragonclaw +1": 4,
+    "one_turn:move protect, move woodhammer +2": 4,
+    "one_turn:move protect mega, move trickroom": 4,
+    "one_turn:move trickroom, move protect": 4
+  },
+  "search_timing": {
+    "consequences": {
+      "mean_seconds": 5.019862712500223,
+      "max_seconds": 6.977724500000477
+    },
+    "one_turn": {
+      "mean_seconds": 0.3472679374999643,
+      "max_seconds": 0.6009276999975555
+    }
+  },
+  "native_witness_scope": "Actual sealed state, fixed recorded enemy reply, eight coupled futures; first-decision diagnostics only, not win probabilities.",
+  "native_witnesses": [
+    {
+      "pair": "development-0-0-p1",
+      "fixed_enemy_response": "move crunch +1, move ironhead +2",
+      "plans": {
+        "incumbent": {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1132.3222151726636
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1133.0414211909724
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1138.7499018097221
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1142.7312607631648
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1136.835493519441
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1144.239161303967
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1139.0414211909724
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1130.2900087615938
+            }
+          ]
+        },
+        "one_turn": {
+          "action": "move psychic +2, switch 3",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -29.783998612153667
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -31.968172783329155
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -35.47920117277975
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -41.65801235552148
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -34.29727695893136
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -43.898396972756785
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -35.03823647759606
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -29.94924443038373
+            }
+          ]
+        },
+        "consequences": {
+          "action": "move psychic +2, switch 3",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -29.783998612153667
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -31.968172783329155
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -35.47920117277975
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -41.65801235552148
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -34.29727695893136
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -43.898396972756785
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -35.03823647759606
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -29.94924443038373
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "development-1-0-p1",
+      "fixed_enemy_response": "move darkestlariat +2, move woodhammer +2",
+      "plans": {
+        "incumbent": {
+          "action": "move armorcannon +2, move psychic +2",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1005.9638594632765
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1002.7152718926557
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1005.314141949153
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 995.5683792372888
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 999.4666843220349
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1003.3649894067801
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1003.3649894067801
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 996.8678142655375
+            }
+          ]
+        },
+        "one_turn": {
+          "action": "move protect, move trickroom",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -70.51148775894566
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -73.2045197740109
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -70.6056497175135
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -78.12919020715634
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -75.34199623352146
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -73.11035781544307
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -71.99924670433185
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -77.94086629001885
+            }
+          ]
+        },
+        "consequences": {
+          "action": "move armorcannon +2, move trickroom",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1005.9638594632765
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1002.7152718926557
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1005.314141949153
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 995.5683792372888
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 999.4666843220349
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1003.3649894067801
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1003.3649894067801
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 996.8678142655375
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "validation-0-0-p1",
+      "fixed_enemy_response": "move hurricane +2, move wavecrash +1",
+      "plans": {
+        "incumbent": {
+          "action": "move rockslide, move woodhammer +2",
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -59.95555555555576
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -61.06666666666697
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -54.39999999999972
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -59.95555555555576
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -66.6222222222221
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1151.4191201353638
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -61.06666666666697
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -56.62222222222214
+            }
+          ]
+        },
+        "one_turn": {
+          "action": "move protect, move woodhammer +2",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1044.7777777777778
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1044.7777777777778
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1049.222222222222
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1049.222222222222
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1045.8888888888882
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -72.07777777777822
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1044.7777777777778
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -69.3000000000002
+            }
+          ]
+        },
+        "consequences": {
+          "action": "switch 3, move woodhammer +2",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 971.1670634920639
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 975.7801587301585
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 970.0162698412698
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -132.49183184272
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 978.9448412698415
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 964.8376984126979
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 977.3674603174604
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 964.8376984126979
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "validation-1-1-p2",
+      "fixed_enemy_response": "move ironhead +1, move crunch +2",
+      "plans": {
+        "incumbent": {
+          "action": "move mysticalfire +1 mega, move psychic +1",
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1143.3917338892416
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1144.1109399075503
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1149.8194205262998
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1153.8007794797427
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1147.9050122360188
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1155.3086800205447
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1150.1109399075503
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1141.3595274781717
+            }
+          ]
+        },
+        "one_turn": {
+          "action": "move protect mega, move trickroom",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -46.16454514009017
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -47.463980168338864
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -44.21539259771711
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -47.463980168338864
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -46.16454514009017
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -49.41313271071101
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -43.565675083592765
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -49.41313271071101
+            }
+          ]
+        },
+        "consequences": {
+          "action": "switch 3, move psychic +1",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -42.40197010971442
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -44.0266879390468
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -47.92414493574898
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -53.71652751123913
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -46.91524845649121
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -55.22442805204069
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -48.21566431699991
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -41.275275509667644
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "validation-2-0-p1",
+      "fixed_enemy_response": "move woodhammer +1, move hydropump +2",
+      "plans": {
+        "incumbent": {
+          "action": "move psychic +1, move armorcannon +1",
+          "samples": [
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1104.4446327683618
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1105.3768361581922
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1108.1546139359702
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1111.412617702448
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1106.4973634651599
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1097.3335216572505
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1106.7704331450097
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 4,
+              "utility": -1109.8306967984936
+            }
+          ]
+        },
+        "one_turn": {
+          "action": "move trickroom, move protect",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -12.007909604519767
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -9.870433145010136
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -12.007909604519767
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -10.614312617702328
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -13.40150659133722
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -9.220715630885788
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 4,
+              "utility": -13.40150659133722
+            }
+          ]
+        },
+        "consequences": {
+          "action": "move followme, move armorcannon +1",
+          "samples": [
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1005.0689442090401
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -15.98020833333303
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1004.4192266949148
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -15.98020833333303
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -15.98020833333303
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -15.98020833333303
+            },
+            {
+              "own_survivors": 4,
+              "foe_survivors": 3,
+              "utility": 1003.7695091807914
+            },
+            {
+              "own_survivors": 3,
+              "foe_survivors": 3,
+              "utility": -15.98020833333303
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "limitations": [
+    "Opening intervention only; all later actions use frozen V2.",
+    "Two explicit static set/bench hypotheses; true set drawn from that family. Not a calibrated or broad prior.",
+    "Observed gender/own stats and public opening events condition hypotheses; no live snapshots or RNG enter policy.",
+    "Eight-second total opening budget; incomplete comparisons retain incumbent.",
+    "Familiar species; validation compositions and live RNG frozen before running either stage.",
+    "Mirrored outcomes are correlated; this is not a competitive rating.",
+    "v1/v2 replay the same cases after coverage repairs and are not independent evidence.",
+    "One-turn and two-turn controls use the same candidates, response limits, hypotheses and position scorer.",
+    "Native position scorer remains a hand-written material/HP/status/boost/field/speed utility, not a learned winning-position model."
+  ]
+}

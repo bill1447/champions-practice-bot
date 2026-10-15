@@ -76,3 +76,12 @@ def test_invalid_upstream_proposal_is_explicit_legal_fallback(sample, monkeypatc
     monkeypatch.setattr(type(bot.policy), 'choose_move', lambda *_: None)
     action, trace = bot.choose(view, choices)
     assert action in choices and trace['fallback'] and trace['fallback_reason']
+
+
+def test_public_trick_room_maps_to_upstream_field(sample):
+    from poke_env.battle.field import Field
+    dex, view, choices = sample
+    view['field'] = {'pseudo_weather': ['trickroom'], 'terrain': 'psychicterrain'}
+    battle, _ = make_battle(view, choices, dex)
+    assert Field.TRICK_ROOM in battle.fields and Field.PSYCHIC_TERRAIN in battle.fields
+    assert Field.UNKNOWN not in battle.fields

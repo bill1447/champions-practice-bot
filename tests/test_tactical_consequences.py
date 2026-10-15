@@ -60,6 +60,8 @@ def test_sacrifice_wins_after_continuation_despite_worse_first_turn(catalog):
     ranked = {r['action']: r for r in result.ranking}
     assert ranked['attack']['worlds'][0]['one_turn_utility'] < ranked['protect']['worlds'][0]['one_turn_utility']
     assert ranked['attack']['worst_world_utility'] > ranked['protect']['worst_world_utility']
+    one_turn = run(worker, catalog, [{'turn': 1}], ['attack', 'protect'], horizon_turns=1)
+    assert one_turn.action == 'protect'
 
 
 def test_indistinguishable_hidden_worlds_share_one_continuation(catalog):
@@ -72,7 +74,7 @@ def test_indistinguishable_hidden_worlds_share_one_continuation(catalog):
     result = run(worker, catalog, [{'turn': 1, 'hidden': 'a'}, {'turn': 1, 'hidden': 'b'}], ['start'])
     assert result.status == 'complete' and result.continuation_groups == 1
     assert result.ranking[0]['coverage']['continuation_actions'] == {'safe': 1}
-    assert {v['two_turn_utility'] for v in result.ranking[0]['worlds']} == {0}
+    assert {v['leaf_utility'] for v in result.ranking[0]['worlds']} == {0}
 
 
 def test_replacement_request_does_not_count_as_a_full_turn(catalog):
@@ -85,7 +87,7 @@ def test_replacement_request_does_not_count_as_a_full_turn(catalog):
     worker = Worker(transition, lambda s: ['replace' if s.get('phase') == 'switch' else 'attack'])
     result = run(worker, catalog, [{'turn': 1}], ['attack'])
     assert result.status == 'complete' and result.branch_count == 3
-    assert result.ranking[0]['worlds'][0]['two_turn_utility'] > 0
+    assert result.ranking[0]['worlds'][0]['leaf_utility'] > 0
 
 
 def test_pivot_and_residual_replacement_can_need_more_than_four_phases(catalog):

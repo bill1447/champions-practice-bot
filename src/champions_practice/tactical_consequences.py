@@ -107,7 +107,7 @@ class _Node:
 
 def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], side,
                           authoritative_actions, incumbent, catalog, deadline,
-                          limits=TacticalLimits()):
+                          limits=TacticalLimits(), horizon_turns=2):
     """Resolve two actual turns, including intervening replacement requests.
 
     Every sampled first response/RNG outcome is extended. Continuation decisions
@@ -115,7 +115,7 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
     history, preventing a separate hidden-set-specific counterplay in each world.
     Budgets abort the whole comparison and retain the legal incumbent.
     """
-    if not worlds or side not in ('p1', 'p2') or incumbent not in authoritative_actions:
+    if not worlds or side not in ('p1', 'p2') or incumbent not in authoritative_actions or horizon_turns not in (1, 2):
         raise ValueError('hypotheses, side and authoritative legal incumbent required')
     started = perf_counter()
     other = 'p2' if side == 'p1' else 'p1'
@@ -235,7 +235,7 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             children = resolve(node, own, selected)
             per_world.append(children)
             expanded.extend(child for _, _, child in children)
-        goal = int(views[0]['turn'])+2
+        goal = int(views[0]['turn'])+horizon_turns
         leaves = extend(expanded, goal, limits.phase_limit-1)
         per_action = defaultdict(list)
         cursor = 0
@@ -251,22 +251,22 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
                         reply_scores[reply].append(value)
                         first_breakdowns[reply].append(score_exact_summary_breakdown(child.summary, side))
                 per_action[action].append({'world': worlds[node.world].label, 'weight': node.weight,
-                    'two_turn_utility': backup(children, values, action),
+                    'leaf_utility': backup(children, values, action),
                     'one_turn_utility': backup(children, immediate, action),
-                    'sampled_responses': {reply: {'two_turn_utility': fmean(scores),
+                    'sampled_responses': {reply: {'leaf_utility': fmean(scores),
                         'first_turn_breakdown': {component: fmean(getattr(b, component) for b in first_breakdowns[reply])
                             for component in ('total', 'terminal', 'material', 'position', 'speed')}}
                         for reply, scores in reply_scores.items()}})
         ranking = []
         for action, outcomes in per_action.items():
             total_weight = sum(v['weight'] for v in outcomes)
-            ranking.append({'action': action, 'worst_world_utility': min(v['two_turn_utility'] for v in outcomes),
-                'weighted_utility': sum(v['weight']*v['two_turn_utility'] for v in outcomes)/total_weight,
+            ranking.append({'action': action, 'worst_world_utility': min(v['leaf_utility'] for v in outcomes),
+                'weighted_utility': sum(v['weight']*v['leaf_utility'] for v in outcomes)/total_weight,
                 'worlds': outcomes})
         ranking.sort(key=lambda r: (-r['worst_world_utility'], -r['weighted_utility'], own.index(r['action'])))
         check()
         ranking[0]['coverage'] = {'root_legal': len(authoritative_actions), 'root_selected': len(own),
-            **menu_counts, 'continuation_actions': dict(continuations), 'goal_turn': goal}
+            **menu_counts, 'continuation_actions': dict(continuations), 'goal_turn': goal, 'horizon_turns': horizon_turns}
         ranking[0]['continuations'] = [t for t in continuation_trace if t['history'][0] == ranking[0]['action']]
         return TacticalResult(ranking[0]['action'], 'complete', tuple(ranking), count, groups, perf_counter()-started)
     except _Incomplete as error:

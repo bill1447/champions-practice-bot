@@ -139,7 +139,9 @@ def make_battle(view, choices, dex):
         battle._weather = {Weather.from_showdown_message(field['weather']): view['turn']}
     for value in [field.get('terrain'), *field.get('pseudo_weather', [])]:
         if value:
-            battle._fields[Field.from_showdown_message(value)] = view['turn']
+            native_fields = {ident(member.name): member for member in Field}
+            mapped = native_fields.get(ident(value))
+            battle._fields[mapped if mapped is not None else Field.from_showdown_message(value)] = view['turn']
     for label, target in [('player', battle._side_conditions), ('opponent', battle._opponent_side_conditions)]:
         for condition in view[label].get('side_conditions', []):
             target[SideCondition.from_showdown_message(condition)] = 1
