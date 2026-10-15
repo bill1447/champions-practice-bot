@@ -11,9 +11,15 @@ permissions:
   contents: read
 
 jobs:
-  windows-integration:
+  windows-checks:
+    name: Windows CI (${{ matrix.shard }})
     runs-on: windows-latest
     timeout-minutes: 20
+    strategy:
+      # Keep checking every independent shard even if another fails.
+      fail-fast: false
+      matrix:
+        shard: [fundamentals, recovery, search, frontier, gameplay]
 
     steps:
       - name: Check out practice bot
@@ -104,428 +110,428 @@ jobs:
         run: Write-Host "Pinned Showdown and test environment ready"
 
       - name: Lint
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m ruff check src tests
 
       - name: Present-state latent mechanics production gate
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.present_mechanics_smoke
 
       - name: Persistent admission and native outcome controls
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.persistent_admission_smoke
 
       - name: Offline queue retention correctness and outcome controls
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.queue_retention_smoke
 
       - name: Public protection lifecycle recovery
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.protection_lifecycle_smoke
 
       - name: Own Mega lifecycle recovery
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.own_mega_lifecycle_smoke
 
       - name: Terrain lifecycle recovery
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.terrain_lifecycle_review_smoke
 
       - name: Replacement lifecycle recovery
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.replacement_lifecycle_smoke
 
       - name: Trace and Trick Room lifecycle recovery
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.trace_trick_room_smoke
 
       - name: Diverse team native boundaries
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.diversity_boundary_smoke
 
       - name: Public ledger native event recovery
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.public_ledger_recovery_smoke
 
       - name: Unit tests
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m pytest
 
       - name: Public replay trajectory extraction smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\replay-trajectory-smoke.ps1
 
       - name: Pinned Showdown replay legal-menu adapter smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\replay-policy-menu-smoke.ps1
 
       - name: Pinned Showdown replay semantic audit smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\replay-semantic-audit-smoke.ps1
 
       - name: Validate Champions team
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\validate-team.ps1
 
       - name: Exact Showdown state fork smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\fork-smoke.ps1
 
       - name: Python to Showdown search bridge smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\bridge-smoke.ps1
 
       - name: Pinned Showdown team corpus validation smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\team-corpus-smoke.ps1
 
       - name: Persistent battle session smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'fundamentals' }}
         shell: pwsh
         run: .\session-smoke.ps1
 
       - name: Public-information belief privacy smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\belief-smoke.ps1
 
       - name: Sequential observation-conditioning smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\observation-conditioning-smoke.ps1
 
       - name: Independent-RNG observation-conditioning smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\rng-observation-smoke.ps1
 
       - name: Persistent public opponent ledger smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\public-ledger-smoke.ps1
 
       - name: Authoritative public event conditioning smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\public-event-conditioning-smoke.ps1
 
       - name: Public sethp projection consistency smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\sethp-projection-smoke.ps1
 
       - name: Isolated mechanics-authoritative recovery boundary smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-boundary-smoke.ps1
 
       - name: Typed recovery mutation authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-mutation-authority-smoke.ps1
 
       - name: Pre-opening static recovery authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-opening-authority-smoke.ps1
 
       - name: Recovery RNG sampling authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-sampling-inconclusive-smoke.ps1
 
       - name: Stable recovery member-lineage smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-member-lineage-smoke.ps1
 
       - name: Static recovery prefix authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-history-authority-smoke.ps1
 
       - name: Bounded opponent stat-point recovery smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-stat-proposal-smoke.ps1
 
 
       - name: Mechanics-authoritative reachability authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\reachability-smoke.ps1
 
       - name: Offline true-world recovery soundness smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-soundness-smoke.ps1
 
       - name: Deterministic exact-team recovery corpus smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\recovery-corpus-smoke.ps1
 
       - name: Finite Showdown damage-roll domain smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\damage-roll-domain-smoke.ps1
 
       - name: Real-collapse challenge independent oracle boundary smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.rebase_challenge_smoke
 
       - name: Rolling public current-turn checkpoint and true-world smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.rolling_public_checkpoints_smoke
 
       - name: Public-only first current-turn scaffold bootstrap smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.public_scaffold_bootstrap_smoke
 
       - name: Native pinned current-turn HP reconstruction smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.current_state_reconstruction_smoke
 
       - name: Pinned selected-four versus six-preview prior admission smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.selected_prior_smoke
 
       - name: Pinned fainted-slot projection and incomplete-history denial
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.fainted_active_present_smoke
 
       - name: Human turn-one Mega public-ledger and search regression
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\\.venv\\Scripts\\python.exe -m champions_practice.human_mega_regression_smoke
 
       - name: Pinned Unburden lifecycle projections and unsupported-state denial
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.unburden_present_smoke
 
       - name: Isolated current-state prior proposal and projection smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.current_state_proposals_smoke
 
       - name: Pinned current-state public constraint ledger smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.current_state_constraints_smoke
 
       - name: Pinned damage-roll conditioning witness smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.damage_witness_smoke
 
       - name: Finite stochastic transition reachability smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\finite-transition-smoke.ps1
 
       - name: Finite stochastic belief conditioning smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'recovery' }}
         shell: pwsh
         run: .\finite-conditioning-smoke.ps1
 
       - name: Quantitative public transition authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\quantitative-transition-smoke.ps1
 
       - name: Public selected-switch action smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\public-switch-action-smoke.ps1
 
       - name: Public transformation command reconstruction smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\public-transformation-action-smoke.ps1
 
       - name: Public action execution evidence smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\execution-evidence-smoke.ps1
 
       - name: Ordered both-side execution authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\execution-authority-smoke.ps1
 
       - name: Persistent belief battle controller smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\belief-controller-smoke.ps1
 
       - name: Sealed forced-switch and terminal smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\sealed-transition-smoke.ps1
 
       - name: Revival Blessing request and conditioning smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\revival-blessing-smoke.ps1
 
       - name: Exact forced-wait authority smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\forced-wait-authority-smoke.ps1
 
       - name: Production-like damaging-turn conditioning smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\damage-conditioning-smoke.ps1
 
       - name: Absolute deadline lifecycle smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\timeout-lifecycle-smoke.ps1
 
       - name: Worker startup, transport, and ownership hardening smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\worker-lifecycle-hardening-smoke.ps1
 
       - name: Belief-aware exact search smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\belief-search-smoke.ps1
 
       - name: Executable strategic benchmark smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\strategic-benchmark-smoke.ps1
 
       - name: Exact one-ply search smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\exact-search-smoke.ps1
 
       - name: Hidden-state legality oracle smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\legality-oracle-smoke.ps1
 
       - name: Public structural target legality smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\public-structural-legality-smoke.ps1
 
       - name: Persistent-session legal action smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\legal-actions-smoke.ps1
 
       - name: Bounded exact recommendation smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\recommendation-smoke.ps1
 
       - name: Full Champions battle smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'search' }}
         shell: pwsh
         run: .\battle-smoke.ps1
 
       - name: Isolated unknown-RNG native ancestry audit (11B)
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --output runs/native-stochastic/report.json
 
       - name: Public-event guided native generation audit (11B follow-up)
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation guided --output runs/native-stochastic/guided-report.json
 
       - name: Public-first diverse native frontier audit
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation frontier --output runs/native-frontier/frontier-report.json
 
       - name: Verify paired native frontier evidence
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/native_frontier_compare.py --baseline runs/native-stochastic/guided-report.json --candidate runs/native-frontier/frontier-report.json --output runs/native-frontier/comparison.json
 
       - name: Guided native validation with additional seed and mixed policy
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation guided --oracle-seed-offset 1 --include-mixed-policy --output runs/native-frontier/guided-validation.json
 
       - name: Frontier native validation with additional seed and mixed policy
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.native_stochastic_audit --generation frontier --oracle-seed-offset 1 --include-mixed-policy --output runs/native-frontier/frontier-validation.json
 
       - name: Verify paired native validation evidence
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'frontier' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/native_frontier_compare.py --baseline runs/native-frontier/guided-validation.json --candidate runs/native-frontier/frontier-validation.json --output runs/native-frontier/validation-comparison.json
 
       - name: Heuristic opponent smoke test
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\ai-smoke.ps1
 
       - name: Independent V2 shadow and paired full-battle pilot
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.agent_v2.audit --output runs/agent-v2/pilot.json
 
       - name: Native V2 spread friendly-fire regression
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/v2_spread_smoke.py
 
       - name: Frozen V2 versus production side-swapped evaluation
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.competitive_evaluation --smoke --seeds 1 --budget 8 --output runs/competitive-evaluation
 
       - name: Validate paired competitive telemetry
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/competitive_evaluation_report.py runs/competitive-evaluation/report.json --output runs/competitive-evaluation/analysis.json
 
       - name: Native risk evaluator mechanics controls
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/risk_joint_native_controls.py
 
       - name: Risk candidate paired pressure and protective-guard smoke
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe -m champions_practice.risk_joint_audit --smoke --seeds 1 --output runs/risk-joint-ci
 
       - name: Verify risk candidate paired telemetry
-        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' }}
+        if: ${{ !cancelled() && steps.test_prerequisites.outcome == 'success' && matrix.shard == 'gameplay' }}
         shell: pwsh
         run: .\.venv\Scripts\python.exe scripts/risk_joint_report.py runs/risk-joint-ci/report.json --output runs/risk-joint-ci/analysis.json
 
@@ -544,9 +550,23 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: champions-ci-artifacts
+          name: champions-ci-artifacts-${{ matrix.shard }}
           if-no-files-found: ignore
           retention-days: 7
           path: |
             .runtime/
             runs/
+
+  # Retain the historical required-check identity while making shard failures visible.
+  windows-integration:
+    name: windows-integration
+    runs-on: ubuntu-latest
+    needs: windows-checks
+    if: ${{ always() }}
+    steps:
+      - name: Require all CI shards to pass
+        env:
+          SHARD_RESULT: ${{ needs.windows-checks.result }}
+        run: |
+          echo "Windows CI matrix result: $SHARD_RESULT"
+          test "$SHARD_RESULT" = "success"
