@@ -13,8 +13,10 @@ from time import perf_counter
 from types import FunctionType, ModuleType
 
 from champions_practice.agent_v2 import PublicCatalog, decide, observe
+from champions_practice.agent_v2.policy import decide_coordination
 from champions_practice.competitive_evaluation import fixtures, pressure_choice
 from champions_practice.config import CHAMPIONS_FORMAT
+from champions_practice.diversity_league import team_text
 from champions_practice.risk_joint_audit import guard_choice
 from champions_practice.search_worker import ShowdownSearchWorker, TeamValidationWorker
 
@@ -22,8 +24,8 @@ ROOT = Path(__file__).resolve().parents[1]
 BASELINE = '567556a'
 
 
-def frozen_policy():
-    source = subprocess.run(['git', 'show', BASELINE+':src/champions_practice/agent_v2/policy.py'],
+def frozen_policy(baseline=BASELINE):
+    source = subprocess.run(['git', 'show', baseline+':src/champions_practice/agent_v2/policy.py'],
                             cwd=ROOT, capture_output=True, check=True).stdout
     module = ModuleType('frozen_v2_repair_reference')
     module.__file__ = str(ROOT/'src/champions_practice/agent_v2/policy.py')
@@ -74,19 +76,32 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--seeds', type=int, default=4)
+    parser.add_argument('--baseline', default=BASELINE)
+    parser.add_argument('--candidate', choices=('default', 'coordination'), default='default')
+    parser.add_argument('--seed-offset', type=int, default=0)
+    parser.add_argument('--team-suite', choices=('original', 'recombined'), default='original')
     args = parser.parse_args()
     if not 1 <= args.seeds <= 10:
         parser.error('seeds must be 1..10')
-    reference, reference_hash = frozen_policy()
+    reference, reference_hash = frozen_policy(args.baseline)
+    candidate_policy = decide_coordination if args.candidate == 'coordination' else decide
     opponents = {name: freeze_opponent(fn, reference)
                  for name, fn in [('pressure', pressure_choice), ('guard', guard_choice)]}
     _, teams = fixtures()
+    if args.team_suite == 'recombined':
+        teams = {
+            'steel-balance': team_text(('Metagross', 'Dragonite', 'Venusaur', 'Rotom-Wash', 'Incineroar', 'Rillaboom')),
+            'rain-reordered': team_text(('Basculegion', 'Archaludon', 'Pelipper', 'Garchomp', 'Venusaur', 'Rotom-Wash')),
+            'psychic-reordered': team_text(('Indeedee-F', 'Gardevoir', 'Metagross', 'Venusaur', 'Incineroar', 'Rotom-Wash')),
+        }
     names = list(teams)[:3]
     metadata = PublicCatalog.load(ROOT)
     with TeamValidationWorker(ROOT) as validator:
         for team in teams.values():
             assert validator.validate_team(battle_format=CHAMPIONS_FORMAT, team_text=team)['valid']
-    report = {'baseline_ref': BASELINE, 'baseline_policy_sha256': reference_hash,
+    report = {'baseline_ref': args.baseline, 'candidate': args.candidate, 'seed_offset': args.seed_offset,
+        'team_suite': args.team_suite,
+        'baseline_policy_sha256': reference_hash,
         'candidate_policy_sha256': hashlib.sha256((ROOT/'src/champions_practice/agent_v2/policy.py').read_bytes()).hexdigest(),
         'catalog_sha256': metadata.fingerprint,
         'team_sha256': {k: hashlib.sha256(v.encode()).hexdigest() for k, v in teams.items()},
@@ -97,11 +112,12 @@ def main():
     with ShowdownSearchWorker(ROOT) as worker:
         for index, name in enumerate(names):
             for seed_index in range(args.seeds):
-                seed = 'sodium,'+hashlib.sha256(f'v2-steel-roller-development:{index}:{seed_index}'.encode()).hexdigest()
+                actual_seed = seed_index + args.seed_offset
+                seed = 'sodium,'+hashlib.sha256(f'v2-steel-roller-development:{index}:{actual_seed}'.encode()).hexdigest()
                 for side in ('p1', 'p2'):
                     for opponent, enemy in opponents.items():
-                        pair = f'{index}-{seed_index}-{side}-{opponent}'
-                        for agent, policy in [('baseline', reference.decide), ('candidate', decide)]:
+                        pair = f'{index}-{actual_seed}-{side}-{opponent}'
+                        for agent, policy in [('baseline', reference.decide), ('candidate', candidate_policy)]:
                             case = {'id': pair+'-'+agent, 'pair': pair, 'side': side,
                                     'p1_team': name, 'p2_team': names[(index+1)%3],
                                     'seed': seed, 'agent': agent, 'opponent': opponent}

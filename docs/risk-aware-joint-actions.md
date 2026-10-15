@@ -1,8 +1,11 @@
 # Risk-aware joint-action candidate
 
 `agent_v2.policy.decide_risk` is an explicit offline candidate. Public `decide`
-still calls `decide_baseline`; production search, admission and fallback behavior
-remain unchanged. There is no native battle constructor, maintained hidden world,
+uses baseline utility with a scoped joint tie-break for target allocation between
+the same two immediate single-target attacks. See
+`reviews/v2-coordination-2026-10-14.md` for its separate gameplay evidence.
+The broader risk policy described here remains experimental; production search,
+admission and fallback behavior remain unchanged. There is no native battle constructor, maintained hidden world,
 seed or PRNG access in this evaluator.
 
 The evaluator scores our complete joint command against plausible joint enemy
