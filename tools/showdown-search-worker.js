@@ -885,6 +885,11 @@ function summarize(battle) {
       status: mon.status || null,
       boosts: { ...mon.boosts },
       speed: mon.speed,
+      // Summary-only contract: legacy speed is a cached action-order value.
+      // getStat includes boosts/status/abilities/Tailwind, but not Trick Room.
+      effectiveSpeed: mon.getStat('spe', false, false),
+      actionOrderSpeed: mon.getActionSpeed(),
+      cachedActionOrderSpeed: mon.speed,
       grounded: !!mon.isGrounded(),
       moveTypes: [...moveTypes],
     };

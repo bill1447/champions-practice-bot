@@ -90,7 +90,7 @@ def test_board_score_values_terrain_boosts_and_side_conditions() -> None:
                 {
                     **_pokemon(100),
                     "boosts": {"spa": 1},
-                    "speed": 100,
+                    "effectiveSpeed": 100,
                     "grounded": True,
                     "moveTypes": ["psychic"],
                 }
@@ -104,7 +104,7 @@ def test_board_score_values_terrain_boosts_and_side_conditions() -> None:
                 {
                     **_pokemon(100),
                     "boosts": {},
-                    "speed": 80,
+                    "effectiveSpeed": 80,
                     "grounded": True,
                     "moveTypes": ["normal"],
                 }
