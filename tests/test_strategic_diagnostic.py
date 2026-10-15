@@ -49,6 +49,9 @@ def test_conditions_counterplan_and_answers_stay_conditional():
     assert 'unverified' in report['opponent_plans'][0]['unknowns']
     assert next(r for r in report['requirements'] if r['name'] == 'favorable speed order')['state'] == 'unverified'
     assert report['plan']['acceptable_losses'] == ()
+    assert report['plan']['preserve'] == ()
+    assert any(p['name'] == 'remaining-material-exchange' for p in report['competing_plans'])
+    assert report['competing_plans'][0]['status'] == 'unverified hypothesis'
 
 
 def test_reassessment_preserves_identity_through_mega_and_replans_after_faint():
@@ -62,6 +65,7 @@ def test_reassessment_preserves_identity_through_mega_and_replans_after_faint():
     third = diagnose_match(current, Catalog(), previous=second)
     assert third['anchor'] == 'Indeedee-F'
     assert third['update'].startswith('replan:')
+    assert next(p for p in third['competing_plans'] if p['resource'] == 'Gardevoir-Mega')['status'].startswith('abandoned:')
 
 
 def test_terrain_loss_changes_objective_without_inventing_an_action():

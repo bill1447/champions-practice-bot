@@ -1,0 +1,1874 @@
+{
+  "archive_sha256": "a8346967cfdc533361df3b026bfd6e2fa60aba39b188fe18bcd2317ec88d6f2f",
+  "protocol": {
+    "roots": "All eight retained commands, all three identical retained responses per world, two original public-conditioned hypotheses.",
+    "samples": "Four root RNG samples, first the original control seed; coupled across own commands.",
+    "next_turn_probe": "Same public-only shortlist procedure, at most eight joint commands and three replies. One coupled RNG sample per continuation pair. No alternate action is selected from probe results.",
+    "phase_completion": "Frozen V2 on each side public view for replacement/pivot phases, at most six; no live truth or independent-opponent fallback.",
+    "opportunity": "Native direct damage to an opponent by the named attacker, with that attacker alive at completed-turn end. KO/trade and realized move order reported separately.",
+    "limits": "Sampled opportunity, not win probability or proof of impossibility. Current-turn probes can miss multi-turn entry routes. These are already examined counterexamples, not held-out validation."
+  },
+  "branch_count": 16448,
+  "positions": [
+    {
+      "case": "development-0-0-p1",
+      "control_action": "move psychic +2, switch 3",
+      "actions": [
+        {
+          "action": "move psychic +2, switch 3",
+          "scenarios": 24,
+          "mean_first_score": -19.287783091245892,
+          "minimum_first_score": -45.172316384180874,
+          "mean_own_fainted": 0,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.7943404634581105
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 6
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "scenarios": 24,
+          "mean_first_score": -28.39124005534391,
+          "minimum_first_score": -52.16454514009017,
+          "mean_own_fainted": 0,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 1.0
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 7
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "scenarios": 24,
+          "mean_first_score": -8.128985153383034,
+          "minimum_first_score": -49.41313271071101,
+          "mean_own_fainted": 0,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.8259803921568627
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 7
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 20,
+          "turn_two_no_extra_own_loss_ko_witnesses": 9
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "scenarios": 24,
+          "mean_first_score": 91.032735240989,
+          "minimum_first_score": -998.8841318345522,
+          "mean_own_fainted": 0.20833333333333334,
+          "mean_enemy_fainted": 0.2916666666666667,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.41911764705882354
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 16,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 11
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 5,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 19,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 5,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 18,
+          "turn_two_no_extra_own_loss_ko_witnesses": 11
+        },
+        {
+          "action": "move followme, move protect mega",
+          "scenarios": 24,
+          "mean_first_score": -266.5851104643192,
+          "minimum_first_score": -1083.1408163265305,
+          "mean_own_fainted": 0.20833333333333334,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.9679144385026738
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 12
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 5,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 19,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 5,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 15,
+          "turn_two_no_extra_own_loss_ko_witnesses": 7
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "scenarios": 24,
+          "mean_first_score": -734.8070148603866,
+          "minimum_first_score": -1113.8086800205438,
+          "mean_own_fainted": 0.6666666666666666,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.7943404634581105
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 8,
+              "active_after_first": 8,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 8,
+              "next_turn_common_productive_action": 7
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 16,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 8,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 16,
+              "next_turn_common_productive_action": 6
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 20,
+          "turn_two_no_extra_own_loss_ko_witnesses": 17
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "scenarios": 24,
+          "mean_first_score": -754.7680219905114,
+          "minimum_first_score": -1145.3248587570622,
+          "mean_own_fainted": 0.6666666666666666,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.9679144385026738
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 8,
+              "active_after_first": 8,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 8,
+              "next_turn_common_productive_action": 7
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 16,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 8,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 16,
+              "next_turn_common_productive_action": 6
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "scenarios": 24,
+          "mean_first_score": -777.9802414538484,
+          "minimum_first_score": -1188.4426751592357,
+          "mean_own_fainted": 0.6666666666666666,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.9679144385026738
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 8,
+              "active_after_first": 8,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 8,
+              "next_turn_common_productive_action": 8
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 7
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        }
+      ],
+      "competing_plans": [
+        {
+          "name": "finish-gardevoir",
+          "resource": "Gardevoir",
+          "status": "unverified hypothesis",
+          "requirements": [
+            "safe entry or active position",
+            "useful damage against relevant survivors",
+            "an actionable speed/survival window"
+          ],
+          "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+          "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+        },
+        {
+          "name": "finish-metagross",
+          "resource": "Metagross",
+          "status": "unverified hypothesis",
+          "requirements": [
+            "safe entry or active position",
+            "useful damage against relevant survivors",
+            "an actionable speed/survival window"
+          ],
+          "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+          "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+        },
+        {
+          "name": "remaining-material-exchange",
+          "resource": null,
+          "status": "unverified hypothesis",
+          "requirements": [
+            "a favorable remaining exchange or terminal win"
+          ],
+          "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+        }
+      ],
+      "matched_gardevoir_opportunity_disagreements": [
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326530123,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326530137,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326530123,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326530137,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326530123,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326530137,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move ironhead +2",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 958.435971875133,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move ironhead +2",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 1040.490401521919,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move ironhead +2",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 1041.057352473735,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move ironhead +2",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 1040.2686579512413,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move ironhead +2",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 1035.6940792361222,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326530123,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326530137,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move ironhead +2",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 1042.9627095543942,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move followme, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326530123,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326530137,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move followme, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326530123,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326530137,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 4.240816326531046,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move psychic +2, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 41.31910629738283,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 38.87335438115623,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 38.87335438115623,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move steelroller +1, move hypervoice"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 44.9111751015855,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 41.31910629738283,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 42.465423185359825,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 41.31910629738283,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 41.31910629738283,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": false,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move protect, move mysticalfire +2"
+        }
+      ],
+      "speed_contract_evidence": [
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move ironhead +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 0,
+          "reply": "move protect, move ironhead +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move ironhead +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move protect, move ironhead +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move ironhead +2",
+          "legacy_speed": -17.5,
+          "native_ordering_term": 17.5,
+          "completion_phases": 1
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move protect, move ironhead +2",
+          "legacy_speed": -17.5,
+          "native_ordering_term": 17.5,
+          "completion_phases": 1
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 0,
+          "reply": "move crunch +1, move protect",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move ironhead +2",
+          "legacy_speed": -17.5,
+          "native_ordering_term": 17.5,
+          "completion_phases": 1
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move protect, move ironhead +2",
+          "legacy_speed": -17.5,
+          "native_ordering_term": 17.5,
+          "completion_phases": 1
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "world": 1,
+          "reply": "move crunch +1, move protect",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        }
+      ],
+      "offline_speed_contract_ranking": [
+        {
+          "action": "move trickroom, move protect mega",
+          "minimum_control_sample_utility": -14.815392597717114
+        },
+        {
+          "action": "move psychic +2, switch 3",
+          "minimum_control_sample_utility": -39.974576271186066
+        },
+        {
+          "action": "move psychic +2, move protect mega",
+          "minimum_control_sample_utility": -44.21539259771711
+        },
+        {
+          "action": "move followme, move mysticalfire +2 mega",
+          "minimum_control_sample_utility": -44.21539259771711
+        },
+        {
+          "action": "move followme, move protect mega",
+          "minimum_control_sample_utility": -1072.0712976099526
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2 mega",
+          "minimum_control_sample_utility": -1104.3248587570622
+        },
+        {
+          "action": "move psychic +2, move mysticalfire +2 mega",
+          "minimum_control_sample_utility": -1110.4211154415543
+        },
+        {
+          "action": "switch 3, move mysticalfire +2 mega",
+          "minimum_control_sample_utility": -1178.1878980891722
+        }
+      ],
+      "speed_contract_scope": "Diagnostic correction of double inversion on verified native signed-speed first-RNG frames. Uses this experiment phase-completion policy; frozen V2 replacements can differ from the old search backup. No scorer mutation, new weights, deployed action or full-game validation.",
+      "replacement_phase_counts": {
+        "0": 130,
+        "1": 62
+      }
+    },
+    {
+      "case": "validation-1-1-p1",
+      "control_action": "move protect mega, move trickroom",
+      "actions": [
+        {
+          "action": "move protect mega, move trickroom",
+          "scenarios": 24,
+          "mean_first_score": -27.349808793573995,
+          "minimum_first_score": -49.41313271071101,
+          "mean_own_fainted": 0,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 1.0
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 3
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        },
+        {
+          "action": "move protect mega, move psychic +1",
+          "scenarios": 24,
+          "mean_first_score": -6.651947831007142,
+          "minimum_first_score": -49.41313271071101,
+          "mean_own_fainted": 0,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.8221925133689839
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 3
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 20,
+          "turn_two_no_extra_own_loss_ko_witnesses": 11
+        },
+        {
+          "action": "move mysticalfire +1 mega, move followme",
+          "scenarios": 24,
+          "mean_first_score": 43.95378698474764,
+          "minimum_first_score": -1007.9044526901667,
+          "mean_own_fainted": 0.20833333333333334,
+          "mean_enemy_fainted": 0.25,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.4376114081996435
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 16,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 9
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 18,
+          "turn_two_no_extra_own_loss_ko_witnesses": 10
+        },
+        {
+          "action": "switch 3, move psychic +1",
+          "scenarios": 24,
+          "mean_first_score": -30.32723355028379,
+          "minimum_first_score": -70.69998301445035,
+          "mean_own_fainted": 0,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.7945632798573975
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        },
+        {
+          "action": "move protect mega, move followme",
+          "scenarios": 24,
+          "mean_first_score": -311.28722910838695,
+          "minimum_first_score": -1099.5408163265306,
+          "mean_own_fainted": 0.25,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.9679144385026738
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 24,
+              "active_after_first": 24,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 24,
+              "next_turn_common_productive_action": 9
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 17,
+          "turn_two_no_extra_own_loss_ko_witnesses": 8
+        },
+        {
+          "action": "move mysticalfire +1 mega, move psychic +1",
+          "scenarios": 24,
+          "mean_first_score": -746.2134767877362,
+          "minimum_first_score": -1154.400770416025,
+          "mean_own_fainted": 0.6666666666666666,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.7945632798573975
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 8,
+              "active_after_first": 8,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 8,
+              "next_turn_common_productive_action": 3
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 20,
+          "turn_two_no_extra_own_loss_ko_witnesses": 18
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "scenarios": 24,
+          "mean_first_score": -766.648860031943,
+          "minimum_first_score": -1185.764406779661,
+          "mean_own_fainted": 0.6666666666666666,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.9679144385026738
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 8,
+              "active_after_first": 8,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 8,
+              "next_turn_common_productive_action": 3
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "scenarios": 24,
+          "mean_first_score": -778.1813118017428,
+          "minimum_first_score": -1208.0338582677166,
+          "mean_own_fainted": 0.6666666666666666,
+          "mean_enemy_fainted": 0,
+          "blocker_mean_hp": {
+            "Tyranitar": 1.0,
+            "Excadrill": 0.9679144385026738
+          },
+          "routes": {
+            "Gardevoir": {
+              "living_after_first": 8,
+              "active_after_first": 8,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 8,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 8,
+              "next_turn_common_productive_action": 8
+            },
+            "Metagross": {
+              "living_after_first": 24,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 24,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            },
+            "Armarouge": {
+              "living_after_first": 0,
+              "active_after_first": 0,
+              "productive_first_attack": 0,
+              "first_attack_before_enemy_damage_move": 0,
+              "living_but_no_legal_damage_command_next_turn": 0,
+              "legal_attack_available_but_omitted_by_probe": 0,
+              "next_turn_some_productive_attack": 0,
+              "next_turn_common_productive_action": 0
+            }
+          },
+          "turn_two_extra_ko_witnesses": 24,
+          "turn_two_no_extra_own_loss_ko_witnesses": 24
+        }
+      ],
+      "competing_plans": [
+        {
+          "name": "finish-gardevoir",
+          "resource": "Gardevoir",
+          "status": "unverified hypothesis",
+          "requirements": [
+            "safe entry or active position",
+            "useful damage against relevant survivors",
+            "an actionable speed/survival window"
+          ],
+          "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+          "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+        },
+        {
+          "name": "finish-metagross",
+          "resource": "Metagross",
+          "status": "unverified hypothesis",
+          "requirements": [
+            "safe entry or active position",
+            "useful damage against relevant survivors",
+            "an actionable speed/survival window"
+          ],
+          "abandon_when": "Required attacking window or damage route is disproven, even if the resource is alive.",
+          "evidence_needed": "Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these."
+        },
+        {
+          "name": "remaining-material-exchange",
+          "resource": null,
+          "status": "unverified hypothesis",
+          "requirements": [
+            "a favorable remaining exchange or terminal win"
+          ],
+          "evidence_needed": "Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece."
+        }
+      ],
+      "matched_gardevoir_opportunity_disagreements": [
+        {
+          "action": "move mysticalfire +1 mega, move followme",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 935.9110305447294,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move mysticalfire +1 mega, move followme",
+          "world": 1,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 959.7907550077044,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move protect mega, move followme",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 1044.2559050122356,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move protect mega, move followme",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 1044.2559050122356,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move protect mega, move followme",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 1042.3067524698624,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move protect mega, move followme",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 1044.2559050122356,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move protect mega, move followme",
+          "world": 1,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 1051.4271186440683,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move protect mega, move followme",
+          "world": 1,
+          "reply": "move ironhead +1, move crunch +2",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 1059.2237288135586,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "world": 0,
+          "reply": "move protect, move crunch +2",
+          "sample": 0,
+          "score_difference_control_minus_candidate": 26.860856799679567,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "world": 0,
+          "reply": "move protect, move crunch +2",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 26.860856799679567,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "world": 1,
+          "reply": "move protect, move crunch +2",
+          "sample": 1,
+          "score_difference_control_minus_candidate": 25.837679612082297,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "world": 1,
+          "reply": "move protect, move crunch +2",
+          "sample": 2,
+          "score_difference_control_minus_candidate": 26.860856799679567,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "world": 1,
+          "reply": "move protect, move crunch +2",
+          "sample": 3,
+          "score_difference_control_minus_candidate": 27.628239690376844,
+          "control_gardevoir_living": true,
+          "control_gardevoir_active": true,
+          "control_metagross_opportunity": false,
+          "candidate_gardevoir_witness": "move hypervoice, move hydropump +1"
+        }
+      ],
+      "speed_contract_evidence": [
+        {
+          "action": "move protect mega, move trickroom",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move protect mega, move trickroom",
+          "world": 0,
+          "reply": "move protect, move crunch +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move protect mega, move trickroom",
+          "world": 0,
+          "reply": "move ironhead +1, move protect",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move protect mega, move trickroom",
+          "world": 1,
+          "reply": "move ironhead +1, move crunch +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move protect mega, move trickroom",
+          "world": 1,
+          "reply": "move protect, move crunch +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move protect mega, move trickroom",
+          "world": 1,
+          "reply": "move ironhead +1, move protect",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "world": 0,
+          "reply": "move ironhead +1, move crunch +2",
+          "legacy_speed": -15.9,
+          "native_ordering_term": 15.9,
+          "completion_phases": 1
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "world": 0,
+          "reply": "move protect, move crunch +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "world": 0,
+          "reply": "move ironhead +1, move protect",
+          "legacy_speed": -15.9,
+          "native_ordering_term": 15.9,
+          "completion_phases": 1
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "world": 1,
+          "reply": "move ironhead +1, move crunch +2",
+          "legacy_speed": -15.9,
+          "native_ordering_term": 15.9,
+          "completion_phases": 1
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "world": 1,
+          "reply": "move protect, move crunch +2",
+          "legacy_speed": -14.7,
+          "native_ordering_term": 14.7,
+          "completion_phases": 0
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "world": 1,
+          "reply": "move ironhead +1, move protect",
+          "legacy_speed": -15.9,
+          "native_ordering_term": 15.9,
+          "completion_phases": 1
+        }
+      ],
+      "offline_speed_contract_ranking": [
+        {
+          "action": "move protect mega, move trickroom",
+          "minimum_control_sample_utility": -14.815392597717114
+        },
+        {
+          "action": "move protect mega, move psychic +1",
+          "minimum_control_sample_utility": -44.21539259771711
+        },
+        {
+          "action": "move mysticalfire +1 mega, move followme",
+          "minimum_control_sample_utility": -44.21539259771711
+        },
+        {
+          "action": "switch 3, move psychic +1",
+          "minimum_control_sample_utility": -56.374576271186065
+        },
+        {
+          "action": "move protect mega, move followme",
+          "minimum_control_sample_utility": -1088.4712976099527
+        },
+        {
+          "action": "move mysticalfire +1 mega, move trickroom",
+          "minimum_control_sample_utility": -1123.9248587570623
+        },
+        {
+          "action": "move mysticalfire +1 mega, move psychic +1",
+          "minimum_control_sample_utility": -1126.8211154415544
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "minimum_control_sample_utility": -1168.5299212598427
+        }
+      ],
+      "speed_contract_scope": "Diagnostic correction of double inversion on verified native signed-speed first-RNG frames. Uses this experiment phase-completion policy; frozen V2 replacements can differ from the old search backup. No scorer mutation, new weights, deployed action or full-game validation.",
+      "replacement_phase_counts": {
+        "0": 130,
+        "1": 62
+      }
+    }
+  ],
+  "diagnostic_source_sha256": {
+    "src/champions_practice/strategic_diagnostic.py": "02c4b6552b9e5a3974bc44ff0a8ee4db3b431b9a4da4455dd3f3f9ea36d8e286",
+    "scripts/strategic_consequence_report.py": "2e5c7d1cffd02b5b1236d0be623edc9ffed46689ed6f2ebe5e17962d524b6986",
+    "external/pokemon-showdown/data/mods/champions/scripts.ts": "2da0b9e380019173e1a31a342031d711aa18622df40d54729802911663600b3b"
+  }
+}

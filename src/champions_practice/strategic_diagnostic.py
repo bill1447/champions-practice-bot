@@ -149,8 +149,9 @@ def diagnose_match(view, catalog, *, previous=None):
             required_resources=(anchor_name,) if anchor else (),
             resource_purposes=(ResourcePurpose(anchor_name, 'provisional finisher'),) if anchor else ()),
         required_resources=(anchor_name,) if anchor else (),
-        preserve=(anchor_name,) if anchor else (),
-        rationale=('Working anchor chosen by continuity, spread coverage, damaging moves, then HP; not proven optimal.',),
+        preserve=(),
+        rationale=('Working anchor chosen by continuity, spread coverage, damaging moves, then HP; not proven optimal.',
+                   'No unconditional centerpiece preservation: compare alternative finishers and winning material trades.'),
         failure_conditions=('anchor-lost-without-winning-trade',))
     previous_anchor = previous['anchor'] if previous else None
     update = 'initial hypothesis' if previous is None else 'retained living anchor' if resource_id(previous_anchor) == resource_id(anchor_name) else 'replan: previous anchor fainted, unselected, or no longer a damage candidate'
@@ -161,8 +162,31 @@ def diagnose_match(view, catalog, *, previous=None):
     if relevant:
         current += ' Test removing or bypassing active typing answers: ' + ', '.join(relevant) + '.'
     current += ' If neither finishes, certify a safe attacking window and its next-turn payoff.'
+    competing = []
+    previous_routes = {p['resource'] for p in (previous or {}).get('competing_plans', []) if p.get('resource')}
+    preferred = [m for m in team if resource_id(m['species']) in {'gardevoir', 'metagross', 'armarouge'}]
+    if not preferred:
+        preferred = [c[-1] for c in sorted(candidates, key=lambda c: c[:5], reverse=True)[:3]]
+    for mon in preferred:
+        available = not mon.get('fainted', False)
+        competing.append({'name': f"finish-{resource_id(mon['species'])}", 'resource': mon['species'],
+            'status': 'unverified hypothesis' if available else 'abandoned: resource fainted',
+            'requirements': ['safe entry or active position', 'useful damage against relevant survivors',
+                             'an actionable speed/survival window'],
+            'abandon_when': 'Required attacking window or damage route is disproven, even if the resource is alive.',
+            'evidence_needed': 'Compare native attack/KO, blocker, speed-order and trade outcomes; living alone proves none of these.'})
+    present = {resource_id(m['species']) for m in team}
+    for old in sorted(previous_routes):
+        if resource_id(old) not in present:
+            competing.append({'name': f'finish-{resource_id(old)}', 'resource': old,
+                'status': 'abandoned: resource not selected or unavailable', 'requirements': []})
+    competing.append({'name': 'remaining-material-exchange', 'resource': None,
+        'status': 'unverified hypothesis',
+        'requirements': ['a favorable remaining exchange or terminal win'],
+        'evidence_needed': 'Measure actual knockouts, losses and remaining offensive resources without requiring the original centerpiece.'})
     return {'turn': assessment.turn, 'phase': assessment.phase, 'anchor': anchor_name,
         'update': update, 'plan': asdict(plan), 'requirements': requirements,
+        'competing_plans': competing,
         'blockers': blockers, 'available_answers': tools, 'opponent_plans': opponent_plans,
         'current_objective': current,
         'trade_rule': 'No support sacrifice is approved by this report. Compare what its loss enables, remaining terrain/speed access, and a no-sacrifice alternative.',
