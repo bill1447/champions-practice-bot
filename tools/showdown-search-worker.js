@@ -1379,6 +1379,18 @@ function isPubliclyStructurallySelectable(choice, request, gameType) {
   // constraints depend only on the side's public request, not hidden opponent state.
   if (new Set(switchSlots).size !== switchSlots.length) return false;
   if (transformationCount > 1) return false;
+  if (request?.forceSwitch) {
+    const ordinarySlots = request.forceSwitch
+      .map((required, slot) => ({ required, slot }))
+      .filter(({ required, slot }) => required && !request.side.pokemon[slot]?.reviving);
+    const replacements = ordinarySlots.filter(({ slot }) =>
+      commands[slot].startsWith("switch ")
+    ).length;
+    // With two fainted actives and one reserve, exactly one vacancy is legal.
+    // Allowing pass in either slot must not allow passing in BOTH slots.
+    // This count uses only the owned public request, never hidden-state probing.
+    if (replacements !== Math.min(ordinarySlots.length, healthySwitches.size)) return false;
+  }
   return true;
 }
 
