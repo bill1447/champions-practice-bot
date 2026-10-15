@@ -179,6 +179,32 @@ def observe(view, legal_actions, *, deadline):
         tuple(view["opponent"].get("side_conditions", ())), tuple(sorted(own_protect)), tuple(sorted(public_moves)))
 
 
+def _may_establish_own_terrain(action, board):
+    """Retain possible terrain plans; this does not certify execution or order."""
+    setters = {"electricterrain", "grassyterrain", "mistyterrain", "psychicterrain"}
+    surges = {"electricsurge", "grassysurge", "mistysurge", "psychicsurge"}
+    for slot, command in enumerate(action.split(",")):
+        parts = command.strip().split()
+        if len(parts) < 2:
+            continue
+        if parts[0] == "switch":
+            index = int(parts[1]) - 1
+            if 0 <= index < len(board.owned_team):
+                ability = board.owned_team[index].ability
+                if ability is None or ident(ability) in surges:
+                    return True
+        elif parts[0] == "move":
+            move = ident(parts[1])
+            if parts[1].isdigit() and slot < len(board.owned_active):
+                own = board.owned_active[slot]
+                index = int(parts[1]) - 1
+                if own and 0 <= index < len(own.moves):
+                    move = ident(own.moves[index])
+            if move in setters:
+                return True
+    return False
+
+
 def rank_action(action, board, catalog):
     score, reasons = 0.0, []
     for slot, command in enumerate(action.split(",")):
@@ -206,6 +232,11 @@ def rank_action(action, board, catalog):
         if not move:
             reasons.append("unknown move metadata; neutral utility")
             continue
+        if move_id == "steelroller" and not board.terrain:
+            if not _may_establish_own_terrain(action, board):
+                reasons.append("steelroller: no current or planned own terrain; withhold damage utility, opponent terrain changes unknown")
+                continue
+            reasons.append("steelroller: own terrain establishment possible; execution and order uncertified")
         if move["category"] == "Status":
             value = 0.0
             if move_id == "tailwind":
