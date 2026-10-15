@@ -22,7 +22,7 @@ class TacticalLimits:
     next_actions: int = 4
     rng_seeds: tuple[str, ...] = ('sodium,'+'12345678'*8,)
     branch_limit: int = 4096
-    phase_limit: int = 4
+    phase_limit: int = 6
 
     def __post_init__(self):
         if min(self.root_actions, self.responses, self.next_actions, self.branch_limit, self.phase_limit) < 1 or not self.rng_seeds:
@@ -121,6 +121,7 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
     other = 'p2' if side == 'p1' else 'p1'
     count, groups = 0, 0
     continuations = Counter()
+    continuation_trace = []
     menu_counts = Counter()
 
     def check(branches=0):
@@ -208,6 +209,9 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             # probabilities. Use one robust continuation for this information set.
             chosen = max(own, key=lambda a: (min(v[a] for v in by_node), fmean(v[a] for v in by_node), -own.index(a)))
             continuations[chosen] += 1
+            continuation_trace.append({'history': members[0].history, 'action': chosen,
+                'indistinguishable_samples': len(members),
+                'comparisons': {a: min(v[a] for v in by_node) for a in own}})
             for index, values_by_action in zip(indexes, by_node, strict=True):
                 values[index] = values_by_action[chosen]
         return values
@@ -240,9 +244,19 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
             cursor += len(children)
             immediate = [score_exact_summary_breakdown(child.summary, side).total for _, _, child in children]
             for action in own:
+                reply_scores = defaultdict(list)
+                first_breakdowns = defaultdict(list)
+                for (candidate, reply, child), value in zip(children, values, strict=True):
+                    if candidate == action:
+                        reply_scores[reply].append(value)
+                        first_breakdowns[reply].append(score_exact_summary_breakdown(child.summary, side))
                 per_action[action].append({'world': worlds[node.world].label, 'weight': node.weight,
                     'two_turn_utility': backup(children, values, action),
-                    'one_turn_utility': backup(children, immediate, action)})
+                    'one_turn_utility': backup(children, immediate, action),
+                    'sampled_responses': {reply: {'two_turn_utility': fmean(scores),
+                        'first_turn_breakdown': {component: fmean(getattr(b, component) for b in first_breakdowns[reply])
+                            for component in ('total', 'terminal', 'material', 'position', 'speed')}}
+                        for reply, scores in reply_scores.items()}})
         ranking = []
         for action, outcomes in per_action.items():
             total_weight = sum(v['weight'] for v in outcomes)
@@ -253,6 +267,7 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
         check()
         ranking[0]['coverage'] = {'root_legal': len(authoritative_actions), 'root_selected': len(own),
             **menu_counts, 'continuation_actions': dict(continuations), 'goal_turn': goal}
+        ranking[0]['continuations'] = [t for t in continuation_trace if t['history'][0] == ranking[0]['action']]
         return TacticalResult(ranking[0]['action'], 'complete', tuple(ranking), count, groups, perf_counter()-started)
     except _Incomplete as error:
         return TacticalResult(incumbent, 'incomplete', (), count, groups, perf_counter()-started, str(error))

@@ -88,6 +88,16 @@ def test_replacement_request_does_not_count_as_a_full_turn(catalog):
     assert result.ranking[0]['worlds'][0]['two_turn_utility'] > 0
 
 
+def test_pivot_and_residual_replacement_can_need_more_than_four_phases(catalog):
+    def transition(state, action):
+        step = state.get('step', 0)+1
+        turn = 1 if step == 1 else 2 if step < 5 else 3
+        return {'step': step, 'turn': turn, 'phase': 'switch' if step in (1, 3, 4) else 'move'}, summary(turn)
+    worker = Worker(transition, lambda s: ['continue'])
+    result = run(worker, catalog, [{'turn': 1}], ['continue'])
+    assert result.status == 'complete' and result.branch_count == 5
+
+
 def test_incomplete_branch_budget_retains_legal_incumbent(catalog):
     worker = Worker(lambda s, a: ({'turn': 2}, summary(2)), lambda s: ['attack', 'protect'])
     result = run(worker, catalog, [{'turn': 1}], ['attack', 'protect'],

@@ -90,7 +90,10 @@ def opening(worker, case, own_text, public_priors, view, legal, incumbent, catal
     # actual enemy team, command, battle seed or live snapshot is read here.
     for hypothesis in range(2):
         candidate = public_priors.replace('Life Orb', 'Sitrus Berry') if hypothesis else public_priors
-        for sample in range(4):
+        for sample in range(16):
+            if perf_counter() >= deadline:
+                return incumbent, {'status': 'incomplete', 'reason': 'opening conditioning deadline',
+                                   'admitted_worlds': len(roots), 'elapsed_seconds': perf_counter()-start}
             arguments = {'p1_team': own_text if side == 'p1' else candidate,
                          'p2_team': candidate if side == 'p1' else own_text,
                          'p1_preview': 'team 1234' if side == 'p1' else ('team 1234' if hypothesis == 0 else 'team 1256'),
