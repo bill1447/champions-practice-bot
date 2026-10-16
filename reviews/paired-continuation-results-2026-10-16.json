@@ -1,0 +1,534 @@
+{
+  "archive_sha256": "94005b923354d1de40d96cf5178b9859bf6699c6856c11a245f20a457c50ebec",
+  "manifest_sha256": "bd103ebe8f1223bfd4cf2f472852b7402243e65e44504304c68df2ca4f165ac0",
+  "cases": [
+    {
+      "id": "speed-control-warmup-2",
+      "cells": [
+        {
+          "role": "selected",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 8,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "selected",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 8,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        }
+      ],
+      "native_decision_occurrences": {
+        "nonactionable": 79,
+        "fallback": 48
+      },
+      "native_unique_computations": {
+        "nonactionable": 60,
+        "fallback": 26
+      },
+      "fallback_occurrence_reasons": {
+        "unsupported-persistent:item:charcoal": 46,
+        "unsupported-public-trace-state": 2
+      },
+      "unique_fallback_reasons": {
+        "unsupported-persistent:item:charcoal": 24,
+        "unsupported-public-trace-state": 2
+      },
+      "v2_historical_outcome_parity": {
+        "True": 48
+      },
+      "root_floor_attribution": {
+        "move woodhammer +2, move psychicfangs +1": {
+          "worst": -2147.728828828829,
+          "equal_reply_mean": -1507.7839431788477,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "leaf_utility": -2147.728828828829,
+              "leaf_breakdown": {
+                "total": -2147.728828828829,
+                "terminal": 0.0,
+                "material": -2148.5468076772427,
+                "position": 10.71797884841363,
+                "speed": -9.9,
+                "living": -2000.0,
+                "hp": -148.54680767724247,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -2135.6288288288292,
+                "terminal": 0.0,
+                "material": -2148.5468076772427,
+                "position": 25.71797884841363,
+                "speed": -12.8
+              }
+            }
+          ]
+        },
+        "move protect, move steelroller +1": {
+          "worst": -3242.862162162162,
+          "equal_reply_mean": -2233.6999139266654,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "leaf_utility": -3242.862162162162,
+              "leaf_breakdown": {
+                "total": -3242.862162162162,
+                "terminal": 0.0,
+                "material": -3234.054054054054,
+                "position": 0.8918918918918877,
+                "speed": -9.7,
+                "living": -3000.0,
+                "hp": -234.05405405405406,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -3242.862162162162,
+                "terminal": 0.0,
+                "material": -3234.054054054054,
+                "position": 0.8918918918918877,
+                "speed": -9.7
+              }
+            }
+          ]
+        }
+      },
+      "public_native_effect_identified": false
+    },
+    {
+      "id": "trade-and-spread-warmup-2",
+      "cells": [
+        {
+          "role": "selected",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 9,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "selected",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 9,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 13,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 13,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        }
+      ],
+      "native_decision_occurrences": {
+        "nonactionable": 48,
+        "fallback": 74
+      },
+      "native_unique_computations": {
+        "nonactionable": 27,
+        "fallback": 48
+      },
+      "fallback_occurrence_reasons": {
+        "unsupported-persistent:opponent-capabilities": 74
+      },
+      "unique_fallback_reasons": {
+        "unsupported-persistent:opponent-capabilities": 48
+      },
+      "v2_historical_outcome_parity": {
+        "True": 48
+      },
+      "root_floor_attribution": {
+        "move earthquake, move protect mega": {
+          "worst": 1071.6562058874158,
+          "equal_reply_mean": 1425.891662363,
+          "controlling_responses": [
+            {
+              "reply": "move psychicfangs +1, move protect",
+              "leaf_utility": 1071.6562058874158,
+              "leaf_breakdown": {
+                "total": 1071.6562058874158,
+                "terminal": 0.0,
+                "material": 1067.4401790325355,
+                "position": -4.88397314511964,
+                "speed": 9.1,
+                "living": 1000.0,
+                "hp": 67.44017903253572,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": 1083.056205887416,
+                "terminal": 0.0,
+                "material": 1067.4401790325355,
+                "position": 10.11602685488036,
+                "speed": 5.5
+              }
+            }
+          ]
+        },
+        "move earthquake, move expandingforce +2 mega": {
+          "worst": 994.2072262955791,
+          "equal_reply_mean": 1348.9642247212767,
+          "controlling_responses": [
+            {
+              "reply": "move psychicfangs +1, move protect",
+              "leaf_utility": 994.2072262955791,
+              "leaf_breakdown": {
+                "total": 994.2072262955791,
+                "terminal": 0.0,
+                "material": 1000.0932402570252,
+                "position": -14.986013961446172,
+                "speed": 9.1,
+                "living": 1000.0,
+                "hp": 0.09324025702551353,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": 1005.607226295579,
+                "terminal": 0.0,
+                "material": 1000.0932402570252,
+                "position": 0.01398603855382774,
+                "speed": 5.5
+              }
+            }
+          ]
+        }
+      },
+      "public_native_effect_identified": false
+    },
+    {
+      "id": "alternative-attacker-warmup-0",
+      "cells": [
+        {
+          "role": "selected",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "selected",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 2,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 2,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "strict_opposition_matched": 24
+        }
+      ],
+      "native_decision_occurrences": {
+        "fallback": 93,
+        "nonactionable": 33
+      },
+      "native_unique_computations": {
+        "fallback": 83,
+        "nonactionable": 32
+      },
+      "fallback_occurrence_reasons": {
+        "unsupported-persistent:item:charcoal": 66,
+        "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 27
+      },
+      "unique_fallback_reasons": {
+        "unsupported-persistent:item:charcoal": 58,
+        "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 25
+      },
+      "v2_historical_outcome_parity": {
+        "True": 48
+      },
+      "root_floor_attribution": {
+        "move mysticalfire +1 mega, move protect": {
+          "worst": -15.3,
+          "equal_reply_mean": 56.04046345811045,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move highhorsepower +2",
+              "leaf_utility": -15.3,
+              "leaf_breakdown": {
+                "total": -15.3,
+                "terminal": 0.0,
+                "material": 0.0,
+                "position": -18.0,
+                "speed": 2.7,
+                "living": 0.0,
+                "hp": 0.0,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -15.3,
+                "terminal": 0.0,
+                "material": 0.0,
+                "position": -18.0,
+                "speed": 2.7
+              }
+            }
+          ]
+        },
+        "move hypervoice mega, move steelroller +2": {
+          "worst": -1070.2552366401105,
+          "equal_reply_mean": -346.64408066256806,
+          "controlling_responses": [
+            {
+              "reply": "move highhorsepower +2, move highhorsepower +2",
+              "leaf_utility": -1070.2552366401105,
+              "leaf_breakdown": {
+                "total": -1070.2552366401105,
+                "terminal": 0.0,
+                "material": -1060.3958579479222,
+                "position": -12.059378692188332,
+                "speed": 2.2,
+                "living": -1000.0,
+                "hp": -60.39585794792225,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -1081.9552366401106,
+                "terminal": 0.0,
+                "material": -1060.3958579479222,
+                "position": -27.059378692188332,
+                "speed": 5.5
+              }
+            }
+          ]
+        }
+      },
+      "public_native_effect_identified": false
+    }
+  ],
+  "limitations": "Retained diagnostics, not game win probabilities. Full-preview V2 replay may differ from earlier exact-world probe. Nonterminal survival is not a proven win route.",
+  "summary": {
+    "cases": 3,
+    "trajectories": 288,
+    "successful_native_search_occurrences": 0,
+    "native_fallback_occurrences": 215,
+    "unique_native_fallback_computations": 157,
+    "forced_wait_occurrences": 160,
+    "interpretation": "Zero searches cannot establish native continuation quality; fallback-equivalent cells are not native-search results."
+  },
+  "speed_forensic": {
+    "expanded_report_sha256": "812afc155322bd164c21f80ca156bbe18f1d8e6536db3d48e865844645ac9a64",
+    "scope": "Exploratory exact-state move forensics, not a public-only continuation policy or admitted native search.",
+    "fixed_root_reply": "move protect, move thunderbolt +2",
+    "states": 8,
+    "branches": 80,
+    "samples": [
+      {
+        "root_role": "selected",
+        "rng": 0,
+        "own_conditions": {
+          "p1: Rillaboom": "177/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +1, pass",
+        "opponent_reply": "move dragonclaw +1, move ironhead +1",
+        "v2_terminal_loss": true,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": false,
+        "v2_wood_hammer_executed": true,
+        "v2_recoil_damage_recorded": true
+      },
+      {
+        "root_role": "selected",
+        "rng": 1,
+        "own_conditions": {
+          "p1: Rillaboom": "177/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +1, pass",
+        "opponent_reply": "move dragonclaw +1, move ironhead +1",
+        "v2_terminal_loss": true,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": true,
+        "v2_wood_hammer_executed": false,
+        "v2_recoil_damage_recorded": false
+      },
+      {
+        "root_role": "selected",
+        "rng": 2,
+        "own_conditions": {
+          "p1: Rillaboom": "177/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +1, pass",
+        "opponent_reply": "move dragonclaw +1, move ironhead +1",
+        "v2_terminal_loss": true,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": true,
+        "v2_wood_hammer_executed": false,
+        "v2_recoil_damage_recorded": false
+      },
+      {
+        "root_role": "selected",
+        "rng": 3,
+        "own_conditions": {
+          "p1: Rillaboom": "177/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +1, pass",
+        "opponent_reply": "move dragonclaw +1, move ironhead +1",
+        "v2_terminal_loss": true,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": false,
+        "v2_wood_hammer_executed": true,
+        "v2_recoil_damage_recorded": true
+      },
+      {
+        "root_role": "alternative",
+        "rng": 0,
+        "own_conditions": {
+          "p1: Rillaboom": "207/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +2, pass",
+        "opponent_reply": "move dragonclaw +1, move thunderbolt +1",
+        "v2_terminal_loss": false,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": false,
+        "v2_wood_hammer_executed": true,
+        "v2_recoil_damage_recorded": true
+      },
+      {
+        "root_role": "alternative",
+        "rng": 1,
+        "own_conditions": {
+          "p1: Rillaboom": "207/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +2, pass",
+        "opponent_reply": "move dragonclaw +1, move thunderbolt +1",
+        "v2_terminal_loss": false,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": false,
+        "v2_wood_hammer_executed": true,
+        "v2_recoil_damage_recorded": true
+      },
+      {
+        "root_role": "alternative",
+        "rng": 2,
+        "own_conditions": {
+          "p1: Rillaboom": "207/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +2, pass",
+        "opponent_reply": "move dragonclaw +1, move thunderbolt +1",
+        "v2_terminal_loss": false,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": false,
+        "v2_wood_hammer_executed": true,
+        "v2_recoil_damage_recorded": true
+      },
+      {
+        "root_role": "alternative",
+        "rng": 3,
+        "own_conditions": {
+          "p1: Rillaboom": "207/207",
+          "p1: Metagross": "0 fnt",
+          "p1: Pelipper": "0 fnt",
+          "p1: Armarouge": "0 fnt"
+        },
+        "v2_action": "move woodhammer +2, pass",
+        "opponent_reply": "move dragonclaw +1, move thunderbolt +1",
+        "v2_terminal_loss": false,
+        "protect_terminal_loss": false,
+        "grassy_glide_into_second_target_terminal_loss": false,
+        "v2_wood_hammer_executed": true,
+        "v2_recoil_damage_recorded": true
+      }
+    ]
+  }
+}
