@@ -1,0 +1,1462 @@
+{
+  "manifest_sha256": "88e00e6f38116a852bb4c22e30b6bdf1786853a31261e7dc3d669d1dfb9d531e",
+  "archive_sha256": "41de280b34c08d35d14947d1d24c098106418aada31a4d4697b386b8037b7020",
+  "summary": {
+    "statuses": {
+      "complete": 48
+    },
+    "all": {
+      "pairs": 24,
+      "v2_wins": 16,
+      "native_wins": 16,
+      "native_only": 1,
+      "v2_only": 1
+    },
+    "opponent_fallback_free": {
+      "pairs": 22,
+      "v2_wins": 14,
+      "native_wins": 14,
+      "native_only": 1,
+      "v2_only": 1
+    },
+    "actionable_decisions": 148,
+    "statuses_by_decision": {
+      "search": 34,
+      "fallback": 114
+    },
+    "fallback_reasons": {
+      "unsupported-persistent:move:stompingtantrum": 67,
+      "unsupported-persistent:move:phantomforce": 8,
+      "unsupported-persistent:opponent-capabilities": 1,
+      "unsupported-persistent:opponent-inventory": 8,
+      "unsupported-public-effect-duration": 19,
+      "unsupported-persistent:volatile:confusion": 10,
+      "current-public-mechanics-mismatch:$.player.active_details[1].speed": 1
+    },
+    "admitted_decisions": 34,
+    "action_disagreements": 23,
+    "coverage_by_turn": {
+      "1": {
+        "actionable": 24,
+        "admitted": 24,
+        "search_completed": 24,
+        "disagreements": 20
+      },
+      "2": {
+        "actionable": 40,
+        "admitted": 4,
+        "search_completed": 4,
+        "disagreements": 0
+      },
+      "3": {
+        "actionable": 37,
+        "admitted": 4,
+        "search_completed": 4,
+        "disagreements": 1
+      },
+      "4": {
+        "actionable": 26,
+        "admitted": 2,
+        "search_completed": 2,
+        "disagreements": 2
+      },
+      "5": {
+        "actionable": 15,
+        "admitted": 0,
+        "search_completed": 0,
+        "disagreements": 0
+      },
+      "6": {
+        "actionable": 6,
+        "admitted": 0,
+        "search_completed": 0,
+        "disagreements": 0
+      }
+    },
+    "latency": {
+      "mean": 0.16250750878326298,
+      "max": 1.0569110999931581,
+      "p95": 0.8313534999906551,
+      "over_eight_seconds": 0
+    },
+    "forensics": [
+      {
+        "pair": "fresh-mega-0-prior-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move flareblitz +1",
+            "native": "move hypervoice mega, move flareblitz +1",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-0-prior-1",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move flareblitz +1",
+            "native": "move hypervoice mega, move flareblitz +1",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-0-heldout-0",
+        "v2_win": false,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move flareblitz +1",
+            "native": "move hypervoice mega, move flareblitz +1",
+            "checkpoint": 0
+          },
+          {
+            "turn": 3,
+            "phase": "move",
+            "v2": "move expandingforce +2, move woodhammer +2",
+            "native": "move hypervoice, move woodhammer +2",
+            "checkpoint": 3
+          },
+          {
+            "turn": 4,
+            "phase": "move",
+            "v2": "move hydropump +1, move woodhammer +1",
+            "native": "move protect, move woodhammer +1",
+            "checkpoint": 5
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-0-heldout-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move flareblitz +1",
+            "native": "move hypervoice mega, move flareblitz +1",
+            "checkpoint": 0
+          },
+          {
+            "turn": 4,
+            "phase": "move",
+            "v2": "move mysticalfire +1, move highhorsepower +1",
+            "native": "switch 4, move highhorsepower +1",
+            "checkpoint": 5
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-1-prior-0",
+        "v2_win": true,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move steelroller +1 mega, move thunderbolt +2",
+            "native": "move steelroller +1 mega, move hydropump +2",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-1-prior-1",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move steelroller +1 mega, move thunderbolt +2",
+            "native": "move steelroller +1 mega, move hydropump +2",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-1-heldout-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move steelroller +1 mega, move thunderbolt +2",
+            "native": "move steelroller +1 mega, move hydropump +2",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-1-heldout-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move steelroller +1 mega, move thunderbolt +2",
+            "native": "move steelroller +1 mega, move hydropump +2",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-2-prior-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move tailwind, move mysticalfire +1 mega",
+            "native": "move protect, move mysticalfire +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-2-prior-1",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move tailwind, move mysticalfire +1 mega",
+            "native": "move protect, move mysticalfire +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-2-heldout-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move tailwind, move mysticalfire +1 mega",
+            "native": "move tailwind, move hypervoice mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-2-heldout-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move tailwind, move mysticalfire +1 mega",
+            "native": "move protect, move mysticalfire +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-3-prior-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move rockslide, move steelroller +1 mega",
+            "native": "move protect, move steelroller +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-3-prior-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move rockslide, move steelroller +1 mega",
+            "native": "move protect, move steelroller +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-3-heldout-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move rockslide, move steelroller +1 mega",
+            "native": "move protect, move steelroller +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-3-heldout-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move rockslide, move steelroller +1 mega",
+            "native": "move protect, move steelroller +1 mega",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-4-prior-0",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move energyball +2",
+            "native": "move mysticalfire +1 mega, move protect",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-4-prior-1",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move energyball +2",
+            "native": "move mysticalfire +1 mega, move protect",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-4-heldout-0",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move energyball +2",
+            "native": "move mysticalfire +1 mega, move protect",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-4-heldout-1",
+        "v2_win": false,
+        "native_win": false,
+        "changed_decisions": [
+          {
+            "turn": 1,
+            "phase": "move",
+            "v2": "move mysticalfire +1 mega, move energyball +2",
+            "native": "move mysticalfire +1 mega, move protect",
+            "checkpoint": 0
+          }
+        ]
+      },
+      {
+        "pair": "fresh-mega-5-prior-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": []
+      },
+      {
+        "pair": "fresh-mega-5-prior-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": []
+      },
+      {
+        "pair": "fresh-mega-5-heldout-0",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": []
+      },
+      {
+        "pair": "fresh-mega-5-heldout-1",
+        "v2_win": true,
+        "native_win": true,
+        "changed_decisions": []
+      }
+    ],
+    "public_context_coverage": {
+      "all": {
+        "actionable": 148,
+        "searched": 34,
+        "disagreed": 23
+      },
+      "last-own-pokemon": {
+        "actionable": 11,
+        "searched": 0,
+        "disagreed": 0
+      },
+      "low-hp-active": {
+        "actionable": 23,
+        "searched": 1,
+        "disagreed": 1
+      },
+      "mega-available": {
+        "actionable": 24,
+        "searched": 24,
+        "disagreed": 20
+      },
+      "replacement-or-other-phase": {
+        "actionable": 33,
+        "searched": 5,
+        "disagreed": 0
+      },
+      "switch-available": {
+        "actionable": 124,
+        "searched": 33,
+        "disagreed": 22
+      }
+    },
+    "opponent_mega": {
+      "commands": 48,
+      "games_with_observed_mega_form": 48,
+      "games": 48
+    },
+    "result_by_composition": {
+      "0": {
+        "pairs": 4,
+        "v2_wins": 2,
+        "native_wins": 3,
+        "native_only": 1,
+        "v2_only": 0
+      },
+      "1": {
+        "pairs": 4,
+        "v2_wins": 3,
+        "native_wins": 2,
+        "native_only": 0,
+        "v2_only": 1
+      },
+      "2": {
+        "pairs": 4,
+        "v2_wins": 3,
+        "native_wins": 3,
+        "native_only": 0,
+        "v2_only": 0
+      },
+      "3": {
+        "pairs": 4,
+        "v2_wins": 4,
+        "native_wins": 4,
+        "native_only": 0,
+        "v2_only": 0
+      },
+      "4": {
+        "pairs": 4,
+        "v2_wins": 0,
+        "native_wins": 0,
+        "native_only": 0,
+        "v2_only": 0
+      },
+      "5": {
+        "pairs": 4,
+        "v2_wins": 4,
+        "native_wins": 4,
+        "native_only": 0,
+        "v2_only": 0
+      }
+    },
+    "result_by_family": {
+      "prior": {
+        "pairs": 12,
+        "v2_wins": 7,
+        "native_wins": 6,
+        "native_only": 0,
+        "v2_only": 1
+      },
+      "heldout": {
+        "pairs": 12,
+        "v2_wins": 9,
+        "native_wins": 10,
+        "native_only": 1,
+        "v2_only": 0
+      }
+    },
+    "errors": {}
+  },
+  "witnesses": [
+    {
+      "pair": "fresh-mega-0-heldout-0",
+      "checkpoint": 0,
+      "turn": 1,
+      "recorded_opposing_reply": "move steelroller +1 mega, move hurricane +2",
+      "actions": {
+        "incumbent": {
+          "action": "move mysticalfire +1 mega, move flareblitz +1",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 19.67438897941015,
+                "terminal": 0.0,
+                "material": 4.673381721226178,
+                "position": 16.70100725818397,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 26.330625092578646,
+                "terminal": 0.0,
+                "material": 10.461413123981401,
+                "position": 17.569211968597244,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 24.069293438008888,
+                "terminal": 0.0,
+                "material": 8.495037772181604,
+                "position": 17.274255665827283,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 1036.8755813953485,
+                "terminal": 0.0,
+                "material": 1022.6744186046508,
+                "position": 11.401162790697676,
+                "speed": 2.8
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 24.61013923863145,
+                "terminal": 0.0,
+                "material": 8.965338468375194,
+                "position": 17.344800770256256,
+                "speed": -1.7
+              }
+            }
+          ]
+        },
+        "native": {
+          "action": "move hypervoice mega, move flareblitz +1",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 119.89518108698672,
+                "terminal": 0.0,
+                "material": 98.77841833651019,
+                "position": 22.816762750476546,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 109.4105002557067,
+                "terminal": 0.0,
+                "material": 89.66130457017971,
+                "position": 21.449195685526988,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 125.507120707718,
+                "terminal": 0.0,
+                "material": 103.65836583279815,
+                "position": 23.548754874919855,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 125.52794757629862,
+                "terminal": 0.0,
+                "material": 103.67647615330316,
+                "position": 23.55147142299546,
+                "speed": -1.7
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 2,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Gardevoir-Mega",
+                "Incineroar",
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Metagross-Mega",
+                "Pelipper",
+                "Tyranitar",
+                "Excadrill"
+              ],
+              "utility": {
+                "total": 112.76816448928321,
+                "terminal": 0.0,
+                "material": 92.58101259937666,
+                "position": 21.88715188990655,
+                "speed": -1.7
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "fresh-mega-0-heldout-0",
+      "checkpoint": 3,
+      "turn": 3,
+      "recorded_opposing_reply": "move ironhead +1, move hurricane +2",
+      "actions": {
+        "incumbent": {
+          "action": "move expandingforce +2, move woodhammer +2",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 1105.2222222222226,
+                "terminal": 0.0,
+                "material": 1075.8454106280196,
+                "position": 29.3768115942029,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Excadrill",
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 61.81996434937618,
+                "terminal": 0.0,
+                "material": 44.19127334728364,
+                "position": 24.628691002092538,
+                "speed": -7.0
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Excadrill",
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 54.08377896613192,
+                "terminal": 0.0,
+                "material": 37.46415562272341,
+                "position": 23.619623343408513,
+                "speed": -7.0
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Excadrill",
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 54.143196672607914,
+                "terminal": 0.0,
+                "material": 37.51582319357203,
+                "position": 23.62737347903588,
+                "speed": -7.0
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Excadrill",
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 63.109328579916735,
+                "terminal": 0.0,
+                "material": 45.312459634710194,
+                "position": 24.79686894520654,
+                "speed": -7.0
+              }
+            }
+          ]
+        },
+        "native": {
+          "action": "move hypervoice, move woodhammer +2",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 1118.0,
+                "terminal": 0.0,
+                "material": 1086.9565217391305,
+                "position": 31.043478260869563,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 1118.0,
+                "terminal": 0.0,
+                "material": 1086.9565217391305,
+                "position": 31.043478260869563,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 1116.888888888889,
+                "terminal": 0.0,
+                "material": 1085.9903381642512,
+                "position": 30.89855072463768,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 1117.4444444444443,
+                "terminal": 0.0,
+                "material": 1086.4734299516908,
+                "position": 30.971014492753625,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 3,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Rillaboom",
+                "Rotom-Wash"
+              ],
+              "enemy_living": [
+                "Tyranitar"
+              ],
+              "utility": {
+                "total": 1118.0,
+                "terminal": 0.0,
+                "material": 1086.9565217391305,
+                "position": 31.043478260869563,
+                "speed": 0.0
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "fresh-mega-0-heldout-0",
+      "checkpoint": 5,
+      "turn": 4,
+      "recorded_opposing_reply": "move crunch +2, pass",
+      "actions": {
+        "incumbent": {
+          "action": "move hydropump +1, move woodhammer +1",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            }
+          ]
+        },
+        "native": {
+          "action": "move protect, move woodhammer +1",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 4,
+              "ended": true,
+              "winner": "P1",
+              "own_living": [
+                "Rotom-Wash",
+                "Rillaboom"
+              ],
+              "enemy_living": [],
+              "utility": {
+                "total": 1000000.0,
+                "terminal": 1000000.0,
+                "material": 0.0,
+                "position": 0.0,
+                "speed": 0.0
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "pair": "fresh-mega-1-prior-0",
+      "checkpoint": 0,
+      "turn": 1,
+      "recorded_opposing_reply": "move mysticalfire +1 mega, move psychic +2",
+      "actions": {
+        "incumbent": {
+          "action": "move steelroller +1 mega, move thunderbolt +2",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1165.303394279105,
+                "terminal": 0.0,
+                "material": 1128.9594732861783,
+                "position": 16.343920992926734,
+                "speed": 20.0
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1138.584598959029,
+                "terminal": 0.0,
+                "material": 1111.1170425730688,
+                "position": 16.667556385960232,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1143.7618755282715,
+                "terminal": 0.0,
+                "material": 1115.619022198497,
+                "position": 17.342853329774456,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1120.3362338182303,
+                "terminal": 0.0,
+                "material": 1095.2488989723743,
+                "position": 14.287334845856131,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1141.3011343920994,
+                "terminal": 0.0,
+                "material": 1113.4792472974777,
+                "position": 17.021887094621647,
+                "speed": 10.8
+              }
+            }
+          ]
+        },
+        "native": {
+          "action": "move steelroller +1 mega, move hydropump +2",
+          "outcomes": [
+            {
+              "rng": "recorded-stream",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1143.132621557899,
+                "terminal": 0.0,
+                "material": 1115.0718448329558,
+                "position": 17.260776724943284,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-0",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1152.9960496463368,
+                "terminal": 0.0,
+                "material": 1123.6487388229016,
+                "position": 18.547310823435204,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-1",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1152.7402553494376,
+                "terminal": 0.0,
+                "material": 1123.426308999511,
+                "position": 18.513946349926595,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-2",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1143.408879398549,
+                "terminal": 0.0,
+                "material": 1115.3120690422165,
+                "position": 17.29681035633258,
+                "speed": 10.8
+              }
+            },
+            {
+              "rng": "coupled-3",
+              "turn": 1,
+              "ended": false,
+              "winner": null,
+              "own_living": [
+                "Metagross-Mega",
+                "Rotom-Wash",
+                "Dragonite",
+                "Venusaur"
+              ],
+              "enemy_living": [
+                "Indeedee-F",
+                "Garchomp",
+                "Rillaboom"
+              ],
+              "utility": {
+                "total": 1151.696614618088,
+                "terminal": 0.0,
+                "material": 1122.5187953200766,
+                "position": 18.377819298011477,
+                "speed": 10.8
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "audit": {
+    "opponent_fallback_reasons": {
+      "ValueError": 3
+    },
+    "exactly_replayed_complete_games": 48
+  },
+  "witness_scope": "Posthoc actual-state one-resolution branches against recorded reply, recorded RNG stream plus four coupled labels. No continuation or counterplay coverage: nonterminal utility differences are not decision-quality verdicts."
+}
