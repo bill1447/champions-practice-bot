@@ -2077,16 +2077,43 @@ function materializePresentHypotheses(request) {
   if (weatherPlan != null) {
     const abilities = {raindance: 'drizzle', sandstorm: 'sandstream'};
     const sourced = weatherPlan.source_species != null;
-    const keys = sourced ? 'residual_turns,source_ability,source_side,source_species,weather' : 'residual_turns,weather';
+      const openingSources = weatherPlan.opening_sources;
+      const opening = openingSources != null;
+      const keys = sourced ? 'residual_turns,source_ability,source_side,source_species,weather' :
+        opening ? 'opening_sources,residual_turns,weather' : 'residual_turns,weather';
     if (Object.keys(weatherPlan).sort().join(',') !== keys ||
         weatherPlan.weather !== view.field.weather || !abilities[weatherPlan.weather] ||
         (sourced && abilities[weatherPlan.weather] !== weatherPlan.source_ability) ||
-        (!sourced && (original.field.weather !== weatherPlan.weather ||
+          (!sourced && ((!opening && original.field.weather !== weatherPlan.weather) ||
           weatherPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch))) ||
         !Number.isInteger(weatherPlan.residual_turns) || weatherPlan.residual_turns < 0 || weatherPlan.residual_turns > 7) {
       return why('unsupported-public-weather-plan');
     }
-    weatherSource = sourced ? publicSource(weatherPlan.source_side, weatherPlan.source_species) : original.field.weatherState.source;
+      if (opening) {
+        if (!Array.isArray(openingSources) || openingSources.length !== 4 ||
+            openingSources.some(entry => !entry || Object.keys(entry).sort().join(',') !== 'source_side,source_species' ||
+              !['player', 'opponent'].includes(entry.source_side) || typeof entry.source_species !== 'string') ||
+            ['player', 'opponent'].some(side => openingSources.filter(entry => entry.source_side === side).length !== 2)) {
+          return why('unsupported-opening-weather-source');
+        }
+        const members = openingSources.map(entry => publicSource(entry.source_side, entry.source_species));
+        if (members.some(mon => !mon) || new Set(members).size !== 4) return why('unsupported-opening-weather-source');
+        if (original.field.weather === weatherPlan.weather && members.includes(original.field.weatherState.source)) {
+          // Preserve the pre-existing native opening certificate when it fits.
+          weatherSource = original.field.weatherState.source;
+        } else {
+          // A legacy delta omits activation order. Do not guess between
+          // multiple setters or an opening Trace that could copy weather.
+          const setters = members.filter(mon => mon.ability === abilities[weatherPlan.weather] &&
+            asId(mon.set.ability) === abilities[weatherPlan.weather]);
+          if (members.some(mon => asId(mon.set.ability) === 'trace') || setters.length !== 1) {
+            return why('unsupported-opening-weather-source');
+          }
+          weatherSource = setters[0];
+        }
+      } else {
+        weatherSource = sourced ? publicSource(weatherPlan.source_side, weatherPlan.source_species) : original.field.weatherState.source;
+      }
     if (!weatherSource || weatherSource.ability !== abilities[weatherPlan.weather]) return why('unsupported-weather-source');
     weatherSourceItem = weatherSource.item;
   }
@@ -2801,9 +2828,21 @@ function materializePresentHypotheses(request) {
       // other. Empty targets exclude Pokemon HP/status/volatile residuals.
       const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0, weatherPlan?.residual_turns || 0);
       for (let step = 0; step <= age; step++) {
-        if (weatherPlan && step === age - weatherPlan.residual_turns &&
-            !original.field.setWeather(weatherPlan.weather, weatherSource, original.dex.abilities.get(weatherPlan.source_ability || weatherSource.ability))) {
-          return why('unsupported-native-weather-start');
+        if (weatherPlan && step === age - weatherPlan.residual_turns) {
+          // The certified ability activation occurred while this source was
+          // active. Native hasItem() ignores a currently benched/fainted
+          // setter, so evaluate that callback in its public activation context,
+          // restoring the present flag immediately. Never assign a duration.
+          const presentActive = weatherSource.isActive;
+          try {
+            weatherSource.isActive = true;
+            if (!original.field.setWeather(weatherPlan.weather, weatherSource,
+                original.dex.abilities.get(weatherPlan.source_ability || weatherSource.ability))) {
+              return why('unsupported-native-weather-start');
+            }
+          } finally {
+            weatherSource.isActive = presentActive;
+          }
         }
         if (terrainPlan && step === age - terrainPlan.residual_turns &&
             !original.field.setTerrain(terrainPlan.opening_terrain, terrainSource,

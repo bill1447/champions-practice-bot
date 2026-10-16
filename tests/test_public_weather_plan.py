@@ -47,3 +47,24 @@ def test_partial_history_or_unknown_weather_cannot_guess_timer():
     assert public_weather_plan(view, ledger) is None
     view, ledger = fixture([["upkeep"]], weather="sunnyday")
     assert public_weather_plan(view, ledger) is None
+
+
+def test_opening_candidates_are_public_identities_not_an_inferred_setter():
+    view, ledger = fixture([['upkeep']])
+    initial = json.loads(ledger.field_snapshots[0][1])
+    initial['active_species']['player'] = ['Rotom-Wash', 'Metagross']
+    ledger.field_snapshots = ((1, json.dumps(initial)), ledger.field_snapshots[1])
+    plan = public_weather_plan(view, ledger)
+    assert plan['opening_sources'] == [
+        {'source_side': 'player', 'source_species': 'Rotom-Wash'},
+        {'source_side': 'player', 'source_species': 'Metagross'},
+        {'source_side': 'opponent', 'source_species': 'Pelipper'},
+        {'source_side': 'opponent', 'source_species': 'Dragonite'}]
+    assert 'source_species' not in plan
+    # A first observation after a turn-one action is not an opening witness.
+    initial['public_event_delta'] = {'turn': 1, 'events': [['move', 'p1a', 'protect']], 'unsupported': []}
+    ledger.field_snapshots = ((1, json.dumps(initial)), ledger.field_snapshots[1])
+    partial = public_weather_plan(view, ledger)
+    assert partial is None or 'opening_sources' not in partial
+    view, ledger = fixture([['upkeep'], ['upkeep']])
+    assert public_weather_plan(view, ledger) is None

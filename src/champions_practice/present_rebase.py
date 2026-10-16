@@ -262,6 +262,12 @@ def _native_field_plan_rejection(state, view, ledger):
             return 'unsupported-persistent:field-source-mismatch'
         if plan.get('source_side') and int(effect['source'][10]) != (2 if plan['source_side'] == 'player' else 1):
             return 'unsupported-persistent:field-source-mismatch'
+        if plan.get('opening_sources') and not any(
+            _sid(entry['source_species']) == _sid(mon['set']['species']) and
+            int(effect['source'][10]) == (2 if entry['source_side'] == 'player' else 1)
+            for entry in plan['opening_sources']
+        ):
+            return 'unsupported-persistent:field-source-mismatch'
         extender = 'terrainextender' if terrain else {'raindance': 'damprock', 'sandstorm': 'smoothrock'}.get(plan.get('weather'))
         duration = (8 if extender and mon['item'] == extender else 5) - plan['residual_turns']
         if type(effect.get('duration')) is not int or effect['duration'] != duration:

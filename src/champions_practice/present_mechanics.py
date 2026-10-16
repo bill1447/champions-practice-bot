@@ -62,7 +62,20 @@ def public_weather_plan(view: dict, ledger=None) -> dict | None:
         observed = [t for t, e, _ in ordered if e == ['upkeep']]
         if set(observed) != expected or len(observed) != len(expected) or age > 7:
             return None
-        return {'weather': weather, 'residual_turns': age}
+        plan = {'weather': weather, 'residual_turns': age}
+        # A fresh battle may lead with today's actives rather than the public
+        # opening pair. Preserve the opening identities, not a guessed setter:
+        # native mechanics must certify the source within each proposed world.
+        if (snapshots and snapshots[0][0] == 1 and snapshots[0][1].get('phase') == 'move'
+                and snapshots[0][1].get('public_event_delta', {}).get('turn') is None
+                and not snapshots[0][1].get('public_event_delta', {}).get('events')):
+            initial = snapshots[0][1].get('active_species', {})
+            parties = [initial.get(side, []) for side in ('player', 'opponent')]
+            if all(len(party) == 2 and all(isinstance(s, str) and s for s in party)
+                   and len(set(party)) == 2 for party in parties):
+                plan['opening_sources'] = [{'source_side': side, 'source_species': species}
+                    for side, party in zip(('player', 'opponent'), parties, strict=True) for species in party]
+        return plan
     if age > 7:
         return None
     turn, source, species = start
