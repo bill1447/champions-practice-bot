@@ -151,3 +151,20 @@ def test_every_sampled_response_is_extended(catalog):
         'sodium,'+'11111111'*8, 'sodium,'+'22222222'*8)))
     # Two first-turn futures and two continuation futures from each.
     assert result.status == 'complete' and result.branch_count == 6
+
+
+def test_root_exact_tie_uses_other_responses_without_changing_worst_case(catalog):
+    class Responses(Worker):
+        def legal_choices(self, *, state, side):
+            return ['protect', 'attack'] if side == 'p1' else ['block', 'open']
+
+        def branch_many(self, *, state, branches):
+            return [{'state': {'turn': 2}, 'summary': summary(2, foe=1 if
+                     b['p1_choice'] == 'attack' and b['p2_choice'] == 'open' else 2)}
+                    for b in branches]
+
+    result = run(Responses(None, None), catalog, [{'turn': 1}], ['protect', 'attack'], horizon_turns=1)
+    assert result.status == 'complete' and result.action == 'attack'
+    assert result.branch_count == 4
+    assert len({r['worst_world_utility'] for r in result.ranking}) == 1
+    assert len({r['weighted_utility'] for r in result.ranking}) == 1
