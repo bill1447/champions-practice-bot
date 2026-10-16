@@ -169,6 +169,9 @@ CURRENT_FACT_ITEMS = frozenset(
         "focussash",
         "dragonfang",
         "mysticwater",
+        # Pinned native onBasePower Fire multiplier; no counters or lifecycle.
+        # Transfers/removals and unsupported moves still require their gates.
+        "charcoal",
         "gardevoirite",
         "metagrossite",
         "psychicseed",
