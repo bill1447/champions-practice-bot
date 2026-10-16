@@ -28,7 +28,7 @@ def audit_native(report, root):
                 ledger = PublicConstraintLedger.from_public_view(view) if ledger is None else ledger.advance(view)
                 if trace["mode"] != "forced-wait" and view["turn"] >= 2:
                     priors = public_priors() if report["fixture_id"] == FIXTURE_ID else demo_public_priors()
-                    issue = unsupported_present_mechanics(view, ledger) or current_capability_issue(view, priors)
+                    issue = unsupported_present_mechanics(view, ledger) or current_capability_issue(view, priors, ledger)
                     result = None
                     if issue is None:
                         result = build_present_rebase(worker, ledger=ledger, current_view=view,
