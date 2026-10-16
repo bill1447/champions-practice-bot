@@ -1,0 +1,427 @@
+{
+  "archive_sha256": "62c7470eb82b8521838971a992ef23d031ba548af987c4b7a2193009d620142c",
+  "manifest_sha256": "69a8cf699e0b9aaa6de993e846806f3453a2201ea920885b8dac15509cd37b5b",
+  "cases": [
+    {
+      "id": "speed-control-warmup-2",
+      "cells": [
+        {
+          "role": "selected",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 8,
+          "trajectories_with_native_search": 0,
+          "admitted_decision_occurrences": 0,
+          "completed_search_occurrences": 0,
+          "changed_action_occurrences": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "selected",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 18,
+          "admitted_decision_occurrences": 18,
+          "completed_search_occurrences": 18,
+          "changed_action_occurrences": 18,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "admitted_decision_occurrences": 0,
+          "completed_search_occurrences": 0,
+          "changed_action_occurrences": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 20,
+          "admitted_decision_occurrences": 20,
+          "completed_search_occurrences": 20,
+          "changed_action_occurrences": 20,
+          "strict_opposition_matched": 17
+        }
+      ],
+      "native_decision_occurrences": {
+        "nonactionable": 76,
+        "search": 38,
+        "fallback": 10
+      },
+      "native_unique_computations": {
+        "nonactionable": 57,
+        "search": 20,
+        "fallback": 6
+      },
+      "fallback_occurrence_reasons": {
+        "unsupported-protection-residual-effects": 8,
+        "unsupported-public-trace-state": 2
+      },
+      "unique_fallback_reasons": {
+        "unsupported-protection-residual-effects": 4,
+        "unsupported-public-trace-state": 2
+      },
+      "v2_historical_outcome_parity": {
+        "True": 48
+      },
+      "root_floor_attribution": {
+        "move woodhammer +2, move psychicfangs +1": {
+          "worst": -2147.728828828829,
+          "equal_reply_mean": -1507.7839431788477,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "leaf_utility": -2147.728828828829,
+              "leaf_breakdown": {
+                "total": -2147.728828828829,
+                "terminal": 0.0,
+                "material": -2148.5468076772427,
+                "position": 10.71797884841363,
+                "speed": -9.9,
+                "living": -2000.0,
+                "hp": -148.54680767724247,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -2135.6288288288292,
+                "terminal": 0.0,
+                "material": -2148.5468076772427,
+                "position": 25.71797884841363,
+                "speed": -12.8
+              }
+            }
+          ]
+        },
+        "move protect, move steelroller +1": {
+          "worst": -3242.862162162162,
+          "equal_reply_mean": -2233.6999139266654,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "leaf_utility": -3242.862162162162,
+              "leaf_breakdown": {
+                "total": -3242.862162162162,
+                "terminal": 0.0,
+                "material": -3234.054054054054,
+                "position": 0.8918918918918877,
+                "speed": -9.7,
+                "living": -3000.0,
+                "hp": -234.05405405405406,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -3242.862162162162,
+                "terminal": 0.0,
+                "material": -3234.054054054054,
+                "position": 0.8918918918918877,
+                "speed": -9.7
+              }
+            }
+          ]
+        }
+      },
+      "public_native_effect_identified": true
+    },
+    {
+      "id": "trade-and-spread-warmup-2",
+      "cells": [
+        {
+          "role": "selected",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 9,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "admitted_decision_occurrences": 0,
+          "completed_search_occurrences": 0,
+          "changed_action_occurrences": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "selected",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 16,
+          "second_losses": 0,
+          "trajectories_with_native_search": 24,
+          "admitted_decision_occurrences": 24,
+          "completed_search_occurrences": 24,
+          "changed_action_occurrences": 16,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 13,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "admitted_decision_occurrences": 0,
+          "completed_search_occurrences": 0,
+          "changed_action_occurrences": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 13,
+          "second_losses": 0,
+          "trajectories_with_native_search": 24,
+          "admitted_decision_occurrences": 27,
+          "completed_search_occurrences": 27,
+          "changed_action_occurrences": 11,
+          "strict_opposition_matched": 24
+        }
+      ],
+      "native_decision_occurrences": {
+        "nonactionable": 48,
+        "search": 51
+      },
+      "native_unique_computations": {
+        "nonactionable": 27,
+        "search": 30
+      },
+      "fallback_occurrence_reasons": {},
+      "unique_fallback_reasons": {},
+      "v2_historical_outcome_parity": {
+        "True": 48
+      },
+      "root_floor_attribution": {
+        "move earthquake, move protect mega": {
+          "worst": 1071.6562058874158,
+          "equal_reply_mean": 1425.891662363,
+          "controlling_responses": [
+            {
+              "reply": "move psychicfangs +1, move protect",
+              "leaf_utility": 1071.6562058874158,
+              "leaf_breakdown": {
+                "total": 1071.6562058874158,
+                "terminal": 0.0,
+                "material": 1067.4401790325355,
+                "position": -4.88397314511964,
+                "speed": 9.1,
+                "living": 1000.0,
+                "hp": 67.44017903253572,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": 1083.056205887416,
+                "terminal": 0.0,
+                "material": 1067.4401790325355,
+                "position": 10.11602685488036,
+                "speed": 5.5
+              }
+            }
+          ]
+        },
+        "move earthquake, move expandingforce +2 mega": {
+          "worst": 994.2072262955791,
+          "equal_reply_mean": 1348.9642247212767,
+          "controlling_responses": [
+            {
+              "reply": "move psychicfangs +1, move protect",
+              "leaf_utility": 994.2072262955791,
+              "leaf_breakdown": {
+                "total": 994.2072262955791,
+                "terminal": 0.0,
+                "material": 1000.0932402570252,
+                "position": -14.986013961446172,
+                "speed": 9.1,
+                "living": 1000.0,
+                "hp": 0.09324025702551353,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": 1005.607226295579,
+                "terminal": 0.0,
+                "material": 1000.0932402570252,
+                "position": 0.01398603855382774,
+                "speed": 5.5
+              }
+            }
+          ]
+        }
+      },
+      "public_native_effect_identified": true
+    },
+    {
+      "id": "alternative-attacker-warmup-0",
+      "cells": [
+        {
+          "role": "selected",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "admitted_decision_occurrences": 0,
+          "completed_search_occurrences": 0,
+          "changed_action_occurrences": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "selected",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 0,
+          "second_losses": 0,
+          "trajectories_with_native_search": 13,
+          "admitted_decision_occurrences": 18,
+          "completed_search_occurrences": 18,
+          "changed_action_occurrences": 5,
+          "strict_opposition_matched": 23
+        },
+        {
+          "role": "alternative",
+          "policy": "v2",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 2,
+          "second_losses": 0,
+          "trajectories_with_native_search": 0,
+          "admitted_decision_occurrences": 0,
+          "completed_search_occurrences": 0,
+          "changed_action_occurrences": 0,
+          "strict_opposition_matched": 24
+        },
+        {
+          "role": "alternative",
+          "policy": "native",
+          "samples": 24,
+          "first_wins": 0,
+          "first_losses": 0,
+          "second_wins": 3,
+          "second_losses": 0,
+          "trajectories_with_native_search": 16,
+          "admitted_decision_occurrences": 17,
+          "completed_search_occurrences": 17,
+          "changed_action_occurrences": 14,
+          "strict_opposition_matched": 19
+        }
+      ],
+      "native_decision_occurrences": {
+        "search": 35,
+        "nonactionable": 34,
+        "fallback": 52
+      },
+      "native_unique_computations": {
+        "search": 30,
+        "nonactionable": 33,
+        "fallback": 47
+      },
+      "fallback_occurrence_reasons": {
+        "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 27,
+        "unsupported-persistent:move:stompingtantrum": 24,
+        "unsupported-persistent:opponent-capabilities": 1
+      },
+      "unique_fallback_reasons": {
+        "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 25,
+        "unsupported-persistent:move:stompingtantrum": 21,
+        "unsupported-persistent:opponent-capabilities": 1
+      },
+      "v2_historical_outcome_parity": {
+        "True": 48
+      },
+      "root_floor_attribution": {
+        "move mysticalfire +1 mega, move protect": {
+          "worst": -15.3,
+          "equal_reply_mean": 56.04046345811045,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move highhorsepower +2",
+              "leaf_utility": -15.3,
+              "leaf_breakdown": {
+                "total": -15.3,
+                "terminal": 0.0,
+                "material": 0.0,
+                "position": -18.0,
+                "speed": 2.7,
+                "living": 0.0,
+                "hp": 0.0,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -15.3,
+                "terminal": 0.0,
+                "material": 0.0,
+                "position": -18.0,
+                "speed": 2.7
+              }
+            }
+          ]
+        },
+        "move hypervoice mega, move steelroller +2": {
+          "worst": -1070.2552366401105,
+          "equal_reply_mean": -346.64408066256806,
+          "controlling_responses": [
+            {
+              "reply": "move highhorsepower +2, move highhorsepower +2",
+              "leaf_utility": -1070.2552366401105,
+              "leaf_breakdown": {
+                "total": -1070.2552366401105,
+                "terminal": 0.0,
+                "material": -1060.3958579479222,
+                "position": -12.059378692188332,
+                "speed": 2.2,
+                "living": -1000.0,
+                "hp": -60.39585794792225,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -1081.9552366401106,
+                "terminal": 0.0,
+                "material": -1060.3958579479222,
+                "position": -27.059378692188332,
+                "speed": 5.5
+              }
+            }
+          ]
+        }
+      },
+      "public_native_effect_identified": true
+    }
+  ],
+  "limitations": "Retained diagnostics, not game win probabilities. Full-preview V2 replay may differ from earlier exact-world probe. Nonterminal survival is not a proven win route.",
+  "summary": {
+    "cases": 3,
+    "trajectories": 288,
+    "successful_native_search_occurrences": 124,
+    "native_fallback_occurrences": 62,
+    "unique_native_fallback_computations": 53,
+    "forced_wait_occurrences": 158,
+    "interpretation": "Native follow-up evidence exists only in cells with completed searches; report fallbacks and strict opposition matches separately."
+  }
+}

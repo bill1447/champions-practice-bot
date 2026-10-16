@@ -12,6 +12,7 @@ from time import perf_counter
 
 from .agent_v2.policy import observe, rank_action
 from .belief_search import ExactBeliefWorldState
+from .consequence_ties import order_exact_ties
 from .exact_search import score_exact_summary_breakdown
 
 
@@ -312,6 +313,7 @@ def evaluate_consequences(worker, *, worlds: tuple[ExactBeliefWorldState, ...], 
                 'weighted_utility': sum(v['weight']*v['leaf_utility'] for v in outcomes)/total_weight,
                 'worlds': outcomes})
         ranking.sort(key=lambda r: (-r['worst_world_utility'], -r['weighted_utility'], own.index(r['action'])))
+        ranking = order_exact_ties(ranking)
         check()
         ranking[0]['coverage'] = {'root_legal': len(authoritative_actions), 'root_selected': len(own),
             **menu_counts, 'continuation_actions': dict(continuations), 'goal_turn': goal, 'horizon_turns': horizon_turns}

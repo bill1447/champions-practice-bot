@@ -5,7 +5,7 @@ description = "Offline Pokemon Champions doubles practice opponent"
 requires-python = ">=3.12,<3.13"
 dependencies = [
     "numpy>=1.26,<3",
-    "poke-env>=0.15",
+    "poke-env==0.16.1",
 ]
 
 [project.optional-dependencies]

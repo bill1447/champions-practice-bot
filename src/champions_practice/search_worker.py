@@ -532,6 +532,8 @@ class HypotheticalSearchWorker:
         opponent_mega_plan: list[dict[str, Any]] | None = None,
         active_tenure_plan: list[dict[str, Any]] | None = None,
         opponent_pp_plan: list[dict[str, Any]] | None = None,
+        inventory_plan: list[dict[str, Any]] | None = None,
+        move_result_plan: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Bounded public-only pinned-native current-state hypothesis builder."""
         return self.__worker.materialize_present_hypotheses(
@@ -544,6 +546,8 @@ class HypotheticalSearchWorker:
             opponent_mega_plan=opponent_mega_plan,
             active_tenure_plan=active_tenure_plan,
             opponent_pp_plan=opponent_pp_plan,
+            **({"inventory_plan": inventory_plan} if inventory_plan is not None else {}),
+            **({"move_result_plan": move_result_plan} if move_result_plan is not None else {}),
         )
 
     def enumerate_finite_transition(
@@ -1402,6 +1406,8 @@ class ShowdownSearchWorker:
         opponent_mega_plan: list[dict[str, Any]] | None = None,
         active_tenure_plan: list[dict[str, Any]] | None = None,
         opponent_pp_plan: list[dict[str, Any]] | None = None,
+        inventory_plan: list[dict[str, Any]] | None = None,
+        move_result_plan: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         """Pinned-native positive present hypotheses; no live-session access.
 
@@ -1425,6 +1431,8 @@ class ShowdownSearchWorker:
             opponent_mega_plan=opponent_mega_plan,
             active_tenure_plan=active_tenure_plan,
             opponent_pp_plan=opponent_pp_plan,
+            **({"inventory_plan": inventory_plan} if inventory_plan is not None else {}),
+            **({"move_result_plan": move_result_plan} if move_result_plan is not None else {}),
         )
         if not isinstance(result, dict) or not isinstance(result.get("outcomes"), list):
             raise RuntimeError("pinned Showdown returned invalid present hypotheses")

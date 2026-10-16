@@ -2789,7 +2789,7 @@ class BeliefDecisionEngine:
             return False
         from champions_practice.persistent_support import current_capability_issue
         mechanics_issue = unsupported_present_mechanics(view, ledger) or current_capability_issue(
-            view, self.opponent_priors,
+            view, self.opponent_priors, ledger,
         )
         if mechanics_issue is not None:
             # Native projection equality cannot certify latent durations or

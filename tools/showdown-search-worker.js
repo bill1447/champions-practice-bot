@@ -2077,16 +2077,43 @@ function materializePresentHypotheses(request) {
   if (weatherPlan != null) {
     const abilities = {raindance: 'drizzle', sandstorm: 'sandstream'};
     const sourced = weatherPlan.source_species != null;
-    const keys = sourced ? 'residual_turns,source_ability,source_side,source_species,weather' : 'residual_turns,weather';
+      const openingSources = weatherPlan.opening_sources;
+      const opening = openingSources != null;
+      const keys = sourced ? 'residual_turns,source_ability,source_side,source_species,weather' :
+        opening ? 'opening_sources,residual_turns,weather' : 'residual_turns,weather';
     if (Object.keys(weatherPlan).sort().join(',') !== keys ||
         weatherPlan.weather !== view.field.weather || !abilities[weatherPlan.weather] ||
         (sourced && abilities[weatherPlan.weather] !== weatherPlan.source_ability) ||
-        (!sourced && (original.field.weather !== weatherPlan.weather ||
+          (!sourced && ((!opening && original.field.weather !== weatherPlan.weather) ||
           weatherPlan.residual_turns !== view.turn - 1 + Number(postResidualSwitch))) ||
         !Number.isInteger(weatherPlan.residual_turns) || weatherPlan.residual_turns < 0 || weatherPlan.residual_turns > 7) {
       return why('unsupported-public-weather-plan');
     }
-    weatherSource = sourced ? publicSource(weatherPlan.source_side, weatherPlan.source_species) : original.field.weatherState.source;
+      if (opening) {
+        if (!Array.isArray(openingSources) || openingSources.length !== 4 ||
+            openingSources.some(entry => !entry || Object.keys(entry).sort().join(',') !== 'source_side,source_species' ||
+              !['player', 'opponent'].includes(entry.source_side) || typeof entry.source_species !== 'string') ||
+            ['player', 'opponent'].some(side => openingSources.filter(entry => entry.source_side === side).length !== 2)) {
+          return why('unsupported-opening-weather-source');
+        }
+        const members = openingSources.map(entry => publicSource(entry.source_side, entry.source_species));
+        if (members.some(mon => !mon) || new Set(members).size !== 4) return why('unsupported-opening-weather-source');
+        if (original.field.weather === weatherPlan.weather && members.includes(original.field.weatherState.source)) {
+          // Preserve the pre-existing native opening certificate when it fits.
+          weatherSource = original.field.weatherState.source;
+        } else {
+          // A legacy delta omits activation order. Do not guess between
+          // multiple setters or an opening Trace that could copy weather.
+          const setters = members.filter(mon => mon.ability === abilities[weatherPlan.weather] &&
+            asId(mon.set.ability) === abilities[weatherPlan.weather]);
+          if (members.some(mon => asId(mon.set.ability) === 'trace') || setters.length !== 1) {
+            return why('unsupported-opening-weather-source');
+          }
+          weatherSource = setters[0];
+        }
+      } else {
+        weatherSource = sourced ? publicSource(weatherPlan.source_side, weatherPlan.source_species) : original.field.weatherState.source;
+      }
     if (!weatherSource || weatherSource.ability !== abilities[weatherPlan.weather]) return why('unsupported-weather-source');
     weatherSourceItem = weatherSource.item;
   }
@@ -2320,6 +2347,67 @@ function materializePresentHypotheses(request) {
       if (mon && !mon.isStarted) original.actions.runSwitch(mon);
     }
 
+    const inventoryPlan = request.inventory_plan ?? [];
+    if (!Array.isArray(inventoryPlan) || inventoryPlan.length > 4) return why('unsupported-inventory-plan');
+    const inventoryTargets = [];
+    const inventorySeen = new Set();
+    for (const entry of inventoryPlan) {
+      const mon = find(foe, entry.species);
+      if (Object.keys(entry).sort().join(',') !== 'ate_berry,item,species,used_this_turn' || !mon ||
+          inventorySeen.has(mon) || typeof entry.used_this_turn !== 'boolean' ||
+          (entry.used_this_turn && !postResidualSwitch) ||
+          !['sitrusberry', 'shucaberry', 'colburberry', 'focussash'].includes(entry.item) ||
+          entry.ate_berry !== (entry.item !== 'focussash') ||
+          asId(mon.set.item) !== entry.item || mon.item !== entry.item || mon.lastItem ||
+          mon.ateBerry || mon.usedItemThisTurn ||
+          !['intimidate', 'grassysurge', 'psychicsurge', 'drizzle', 'levitate', 'innerfocus',
+            'clearbody', 'sandrush', 'swiftswim', 'chlorophyll', 'roughskin', 'stamina'].includes(mon.ability)) {
+        return why('unsupported-inventory-source');
+      }
+      inventorySeen.add(mon);
+      inventoryTargets.push({entry, mon});
+    }
+    let inventoryFailure = 'unsupported-native-inventory-consumption';
+    function consumeInventory({entry, mon}) {
+      const wasActive = mon.isActive;
+      const displaced = foe.active[0];
+      if (!wasActive) {
+        if (entry.used_this_turn || original.actions.switchIn(mon, 0) !== true) {
+          inventoryFailure += ':inactive-or-switch';
+          return false;
+        }
+        original.actions.runSwitch(mon);
+        original.queue.clear();
+      }
+      // Execute pinned native consumption APIs, including Eat/AfterUseItem,
+      // lastItem, ateBerry, usedItemThisTurn and item effect-state cleanup.
+      // Temporary HP and switch effects are restored and checked later.
+      if (entry.item === 'sitrusberry') mon.sethp(Math.max(1, Math.floor(mon.maxhp / 2)));
+      const consumed = entry.ate_berry ? mon.eatItem() : mon.useItem();
+      if (!consumed) {
+        inventoryFailure += ':native-use-refused';
+        return false;
+      }
+      if (mon.item || mon.lastItem !== entry.item ||
+          mon.ateBerry !== entry.ate_berry || !mon.usedItemThisTurn) {
+        inventoryFailure += ':flags';
+        return false;
+      }
+      if (!wasActive) {
+        if (original.actions.switchIn(displaced, 0) !== true) return false;
+        original.actions.runSwitch(displaced);
+        original.queue.clear();
+      }
+      return true;
+    }
+    const oldConsumptions = inventoryTargets.filter(target => !target.entry.used_this_turn);
+    for (const target of oldConsumptions) {
+      if (!consumeInventory(target)) return why(inventoryFailure);
+    }
+    // Native endTurn resets usedItemThisTurn. Do this before reconstructing
+    // exact active tenure, PP, protection, fields, HP and requests.
+    if (oldConsumptions.length) original.endTurn();
+
     if (request.active_tenure_plan != null) {
       // These are PUBLIC lifecycle counts. Re-establish them using pinned
       // switchIn, endTurn and runMove; never assign native counters. Splash
@@ -2330,6 +2418,22 @@ function materializePresentHypotheses(request) {
       }
       const seen = new Set();
       const targets = [];
+      const resultEntries = new Map();
+      if (request.move_result_plan != null) {
+        if (view.phase !== 'move' || !Array.isArray(request.move_result_plan) || request.move_result_plan.length > 4) {
+          return why('unsupported-public-move-result-plan');
+        }
+        for (const entry of request.move_result_plan) {
+          const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
+          const mon = side?.active[entry.slot];
+          const key = `${entry.side}:${entry.slot}`;
+          if (Object.keys(entry).sort().join(',') !== 'result,side,slot,species' ||
+              !Number.isInteger(entry.slot) || entry.slot < 0 || entry.slot > 1 || !mon || resultEntries.has(key) ||
+              ![asId(mon.set.species), asId(mon.species.name)].includes(asId(entry.species)) ||
+              !['undefined', 'true', 'false', 'null'].includes(entry.result)) return why('unsupported-public-move-result-plan');
+          resultEntries.set(key, entry.result);
+        }
+      }
       for (const entry of plan) {
         const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
         const mon = side?.active[entry.slot];
@@ -2342,7 +2446,12 @@ function materializePresentHypotheses(request) {
           return why('unsupported-active-tenure-plan');
         }
         seen.add(key);
-        targets.push({entry, mon, side});
+        const result = mon.set.moves.some(move => asId(move) === 'stompingtantrum') ? resultEntries.get(key) : undefined;
+        if (mon.set.moves.some(move => asId(move) === 'stompingtantrum') &&
+            (!result || entry.active_turns < 1 || (result === 'undefined' && entry.active_turns === 1 && entry.move_actions > 0))) {
+          return why('unsupported-public-last-move-result');
+        }
+        targets.push({entry, mon, side, result});
       }
       const liveCount = [...view.player.active_details, ...view.opponent.active]
         .filter(mon => mon && !mon.fainted).length;
@@ -2370,11 +2479,40 @@ function materializePresentHypotheses(request) {
             return why('unsupported-native-active-tenure-reset');
           }
         }
+        if (step === maxAge - 1) {
+          for (const {mon, result} of targets) {
+            // Native useMove establishes its result; native endTurn below
+            // transfers it to moveLastTurnResult and clears the current one.
+            // These are inert setter witnesses, NOT invented past commands.
+            // useMove (rather than runMove) does not alter activeMoveActions.
+            if (!result || result === 'undefined') continue;
+            if (result === 'true') {
+              original.actions.useMove('splash', mon);
+            } else if (result === 'false') {
+              original.field.clearTerrain();
+              original.actions.useMove('steelroller', mon);
+            } else {
+              const target = original.getAllActive().find(other => other !== mon && other.hp > 0 && !other.volatiles.protect);
+              if (!target || !target.addVolatile('protect')) return why('unsupported-native-null-move-result');
+              try {
+                original.actions.useMove('watergun', mon, {target});
+              } finally {
+                target.removeVolatile('protect');
+              }
+            }
+            const expected = result === 'null' ? null : result === 'true';
+            if (mon.moveThisTurnResult !== expected) return why('unsupported-native-move-result');
+          }
+        }
         if (step < maxAge) original.endTurn();
       }
-      for (const {entry, mon} of targets) {
+      for (const {entry, mon, result} of targets) {
         if (mon.activeTurns !== entry.active_turns || mon.activeMoveActions !== entry.move_actions) {
           return why('unsupported-native-active-tenure');
+        }
+        if (result && (mon.moveLastTurnResult !== (result === 'undefined' ? undefined :
+            result === 'null' ? null : result === 'true') || mon.moveThisTurnResult !== undefined)) {
+          return why('unsupported-native-last-move-result');
         }
       }
     }
@@ -2452,6 +2590,12 @@ function materializePresentHypotheses(request) {
         for (const effect of Object.keys(original.field.pseudoWeather)) original.field.removePseudoWeather(effect);
         original.fieldEvent('Residual', targets);
       }
+    }
+
+    // Current-turn consumption at a post-residual replacement pause retains
+    // usedItemThisTurn until endTurn or switching out. No extra turn is aged.
+    for (const target of inventoryTargets.filter(target => target.entry.used_this_turn)) {
+      if (!consumeInventory(target)) return why(inventoryFailure);
     }
 
     if (postResidualSwitch) {
@@ -2734,9 +2878,21 @@ function materializePresentHypotheses(request) {
       // other. Empty targets exclude Pokemon HP/status/volatile residuals.
       const age = Math.max(terrainPlan?.residual_turns || 0, trickRoomPlan?.residual_turns || 0, weatherPlan?.residual_turns || 0);
       for (let step = 0; step <= age; step++) {
-        if (weatherPlan && step === age - weatherPlan.residual_turns &&
-            !original.field.setWeather(weatherPlan.weather, weatherSource, original.dex.abilities.get(weatherPlan.source_ability || weatherSource.ability))) {
-          return why('unsupported-native-weather-start');
+        if (weatherPlan && step === age - weatherPlan.residual_turns) {
+          // The certified ability activation occurred while this source was
+          // active. Native hasItem() ignores a currently benched/fainted
+          // setter, so evaluate that callback in its public activation context,
+          // restoring the present flag immediately. Never assign a duration.
+          const presentActive = weatherSource.isActive;
+          try {
+            weatherSource.isActive = true;
+            if (!original.field.setWeather(weatherPlan.weather, weatherSource,
+                original.dex.abilities.get(weatherPlan.source_ability || weatherSource.ability))) {
+              return why('unsupported-native-weather-start');
+            }
+          } finally {
+            weatherSource.isActive = presentActive;
+          }
         }
         if (terrainPlan && step === age - terrainPlan.residual_turns &&
             !original.field.setTerrain(terrainPlan.opening_terrain, terrainSource,

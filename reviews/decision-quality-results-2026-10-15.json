@@ -1,0 +1,1474 @@
+{
+  "manifest_sha256": "caa95a53f8477ea3b3a1da77cc459cffc781c6c5d29e91b8428229852ffc5ec6",
+  "development": [
+    {
+      "case": "new-venusaur-protect",
+      "before": "move expandingforce +2, move protect",
+      "after": "move expandingforce +2, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        77.54088917416372,
+        77.87519149974517
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "case": "new-armarouge-protect",
+      "before": "move flareblitz +2, move protect",
+      "after": "move flareblitz +2, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        2055.6958333333337,
+        2055.695833333333
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "case": "repeated-protect-loss",
+      "before": "move followme, move protect",
+      "after": "move followme, move armorcannon +1",
+      "changed": true,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -1061.4,
+        -1061.4
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "case": "last-venusaur-delay",
+      "before": "pass, move protect",
+      "after": "pass, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1125.692356687898,
+        -1125.692356687898
+      ],
+      "candidate_evidence_unchanged": true
+    }
+  ],
+  "separate": [
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "before": "pass, switch 4",
+      "after": "pass, switch 4",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        97.94088917416373,
+        98.27519149974518
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 4,
+      "before": "pass, switch 4",
+      "after": "pass, switch 4",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        158.67397418450264,
+        159.0936822136996
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-heldout-native",
+      "checkpoint": 1,
+      "before": "switch 3, move mysticalfire +2",
+      "after": "switch 3, move mysticalfire +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -131.17603008384617,
+        -125.87603008384616
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-max-base-power-prior-native",
+      "checkpoint": 4,
+      "before": "move darkestlariat +2, move protect",
+      "after": "move darkestlariat +2, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1124.139043583535,
+        -1124.139043583535
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "before": "move protect, move trickroom",
+      "after": "move protect, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        23.6,
+        23.6
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect",
+      "after": "move trickroom, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        42.2,
+        42.2
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "before": "move protect, move woodhammer +2",
+      "after": "move protect, move woodhammer +2",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -44.0,
+        -44.0
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 3,
+      "before": "move rockslide, move woodhammer +2",
+      "after": "move rockslide, move woodhammer +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        1121.2665443248525,
+        1121.2665443248525
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "before": "move protect mega, move trickroom",
+      "after": "move protect mega, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.815392597717118,
+        -14.815392597717118
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-prior-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect mega",
+      "after": "move trickroom, move protect mega",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.81539259771711,
+        -14.81539259771711
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "before": "move dragonclaw +2, move darkestlariat +2",
+      "after": "move dragonclaw +2, move darkestlariat +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        1119.2909844150722,
+        1119.7106924442692
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-prior-native",
+      "checkpoint": 3,
+      "before": "move flareblitz +1, move expandingforce +1",
+      "after": "move flareblitz +1, move expandingforce +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -35.70811531007759,
+        -35.70811531007759
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-prior-native",
+      "checkpoint": 5,
+      "before": "move earthquake, move sleeppowder +1",
+      "after": "move earthquake, move sleeppowder +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        1075.211264997778,
+        1075.211264997778
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "before": "move protect, move woodhammer +2",
+      "after": "move protect, move woodhammer +2",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -44.0,
+        -44.0
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-max-base-power-prior-native",
+      "checkpoint": 1,
+      "before": "move mysticalfire +1, move followme",
+      "after": "move mysticalfire +1, move followme",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1079.7270871985156,
+        -1079.4196005674994
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 8,
+      "before": "pass, move sleeppowder +2",
+      "after": "pass, move sleeppowder +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1178.208280254777,
+        -1178.208280254777
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 1,
+      "before": "switch 3, move mysticalfire +2",
+      "after": "switch 3, move mysticalfire +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -129.87659505559748,
+        -124.57659505559747
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-max-base-power-prior-native",
+      "checkpoint": 1,
+      "before": "move armorcannon +2, move psychic +2",
+      "after": "move armorcannon +2, move psychic +2",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -64.43201506591285,
+        -64.43201506591285
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 3,
+      "before": "move expandingforce +2, move protect",
+      "after": "move expandingforce +2, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -10.08020833333303,
+        -10.08020833333303
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "before": "switch 3, move psychic +2",
+      "after": "switch 3, move psychic +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        29.883745155038564,
+        30.218047480620008
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-2-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "before": "move earthquake, move dragonclaw +1",
+      "after": "move earthquake, move dragonclaw +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        5.448502994012043,
+        5.448502994012043
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-prior-native",
+      "checkpoint": 2,
+      "before": "switch 4, pass",
+      "after": "switch 4, pass",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1094.4377071838642,
+        -1094.1302205528484
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 1,
+      "before": "move mysticalfire +1, move followme",
+      "after": "move mysticalfire +1, move followme",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1090.1816326530611,
+        -1090.1816326530611
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-max-base-power-prior-native",
+      "checkpoint": 0,
+      "before": "move protect mega, move trickroom",
+      "after": "move protect mega, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.815392597717118,
+        -14.815392597717118
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 2,
+      "before": "move rockslide, move protect",
+      "after": "move rockslide, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        1005.1184557438796,
+        1005.1184557438796
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 7,
+      "before": "move flareblitz +2, switch 4",
+      "after": "move flareblitz +2, switch 4",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        2063.2120920357474,
+        2063.2120920357474
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-prior-native",
+      "checkpoint": 1,
+      "before": "move followme, move protect",
+      "after": "move followme, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1046.9555555555562,
+        -1046.9555555555562
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect mega",
+      "after": "move trickroom, move protect mega",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.81539259771711,
+        -14.81539259771711
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "before": "move steelroller +1, move energyball +2",
+      "after": "move steelroller +1, move energyball +2",
+      "changed": false,
+      "top_tied_candidates": 7,
+      "robust_score": [
+        -2162.2230653493157,
+        -2162.2230653493157
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 4,
+      "before": "pass, switch 4",
+      "after": "pass, switch 4",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1127.108415667787,
+        -1127.108415667787
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 2,
+      "before": "pass, switch 3",
+      "after": "pass, switch 3",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -137.20143581992883,
+        -131.90143581992882
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-prior-native",
+      "checkpoint": 3,
+      "before": "move psychic +1, move expandingforce +1",
+      "after": "move psychic +1, move expandingforce +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        2071.9361935028246,
+        2083.2861935028245
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 8,
+      "before": "move flareblitz +2, move sludgebomb +2",
+      "after": "move flareblitz +2, move sludgebomb +2",
+      "changed": false,
+      "top_tied_candidates": 6,
+      "robust_score": [
+        1000000.0,
+        1000000.0
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect mega",
+      "after": "move trickroom, move protect mega",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.81539259771711,
+        -14.81539259771711
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "before": "move protect mega, move trickroom",
+      "after": "move protect mega, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.815392597717118,
+        -14.815392597717118
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-prior-native",
+      "checkpoint": 2,
+      "before": "switch 3, switch 4",
+      "after": "switch 3, switch 4",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -1087.1,
+        -1085.9499999999998
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect",
+      "after": "move trickroom, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        42.2,
+        42.2
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect",
+      "after": "move trickroom, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        42.2,
+        42.2
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-prior-native",
+      "checkpoint": 3,
+      "before": "move steelroller +2, move hydropump +1",
+      "after": "move steelroller +2, move hydropump +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -129.16284087370434,
+        -129.16284087370434
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 1,
+      "before": "switch 3, move mysticalfire +2",
+      "after": "switch 3, move mysticalfire +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -133.77490014034356,
+        -128.47490014034355
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-max-base-power-prior-native",
+      "checkpoint": 0,
+      "before": "move protect, move woodhammer +2",
+      "after": "move protect, move woodhammer +2",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -44.0,
+        -44.0
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 2,
+      "before": "pass, switch 3",
+      "after": "pass, switch 3",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -29.68020833333303,
+        -19.88020833333303
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-max-base-power-heldout-native",
+      "checkpoint": 2,
+      "before": "move rockslide, switch 3",
+      "after": "move rockslide, switch 3",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        1062.1123049939993,
+        1062.1123049939993
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 2,
+      "before": "pass, switch 3",
+      "after": "pass, switch 3",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -29.68020833333303,
+        -19.88020833333303
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-2-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "before": "move earthquake, move dragonclaw +1",
+      "after": "move earthquake, move dragonclaw +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        5.448502994012043,
+        5.448502994012043
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-2-max-base-power-prior-native",
+      "checkpoint": 0,
+      "before": "move earthquake, move dragonclaw +1",
+      "after": "move earthquake, move dragonclaw +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        5.448502994012043,
+        5.448502994012043
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "before": "move protect, move trickroom",
+      "after": "move protect, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        23.6,
+        23.6
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-prior-native",
+      "checkpoint": 2,
+      "before": "switch 3, pass",
+      "after": "switch 3, pass",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1046.3999999999996,
+        -1046.1222222222223
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-prior-native",
+      "checkpoint": 1,
+      "before": "move armorcannon +2, move psychic +2",
+      "after": "move armorcannon +2, move psychic +2",
+      "changed": false,
+      "top_tied_candidates": 3,
+      "robust_score": [
+        -1074.4444444444448,
+        -1074.4444444444448
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 1,
+      "before": "move armorcannon +2, move psychic +2",
+      "after": "move armorcannon +2, move psychic +2",
+      "changed": false,
+      "top_tied_candidates": 3,
+      "robust_score": [
+        -1072.7777777777771,
+        -1072.7777777777771
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-prior-native",
+      "checkpoint": 1,
+      "before": "move followme, move mysticalfire +2",
+      "after": "move followme, move mysticalfire +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1079.1121139364832,
+        -1079.1121139364832
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-max-base-power-heldout-native",
+      "checkpoint": 1,
+      "before": "move armorcannon +2, move followme",
+      "after": "move armorcannon +2, move followme",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -25.12881355932172,
+        -25.12881355932172
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 3,
+      "before": "move flareblitz +1, move expandingforce +1",
+      "after": "move flareblitz +1, move expandingforce +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -29.022068798449634,
+        -28.68776647286842
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "before": "move flareblitz +1, move energyball +2",
+      "after": "move flareblitz +1, move energyball +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1165.7488372093023,
+        -1165.7488372093023
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "before": "move protect, move woodhammer +2",
+      "after": "move protect, move woodhammer +2",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -44.0,
+        -44.0
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-max-base-power-prior-native",
+      "checkpoint": 2,
+      "before": "switch 3, switch 4",
+      "after": "switch 3, switch 4",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -1086.5,
+        -1085.35
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 8,
+      "before": "move armorcannon +1, move sleeppowder +1",
+      "after": "move armorcannon +1, move sleeppowder +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        1092.2012839147285,
+        1092.5355862403098
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-heldout-native",
+      "checkpoint": 1,
+      "before": "move mysticalfire +1, switch 3",
+      "after": "move mysticalfire +1, switch 3",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -118.70774945504681,
+        -114.74856578157716
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "before": "move protect, move trickroom",
+      "after": "move protect, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        23.6,
+        23.6
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "before": "move protect mega, move trickroom",
+      "after": "move protect mega, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.815392597717118,
+        -14.815392597717118
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-simple-heuristics-prior-native",
+      "checkpoint": 3,
+      "before": "move protect, move psychic +2",
+      "after": "move protect, move psychic +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -133.7483284752962,
+        -133.7483284752962
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-max-base-power-prior-native",
+      "checkpoint": 3,
+      "before": "switch 4, pass",
+      "after": "switch 4, pass",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1170.2678571428573,
+        -1168.4678571428574
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 5,
+      "before": "move expandingforce +2, switch 4",
+      "after": "move expandingforce +2, switch 4",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        97.27228452300129,
+        97.27228452300129
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 1,
+      "before": "move followme, move protect",
+      "after": "move followme, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1031.9555555555557,
+        -1031.677777777778
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect mega",
+      "after": "move trickroom, move protect mega",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -14.81539259771711,
+        -14.81539259771711
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-0-max-base-power-heldout-native",
+      "checkpoint": 3,
+      "before": "move rockslide, move dragonclaw +2",
+      "after": "move rockslide, move dragonclaw +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        2048.580456835559,
+        2048.580456835559
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 2,
+      "before": "switch 3, switch 4",
+      "after": "switch 3, switch 4",
+      "changed": false,
+      "top_tied_candidates": 2,
+      "robust_score": [
+        -2169.0999999999995,
+        -2168.822222222222
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-max-base-power-prior-native",
+      "checkpoint": 0,
+      "before": "move trickroom, move protect",
+      "after": "move trickroom, move protect",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        42.2,
+        42.2
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-2-simple-heuristics-prior-native",
+      "checkpoint": 3,
+      "before": "pass, switch 4",
+      "after": "pass, switch 4",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1099.1852317093872,
+        -1099.1852317093872
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-1-simple-heuristics-prior-native",
+      "checkpoint": 1,
+      "before": "move mysticalfire +1, switch 3",
+      "after": "move mysticalfire +1, switch 3",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -137.35181725165702,
+        -133.39263357818783
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-2-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "before": "move earthquake, move dragonclaw +1",
+      "after": "move earthquake, move dragonclaw +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        5.448502994012043,
+        5.448502994012043
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-heldout-native",
+      "checkpoint": 2,
+      "before": "switch 3, pass",
+      "after": "switch 3, pass",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -1029.1777777777777,
+        -1028.6222222222223
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "validation-2-simple-heuristics-prior-native",
+      "checkpoint": 1,
+      "before": "move followme, move armorcannon +1",
+      "after": "move followme, move armorcannon +1",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -55.012806026364714,
+        -54.73502824858737
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-0-max-base-power-prior-native",
+      "checkpoint": 3,
+      "before": "move steelroller +1, move energyball +2",
+      "after": "move steelroller +1, move energyball +2",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        -55.953503184713256,
+        -54.80350318471325
+      ],
+      "candidate_evidence_unchanged": true
+    },
+    {
+      "game": "development-1-max-base-power-prior-native",
+      "checkpoint": 0,
+      "before": "move protect, move trickroom",
+      "after": "move protect, move trickroom",
+      "changed": false,
+      "top_tied_candidates": 1,
+      "robust_score": [
+        23.6,
+        23.6
+      ],
+      "candidate_evidence_unchanged": true
+    }
+  ],
+  "opportunities": [
+    {
+      "case": "new-venusaur-protect",
+      "current_choice": "move expandingforce +2, move protect",
+      "alternatives": [
+        {
+          "action": "move expandingforce +2, move protect",
+          "roles": [
+            "selected_shield"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 96,
+              "living_opponents_total": 64,
+              "direct_damage_samples_by_actor": {
+                "Armarouge": 32
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 32,
+              "terminal_losses": 0,
+              "living_allies_total": 96,
+              "living_opponents_total": 16,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 48,
+                "Armarouge": 28
+              }
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2, move energyball +2",
+          "roles": [
+            "matched_partner_attack",
+            "v2_reference"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 92,
+              "living_opponents_total": 64,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 30,
+                "Armarouge": 32
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 30,
+              "terminal_losses": 4,
+              "living_allies_total": 74,
+              "living_opponents_total": 20,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 44
+              }
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2, move sludgebomb +1",
+          "roles": [
+            "best_covered_focal_attack"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 6,
+              "terminal_losses": 0,
+              "living_allies_total": 94,
+              "living_opponents_total": 54,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 46,
+                "Armarouge": 32
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 36,
+              "terminal_losses": 2,
+              "living_allies_total": 82,
+              "living_opponents_total": 14,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 40
+              }
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven",
+      "native_next_turn_information_groups": 10
+    },
+    {
+      "case": "new-armarouge-protect",
+      "current_choice": "move flareblitz +2, move protect",
+      "alternatives": [
+        {
+          "action": "move flareblitz +2, move protect",
+          "roles": [
+            "selected_shield"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 144,
+              "living_opponents_total": 48,
+              "direct_damage_samples_by_actor": {
+                "Incineroar": 48
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 4,
+              "terminal_losses": 0,
+              "living_allies_total": 100,
+              "living_opponents_total": 44,
+              "direct_damage_samples_by_actor": {
+                "Incineroar": 48
+              }
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +2, move armorcannon +2",
+          "roles": [
+            "matched_partner_attack",
+            "v2_reference"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 22,
+              "terminal_losses": 0,
+              "living_allies_total": 96,
+              "living_opponents_total": 26,
+              "direct_damage_samples_by_actor": {
+                "Armarouge": 48,
+                "Incineroar": 46
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 48,
+              "terminal_losses": 0,
+              "living_allies_total": 96,
+              "living_opponents_total": 0,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 26
+              }
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +2, move armorcannon +2",
+          "roles": [
+            "best_covered_focal_attack"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 20,
+              "terminal_losses": 0,
+              "living_allies_total": 96,
+              "living_opponents_total": 28,
+              "direct_damage_samples_by_actor": {
+                "Armarouge": 48,
+                "Incineroar": 46
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 48,
+              "terminal_losses": 0,
+              "living_allies_total": 96,
+              "living_opponents_total": 0,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 28
+              }
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +2, switch 4",
+          "roles": [
+            "matched_partner_switch"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 2,
+              "terminal_losses": 0,
+              "living_allies_total": 128,
+              "living_opponents_total": 46,
+              "direct_damage_samples_by_actor": {
+                "Incineroar": 48
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 48,
+              "terminal_losses": 0,
+              "living_allies_total": 118,
+              "living_opponents_total": 0,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 32,
+                "Incineroar": 28
+              }
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven",
+      "native_next_turn_information_groups": 10
+    },
+    {
+      "case": "repeated-protect-loss",
+      "current_choice": "move followme, move protect",
+      "alternatives": [
+        {
+          "action": "move followme, move protect",
+          "roles": [
+            "selected_shield"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 152,
+              "living_opponents_total": 192,
+              "direct_damage_samples_by_actor": {}
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 120,
+              "living_opponents_total": 144,
+              "direct_damage_samples_by_actor": {
+                "Armarouge": 44,
+                "Incineroar": 36,
+                "Venusaur": 4,
+                "Indeedee-F": 12
+              }
+            }
+          }
+        },
+        {
+          "action": "move followme, move armorcannon +1",
+          "roles": [
+            "matched_partner_attack",
+            "best_covered_focal_attack"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 162,
+              "living_opponents_total": 160,
+              "direct_damage_samples_by_actor": {
+                "Armarouge": 32
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 145,
+              "living_opponents_total": 90,
+              "direct_damage_samples_by_actor": {
+                "Armarouge": 48,
+                "Incineroar": 30,
+                "Indeedee-F": 16
+              }
+            }
+          }
+        },
+        {
+          "action": "move psychic +1, move armorcannon +1",
+          "roles": [
+            "v2_reference"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 160,
+              "living_opponents_total": 160,
+              "direct_damage_samples_by_actor": {
+                "Indeedee-F": 16,
+                "Armarouge": 32
+              }
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 142,
+              "living_opponents_total": 100,
+              "direct_damage_samples_by_actor": {
+                "Indeedee-F": 46,
+                "Incineroar": 32,
+                "Armarouge": 16
+              }
+            }
+          }
+        },
+        {
+          "action": "move followme, switch 3",
+          "roles": [
+            "matched_partner_switch"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 166,
+              "living_opponents_total": 192,
+              "direct_damage_samples_by_actor": {}
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 126,
+              "living_opponents_total": 144,
+              "direct_damage_samples_by_actor": {
+                "Indeedee-F": 22,
+                "Incineroar": 48,
+                "Armarouge": 26
+              }
+            }
+          }
+        },
+        {
+          "action": "move followme, switch 4",
+          "roles": [
+            "matched_partner_switch"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 150,
+              "living_opponents_total": 192,
+              "direct_damage_samples_by_actor": {}
+            },
+            "second_turn": {
+              "samples": 48,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 130,
+              "living_opponents_total": 128,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 48,
+                "Incineroar": 42,
+                "Indeedee-F": 6
+              }
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven",
+      "native_next_turn_information_groups": 17
+    },
+    {
+      "case": "last-venusaur-delay",
+      "current_choice": "pass, move protect",
+      "alternatives": [
+        {
+          "action": "pass, move protect",
+          "roles": [
+            "selected_shield"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 24,
+              "terminal_wins": 0,
+              "terminal_losses": 0,
+              "living_allies_total": 24,
+              "living_opponents_total": 48,
+              "direct_damage_samples_by_actor": {}
+            },
+            "second_turn": {
+              "samples": 24,
+              "terminal_wins": 0,
+              "terminal_losses": 24,
+              "living_allies_total": 0,
+              "living_opponents_total": 46,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 24
+              }
+            }
+          }
+        },
+        {
+          "action": "pass, move energyball +1",
+          "roles": [
+            "matched_partner_attack",
+            "v2_reference",
+            "best_covered_focal_attack"
+          ],
+          "measurements": {
+            "first_turn": {
+              "samples": 24,
+              "terminal_wins": 0,
+              "terminal_losses": 16,
+              "living_allies_total": 8,
+              "living_opponents_total": 48,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 8
+              }
+            },
+            "second_turn": {
+              "samples": 24,
+              "terminal_wins": 0,
+              "terminal_losses": 24,
+              "living_allies_total": 0,
+              "living_opponents_total": 40,
+              "direct_damage_samples_by_actor": {
+                "Venusaur": 8
+              }
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven",
+      "native_next_turn_information_groups": 4
+    }
+  ],
+  "strategic_weights_changed": false,
+  "admission_changed": false,
+  "interpretation": "Sampled tie correctness and continuation diagnostics; no optimal-plan or strength claim."
+}

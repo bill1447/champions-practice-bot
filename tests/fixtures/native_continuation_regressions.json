@@ -1,0 +1,170 @@
+{
+  "provenance": "weather-v2 paired experiment; one strict matched witness per retained capability; conditional outcomes, not optimality labels",
+  "prior_profile": "public-earthquake-coverage",
+  "cases": [
+    {
+      "case": {
+        "id": "speed-control-warmup-2",
+        "category": "speed-control",
+        "warmup_completed_turns": 2,
+        "own_roster": [
+          "Pelipper",
+          "Metagross",
+          "Armarouge",
+          "Rillaboom",
+          "Dragonite",
+          "Indeedee-F"
+        ],
+        "enemy_roster": [
+          "Garchomp",
+          "Rotom-Wash",
+          "Excadrill",
+          "Gardevoir",
+          "Incineroar",
+          "Venusaur"
+        ],
+        "own_team": "Pelipper @ Focus Sash\nAbility: Drizzle\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hurricane\n- Weather Ball\n- Tailwind\n- Protect\n\nMetagross @ Metagrossite\nAbility: Clear Body\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Psychic Fangs\n- Steel Roller\n- Earthquake\n- Protect\n\nArmarouge @ Charcoal\nAbility: Flash Fire\nLevel: 50\nEVs: 32 HP / 32 SpA / 2 SpD\nQuiet Nature\n- Expanding Force\n- Armor Cannon\n- Wide Guard\n- Protect\n\nRillaboom @ Sitrus Berry\nAbility: Grassy Surge\nLevel: 50\nEVs: 32 HP / 2 Atk / 32 SpD\nCareful Nature\n- Grassy Glide\n- Wood Hammer\n- High Horsepower\n- Protect\n\nDragonite @ Lum Berry\nAbility: Inner Focus\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Extreme Speed\n- Dragon Claw\n- Earthquake\n- Protect\n\nIndeedee-F @ Colbur Berry\nAbility: Psychic Surge\nLevel: 50\nEVs: 32 HP / 32 Def / 2 Spe\nRelaxed Nature\n- Psychic\n- Follow Me\n- Trick Room\n- Imprison\n",
+        "enemy_team": "Garchomp @ Haban Berry\nAbility: Rough Skin\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nJolly Nature\n- Dragon Claw\n- Earthquake\n- Rock Slide\n- Protect\n\nRotom-Wash @ Leftovers\nAbility: Levitate\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hydro Pump\n- Thunderbolt\n- Will-O-Wisp\n- Protect\n\nExcadrill @ Life Orb\nAbility: Sand Rush\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- High Horsepower\n- Iron Head\n- Rock Slide\n- Protect\n\nGardevoir @ Gardevoirite\nAbility: Trace\nLevel: 50\nEVs: 4 HP / 32 SpA / 30 Spe\nModest Nature\n- Expanding Force\n- Hyper Voice\n- Mystical Fire\n- Protect\n\nIncineroar @ Shuca Berry\nAbility: Intimidate\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Fake Out\n- Flare Blitz\n- Darkest Lariat\n- Parting Shot\n\nVenusaur @ Coba Berry\nAbility: Chlorophyll\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Sleep Powder\n- Sludge Bomb\n- Energy Ball\n- Protect\n",
+        "seed": "sodium,0ac305fa8621e00146302ede950c2d1b5a780f88e418958fabb50b1e06a942f1",
+        "preview": "team 1234",
+        "optimal_action_label": "unproven"
+      },
+      "root_action": "move woodhammer +2, move psychicfangs +1",
+      "reply": "move dragonclaw +1, move thunderbolt +2",
+      "rng_label": "sodium,1234567812345678123456781234567812345678123456781234567812345678",
+      "expected": {
+        "v2": {
+          "terminal_win": false,
+          "terminal_loss": true
+        },
+        "native": {
+          "terminal_win": false,
+          "terminal_loss": false
+        }
+      },
+      "opposition_schedule": [
+        {
+          "turn": 3,
+          "phase": "switch",
+          "action": "switch 3, switch 4"
+        },
+        {
+          "turn": 4,
+          "phase": "move",
+          "action": "move ironhead +1, move mysticalfire +1 mega"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "trade-and-spread-warmup-2",
+        "category": "trade-and-spread",
+        "warmup_completed_turns": 2,
+        "own_roster": [
+          "Garchomp",
+          "Rotom-Wash",
+          "Gardevoir",
+          "Rillaboom",
+          "Incineroar",
+          "Pelipper"
+        ],
+        "enemy_roster": [
+          "Metagross",
+          "Pelipper",
+          "Venusaur",
+          "Indeedee-F",
+          "Tyranitar",
+          "Basculegion"
+        ],
+        "own_team": "Garchomp @ Haban Berry\nAbility: Rough Skin\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nJolly Nature\n- Dragon Claw\n- Earthquake\n- Rock Slide\n- Protect\n\nRotom-Wash @ Leftovers\nAbility: Levitate\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hydro Pump\n- Thunderbolt\n- Will-O-Wisp\n- Protect\n\nGardevoir @ Gardevoirite\nAbility: Trace\nLevel: 50\nEVs: 4 HP / 32 SpA / 30 Spe\nModest Nature\n- Expanding Force\n- Hyper Voice\n- Mystical Fire\n- Protect\n\nRillaboom @ Sitrus Berry\nAbility: Grassy Surge\nLevel: 50\nEVs: 32 HP / 2 Atk / 32 SpD\nCareful Nature\n- Grassy Glide\n- Wood Hammer\n- High Horsepower\n- Protect\n\nIncineroar @ Shuca Berry\nAbility: Intimidate\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Fake Out\n- Flare Blitz\n- Darkest Lariat\n- Parting Shot\n\nPelipper @ Focus Sash\nAbility: Drizzle\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hurricane\n- Weather Ball\n- Tailwind\n- Protect\n",
+        "enemy_team": "Metagross @ Metagrossite\nAbility: Clear Body\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Psychic Fangs\n- Steel Roller\n- Earthquake\n- Protect\n\nPelipper @ Focus Sash\nAbility: Drizzle\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hurricane\n- Weather Ball\n- Tailwind\n- Protect\n\nVenusaur @ Coba Berry\nAbility: Chlorophyll\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Sleep Powder\n- Sludge Bomb\n- Energy Ball\n- Protect\n\nIndeedee-F @ Colbur Berry\nAbility: Psychic Surge\nLevel: 50\nEVs: 32 HP / 32 Def / 2 Spe\nRelaxed Nature\n- Psychic\n- Follow Me\n- Trick Room\n- Imprison\n\nTyranitar @ Chople Berry\nAbility: Sand Stream\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Rock Slide\n- Crunch\n- Low Kick\n- Protect\n\nBasculegion @ Mystic Water\nAbility: Swift Swim\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Wave Crash\n- Phantom Force\n- Aqua Jet\n- Protect\n",
+        "seed": "sodium,ca286cd809079cd379199dad8a490e7caef9f33fd984c779619470549219ac80",
+        "preview": "team 1234",
+        "optimal_action_label": "unproven"
+      },
+      "root_action": "move earthquake, move protect mega",
+      "reply": "move protect, move sludgebomb +2",
+      "rng_label": "sodium,1234567812345678123456781234567812345678123456781234567812345678",
+      "expected": {
+        "v2": {
+          "terminal_win": false,
+          "terminal_loss": false
+        },
+        "native": {
+          "terminal_win": true,
+          "terminal_loss": false
+        }
+      },
+      "opposition_schedule": [
+        {
+          "turn": 3,
+          "phase": "switch",
+          "action": "pass, switch 4"
+        },
+        {
+          "turn": 4,
+          "phase": "move",
+          "action": "move steelroller +2, move psychic +1"
+        },
+        {
+          "turn": 4,
+          "phase": "switch",
+          "action": "wait"
+        }
+      ]
+    },
+    {
+      "case": {
+        "id": "alternative-attacker-warmup-0",
+        "category": "alternative-attacker",
+        "warmup_completed_turns": 0,
+        "own_roster": [
+          "Gardevoir",
+          "Metagross",
+          "Armarouge",
+          "Pelipper",
+          "Indeedee-F",
+          "Rotom-Wash"
+        ],
+        "enemy_roster": [
+          "Excadrill",
+          "Rillaboom",
+          "Dragonite",
+          "Venusaur",
+          "Tyranitar",
+          "Incineroar"
+        ],
+        "own_team": "Gardevoir @ Gardevoirite\nAbility: Trace\nLevel: 50\nEVs: 4 HP / 32 SpA / 30 Spe\nModest Nature\n- Expanding Force\n- Hyper Voice\n- Mystical Fire\n- Protect\n\nMetagross @ Metagrossite\nAbility: Clear Body\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Psychic Fangs\n- Steel Roller\n- Earthquake\n- Protect\n\nArmarouge @ Charcoal\nAbility: Flash Fire\nLevel: 50\nEVs: 32 HP / 32 SpA / 2 SpD\nQuiet Nature\n- Expanding Force\n- Armor Cannon\n- Wide Guard\n- Protect\n\nPelipper @ Focus Sash\nAbility: Drizzle\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hurricane\n- Weather Ball\n- Tailwind\n- Protect\n\nIndeedee-F @ Colbur Berry\nAbility: Psychic Surge\nLevel: 50\nEVs: 32 HP / 32 Def / 2 Spe\nRelaxed Nature\n- Psychic\n- Follow Me\n- Trick Room\n- Imprison\n\nRotom-Wash @ Leftovers\nAbility: Levitate\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Hydro Pump\n- Thunderbolt\n- Will-O-Wisp\n- Protect\n",
+        "enemy_team": "Excadrill @ Life Orb\nAbility: Sand Rush\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- High Horsepower\n- Iron Head\n- Rock Slide\n- Protect\n\nRillaboom @ Sitrus Berry\nAbility: Grassy Surge\nLevel: 50\nEVs: 32 HP / 2 Atk / 32 SpD\nCareful Nature\n- Grassy Glide\n- Wood Hammer\n- High Horsepower\n- Protect\n\nDragonite @ Lum Berry\nAbility: Inner Focus\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Extreme Speed\n- Dragon Claw\n- Earthquake\n- Protect\n\nVenusaur @ Coba Berry\nAbility: Chlorophyll\nLevel: 50\nEVs: 2 HP / 32 SpA / 32 Spe\nModest Nature\n- Sleep Powder\n- Sludge Bomb\n- Energy Ball\n- Protect\n\nTyranitar @ Chople Berry\nAbility: Sand Stream\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Rock Slide\n- Crunch\n- Low Kick\n- Protect\n\nIncineroar @ Shuca Berry\nAbility: Intimidate\nLevel: 50\nEVs: 2 HP / 32 Atk / 32 Spe\nAdamant Nature\n- Fake Out\n- Flare Blitz\n- Darkest Lariat\n- Parting Shot\n",
+        "seed": "sodium,b1a492f3448cafed0c3e97ac6afa469dce65d5c108ebfbf82a06dd6d851d9a01",
+        "preview": "team 1234",
+        "optimal_action_label": "unproven"
+      },
+      "root_action": "move hypervoice mega, move steelroller +2",
+      "reply": "move highhorsepower +1, switch 3",
+      "rng_label": "sodium,c8034a3b3cee8b61cb10c4ffb0b644212e34ebb66b7d8ebd50831fa702b4382c",
+      "expected": {
+        "v2": {
+          "terminal_win": false,
+          "terminal_loss": false
+        },
+        "native": {
+          "terminal_win": true,
+          "terminal_loss": false
+        }
+      },
+      "opposition_schedule": [
+        {
+          "turn": 1,
+          "phase": "switch",
+          "action": "switch 3, switch 4"
+        },
+        {
+          "turn": 2,
+          "phase": "move",
+          "action": "move highhorsepower +2, move sludgebomb +1"
+        }
+      ]
+    }
+  ]
+}

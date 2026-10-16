@@ -86,7 +86,7 @@ def main() -> None:
             )
             expected_gate = (
                 (unsupported_present_mechanics(public_before, public_ledger)
-                 or current_capability_issue(public_before, demo_public_priors()))
+                 or current_capability_issue(public_before, demo_public_priors(), public_ledger))
                 if public_before["turn"] >= 2 else None
             )
             ready = battle.lock_ai_action()

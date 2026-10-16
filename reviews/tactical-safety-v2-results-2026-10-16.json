@@ -1,0 +1,188 @@
+{
+  "manifest_sha256": "f3da99c52af7c9918f96c6aff09b0114bfd80d0e259c5ebd18d3fb0bfa3d3738",
+  "baseline": {
+    "commit": "e0ae72308f77b7ea7e9cb12629804bca46ce4a18",
+    "source_sha256": {
+      "policy": "ae45194c65880ecc4b517fd992a48fc1ce7aad6838b27417a34dbdb12424070a",
+      "joint": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c"
+    }
+  },
+  "cases": [
+    {
+      "id": "safety-0-0",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-persistent:move:phantomforce",
+      "admitted_worlds": 0,
+      "v2_action": "move hydropump +2, move woodhammer +2",
+      "native_requested_action": "move hydropump +2, move woodhammer +2",
+      "changed": false,
+      "matched_scenarios": 8,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-0-1",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-persistent:move:phantomforce",
+      "admitted_worlds": 0,
+      "v2_action": "move hydropump +2, move woodhammer +2",
+      "native_requested_action": "move hydropump +2, move woodhammer +2",
+      "changed": false,
+      "matched_scenarios": 8,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-1-0",
+      "status": "not_probed",
+      "ended": true,
+      "phase": "ended",
+      "public_history_error": null
+    },
+    {
+      "id": "safety-1-1",
+      "status": "not_probed",
+      "ended": true,
+      "phase": "ended",
+      "public_history_error": null
+    },
+    {
+      "id": "safety-2-0",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-persistent:move:stompingtantrum",
+      "admitted_worlds": 0,
+      "v2_action": "move steelroller +1, move expandingforce +1",
+      "native_requested_action": "move steelroller +1, move expandingforce +1",
+      "changed": false,
+      "matched_scenarios": 8,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-2-1",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-public-effect-duration",
+      "admitted_worlds": 0,
+      "v2_action": "move hurricane +1, move psychicfangs +1",
+      "native_requested_action": "move hurricane +1, move psychicfangs +1",
+      "changed": false,
+      "matched_scenarios": 12,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-3-0",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-public-effect-duration",
+      "admitted_worlds": 0,
+      "v2_action": "move dragonclaw +1, move steelroller +2 mega",
+      "native_requested_action": "move dragonclaw +1, move steelroller +2 mega",
+      "changed": false,
+      "matched_scenarios": 16,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-3-1",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-public-effect-duration",
+      "admitted_worlds": 0,
+      "v2_action": "move sludgebomb +1, move steelroller +1 mega",
+      "native_requested_action": "move sludgebomb +1, move steelroller +1 mega",
+      "changed": false,
+      "matched_scenarios": 16,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-4-0",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-persistent:move:electroshot",
+      "admitted_worlds": 0,
+      "v2_action": "move thunderbolt +2, move mysticalfire +2",
+      "native_requested_action": "move thunderbolt +2, move mysticalfire +2",
+      "changed": false,
+      "matched_scenarios": 16,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-4-1",
+      "status": "probed",
+      "native_status": "fallback",
+      "reason": "unsupported-persistent:move:electroshot",
+      "admitted_worlds": 0,
+      "v2_action": "move thunderbolt +1, move psychic +1",
+      "native_requested_action": "move thunderbolt +1, move psychic +1",
+      "changed": false,
+      "matched_scenarios": 8,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-5-0",
+      "status": "probed",
+      "native_status": "search",
+      "reason": "",
+      "admitted_worlds": 1,
+      "v2_action": "move psychicfangs +2 mega, move dragonclaw +2",
+      "native_requested_action": "move psychicfangs +2 mega, move protect",
+      "changed": true,
+      "matched_scenarios": 16,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    },
+    {
+      "id": "safety-5-1",
+      "status": "probed",
+      "native_status": "search",
+      "reason": "",
+      "admitted_worlds": 1,
+      "v2_action": "move thunderbolt +2, move psychicfangs +1",
+      "native_requested_action": "move protect, move psychicfangs +1",
+      "changed": true,
+      "matched_scenarios": 16,
+      "native_additional_terminal_wins": 0,
+      "native_avoided_terminal_losses": 0,
+      "native_additional_terminal_losses": 0,
+      "native_lost_terminal_wins": 0
+    }
+  ],
+  "summary": {
+    "statuses": {
+      "probed": 10,
+      "not_probed": 2
+    },
+    "native_statuses": {
+      "fallback": 8,
+      "search": 2
+    },
+    "changed_positions": 2,
+    "no_optimality_or_strength_claim": true
+  }
+}

@@ -1,0 +1,713 @@
+{
+  "runs": [
+    {
+      "name": "failed_admission",
+      "archive_sha256": "94005b923354d1de40d96cf5178b9859bf6699c6856c11a245f20a457c50ebec",
+      "manifest_sha256": "bd103ebe8f1223bfd4cf2f472852b7402243e65e44504304c68df2ca4f165ac0",
+      "changed_sources_from_previous": [],
+      "prior_profile": "baseline",
+      "cases": [
+        {
+          "id": "speed-control-warmup-2",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 8,
+              "native_losses": 8,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 8,
+              "native_losses": 8,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "nonactionable": 79,
+            "fallback": 48
+          },
+          "unique_search_computations": 0,
+          "admitted_occurrences": 0,
+          "changed_occurrences": 0,
+          "fallback_reasons": {
+            "unsupported-persistent:item:charcoal": 46,
+            "unsupported-public-trace-state": 2
+          },
+          "prevented_sampled_terminal_losses": []
+        },
+        {
+          "id": "trade-and-spread-warmup-2",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 9,
+              "native_wins": 9,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 9,
+              "native_wins": 9,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 13,
+              "native_wins": 13,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 13,
+              "native_wins": 13,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "nonactionable": 48,
+            "fallback": 74
+          },
+          "unique_search_computations": 0,
+          "admitted_occurrences": 0,
+          "changed_occurrences": 0,
+          "fallback_reasons": {
+            "unsupported-persistent:opponent-capabilities": 74
+          },
+          "prevented_sampled_terminal_losses": []
+        },
+        {
+          "id": "alternative-attacker-warmup-0",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 2,
+              "native_wins": 2,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 2,
+              "native_wins": 2,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "fallback": 93,
+            "nonactionable": 33
+          },
+          "unique_search_computations": 0,
+          "admitted_occurrences": 0,
+          "changed_occurrences": 0,
+          "fallback_reasons": {
+            "unsupported-persistent:item:charcoal": 66,
+            "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 27
+          },
+          "prevented_sampled_terminal_losses": []
+        }
+      ]
+    },
+    {
+      "name": "charcoal_only",
+      "archive_sha256": "32214ab7306a62eb1c6974aafa9a006ac048df7169820a48c22e788eaa4d6723",
+      "manifest_sha256": "40dc02e4655aa1d1d406132303ebe215d09b970061dbc5a62500e0141b54a529",
+      "changed_sources_from_previous": [
+        "src/champions_practice/persistent_support.py"
+      ],
+      "prior_profile": "baseline",
+      "cases": [
+        {
+          "id": "speed-control-warmup-2",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 8,
+              "native_losses": 8,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 8,
+              "native_losses": 8,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "nonactionable": 79,
+            "fallback": 48
+          },
+          "unique_search_computations": 0,
+          "admitted_occurrences": 0,
+          "changed_occurrences": 0,
+          "fallback_reasons": {
+            "unsupported-persistent:opponent-capabilities": 46,
+            "unsupported-public-trace-state": 2
+          },
+          "prevented_sampled_terminal_losses": []
+        },
+        {
+          "id": "trade-and-spread-warmup-2",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 9,
+              "native_wins": 9,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 9,
+              "native_wins": 9,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 13,
+              "native_wins": 13,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 13,
+              "native_wins": 13,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "nonactionable": 48,
+            "fallback": 74
+          },
+          "unique_search_computations": 0,
+          "admitted_occurrences": 0,
+          "changed_occurrences": 0,
+          "fallback_reasons": {
+            "unsupported-persistent:opponent-capabilities": 74
+          },
+          "prevented_sampled_terminal_losses": []
+        },
+        {
+          "id": "alternative-attacker-warmup-0",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 13
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 23,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 12
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 2,
+              "native_wins": 3,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 16
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 19,
+              "v2_wins": 2,
+              "native_wins": 3,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 11
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "search": 35,
+            "nonactionable": 34,
+            "fallback": 52
+          },
+          "unique_search_computations": 30,
+          "admitted_occurrences": 35,
+          "changed_occurrences": 19,
+          "fallback_reasons": {
+            "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 27,
+            "unsupported-persistent:move:stompingtantrum": 24,
+            "unsupported-persistent:opponent-capabilities": 1
+          },
+          "prevented_sampled_terminal_losses": []
+        }
+      ]
+    },
+    {
+      "name": "separate_public_prior_control",
+      "archive_sha256": "7b1e3d6b2bdda58cdfc8953fd33ad0b5bf8d9cc1c5284bf85b54cdb17f85a44e",
+      "manifest_sha256": "77a36b79ccae439e4bc1ac308537df8c7e4db5ae2e0efbda7aea68757c0a44f0",
+      "changed_sources_from_previous": [
+        "scripts/paired_native_continuation.py"
+      ],
+      "prior_profile": "public-earthquake-coverage",
+      "cases": [
+        {
+          "id": "speed-control-warmup-2",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 8,
+              "native_losses": 0,
+              "native_search_trajectories": 18
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 8,
+              "native_losses": 0,
+              "native_search_trajectories": 18
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 20
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 17,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 13
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "nonactionable": 76,
+            "search": 38,
+            "fallback": 10
+          },
+          "unique_search_computations": 20,
+          "admitted_occurrences": 38,
+          "changed_occurrences": 38,
+          "fallback_reasons": {
+            "unsupported-protection-residual-effects": 8,
+            "unsupported-public-trace-state": 2
+          },
+          "prevented_sampled_terminal_losses": [
+            {
+              "root_role": "selected",
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 0,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "switch 3, switch 4"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move highhorsepower +1, pass",
+                  "status": "search",
+                  "opposition": "move ironhead +1, move mysticalfire +1 mega"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 1,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "switch 3, switch 4"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move highhorsepower +1, pass",
+                  "status": "search",
+                  "opposition": "move ironhead +1, move mysticalfire +1 mega"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 2,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "switch 3, switch 4"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move highhorsepower +1, pass",
+                  "status": "search",
+                  "opposition": "move ironhead +1, move mysticalfire +1 mega"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 3,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "switch 3, switch 4"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move highhorsepower +1, pass",
+                  "status": "search",
+                  "opposition": "move ironhead +1, move mysticalfire +1 mega"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 0,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "pass, switch 3"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move woodhammer +1, pass",
+                  "status": "search",
+                  "opposition": "move dragonclaw +1, move ironhead +1"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 1,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "pass, switch 3"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move woodhammer +1, pass",
+                  "status": "search",
+                  "opposition": "move dragonclaw +1, move ironhead +1"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 2,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "pass, switch 3"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move woodhammer +1, pass",
+                  "status": "search",
+                  "opposition": "move dragonclaw +1, move ironhead +1"
+                }
+              ]
+            },
+            {
+              "root_role": "selected",
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 3,
+              "decisions": [
+                {
+                  "own": "wait",
+                  "v2_incumbent": "wait",
+                  "status": "nonactionable",
+                  "opposition": "pass, switch 3"
+                },
+                {
+                  "own": "move protect, pass",
+                  "v2_incumbent": "move woodhammer +1, pass",
+                  "status": "search",
+                  "opposition": "move dragonclaw +1, move ironhead +1"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "id": "trade-and-spread-warmup-2",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 9,
+              "native_wins": 9,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 9,
+              "native_wins": 9,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 13,
+              "native_wins": 13,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 24,
+              "v2_wins": 13,
+              "native_wins": 13,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 0
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "nonactionable": 48,
+            "fallback": 74
+          },
+          "unique_search_computations": 0,
+          "admitted_occurrences": 0,
+          "changed_occurrences": 0,
+          "fallback_reasons": {
+            "unsupported-public-weather-plan": 74
+          },
+          "prevented_sampled_terminal_losses": []
+        },
+        {
+          "id": "alternative-attacker-warmup-0",
+          "groups": [
+            {
+              "role": "selected",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 13
+            },
+            {
+              "role": "selected",
+              "scope": "strict_opposition_matched",
+              "samples": 23,
+              "v2_wins": 0,
+              "native_wins": 0,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 12
+            },
+            {
+              "role": "alternative",
+              "scope": "all",
+              "samples": 24,
+              "v2_wins": 2,
+              "native_wins": 3,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 16
+            },
+            {
+              "role": "alternative",
+              "scope": "strict_opposition_matched",
+              "samples": 19,
+              "v2_wins": 2,
+              "native_wins": 3,
+              "v2_losses": 0,
+              "native_losses": 0,
+              "native_search_trajectories": 11
+            }
+          ],
+          "v2_exact_trajectory_parity": 48,
+          "statuses": {
+            "search": 35,
+            "nonactionable": 34,
+            "fallback": 52
+          },
+          "unique_search_computations": 30,
+          "admitted_occurrences": 35,
+          "changed_occurrences": 19,
+          "fallback_reasons": {
+            "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 27,
+            "unsupported-persistent:move:stompingtantrum": 24,
+            "unsupported-persistent:opponent-capabilities": 1
+          },
+          "prevented_sampled_terminal_losses": []
+        }
+      ]
+    }
+  ],
+  "interpretation": "Three separate controls, not pooled. Surviving one turn is not a winning-route claim."
+}

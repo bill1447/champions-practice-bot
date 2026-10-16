@@ -9,6 +9,8 @@ from dataclasses import dataclass
 import json
 
 from champions_practice.public_lifecycle import ordered_public_lifecycle, public_protection_plan
+from champions_practice.public_inventory import public_inventory_plan
+from champions_practice.public_move_result import public_move_result_plan
 
 
 def sid(value):
@@ -133,8 +135,9 @@ CURRENT_FACT_MOVES = frozenset(
         "toxic",
     }
 )
-# History-sensitive moves such as Encore, Stomping Tantrum, Last Resort,
+# History-sensitive moves such as Encore, Last Resort,
 # Rage Fist, Retaliate and copying moves deliberately have no admission entry.
+# Stomping Tantrum has a separate positively verified previous-result contract.
 CURRENT_FACT_ABILITIES = frozenset(
     {
         "innerfocus",
@@ -168,6 +171,9 @@ CURRENT_FACT_ITEMS = frozenset(
         "focussash",
         "dragonfang",
         "mysticwater",
+        # Pinned native onBasePower Fire multiplier; no counters or lifecycle.
+        # Transfers/removals and unsupported moves still require their gates.
+        "charcoal",
         "gardevoirite",
         "metagrossite",
         "psychicseed",
@@ -336,16 +342,19 @@ def public_support_contract(view, ledger):
                     "opponent-bench", "unresolved", "damaged/statused reserve is not reconstructed"
                 )
     observed = set()
+    inventory = public_inventory_plan(view, ledger)
+    if inventory is None:
+        record('opponent-inventory', 'unresolved', 'unsupported or ambiguous inventory lifecycle')
+    elif inventory:
+        record('opponent-inventory', 'supported', 'bounded public consumption; native state checked separately')
     for _, event, _ in ordered:
         kind = event[0]
         if kind in {"-item", "-enditem"} and event[1].startswith("p1"):
-            record(
-                "opponent-inventory", "unresolved", "observed inventory lifecycle not reconstructed"
-            )
+            continue
         if kind in STATELESS_EVENTS:
             continue
         if kind == "move":
-            if event[2] not in CURRENT_FACT_MOVES:
+            if event[2] not in CURRENT_FACT_MOVES and event[2] != 'stompingtantrum':
                 record("move:" + event[2], "unresolved", "no support entry for historical move")
         elif kind == "cant":
             if event[2] not in {"flinch", "par", "frz"}:
@@ -439,7 +448,8 @@ def public_opponent_pp_plan(view, ledger):
     ]
 
 
-def static_support_issue(*, ability, item, moves, opponent=False, inactive=False):
+def static_support_issue(*, ability, item, moves, opponent=False, inactive=False,
+                         move_result_certified=False):
     """Check exact owned or hypothetical set, never inferred unseen absence."""
     if sid(ability) not in CURRENT_FACT_ABILITIES:
         return "unsupported-persistent:ability:" + sid(ability)
@@ -450,9 +460,11 @@ def static_support_issue(*, ability, item, moves, opponent=False, inactive=False
     if sid(item) not in CURRENT_FACT_ITEMS:
         return "unsupported-persistent:item:" + sid(item)
     for move in moves:
+        if sid(move) == 'stompingtantrum' and move_result_certified:
+            continue
         # Native switch-out clearVolatile resets the last-move result; a
         # currently inactive holder cannot attack before native switch-in.
-        # Active holders and any observed Stomping history remain unsupported.
+        # Active Stomping holders require the separate public-result certificate.
         if sid(move) in {'stompingtantrum', 'electroshot', 'phantomforce'} and inactive:
             continue
         if sid(move) not in CURRENT_FACT_MOVES:
@@ -460,7 +472,7 @@ def static_support_issue(*, ability, item, moves, opponent=False, inactive=False
     return None
 
 
-def current_capability_issue(view, priors):
+def current_capability_issue(view, priors, ledger=None):
     """Validate owned inventory and ALL public-compatible opponent candidates.
 
     Do this before bounded sampling: an unsupported prior must not disappear
@@ -469,6 +481,9 @@ def current_capability_issue(view, priors):
     """
     from champions_practice.belief_worlds import _candidate_matches
     from champions_practice.beliefs import build_public_opponent_belief
+
+    result_plan = public_move_result_plan(view, ledger) if ledger is not None else None
+    certified = {(e['side'], sid(e['species']).removesuffix('mega')) for e in result_plan or []}
 
     own = view.get("player", {}).get("team")
     if not isinstance(own, list) or not own:
@@ -479,6 +494,7 @@ def current_capability_issue(view, priors):
         issue = static_support_issue(
             ability=mon["ability"], item=mon["item"], moves=[move["id"] for move in mon["move_pp"]],
             inactive=mon.get('active') is False,
+            move_result_certified=('player', sid(mon.get('species')).removesuffix('mega')) in certified,
         )
         if issue:
             return issue
@@ -497,6 +513,7 @@ def current_capability_issue(view, priors):
             issue = static_support_issue(
                 ability=candidate.ability, item=candidate.item, moves=candidate.moves, opponent=True,
                 inactive=pokemon.active_slot is None or pokemon.fainted,
+                move_result_certified=('opponent', sid(pokemon.species).removesuffix('mega')) in certified,
             )
             if issue:
                 return issue
