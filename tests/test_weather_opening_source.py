@@ -103,6 +103,12 @@ def test_public_opening_source_native_clock_and_next_turn_equivalence(rock, weat
         expected_duration = (8 if rock else 5)-2
         for particle in report.particles:
             rebuilt = particle.state
+            actual_source = next(m for m in state['sides'][0]['pokemon'] if m['set']['species'] == setter)
+            rebuilt_source = next(m for m in rebuilt['sides'][0]['pokemon'] if m['set']['species'] == setter)
+            assert (rebuilt_source['isActive'], rebuilt_source['fainted']) == (actual_source['isActive'], actual_source['fainted'])
+            assert not rebuilt_source['isActive']
+            if fainted:
+                assert rebuilt_source['hp'] == 0
             assert rebuilt['field']['weatherState']['duration'] == expected_duration
             assert state['field']['weatherState']['duration'] == expected_duration
             assert observation_key(scoped.state_view(state=rebuilt, side='p2')) == observation_key(view)
