@@ -138,6 +138,7 @@ def main():
     cases = cases[:args.pairs*2]
     sources = ['src/champions_practice/experimental_native_player.py', 'scripts/full_game_native_evaluation.py',
                'src/champions_practice/tactical_consequences.py', 'src/champions_practice/exact_search.py',
+               'src/champions_practice/consequence_ties.py',
                'src/champions_practice/present_rebase.py', 'src/champions_practice/public_origin.py',
                'src/champions_practice/native_speed.py', 'tools/showdown-search-worker.js']
     report = {'cases': cases, 'games': [], 'baseline': policy_identity, 'independent_opponent': identity(dex),

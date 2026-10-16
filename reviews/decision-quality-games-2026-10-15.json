@@ -1,0 +1,299 @@
+{
+  "control_sha256": "072500e91642ffda9c2f8f2079f60a4e1e3bf86aae3b8874c6ca36632c213984",
+  "candidate_sha256": "ef003059ca509ec26bcd7aa551edb504f29474c9aad3191eb55bf6d95263dd07",
+  "source_sha256": {
+    "src/champions_practice/experimental_native_player.py": "7d01056ecff132c173ce1f3b74ec4b94c7dfa6e376d668d8b0844aa3fe048f02",
+    "scripts/full_game_native_evaluation.py": "f336b257dffedab84a7802629a3e3e68d6941e6b627501724fe614eaf39d73be",
+    "src/champions_practice/tactical_consequences.py": "3df4983da10f2115c259277bed27c175e508785863655df68f96befffff86f88",
+    "src/champions_practice/exact_search.py": "ffa868b9436cf959fe484a9b4f91e516377a4764e1108e0bc0e50e2bd834f1ac",
+    "src/champions_practice/consequence_ties.py": "4b7954e714209bb14818f16418eb870dc7ed45474a9c3783e7052a900b705ab2",
+    "src/champions_practice/present_rebase.py": "1a16ebd961f1fe4fd3d0615c4c8995c207a8b81e7aaea999be7f2364826566ca",
+    "src/champions_practice/public_origin.py": "47f6a12fe8a9442f94f7be9fda69840287e7aadebd662fae498e7bb6c8e094b9",
+    "src/champions_practice/native_speed.py": "e75a4657300d8d54e2f464808ae89417017adead73ab47b214ff47af8788aea0",
+    "tools/showdown-search-worker.js": "d603e5f066771923e3ebc4d838362c8d371648f932bffd306b5a4692b70442f0"
+  },
+  "changed_existing_sources": [
+    "scripts/full_game_native_evaluation.py",
+    "src/champions_practice/tactical_consequences.py"
+  ],
+  "frozen_v2_exact_trajectory_parity": 24,
+  "native_changed_games": [
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 1,
+      "turn": 2,
+      "before": "move followme, move protect",
+      "after": "move followme, move armorcannon +1",
+      "control_win": false,
+      "candidate_win": true,
+      "control_checkpoints": 7,
+      "candidate_checkpoints": 8,
+      "first_divergence_branch_evidence_identical": true
+    }
+  ],
+  "control": {
+    "outcomes": {
+      "pairs": 24,
+      "v2_wins": 10,
+      "native_wins": 15,
+      "native_only": 5,
+      "v2_only": 0
+    },
+    "opponent_fallback_free": {
+      "pairs": 24,
+      "v2_wins": 10,
+      "native_wins": 15,
+      "native_only": 5,
+      "v2_only": 0
+    },
+    "actionable_decisions": 166,
+    "completed_searches": 79,
+    "disagreements": 55,
+    "late_actionable": 67,
+    "late_completed_searches": 12,
+    "fallback_reasons": {
+      "unsupported-persistent:status:slp": 3,
+      "unsupported-persistent:move:stompingtantrum": 11,
+      "unsupported-persistent:opponent-capabilities": 30,
+      "unsupported-persistent:owned-unburden": 1,
+      "unsupported-persistent:volatile:flashfire": 5,
+      "unsupported-persistent:volatile:confusion": 11,
+      "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 5,
+      "unsupported-persistent:move:electroshot": 18,
+      "unsupported-persistent:move:phantomforce": 3
+    },
+    "latency": {
+      "mean": 0.3794999409636871,
+      "max": 1.6412920000002487,
+      "p95": 1.1812329000094905,
+      "over_eight_seconds": 0
+    },
+    "coverage_by_turn": {
+      "1": {
+        "actionable": 29,
+        "admitted": 24,
+        "search_completed": 24,
+        "disagreements": 20
+      },
+      "2": {
+        "actionable": 41,
+        "admitted": 29,
+        "search_completed": 29,
+        "disagreements": 16
+      },
+      "3": {
+        "actionable": 29,
+        "admitted": 14,
+        "search_completed": 14,
+        "disagreements": 10
+      },
+      "4": {
+        "actionable": 31,
+        "admitted": 5,
+        "search_completed": 5,
+        "disagreements": 3
+      },
+      "5": {
+        "actionable": 21,
+        "admitted": 3,
+        "search_completed": 3,
+        "disagreements": 3
+      },
+      "6": {
+        "actionable": 10,
+        "admitted": 3,
+        "search_completed": 3,
+        "disagreements": 3
+      },
+      "7": {
+        "actionable": 5,
+        "admitted": 1,
+        "search_completed": 1,
+        "disagreements": 0
+      }
+    },
+    "strata": {
+      "stage": {
+        "development": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 7,
+          "native_only": 2,
+          "v2_only": 0
+        },
+        "validation": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 8,
+          "native_only": 3,
+          "v2_only": 0
+        }
+      },
+      "opponent": {
+        "max-base-power": {
+          "pairs": 12,
+          "v2_wins": 6,
+          "native_wins": 9,
+          "native_only": 3,
+          "v2_only": 0
+        },
+        "simple-heuristics": {
+          "pairs": 12,
+          "v2_wins": 4,
+          "native_wins": 6,
+          "native_only": 2,
+          "v2_only": 0
+        }
+      },
+      "hidden_family": {
+        "heldout": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 7,
+          "native_only": 2,
+          "v2_only": 0
+        },
+        "prior": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 8,
+          "native_only": 3,
+          "v2_only": 0
+        }
+      }
+    }
+  },
+  "candidate": {
+    "outcomes": {
+      "pairs": 24,
+      "v2_wins": 10,
+      "native_wins": 16,
+      "native_only": 6,
+      "v2_only": 0
+    },
+    "opponent_fallback_free": {
+      "pairs": 24,
+      "v2_wins": 10,
+      "native_wins": 16,
+      "native_only": 6,
+      "v2_only": 0
+    },
+    "actionable_decisions": 168,
+    "completed_searches": 81,
+    "disagreements": 56,
+    "late_actionable": 68,
+    "late_completed_searches": 14,
+    "fallback_reasons": {
+      "unsupported-persistent:status:slp": 4,
+      "unsupported-persistent:move:stompingtantrum": 11,
+      "unsupported-persistent:opponent-capabilities": 29,
+      "unsupported-persistent:owned-unburden": 1,
+      "unsupported-persistent:volatile:flashfire": 5,
+      "unsupported-persistent:volatile:confusion": 11,
+      "unsupported-public-phase:phase=switch:turn=1:request=force-switch:preview=valid": 5,
+      "unsupported-persistent:move:electroshot": 18,
+      "unsupported-persistent:move:phantomforce": 3
+    },
+    "latency": {
+      "mean": 0.36898138214296305,
+      "max": 1.5886071999993874,
+      "p95": 1.150854099993012,
+      "over_eight_seconds": 0
+    },
+    "coverage_by_turn": {
+      "1": {
+        "actionable": 29,
+        "admitted": 24,
+        "search_completed": 24,
+        "disagreements": 20
+      },
+      "2": {
+        "actionable": 41,
+        "admitted": 29,
+        "search_completed": 29,
+        "disagreements": 16
+      },
+      "3": {
+        "actionable": 30,
+        "admitted": 14,
+        "search_completed": 14,
+        "disagreements": 9
+      },
+      "4": {
+        "actionable": 31,
+        "admitted": 6,
+        "search_completed": 6,
+        "disagreements": 4
+      },
+      "5": {
+        "actionable": 21,
+        "admitted": 4,
+        "search_completed": 4,
+        "disagreements": 4
+      },
+      "6": {
+        "actionable": 11,
+        "admitted": 3,
+        "search_completed": 3,
+        "disagreements": 3
+      },
+      "7": {
+        "actionable": 5,
+        "admitted": 1,
+        "search_completed": 1,
+        "disagreements": 0
+      }
+    },
+    "strata": {
+      "stage": {
+        "development": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 7,
+          "native_only": 2,
+          "v2_only": 0
+        },
+        "validation": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 9,
+          "native_only": 4,
+          "v2_only": 0
+        }
+      },
+      "opponent": {
+        "max-base-power": {
+          "pairs": 12,
+          "v2_wins": 6,
+          "native_wins": 10,
+          "native_only": 4,
+          "v2_only": 0
+        },
+        "simple-heuristics": {
+          "pairs": 12,
+          "v2_wins": 4,
+          "native_wins": 6,
+          "native_only": 2,
+          "v2_only": 0
+        }
+      },
+      "hidden_family": {
+        "heldout": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 8,
+          "native_only": 3,
+          "v2_only": 0
+        },
+        "prior": {
+          "pairs": 12,
+          "v2_wins": 5,
+          "native_wins": 8,
+          "native_only": 3,
+          "v2_only": 0
+        }
+      }
+    }
+  },
+  "interpretation": "Same-case regression, not independent playing-strength replication."
+}

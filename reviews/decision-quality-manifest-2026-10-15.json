@@ -1,0 +1,465 @@
+{
+  "hashes": {
+    "runs/v2-full-game-native/inventory-v1/games.json.gz": "072500e91642ffda9c2f8f2079f60a4e1e3bf86aae3b8874c6ca36632c213984",
+    "runs/v2-preservation-conversion/frozen-v4/results.json.gz": "8c326e1ca782d5110f6995c628083f3b04e62ba787668b3cfe11977a830992f1",
+    "reviews/decision-quality-protocol-2026-10-15.md": "cf2e21a5fd5bbfb8e1178caed994dd8d0d76ca66b49f397644565e811aeaf835",
+    "scripts/decision_quality_benchmark.py": "fc0d17e9d5d3fa16ad7d85323286ef5955c01d0b14c5f7924c270db9148f7b48",
+    "src/champions_practice/consequence_ties.py": "4b7954e714209bb14818f16418eb870dc7ed45474a9c3783e7052a900b705ab2",
+    "src/champions_practice/tactical_consequences.py": "3df4983da10f2115c259277bed27c175e508785863655df68f96befffff86f88"
+  },
+  "retained": [
+    [
+      "development-0-simple-heuristics-prior-native",
+      7
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      7
+    ],
+    [
+      "validation-2-max-base-power-heldout-native",
+      1
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      6
+    ]
+  ],
+  "separate_checkpoints": [
+    [
+      "development-1-simple-heuristics-heldout-native",
+      6
+    ],
+    [
+      "validation-0-simple-heuristics-prior-native",
+      4
+    ],
+    [
+      "development-0-simple-heuristics-heldout-native",
+      1
+    ],
+    [
+      "validation-0-max-base-power-prior-native",
+      4
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      0
+    ],
+    [
+      "validation-2-max-base-power-heldout-native",
+      0
+    ],
+    [
+      "validation-0-simple-heuristics-prior-native",
+      0
+    ],
+    [
+      "validation-0-simple-heuristics-prior-native",
+      3
+    ],
+    [
+      "validation-1-max-base-power-heldout-native",
+      0
+    ],
+    [
+      "development-0-max-base-power-prior-native",
+      0
+    ],
+    [
+      "validation-0-simple-heuristics-prior-native",
+      5
+    ],
+    [
+      "validation-2-max-base-power-prior-native",
+      3
+    ],
+    [
+      "development-0-max-base-power-prior-native",
+      5
+    ],
+    [
+      "validation-0-max-base-power-heldout-native",
+      0
+    ],
+    [
+      "validation-1-max-base-power-prior-native",
+      1
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      8
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      1
+    ],
+    [
+      "development-1-max-base-power-prior-native",
+      1
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      3
+    ],
+    [
+      "development-1-max-base-power-heldout-native",
+      3
+    ],
+    [
+      "development-2-simple-heuristics-prior-native",
+      0
+    ],
+    [
+      "validation-1-simple-heuristics-prior-native",
+      2
+    ],
+    [
+      "validation-1-max-base-power-heldout-native",
+      1
+    ],
+    [
+      "validation-1-max-base-power-prior-native",
+      0
+    ],
+    [
+      "validation-0-simple-heuristics-prior-native",
+      2
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      7
+    ],
+    [
+      "validation-2-max-base-power-prior-native",
+      1
+    ],
+    [
+      "development-0-simple-heuristics-heldout-native",
+      0
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      5
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      4
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      2
+    ],
+    [
+      "validation-2-simple-heuristics-prior-native",
+      3
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      8
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      0
+    ],
+    [
+      "validation-1-simple-heuristics-heldout-native",
+      0
+    ],
+    [
+      "development-0-max-base-power-prior-native",
+      2
+    ],
+    [
+      "validation-2-simple-heuristics-prior-native",
+      0
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      0
+    ],
+    [
+      "validation-1-simple-heuristics-prior-native",
+      3
+    ],
+    [
+      "development-0-max-base-power-heldout-native",
+      1
+    ],
+    [
+      "validation-0-max-base-power-prior-native",
+      0
+    ],
+    [
+      "development-1-simple-heuristics-prior-native",
+      2
+    ],
+    [
+      "validation-0-max-base-power-heldout-native",
+      2
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      2
+    ],
+    [
+      "development-2-simple-heuristics-heldout-native",
+      0
+    ],
+    [
+      "development-2-max-base-power-prior-native",
+      0
+    ],
+    [
+      "development-1-simple-heuristics-prior-native",
+      0
+    ],
+    [
+      "validation-2-max-base-power-prior-native",
+      2
+    ],
+    [
+      "development-1-simple-heuristics-prior-native",
+      1
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      1
+    ],
+    [
+      "development-0-max-base-power-prior-native",
+      1
+    ],
+    [
+      "development-1-max-base-power-heldout-native",
+      1
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      3
+    ],
+    [
+      "validation-2-max-base-power-heldout-native",
+      3
+    ],
+    [
+      "validation-0-simple-heuristics-heldout-native",
+      0
+    ],
+    [
+      "validation-1-max-base-power-prior-native",
+      2
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      8
+    ],
+    [
+      "validation-1-simple-heuristics-heldout-native",
+      1
+    ],
+    [
+      "development-1-max-base-power-heldout-native",
+      0
+    ],
+    [
+      "validation-1-simple-heuristics-prior-native",
+      0
+    ],
+    [
+      "development-0-simple-heuristics-prior-native",
+      3
+    ],
+    [
+      "validation-0-max-base-power-prior-native",
+      3
+    ],
+    [
+      "development-1-simple-heuristics-heldout-native",
+      5
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      1
+    ],
+    [
+      "development-0-max-base-power-heldout-native",
+      0
+    ],
+    [
+      "validation-0-max-base-power-heldout-native",
+      3
+    ],
+    [
+      "validation-2-max-base-power-heldout-native",
+      2
+    ],
+    [
+      "validation-2-max-base-power-prior-native",
+      0
+    ],
+    [
+      "development-2-simple-heuristics-prior-native",
+      3
+    ],
+    [
+      "validation-1-simple-heuristics-prior-native",
+      1
+    ],
+    [
+      "development-2-max-base-power-heldout-native",
+      0
+    ],
+    [
+      "validation-2-simple-heuristics-heldout-native",
+      2
+    ],
+    [
+      "validation-2-simple-heuristics-prior-native",
+      1
+    ],
+    [
+      "development-0-max-base-power-prior-native",
+      3
+    ],
+    [
+      "development-1-max-base-power-prior-native",
+      0
+    ]
+  ],
+  "inspection_cases": [
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 6,
+      "turn": 4,
+      "categories": [
+        "repositioning"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 4,
+      "turn": 3,
+      "categories": [
+        "repositioning"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "development-0-simple-heuristics-heldout-native",
+      "checkpoint": 1,
+      "turn": 2,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning",
+        "speed_control"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-0-max-base-power-prior-native",
+      "checkpoint": 4,
+      "turn": 3,
+      "categories": [
+        "move_commands",
+        "shielding"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "development-1-simple-heuristics-heldout-native",
+      "checkpoint": 0,
+      "turn": 1,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning",
+        "speed_control"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-2-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "turn": 1,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning",
+        "speed_control"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 0,
+      "turn": 1,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-1-max-base-power-heldout-native",
+      "checkpoint": 0,
+      "turn": 1,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning",
+        "speed_control"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "development-0-max-base-power-prior-native",
+      "checkpoint": 0,
+      "turn": 1,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning",
+        "speed_control"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-0-simple-heuristics-prior-native",
+      "checkpoint": 5,
+      "turn": 4,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning"
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "game": "validation-2-max-base-power-prior-native",
+      "checkpoint": 3,
+      "turn": 3,
+      "categories": [
+        "move_commands",
+        "shielding",
+        "repositioning"
+      ],
+      "optimal_action_label": "unproven"
+    }
+  ],
+  "scope": "Separate archival checkpoints; not unseen teams or independent strength evidence."
+}
