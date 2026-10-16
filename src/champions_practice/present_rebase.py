@@ -34,6 +34,7 @@ from champions_practice.current_state_proposals import (
 from champions_practice.current_state_reconstruction import _matches_approved_prior
 from champions_practice.search_worker import OwnSpeedDiagnosticTransportError
 from champions_practice.public_inventory import public_inventory_plan, native_inventory_rejection
+from champions_practice.public_move_result import public_move_result_plan
 from champions_practice.observation_beliefs import (
     BeliefParticle,
     identity_member_lineage,
@@ -173,13 +174,24 @@ def _positive_mechanics_rejection(state, projected, *, current_view, ledger,
         if inventory_issue:
             return inventory_issue
         trace_plan = public_trace_plan(current_view, ledger)
+        result_plan = public_move_result_plan(current_view, ledger)
         for side_index, side in enumerate(state['sides']):
             for slot, mon in enumerate(side['pokemon']):
+                result_entry = next((e for e in result_plan or []
+                    if e['side'] == ('player' if side_index == 1 else 'opponent')
+                    and e['slot'] == slot and _sid(e['species']).removesuffix('mega') == _sid(mon['set']['species'])), None)
                 issue = static_support_issue(ability=mon['ability'], item=mon['item'],
                                              moves=mon['set']['moves'], opponent=side_index == 0,
-                                             inactive=not mon['isActive'])
+                                             inactive=not mon['isActive'], move_result_certified=result_entry is not None)
                 if issue:
                     return issue
+                if mon['isActive'] and any(_sid(move) == 'stompingtantrum' for move in mon['set']['moves']):
+                    actual = ('undefined' if 'moveLastTurnResult' not in mon else
+                              'null' if mon['moveLastTurnResult'] is None else
+                              'true' if mon['moveLastTurnResult'] is True else
+                              'false' if mon['moveLastTurnResult'] is False else 'invalid')
+                    if result_entry is None or actual != result_entry['result'] or 'moveThisTurnResult' in mon:
+                        return 'unsupported-persistent:last-move-result-mismatch'
                 if not mon['isActive'] and any(_sid(move) == 'stompingtantrum' for move in mon['set']['moves']):
                     if mon.get('moveLastTurnResult') is not None:
                         return 'unsupported-persistent:inactive-last-move-result'
@@ -376,7 +388,7 @@ def build_present_rebase(
         )
         return PresentRebaseReport((), 0, 0, 0, reason)
 
-    issue = unsupported_present_mechanics(current_view, ledger) or current_capability_issue(current_view, priors)
+    issue = unsupported_present_mechanics(current_view, ledger) or current_capability_issue(current_view, priors, ledger)
     if issue:
         return PresentRebaseReport((), 0, 0, 0, issue)
 
@@ -424,6 +436,8 @@ def build_present_rebase(
                 limit=min(4, max_particles - len(found)),
                 active_tenure_plan=public_active_tenure_plan(current_view, ledger),
                 opponent_pp_plan=public_opponent_pp_plan(current_view, ledger),
+                **({'move_result_plan': public_move_result_plan(current_view, ledger)}
+                   if public_move_result_plan(current_view, ledger) is not None else {}),
                 **({'inventory_plan': public_inventory_plan(current_view, ledger)}
                    if public_inventory_plan(current_view, ledger) else {}),
                 **({"mechanics_plan": opening_terrain_plan(current_view, ledger)}

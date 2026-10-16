@@ -2418,6 +2418,22 @@ function materializePresentHypotheses(request) {
       }
       const seen = new Set();
       const targets = [];
+      const resultEntries = new Map();
+      if (request.move_result_plan != null) {
+        if (view.phase !== 'move' || !Array.isArray(request.move_result_plan) || request.move_result_plan.length > 4) {
+          return why('unsupported-public-move-result-plan');
+        }
+        for (const entry of request.move_result_plan) {
+          const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
+          const mon = side?.active[entry.slot];
+          const key = `${entry.side}:${entry.slot}`;
+          if (Object.keys(entry).sort().join(',') !== 'result,side,slot,species' ||
+              !Number.isInteger(entry.slot) || entry.slot < 0 || entry.slot > 1 || !mon || resultEntries.has(key) ||
+              ![asId(mon.set.species), asId(mon.species.name)].includes(asId(entry.species)) ||
+              !['undefined', 'true', 'false', 'null'].includes(entry.result)) return why('unsupported-public-move-result-plan');
+          resultEntries.set(key, entry.result);
+        }
+      }
       for (const entry of plan) {
         const side = entry.side === 'player' ? own : entry.side === 'opponent' ? foe : null;
         const mon = side?.active[entry.slot];
@@ -2430,7 +2446,12 @@ function materializePresentHypotheses(request) {
           return why('unsupported-active-tenure-plan');
         }
         seen.add(key);
-        targets.push({entry, mon, side});
+        const result = mon.set.moves.some(move => asId(move) === 'stompingtantrum') ? resultEntries.get(key) : undefined;
+        if (mon.set.moves.some(move => asId(move) === 'stompingtantrum') &&
+            (!result || entry.active_turns < 1 || (result === 'undefined' && entry.active_turns === 1 && entry.move_actions > 0))) {
+          return why('unsupported-public-last-move-result');
+        }
+        targets.push({entry, mon, side, result});
       }
       const liveCount = [...view.player.active_details, ...view.opponent.active]
         .filter(mon => mon && !mon.fainted).length;
@@ -2458,11 +2479,40 @@ function materializePresentHypotheses(request) {
             return why('unsupported-native-active-tenure-reset');
           }
         }
+        if (step === maxAge - 1) {
+          for (const {mon, result} of targets) {
+            // Native useMove establishes its result; native endTurn below
+            // transfers it to moveLastTurnResult and clears the current one.
+            // These are inert setter witnesses, NOT invented past commands.
+            // useMove (rather than runMove) does not alter activeMoveActions.
+            if (!result || result === 'undefined') continue;
+            if (result === 'true') {
+              original.actions.useMove('splash', mon);
+            } else if (result === 'false') {
+              original.field.clearTerrain();
+              original.actions.useMove('steelroller', mon);
+            } else {
+              const target = original.getAllActive().find(other => other !== mon && other.hp > 0 && !other.volatiles.protect);
+              if (!target || !target.addVolatile('protect')) return why('unsupported-native-null-move-result');
+              try {
+                original.actions.useMove('watergun', mon, {target});
+              } finally {
+                target.removeVolatile('protect');
+              }
+            }
+            const expected = result === 'null' ? null : result === 'true';
+            if (mon.moveThisTurnResult !== expected) return why('unsupported-native-move-result');
+          }
+        }
         if (step < maxAge) original.endTurn();
       }
-      for (const {entry, mon} of targets) {
+      for (const {entry, mon, result} of targets) {
         if (mon.activeTurns !== entry.active_turns || mon.activeMoveActions !== entry.move_actions) {
           return why('unsupported-native-active-tenure');
+        }
+        if (result && (mon.moveLastTurnResult !== (result === 'undefined' ? undefined :
+            result === 'null' ? null : result === 'true') || mon.moveThisTurnResult !== undefined)) {
+          return why('unsupported-native-last-move-result');
         }
       }
     }
