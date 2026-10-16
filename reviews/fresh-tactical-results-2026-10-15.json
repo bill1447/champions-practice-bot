@@ -1,0 +1,4608 @@
+{
+  "manifest_sha256": "a8985ecc8427cae8c4fea00c86398e46958042166d8da28a7f418c0355700a9c",
+  "baseline": {
+    "commit": "e0ae72308f77b7ea7e9cb12629804bca46ce4a18",
+    "source_sha256": {
+      "policy": "ae45194c65880ecc4b517fd992a48fc1ce7aad6838b27417a34dbdb12424070a",
+      "joint": "854707c0003d083a92a1d42676fdd655da8397ee1c47ff6a8f9cef0ca516195c"
+    }
+  },
+  "cases": [
+    {
+      "id": "concentrate-damage-warmup-0",
+      "category": "concentrate-damage",
+      "turn": 1,
+      "status": "complete",
+      "incumbent": "move psychicfangs +2 mega, move hydropump +1",
+      "selected": "move psychicfangs +2 mega, move thunderbolt +1",
+      "disagreement": true,
+      "search_seconds": 0.14366859999427106,
+      "branches": 28,
+      "probe_samples": 312,
+      "replies": [
+        "move crunch +1, move dragonclaw +2",
+        "move protect, move dragonclaw +2",
+        "move crunch +1, move protect",
+        "move crunch +1, switch 3",
+        "move crunch +1, move dragonclaw +1",
+        "move crunch +2, move dragonclaw +2"
+      ],
+      "direct_completed_control_cells_reproduced": 22,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move psychicfangs +2 mega, move hydropump +1",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 91,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rotom-Wash": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 63,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 23,
+              "Rotom-Wash": 17,
+              "Incineroar": 5
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 94,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 74,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 22,
+              "Rotom-Wash": 23,
+              "Incineroar": 2
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, switch 3",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 69,
+            "enemy_living_total": 77,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 6,
+              "Incineroar": 8
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, move willowisp +1",
+          "roles": [
+            "disruption"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 94,
+            "enemy_living_total": 93,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 79,
+            "enemy_living_total": 70,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 21,
+              "Incineroar": 2
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +1 mega, move hydropump +1",
+          "roles": [
+            "focus-first",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 74,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 19,
+              "Incineroar": 4
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +2 mega, move hydropump +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 95,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rotom-Wash": 15
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 73,
+            "enemy_living_total": 60,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 14,
+              "Incineroar": 1
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, move hydropump +1",
+          "roles": [
+            "spread",
+            "mega"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 95,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rotom-Wash": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 75,
+            "enemy_living_total": 57,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 23,
+              "Incineroar": 1
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +2 mega, move thunderbolt +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 63,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 22,
+              "Rotom-Wash": 19,
+              "Incineroar": 5
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +2 mega, switch 3",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 82,
+            "enemy_living_total": 68,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 21,
+              "Metagross-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move protect mega, move hydropump +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 74,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 19,
+              "Incineroar": 4
+            }
+          }
+        },
+        {
+          "action": "switch 3, move hydropump +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 78,
+            "enemy_living_total": 70,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 18,
+              "Rotom-Wash": 20,
+              "Metagross-Mega": 4
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +2 mega, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 80,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 55,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 17
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +2 mega, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 70,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rotom-Wash": 17
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "concentrate-damage-warmup-2",
+      "category": "concentrate-damage",
+      "turn": 3,
+      "status": "complete",
+      "incumbent": "move flareblitz +2, move hydropump +1",
+      "selected": "move flareblitz +2, move thunderbolt +1",
+      "disagreement": true,
+      "search_seconds": 0.28116359999694396,
+      "branches": 46,
+      "probe_samples": 312,
+      "replies": [
+        "move rockslide, move woodhammer +2",
+        "move protect, move woodhammer +2",
+        "move rockslide, move protect",
+        "move crunch +1, move protect",
+        "move crunch +1, switch 4",
+        "move crunch +1, move grassyglide +1"
+      ],
+      "direct_completed_control_cells_reproduced": 3,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move flareblitz +2, move hydropump +1",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 43,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 12,
+              "Rotom-Wash": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 17,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 7,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 18,
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 64,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 8,
+            "losses": 0,
+            "own_living_total": 71,
+            "enemy_living_total": 17,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 24,
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, switch 4",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 71,
+            "enemy_living_total": 63,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 18
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 26,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 23,
+              "Venusaur": 24,
+              "Rotom-Wash": 1
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move willowisp +1",
+          "roles": [
+            "disruption"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 65,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 6,
+            "losses": 0,
+            "own_living_total": 61,
+            "enemy_living_total": 20,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 24,
+              "Venusaur": 8,
+              "Rotom-Wash": 16
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move hydropump +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 53,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 13,
+              "Rotom-Wash": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 12,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 24,
+              "Venusaur": 8,
+              "Rotom-Wash": 16
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +2, move hydropump +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 62,
+            "enemy_living_total": 68,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 16,
+              "Rotom-Wash": 14
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 4,
+            "losses": 0,
+            "own_living_total": 62,
+            "enemy_living_total": 20,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 24,
+              "Venusaur": 10,
+              "Rotom-Wash": 14
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +2, move thunderbolt +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 40,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 12,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 20,
+            "losses": 0,
+            "own_living_total": 68,
+            "enemy_living_total": 4,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24,
+              "Incineroar": 16
+            }
+          }
+        },
+        {
+          "action": "move fakeout +2, move hydropump +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 71,
+            "enemy_living_total": 56,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 16,
+              "Rotom-Wash": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 70,
+            "enemy_living_total": 9,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 23,
+              "Rotom-Wash": 24,
+              "Venusaur": 1
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +2, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 60,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 56,
+            "enemy_living_total": 28,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 24,
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +2, switch 4",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 71,
+            "enemy_living_total": 61,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 11
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 55,
+            "enemy_living_total": 29,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 23,
+              "Venusaur": 24,
+              "Rotom-Wash": 1
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +1, move hydropump +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 67,
+            "enemy_living_total": 46,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 9,
+              "Rotom-Wash": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 19,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 5,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 18,
+              "Venusaur": 5,
+              "Rotom-Wash": 19
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +2, move hydropump +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 55,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 16,
+              "Rotom-Wash": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 11,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 13,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 24,
+              "Venusaur": 8,
+              "Rotom-Wash": 16
+            }
+          }
+        },
+        {
+          "action": "switch 4, move hydropump +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 55,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 4,
+            "losses": 0,
+            "own_living_total": 49,
+            "enemy_living_total": 22,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 8,
+              "Venusaur": 24,
+              "Rotom-Wash": 16
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "trade-and-spread-warmup-0",
+      "category": "trade-and-spread",
+      "turn": 1,
+      "status": "complete",
+      "incumbent": "move rockslide, move thunderbolt +2",
+      "selected": "move rockslide, move thunderbolt +2",
+      "disagreement": false,
+      "search_seconds": 0.17085700000461657,
+      "branches": 36,
+      "probe_samples": 336,
+      "replies": [
+        "move earthquake mega, move tailwind",
+        "move protect mega, move tailwind",
+        "move protect mega, move hurricane +1",
+        "move earthquake mega, move protect",
+        "move earthquake mega, switch 3",
+        "move psychicfangs +1 mega, move hurricane +1"
+      ],
+      "direct_completed_control_cells_reproduced": 18,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move rockslide, move thunderbolt +2",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 95,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 22,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 73,
+            "enemy_living_total": 73,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 23,
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 76,
+            "enemy_living_total": 85,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24,
+              "Garchomp": 15
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, switch 3",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 19,
+              "Rotom-Wash": 4
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move willowisp +1",
+          "roles": [
+            "disruption"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 82,
+            "enemy_living_total": 82,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24,
+              "Garchomp": 16
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move hydropump +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16,
+              "Rotom-Wash": 13
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 82,
+            "enemy_living_total": 64,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 18,
+              "Rotom-Wash": 21,
+              "Gardevoir-Mega": 4
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +2, move hydropump +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 20,
+              "Rotom-Wash": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 75,
+            "enemy_living_total": 68,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 23,
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "move earthquake, move hydropump +1",
+          "roles": [
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 83,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16,
+              "Rotom-Wash": 13
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 83,
+            "enemy_living_total": 63,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 18,
+              "Rotom-Wash": 22,
+              "Gardevoir-Mega": 3
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +2, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 20,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 68,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "switch 4, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 69,
+            "enemy_living_total": 80,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24
+            }
+          }
+        },
+        {
+          "action": "move protect, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 95,
+            "enemy_living_total": 72,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Rotom-Wash": 23
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 81,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24,
+              "Garchomp": 15
+            }
+          }
+        },
+        {
+          "action": "switch 3, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 92,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24,
+              "Garchomp": 4
+            }
+          }
+        },
+        {
+          "action": "move rockslide, switch 3",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 70,
+            "enemy_living_total": 95,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 21,
+              "Gardevoir-Mega": 1,
+              "Rotom-Wash": 3
+            }
+          }
+        },
+        {
+          "action": "move rockslide, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 23
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 84,
+            "enemy_living_total": 75,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 24,
+              "Garchomp": 17
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "trade-and-spread-warmup-2",
+      "category": "trade-and-spread",
+      "turn": 3,
+      "status": "complete",
+      "incumbent": "move earthquake, move expandingforce +2 mega",
+      "selected": "move earthquake, move protect mega",
+      "disagreement": true,
+      "search_seconds": 0.2673409000126412,
+      "branches": 49,
+      "probe_samples": 312,
+      "replies": [
+        "move psychicfangs +1, move sludgebomb +2",
+        "move protect, move sludgebomb +2",
+        "move psychicfangs +1, move protect",
+        "move earthquake, move protect",
+        "move earthquake, switch 4",
+        "move earthquake, move sleeppowder +1"
+      ],
+      "direct_completed_control_cells_reproduced": 3,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move earthquake, move expandingforce +2 mega",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 38,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 4
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 13,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 11,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 20
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 54,
+            "enemy_living_total": 70,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 54,
+            "enemy_living_total": 28,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 18,
+              "Rillaboom": 16,
+              "Garchomp": 6
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, switch 4",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 55,
+            "enemy_living_total": 72,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 46,
+            "enemy_living_total": 34,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 17,
+              "Rillaboom": 18,
+              "Garchomp": 6
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move expandingforce +1",
+          "roles": [
+            "focus-first",
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 55,
+            "enemy_living_total": 62,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 20,
+              "Gardevoir": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 2,
+            "losses": 0,
+            "own_living_total": 49,
+            "enemy_living_total": 28,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 18,
+              "Rillaboom": 14,
+              "Garchomp": 10
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +2, move expandingforce +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 54,
+            "enemy_living_total": 57,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16,
+              "Gardevoir": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 3,
+            "losses": 0,
+            "own_living_total": 50,
+            "enemy_living_total": 21,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 22,
+              "Rillaboom": 16,
+              "Garchomp": 6
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +1, move expandingforce +1 mega",
+          "roles": [
+            "mega"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 58,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 20,
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 4,
+            "losses": 0,
+            "own_living_total": 51,
+            "enemy_living_total": 21,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 18,
+              "Rillaboom": 13,
+              "Garchomp": 11
+            }
+          }
+        },
+        {
+          "action": "move earthquake, move protect mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 40,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 9,
+            "losses": 0,
+            "own_living_total": 57,
+            "enemy_living_total": 15,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move earthquake, move mysticalfire +1 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 39,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 4
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 13,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 11,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 21
+            }
+          }
+        },
+        {
+          "action": "move earthquake, move mysticalfire +2 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 39,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 4
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 13,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 11,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 21
+            }
+          }
+        },
+        {
+          "action": "move protect, move expandingforce +2 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 60,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 49,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24,
+              "Gardevoir-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move earthquake, switch 4",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 61,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 2,
+            "losses": 0,
+            "own_living_total": 55,
+            "enemy_living_total": 28,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 14,
+              "Rillaboom": 19,
+              "Garchomp": 9
+            }
+          }
+        },
+        {
+          "action": "switch 4, move expandingforce +2 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 71,
+            "enemy_living_total": 60,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 70,
+            "enemy_living_total": 28,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Rillaboom": 22,
+              "Garchomp": 1
+            }
+          }
+        },
+        {
+          "action": "move dragonclaw +2, move expandingforce +2 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 54,
+            "enemy_living_total": 57,
+            "direct_damage_samples_by_actor": {
+              "Garchomp": 16,
+              "Gardevoir-Mega": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 3,
+            "losses": 0,
+            "own_living_total": 50,
+            "enemy_living_total": 21,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 22,
+              "Rillaboom": 16,
+              "Garchomp": 6
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "speed-control-warmup-0",
+      "category": "speed-control",
+      "turn": 1,
+      "status": "complete",
+      "incumbent": "move tailwind, move earthquake mega",
+      "selected": "move protect, move earthquake mega",
+      "disagreement": true,
+      "search_seconds": 0.16886669999803416,
+      "branches": 38,
+      "probe_samples": 336,
+      "replies": [
+        "move rockslide, move thunderbolt +1",
+        "move protect, move thunderbolt +1",
+        "move rockslide, move protect",
+        "move dragonclaw +1, move protect",
+        "move dragonclaw +1, switch 3",
+        "move dragonclaw +1, move willowisp +1"
+      ],
+      "direct_completed_control_cells_reproduced": 17,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move tailwind, move earthquake mega",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 18
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 73,
+            "enemy_living_total": 74,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Armarouge": 1,
+              "Pelipper": 20
+            }
+          }
+        },
+        {
+          "action": "move hurricane +1, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Pelipper": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 92,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 19,
+              "Armarouge": 1
+            }
+          }
+        },
+        {
+          "action": "move hurricane +1, switch 3",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Pelipper": 15
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 61,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 4,
+              "Armarouge": 14,
+              "Pelipper": 1
+            }
+          }
+        },
+        {
+          "action": "move tailwind, move earthquake",
+          "roles": [
+            "speed-control"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross": 18
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 73,
+            "enemy_living_total": 74,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Armarouge": 1,
+              "Pelipper": 19
+            }
+          }
+        },
+        {
+          "action": "move hurricane +1, move psychicfangs +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 81,
+            "direct_damage_samples_by_actor": {
+              "Metagross": 19,
+              "Pelipper": 15
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 59,
+            "enemy_living_total": 73,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 23,
+              "Armarouge": 1
+            }
+          }
+        },
+        {
+          "action": "move hurricane +2, move psychicfangs +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 90,
+            "direct_damage_samples_by_actor": {
+              "Metagross": 15,
+              "Pelipper": 11
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 82,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 4,
+              "Metagross-Mega": 16,
+              "Pelipper": 1
+            }
+          }
+        },
+        {
+          "action": "move hurricane +1, move earthquake",
+          "roles": [
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 95,
+            "direct_damage_samples_by_actor": {
+              "Metagross": 18,
+              "Pelipper": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 68,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 17,
+              "Armarouge": 1
+            }
+          }
+        },
+        {
+          "action": "move hurricane +1, move earthquake mega",
+          "roles": [
+            "mega",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 95,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 18,
+              "Pelipper": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 68,
+            "enemy_living_total": 82,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 18,
+              "Armarouge": 1
+            }
+          }
+        },
+        {
+          "action": "move protect, move earthquake mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 79,
+            "enemy_living_total": 88,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 12,
+              "Pelipper": 7
+            }
+          }
+        },
+        {
+          "action": "move tailwind, move psychicfangs +1 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 73,
+            "enemy_living_total": 74,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 23,
+              "Armarouge": 1,
+              "Pelipper": 18
+            }
+          }
+        },
+        {
+          "action": "move tailwind, move protect mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 67,
+            "enemy_living_total": 90,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 23,
+              "Armarouge": 1,
+              "Pelipper": 19
+            }
+          }
+        },
+        {
+          "action": "move hurricane +1, move protect mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Pelipper": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 92,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 19,
+              "Armarouge": 1
+            }
+          }
+        },
+        {
+          "action": "switch 3, move earthquake mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 18
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 52,
+            "enemy_living_total": 85,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 19,
+              "Pelipper": 3
+            }
+          }
+        },
+        {
+          "action": "move tailwind, switch 3",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 92,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 78,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 4,
+              "Armarouge": 19,
+              "Pelipper": 18
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "speed-control-warmup-2",
+      "category": "speed-control",
+      "turn": 3,
+      "status": "complete",
+      "incumbent": "move woodhammer +2, move steelroller +1",
+      "selected": "move woodhammer +2, move psychicfangs +1",
+      "disagreement": true,
+      "search_seconds": 0.2666167999996105,
+      "branches": 60,
+      "probe_samples": 288,
+      "replies": [
+        "move dragonclaw +1, move thunderbolt +2",
+        "move protect, move thunderbolt +2",
+        "move dragonclaw +1, move protect",
+        "move dragonclaw +1, switch 3",
+        "move dragonclaw +1, move willowisp +1",
+        "move dragonclaw +1, move hydropump +1"
+      ],
+      "direct_completed_control_cells_reproduced": 6,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move woodhammer +2, move steelroller +1",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 64,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 10,
+            "own_living_total": 14,
+            "enemy_living_total": 38,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 16,
+              "Metagross-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move grassyglide +1, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 48,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 24,
+            "enemy_living_total": 51,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rillaboom": 24
+            }
+          }
+        },
+        {
+          "action": "move grassyglide +1, move psychicfangs +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 42,
+            "enemy_living_total": 70,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 24,
+            "enemy_living_total": 44,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 24,
+              "Metagross-Mega": 18
+            }
+          }
+        },
+        {
+          "action": "move grassyglide +2, move psychicfangs +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 48,
+            "enemy_living_total": 80,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 29,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rillaboom": 24
+            }
+          }
+        },
+        {
+          "action": "move grassyglide +1, move earthquake",
+          "roles": [
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 20,
+              "Metagross-Mega": 4
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 24,
+            "enemy_living_total": 55,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 23,
+              "Metagross-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move woodhammer +2, move psychicfangs +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 64,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 8,
+            "own_living_total": 16,
+            "enemy_living_total": 42,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 17,
+              "Metagross-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move woodhammer +2, move earthquake",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 12,
+            "own_living_total": 12,
+            "enemy_living_total": 50,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 15,
+              "Metagross-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move woodhammer +2, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 48,
+            "enemy_living_total": 81,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 3,
+            "own_living_total": 25,
+            "enemy_living_total": 47,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Rillaboom": 20
+            }
+          }
+        },
+        {
+          "action": "move woodhammer +2, move psychicfangs +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 41,
+            "enemy_living_total": 73,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 8,
+            "own_living_total": 16,
+            "enemy_living_total": 46,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 17,
+              "Rillaboom": 19
+            }
+          }
+        },
+        {
+          "action": "move protect, move steelroller +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 24,
+            "enemy_living_total": 41,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 23,
+              "Metagross-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move woodhammer +1, move steelroller +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 68,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 6,
+            "own_living_total": 18,
+            "enemy_living_total": 40,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 18,
+              "Metagross-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move woodhammer +1, move earthquake",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 20,
+              "Rillaboom": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 7,
+            "own_living_total": 17,
+            "enemy_living_total": 58,
+            "direct_damage_samples_by_actor": {
+              "Rillaboom": 20,
+              "Metagross-Mega": 16
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "redirection-and-setup-warmup-0",
+      "category": "redirection-and-setup",
+      "turn": 1,
+      "status": "complete",
+      "incumbent": "move psychic +1, move expandingforce +1 mega",
+      "selected": "move followme, move expandingforce +1 mega",
+      "disagreement": true,
+      "search_seconds": 0.1182734000030905,
+      "branches": 28,
+      "probe_samples": 336,
+      "replies": [
+        "move dragonclaw +1, move flashcannon +2",
+        "move protect, move flashcannon +2",
+        "move dragonclaw +1, move protect",
+        "move dragonclaw +1, switch 3",
+        "move dragonclaw +1, move dragonpulse +1",
+        "move dragonclaw +2, move dragonpulse +2"
+      ],
+      "direct_completed_control_cells_reproduced": 22,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move psychic +1, move expandingforce +1 mega",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 78,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 87,
+            "enemy_living_total": 52,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 23,
+              "Indeedee-F": 9
+            }
+          }
+        },
+        {
+          "action": "move followme, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 89,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 81,
+            "enemy_living_total": 80,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 12
+            }
+          }
+        },
+        {
+          "action": "move followme, switch 3",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 63,
+            "enemy_living_total": 93,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 9,
+              "Dragonite": 3,
+              "Gardevoir-Mega": 6
+            }
+          }
+        },
+        {
+          "action": "move trickroom, move expandingforce +1",
+          "roles": [
+            "speed-control"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 94,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 66,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 21,
+              "Gardevoir-Mega": 13
+            }
+          }
+        },
+        {
+          "action": "move followme, move expandingforce +1",
+          "roles": [
+            "disruption",
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 89,
+            "enemy_living_total": 94,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 89,
+            "enemy_living_total": 54,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 7
+            }
+          }
+        },
+        {
+          "action": "move psychic +1, move expandingforce +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir": 24,
+              "Indeedee-F": 15
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 91,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 10
+            }
+          }
+        },
+        {
+          "action": "move psychic +2, move expandingforce +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 93,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir": 24,
+              "Indeedee-F": 13
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 54,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 7
+            }
+          }
+        },
+        {
+          "action": "move followme, move expandingforce +1 mega",
+          "roles": [
+            "mega",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 91,
+            "enemy_living_total": 94,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 54,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 7
+            }
+          }
+        },
+        {
+          "action": "move psychic +1, move protect mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 75,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 17
+            }
+          }
+        },
+        {
+          "action": "move trickroom, move expandingforce +1 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 94,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 84,
+            "enemy_living_total": 66,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 22,
+              "Gardevoir-Mega": 13
+            }
+          }
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 75,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 21
+            }
+          }
+        },
+        {
+          "action": "switch 3, move expandingforce +1 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 83,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 81,
+            "enemy_living_total": 57,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Dragonite": 3,
+              "Indeedee-F": 3
+            }
+          }
+        },
+        {
+          "action": "move psychic +1, switch 3",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 90,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 18
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 71,
+            "enemy_living_total": 88,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 17,
+              "Dragonite": 3,
+              "Gardevoir-Mega": 6
+            }
+          }
+        },
+        {
+          "action": "move followme, move protect mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 89,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 81,
+            "enemy_living_total": 80,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Indeedee-F": 12
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "redirection-and-setup-warmup-2",
+      "category": "redirection-and-setup",
+      "turn": 3,
+      "status": "complete",
+      "incumbent": "move followme, move mysticalfire +2",
+      "selected": "move followme, move hypervoice",
+      "disagreement": true,
+      "search_seconds": 0.2822277000086615,
+      "branches": 64,
+      "probe_samples": 288,
+      "replies": [
+        "move darkestlariat +1, move steelroller +2 mega",
+        "move darkestlariat +1, move protect mega",
+        "move partingshot +1, move steelroller +2 mega",
+        "move darkestlariat +1, move protect",
+        "move darkestlariat +1, move psychicfangs +1",
+        "move darkestlariat +2, move psychicfangs +2"
+      ],
+      "direct_completed_control_cells_reproduced": 4,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move followme, move mysticalfire +2",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 46,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 3,
+            "losses": 0,
+            "own_living_total": 36,
+            "enemy_living_total": 29,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 12,
+              "Rotom-Wash": 5,
+              "Gardevoir-Mega": 4
+            }
+          }
+        },
+        {
+          "action": "move followme, move protect",
+          "roles": [
+            "shield",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 20,
+              "Gardevoir-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move followme, switch 3",
+          "roles": [
+            "switch",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 52,
+            "enemy_living_total": 27,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 21,
+              "Dragonite": 4
+            }
+          }
+        },
+        {
+          "action": "move trickroom, move expandingforce +1",
+          "roles": [
+            "speed-control"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 16,
+              "Rotom-Wash": 8
+            }
+          }
+        },
+        {
+          "action": "move followme, move expandingforce +1",
+          "roles": [
+            "disruption",
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 36,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 14,
+              "Rotom-Wash": 8,
+              "Gardevoir-Mega": 4
+            }
+          }
+        },
+        {
+          "action": "move psychic +1, move expandingforce +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 16,
+              "Rotom-Wash": 8
+            }
+          }
+        },
+        {
+          "action": "move psychic +2, move expandingforce +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 4,
+              "Gardevoir-Mega": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 16,
+              "Rotom-Wash": 8
+            }
+          }
+        },
+        {
+          "action": "move followme, move hypervoice",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 12,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 12,
+              "Gardevoir-Mega": 16
+            }
+          }
+        },
+        {
+          "action": "move psychic +2, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 48,
+            "enemy_living_total": 40,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 16,
+              "Gardevoir-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move trickroom, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {}
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 52,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 16,
+              "Gardevoir-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "switch 3, move mysticalfire +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 79,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 59,
+            "enemy_living_total": 30,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 14,
+              "Dragonite": 12
+            }
+          }
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 40,
+            "enemy_living_total": 36,
+            "direct_damage_samples_by_actor": {
+              "Dragonite": 16,
+              "Rotom-Wash": 8
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "repositioning-warmup-0",
+      "category": "repositioning",
+      "turn": 1,
+      "status": "complete",
+      "incumbent": "move darkestlariat +1, move thunderbolt +1",
+      "selected": "move darkestlariat +2, move thunderbolt +1",
+      "disagreement": true,
+      "search_seconds": 0.25862350000534207,
+      "branches": 58,
+      "probe_samples": 264,
+      "replies": [
+        "move wavecrash +1, move earthquake",
+        "move protect, move earthquake",
+        "move wavecrash +1, move protect",
+        "move aquajet +1, move protect",
+        "move aquajet +1, switch 3",
+        "move aquajet +1, move dragonclaw +1"
+      ],
+      "direct_completed_control_cells_reproduced": 8,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move darkestlariat +1, move thunderbolt +1",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 13,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 47,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 23,
+              "Rotom-Wash": 19
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move protect",
+          "roles": [
+            "shield",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 88,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 82,
+            "enemy_living_total": 60,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8,
+              "Incineroar": 16,
+              "Rotom-Wash": 13
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, switch 3",
+          "roles": [
+            "switch",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 88,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 78,
+            "enemy_living_total": 52,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24,
+              "Incineroar": 12
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move willowisp +1",
+          "roles": [
+            "disruption"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 77,
+            "enemy_living_total": 56,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 19,
+              "Incineroar": 19
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move hydropump +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 89,
+            "enemy_living_total": 83,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 18,
+              "Incineroar": 13
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 81,
+            "enemy_living_total": 58,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 7,
+              "Incineroar": 16,
+              "Rotom-Wash": 14
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +2, move hydropump +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 88,
+            "enemy_living_total": 89,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 14,
+              "Incineroar": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 77,
+            "enemy_living_total": 53,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8,
+              "Rotom-Wash": 19,
+              "Incineroar": 12
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +2, move thunderbolt +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 16,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 84,
+            "enemy_living_total": 50,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 20,
+              "Rotom-Wash": 18
+            }
+          }
+        },
+        {
+          "action": "move fakeout +2, move thunderbolt +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 93,
+            "enemy_living_total": 77,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 16,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 54,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 3,
+              "Rotom-Wash": 19,
+              "Incineroar": 20
+            }
+          }
+        },
+        {
+          "action": "move flareblitz +1, move thunderbolt +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 96,
+            "enemy_living_total": 73,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 13,
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 79,
+            "enemy_living_total": 55,
+            "direct_damage_samples_by_actor": {
+              "Incineroar": 17,
+              "Rotom-Wash": 20
+            }
+          }
+        },
+        {
+          "action": "switch 3, move thunderbolt +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 95,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 88,
+            "enemy_living_total": 61,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 23,
+              "Rotom-Wash": 14,
+              "Incineroar": 1
+            }
+          }
+        },
+        {
+          "action": "move darkestlariat +1, move hydropump +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 88,
+            "enemy_living_total": 84,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 14,
+              "Incineroar": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 81,
+            "enemy_living_total": 51,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8,
+              "Rotom-Wash": 16,
+              "Incineroar": 15
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "repositioning-warmup-2",
+      "category": "repositioning",
+      "turn": 3,
+      "status": "complete",
+      "incumbent": "move steelroller +2 mega, move thunderbolt +2",
+      "selected": "move steelroller +2 mega, switch 4",
+      "disagreement": true,
+      "search_seconds": 0.06957420000981074,
+      "branches": 25,
+      "probe_samples": 336,
+      "replies": [
+        "pass, move mysticalfire +1 mega",
+        "pass, move protect mega",
+        "pass, move expandingforce +2 mega",
+        "pass, move protect",
+        "pass, move expandingforce +1",
+        "pass, move expandingforce +1 mega"
+      ],
+      "direct_completed_control_cells_reproduced": 23,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move steelroller +2 mega, move thunderbolt +2",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, switch 4",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, move willowisp +1",
+          "roles": [
+            "disruption"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +1 mega, move hydropump +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 12,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16,
+              "Rotom-Wash": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 12
+            }
+          }
+        },
+        {
+          "action": "move psychicfangs +2 mega, move hydropump +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 15,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 9,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16,
+              "Rotom-Wash": 15
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 9
+            }
+          }
+        },
+        {
+          "action": "move earthquake mega, move hydropump +1",
+          "roles": [
+            "spread",
+            "mega"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 12,
+              "Rotom-Wash": 10
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move steelroller +2 mega, switch 4",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move steelroller +2 mega, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move steelroller +2 mega, move hydropump +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move steelroller +2 mega, move willowisp +1",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move steelroller +2 mega, move willowisp +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move protect mega, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 24,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 0,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "switch 4, move thunderbolt +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Rotom-Wash": 8
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 13,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 11,
+            "direct_damage_samples_by_actor": {
+              "Indeedee-F": 14,
+              "Rotom-Wash": 16,
+              "Metagross-Mega": 8
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "alternative-attacker-warmup-0",
+      "category": "alternative-attacker",
+      "turn": 1,
+      "status": "complete",
+      "incumbent": "move mysticalfire +1 mega, move steelroller +2",
+      "selected": "move mysticalfire +1 mega, move protect",
+      "disagreement": true,
+      "search_seconds": 0.2594985999894561,
+      "branches": 62,
+      "probe_samples": 312,
+      "replies": [
+        "move highhorsepower +2, move highhorsepower +2",
+        "move protect, move highhorsepower +2",
+        "move highhorsepower +2, move protect",
+        "move highhorsepower +1, move protect",
+        "move highhorsepower +1, switch 3",
+        "move highhorsepower +1, move grassyglide +1"
+      ],
+      "direct_completed_control_cells_reproduced": 9,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move mysticalfire +1 mega, move steelroller +2",
+          "roles": [
+            "control",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 77,
+            "enemy_living_total": 77,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20,
+              "Metagross": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 67,
+            "enemy_living_total": 49,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 19,
+              "Gardevoir-Mega": 13,
+              "Metagross": 11
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1 mega, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 86,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 79,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 14,
+              "Metagross": 19,
+              "Armarouge": 1
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1 mega, switch 3",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 76,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 4,
+              "Gardevoir-Mega": 14,
+              "Metagross": 16
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1 mega, move psychicfangs +1",
+          "roles": [
+            "focus-first"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20,
+              "Metagross": 14
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 73,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 14,
+              "Metagross": 14,
+              "Armarouge": 6
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2 mega, move psychicfangs +2",
+          "roles": [
+            "focus-second"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 78,
+            "enemy_living_total": 92,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16,
+              "Metagross": 13
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 56,
+            "enemy_living_total": 71,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 13,
+              "Armarouge": 4,
+              "Metagross": 11
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1 mega, move earthquake",
+          "roles": [
+            "spread",
+            "mega"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 79,
+            "enemy_living_total": 93,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20,
+              "Metagross": 17
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 61,
+            "enemy_living_total": 66,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 17,
+              "Gardevoir-Mega": 14,
+              "Metagross": 4
+            }
+          }
+        },
+        {
+          "action": "move mysticalfire +1 mega, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 85,
+            "enemy_living_total": 85,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 79,
+            "enemy_living_total": 63,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 13,
+              "Metagross": 19,
+              "Armarouge": 11
+            }
+          }
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 77,
+            "enemy_living_total": 77,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 67,
+            "enemy_living_total": 58,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 13,
+              "Metagross": 18,
+              "Armarouge": 12
+            }
+          }
+        },
+        {
+          "action": "move hypervoice mega, move steelroller +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 80,
+            "enemy_living_total": 81,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Metagross": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 2,
+            "losses": 0,
+            "own_living_total": 68,
+            "enemy_living_total": 54,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 10,
+              "Gardevoir-Mega": 14,
+              "Metagross": 15
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2 mega, move steelroller +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 78,
+            "enemy_living_total": 83,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16,
+              "Metagross": 13
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 59,
+            "enemy_living_total": 65,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 13,
+              "Armarouge": 8,
+              "Metagross": 10
+            }
+          }
+        },
+        {
+          "action": "move protect mega, move steelroller +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 88,
+            "enemy_living_total": 96,
+            "direct_damage_samples_by_actor": {
+              "Metagross": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 69,
+            "enemy_living_total": 71,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Armarouge": 4,
+              "Metagross": 1
+            }
+          }
+        },
+        {
+          "action": "switch 3, move steelroller +2 mega",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 78,
+            "enemy_living_total": 83,
+            "direct_damage_samples_by_actor": {
+              "Metagross-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 55,
+            "enemy_living_total": 66,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 5,
+              "Metagross-Mega": 17,
+              "Gardevoir": 18
+            }
+          }
+        },
+        {
+          "action": "move mysticalfire +2 mega, move steelroller +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 76,
+            "enemy_living_total": 87,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16,
+              "Metagross": 12
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 57,
+            "enemy_living_total": 66,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 8,
+              "Gardevoir-Mega": 12,
+              "Metagross": 13
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    },
+    {
+      "id": "alternative-attacker-warmup-2",
+      "category": "alternative-attacker",
+      "turn": 3,
+      "status": "complete",
+      "incumbent": "move expandingforce +2, move armorcannon +2",
+      "selected": "move hypervoice, move armorcannon +2",
+      "disagreement": true,
+      "search_seconds": 0.16751259999000467,
+      "branches": 33,
+      "probe_samples": 264,
+      "replies": [
+        "move earthquake, move sludgebomb +1",
+        "move protect, move sludgebomb +1",
+        "move earthquake, move protect",
+        "move dragonclaw +1, move protect",
+        "move dragonclaw +1, move sleeppowder +1",
+        "move dragonclaw +1, move energyball +1"
+      ],
+      "direct_completed_control_cells_reproduced": 15,
+      "search_replies_not_probed": [],
+      "action_measurements": [
+        {
+          "action": "move expandingforce +2, move armorcannon +2",
+          "roles": [
+            "control",
+            "focus-second",
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 67,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 12,
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 14,
+            "losses": 0,
+            "own_living_total": 53,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Pelipper": 5,
+              "Gardevoir-Mega": 19,
+              "Armarouge": 8
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1, move protect",
+          "roles": [
+            "shield"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 62,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 2,
+            "losses": 0,
+            "own_living_total": 48,
+            "enemy_living_total": 23,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 23,
+              "Pelipper": 10,
+              "Gardevoir-Mega": 11
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1, switch 4",
+          "roles": [
+            "switch"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 62,
+            "enemy_living_total": 48,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 11,
+            "losses": 0,
+            "own_living_total": 56,
+            "enemy_living_total": 16,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 10,
+              "Pelipper": 21,
+              "Gardevoir-Mega": 11
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +1, move armorcannon +1",
+          "roles": [
+            "focus-first",
+            "spread"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 60,
+            "enemy_living_total": 31,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 20,
+              "Armarouge": 19
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 14,
+            "losses": 1,
+            "own_living_total": 49,
+            "enemy_living_total": 13,
+            "direct_damage_samples_by_actor": {
+              "Pelipper": 10,
+              "Armarouge": 6,
+              "Gardevoir-Mega": 10
+            }
+          }
+        },
+        {
+          "action": "move hypervoice, move armorcannon +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 12,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 16,
+              "Gardevoir-Mega": 24
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 20,
+            "losses": 0,
+            "own_living_total": 64,
+            "enemy_living_total": 4,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 4,
+              "Gardevoir-Mega": 8
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2, move wideguard",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 16,
+            "losses": 0,
+            "own_living_total": 58,
+            "enemy_living_total": 8,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 24,
+              "Gardevoir-Mega": 24
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2, switch 4",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 66,
+            "enemy_living_total": 24,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 6,
+              "Gardevoir-Mega": 18,
+              "Pelipper": 8
+            }
+          }
+        },
+        {
+          "action": "switch 4, move armorcannon +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 68,
+            "enemy_living_total": 43,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 47,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 16,
+              "Pelipper": 4,
+              "Gardevoir-Mega": 4
+            }
+          }
+        },
+        {
+          "action": "move protect, move armorcannon +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 72,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 12,
+            "losses": 0,
+            "own_living_total": 50,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 24,
+              "Armarouge": 16
+            }
+          }
+        },
+        {
+          "action": "move expandingforce +2, move protect",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 65,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 12,
+            "losses": 0,
+            "own_living_total": 55,
+            "enemy_living_total": 12,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 24,
+              "Gardevoir-Mega": 17,
+              "Pelipper": 3
+            }
+          }
+        },
+        {
+          "action": "move mysticalfire +2, move armorcannon +2",
+          "roles": [
+            "search-candidate"
+          ],
+          "first": {
+            "samples": 24,
+            "wins": 0,
+            "losses": 0,
+            "own_living_total": 63,
+            "enemy_living_total": 32,
+            "direct_damage_samples_by_actor": {
+              "Armarouge": 15,
+              "Gardevoir-Mega": 16
+            }
+          },
+          "second": {
+            "samples": 24,
+            "wins": 7,
+            "losses": 0,
+            "own_living_total": 43,
+            "enemy_living_total": 19,
+            "direct_damage_samples_by_actor": {
+              "Pelipper": 6,
+              "Armarouge": 16,
+              "Gardevoir-Mega": 13
+            }
+          }
+        }
+      ],
+      "optimal_action_label": "unproven"
+    }
+  ],
+  "summary": {
+    "statuses": {
+      "complete": 12
+    },
+    "samples": 3696,
+    "disagreements": 11,
+    "weights_changed": false,
+    "admission_changed": false,
+    "strength_claim": false
+  }
+}

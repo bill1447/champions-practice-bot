@@ -1,0 +1,1123 @@
+{
+  "archive_sha256": "d5b449732cd987bcdaba50b54b6f52e867a7bab6a72950758b0a739cc7e600be",
+  "manifest_sha256": "a8985ecc8427cae8c4fea00c86398e46958042166d8da28a7f418c0355700a9c",
+  "cases": [
+    {
+      "id": "concentrate-damage-warmup-0",
+      "selected": "move psychicfangs +2 mega, move thunderbolt +1",
+      "incumbent": "move psychicfangs +2 mega, move hydropump +1",
+      "samples": 312,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move psychicfangs +2 mega, switch 3",
+          "worst_response_rng_mean": -51.23698676033913
+        },
+        {
+          "action": "move psychicfangs +2 mega, move hydropump +2",
+          "worst_response_rng_mean": -78.1515771913861
+        },
+        {
+          "action": "move psychicfangs +2 mega, move protect",
+          "worst_response_rng_mean": -78.1515771913861
+        },
+        {
+          "action": "move psychicfangs +2 mega, move thunderbolt +2",
+          "worst_response_rng_mean": -78.1515771913861
+        },
+        {
+          "action": "move earthquake mega, move hydropump +1",
+          "worst_response_rng_mean": -316.540982377203
+        },
+        {
+          "action": "move earthquake mega, move willowisp +1",
+          "worst_response_rng_mean": -316.540982377203
+        },
+        {
+          "action": "move earthquake mega, move protect",
+          "worst_response_rng_mean": -513.6505336129918
+        },
+        {
+          "action": "move psychicfangs +2 mega, move hydropump +1",
+          "worst_response_rng_mean": -927.474066787732
+        },
+        {
+          "action": "move psychicfangs +2 mega, move thunderbolt +1",
+          "worst_response_rng_mean": -945.1607899515737
+        },
+        {
+          "action": "move protect mega, move hydropump +1",
+          "worst_response_rng_mean": -995.5174737691686
+        },
+        {
+          "action": "move psychicfangs +1 mega, move hydropump +1",
+          "worst_response_rng_mean": -995.5174737691686
+        },
+        {
+          "action": "switch 3, move hydropump +1",
+          "worst_response_rng_mean": -1006.2035202807966
+        },
+        {
+          "action": "move earthquake mega, switch 3",
+          "worst_response_rng_mean": -1031.0396084267672
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "concentrate-damage-warmup-2",
+      "selected": "move flareblitz +2, move thunderbolt +1",
+      "incumbent": "move flareblitz +2, move hydropump +1",
+      "samples": 312,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move flareblitz +2, move thunderbolt +1",
+          "worst_response_rng_mean": 1013.7480314960632
+        },
+        {
+          "action": "move flareblitz +2, move hydropump +1",
+          "worst_response_rng_mean": 754.6358648950909
+        },
+        {
+          "action": "move fakeout +2, move hydropump +1",
+          "worst_response_rng_mean": 25.43437801207058
+        },
+        {
+          "action": "move darkestlariat +1, switch 4",
+          "worst_response_rng_mean": -20.81299190589364
+        },
+        {
+          "action": "move darkestlariat +1, move protect",
+          "worst_response_rng_mean": -28.48965737530714
+        },
+        {
+          "action": "move flareblitz +2, switch 4",
+          "worst_response_rng_mean": -37.868076651656466
+        },
+        {
+          "action": "move flareblitz +2, move protect",
+          "worst_response_rng_mean": -46.032030256663234
+        },
+        {
+          "action": "move darkestlariat +2, move hydropump +1",
+          "worst_response_rng_mean": -969.3025423728815
+        },
+        {
+          "action": "switch 4, move hydropump +1",
+          "worst_response_rng_mean": -974.5525423728816
+        },
+        {
+          "action": "move darkestlariat +1, move hydropump +1",
+          "worst_response_rng_mean": -990.5525423728816
+        },
+        {
+          "action": "move darkestlariat +1, move willowisp +1",
+          "worst_response_rng_mean": -990.5525423728816
+        },
+        {
+          "action": "move flareblitz +1, move hydropump +1",
+          "worst_response_rng_mean": -990.5525423728816
+        },
+        {
+          "action": "move darkestlariat +2, move hydropump +2",
+          "worst_response_rng_mean": -994.4801909516927
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "trade-and-spread-warmup-0",
+      "selected": "move rockslide, move thunderbolt +2",
+      "incumbent": "move rockslide, move thunderbolt +2",
+      "samples": 336,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move protect, move thunderbolt +2",
+          "worst_response_rng_mean": 14.8
+        },
+        {
+          "action": "move rockslide, move thunderbolt +2",
+          "worst_response_rng_mean": -12.436529523153748
+        },
+        {
+          "action": "move dragonclaw +2, move hydropump +2",
+          "worst_response_rng_mean": -20.321621621621485
+        },
+        {
+          "action": "move dragonclaw +2, move thunderbolt +2",
+          "worst_response_rng_mean": -20.321621621621485
+        },
+        {
+          "action": "move dragonclaw +1, move hydropump +1",
+          "worst_response_rng_mean": -48.60540540540549
+        },
+        {
+          "action": "move earthquake, move hydropump +1",
+          "worst_response_rng_mean": -62.43648648648663
+        },
+        {
+          "action": "switch 4, move thunderbolt +2",
+          "worst_response_rng_mean": -693.2533049472837
+        },
+        {
+          "action": "move rockslide, move protect",
+          "worst_response_rng_mean": -754.1817939504895
+        },
+        {
+          "action": "move rockslide, switch 3",
+          "worst_response_rng_mean": -757.3817939504895
+        },
+        {
+          "action": "move dragonclaw +1, move thunderbolt +2",
+          "worst_response_rng_mean": -941.4282695615788
+        },
+        {
+          "action": "switch 3, move thunderbolt +2",
+          "worst_response_rng_mean": -964.5644160583948
+        },
+        {
+          "action": "move dragonclaw +1, move willowisp +1",
+          "worst_response_rng_mean": -1028.9964968152867
+        },
+        {
+          "action": "move dragonclaw +1, move protect",
+          "worst_response_rng_mean": -1055.5888535031847
+        },
+        {
+          "action": "move dragonclaw +1, switch 3",
+          "worst_response_rng_mean": -1071.0395337752936
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "trade-and-spread-warmup-2",
+      "selected": "move earthquake, move protect mega",
+      "incumbent": "move earthquake, move expandingforce +2 mega",
+      "samples": 312,
+      "terminal_improvement_witnesses": [
+        {
+          "action": "move earthquake, move expandingforce +2 mega",
+          "stage": "second",
+          "extra_terminal_wins": 4,
+          "avoided_terminal_losses": 0,
+          "inside_search_candidates": true,
+          "native_control_score_parity_selected_and_alternative": true,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 0,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 2,
+          "extra_win_scenarios": [
+            {
+              "reply": "move protect, move sludgebomb +2",
+              "rng": 1
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 0
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 1
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 2
+            }
+          ],
+          "avoided_loss_scenarios": [],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        },
+        {
+          "action": "move earthquake, move mysticalfire +1 mega",
+          "stage": "second",
+          "extra_terminal_wins": 4,
+          "avoided_terminal_losses": 0,
+          "inside_search_candidates": true,
+          "native_control_score_parity_selected_and_alternative": true,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 0,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 1,
+          "extra_win_scenarios": [
+            {
+              "reply": "move protect, move sludgebomb +2",
+              "rng": 1
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 0
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 1
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 2
+            }
+          ],
+          "avoided_loss_scenarios": [],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        },
+        {
+          "action": "move earthquake, move mysticalfire +2 mega",
+          "stage": "second",
+          "extra_terminal_wins": 4,
+          "avoided_terminal_losses": 0,
+          "inside_search_candidates": true,
+          "native_control_score_parity_selected_and_alternative": true,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 0,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 1,
+          "extra_win_scenarios": [
+            {
+              "reply": "move protect, move sludgebomb +2",
+              "rng": 1
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 0
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 1
+            },
+            {
+              "reply": "move earthquake, switch 4",
+              "rng": 2
+            }
+          ],
+          "avoided_loss_scenarios": [],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        }
+      ],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move earthquake, move protect mega",
+          "worst_response_rng_mean": 1071.6562058874158
+        },
+        {
+          "action": "move earthquake, move expandingforce +2 mega",
+          "worst_response_rng_mean": 995.9674303772117
+        },
+        {
+          "action": "move earthquake, move mysticalfire +1 mega",
+          "worst_response_rng_mean": 995.9674303772117
+        },
+        {
+          "action": "move earthquake, move mysticalfire +2 mega",
+          "worst_response_rng_mean": 995.9674303772117
+        },
+        {
+          "action": "move protect, move expandingforce +2 mega",
+          "worst_response_rng_mean": 23.86447964277793
+        },
+        {
+          "action": "switch 4, move expandingforce +2 mega",
+          "worst_response_rng_mean": 22.010844283774098
+        },
+        {
+          "action": "move earthquake, switch 4",
+          "worst_response_rng_mean": -401.8331706693199
+        },
+        {
+          "action": "move dragonclaw +1, move expandingforce +1 mega",
+          "worst_response_rng_mean": -448.71334356259257
+        },
+        {
+          "action": "move dragonclaw +1, move expandingforce +1",
+          "worst_response_rng_mean": -546.8585838243029
+        },
+        {
+          "action": "move dragonclaw +1, move protect",
+          "worst_response_rng_mean": -912.075477707006
+        },
+        {
+          "action": "move dragonclaw +2, move expandingforce +2 mega",
+          "worst_response_rng_mean": -918.3159235668792
+        },
+        {
+          "action": "move dragonclaw +2, move expandingforce +2",
+          "worst_response_rng_mean": -920.3159235668792
+        },
+        {
+          "action": "move dragonclaw +1, switch 4",
+          "worst_response_rng_mean": -925.9165958952584
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "speed-control-warmup-0",
+      "selected": "move protect, move earthquake mega",
+      "incumbent": "move tailwind, move earthquake mega",
+      "samples": 336,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move protect, move earthquake mega",
+          "worst_response_rng_mean": -14.8
+        },
+        {
+          "action": "move hurricane +1, move protect mega",
+          "worst_response_rng_mean": -855.8212270664827
+        },
+        {
+          "action": "move tailwind, move protect mega",
+          "worst_response_rng_mean": -857.5401459854015
+        },
+        {
+          "action": "move hurricane +1, move protect",
+          "worst_response_rng_mean": -859.8212270664827
+        },
+        {
+          "action": "move tailwind, move psychicfangs +1 mega",
+          "worst_response_rng_mean": -1068.233646066449
+        },
+        {
+          "action": "move hurricane +2, move psychicfangs +2",
+          "worst_response_rng_mean": -1076.4490069712622
+        },
+        {
+          "action": "move hurricane +1, move psychicfangs +1",
+          "worst_response_rng_mean": -1096.176966775693
+        },
+        {
+          "action": "move hurricane +1, move earthquake mega",
+          "worst_response_rng_mean": -1098.1734377689793
+        },
+        {
+          "action": "move tailwind, move earthquake mega",
+          "worst_response_rng_mean": -1098.1734377689793
+        },
+        {
+          "action": "move hurricane +1, move earthquake",
+          "worst_response_rng_mean": -1099.6146927181958
+        },
+        {
+          "action": "move tailwind, move earthquake",
+          "worst_response_rng_mean": -1099.6146927181958
+        },
+        {
+          "action": "switch 3, move earthquake mega",
+          "worst_response_rng_mean": -1114.8
+        },
+        {
+          "action": "move hurricane +1, switch 3",
+          "worst_response_rng_mean": -1154.34375
+        },
+        {
+          "action": "move tailwind, switch 3",
+          "worst_response_rng_mean": -1154.34375
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "speed-control-warmup-2",
+      "selected": "move woodhammer +2, move psychicfangs +1",
+      "incumbent": "move woodhammer +2, move steelroller +1",
+      "samples": 288,
+      "terminal_improvement_witnesses": [
+        {
+          "action": "move grassyglide +1, move earthquake",
+          "stage": "second",
+          "extra_terminal_wins": 0,
+          "avoided_terminal_losses": 8,
+          "inside_search_candidates": false,
+          "native_control_score_parity_selected_and_alternative": false,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 2,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 0,
+          "extra_win_scenarios": [],
+          "avoided_loss_scenarios": [
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 3
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 3
+            }
+          ],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        },
+        {
+          "action": "move grassyglide +1, move protect",
+          "stage": "second",
+          "extra_terminal_wins": 0,
+          "avoided_terminal_losses": 8,
+          "inside_search_candidates": false,
+          "native_control_score_parity_selected_and_alternative": false,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 2,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 0,
+          "extra_win_scenarios": [],
+          "avoided_loss_scenarios": [
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 3
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 3
+            }
+          ],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        },
+        {
+          "action": "move grassyglide +1, move psychicfangs +1",
+          "stage": "second",
+          "extra_terminal_wins": 0,
+          "avoided_terminal_losses": 8,
+          "inside_search_candidates": false,
+          "native_control_score_parity_selected_and_alternative": false,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 2,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 2,
+          "extra_win_scenarios": [],
+          "avoided_loss_scenarios": [
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 3
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 3
+            }
+          ],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        },
+        {
+          "action": "move grassyglide +2, move psychicfangs +2",
+          "stage": "second",
+          "extra_terminal_wins": 0,
+          "avoided_terminal_losses": 8,
+          "inside_search_candidates": false,
+          "native_control_score_parity_selected_and_alternative": false,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 2,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 0,
+          "extra_win_scenarios": [],
+          "avoided_loss_scenarios": [
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 3
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 3
+            }
+          ],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        },
+        {
+          "action": "move protect, move steelroller +1",
+          "stage": "second",
+          "extra_terminal_wins": 0,
+          "avoided_terminal_losses": 8,
+          "inside_search_candidates": true,
+          "native_control_score_parity_selected_and_alternative": true,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 2,
+          "first_turn_fewer_surviving_allies_than_selected": 0,
+          "first_turn_fewer_surviving_enemies_than_selected": 0,
+          "extra_win_scenarios": [],
+          "avoided_loss_scenarios": [
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move dragonclaw +1, move thunderbolt +2",
+              "rng": 3
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 0
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 1
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 2
+            },
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "rng": 3
+            }
+          ],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        }
+      ],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move woodhammer +2, move psychicfangs +1",
+          "worst_response_rng_mean": -2147.728828828829
+        },
+        {
+          "action": "move woodhammer +2, move steelroller +1",
+          "worst_response_rng_mean": -2147.728828828829
+        },
+        {
+          "action": "move grassyglide +1, move protect",
+          "worst_response_rng_mean": -2212.9901876398694
+        },
+        {
+          "action": "move woodhammer +2, move earthquake",
+          "worst_response_rng_mean": -2234.8873347870162
+        },
+        {
+          "action": "move grassyglide +2, move psychicfangs +2",
+          "worst_response_rng_mean": -2252.990187639869
+        },
+        {
+          "action": "move woodhammer +2, move protect",
+          "worst_response_rng_mean": -2252.990187639869
+        },
+        {
+          "action": "move woodhammer +2, move psychicfangs +2",
+          "worst_response_rng_mean": -2252.990187639869
+        },
+        {
+          "action": "move grassyglide +1, move psychicfangs +1",
+          "worst_response_rng_mean": -3242.862162162162
+        },
+        {
+          "action": "move protect, move steelroller +1",
+          "worst_response_rng_mean": -3242.862162162162
+        },
+        {
+          "action": "move woodhammer +1, move steelroller +1",
+          "worst_response_rng_mean": -3242.862162162162
+        },
+        {
+          "action": "move grassyglide +1, move earthquake",
+          "worst_response_rng_mean": -3244.3899399399397
+        },
+        {
+          "action": "move woodhammer +1, move earthquake",
+          "worst_response_rng_mean": -3245.917717717718
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "redirection-and-setup-warmup-0",
+      "selected": "move followme, move expandingforce +1 mega",
+      "incumbent": "move psychic +1, move expandingforce +1 mega",
+      "samples": 336,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move psychic +1, move expandingforce +1 mega",
+          "worst_response_rng_mean": -250.2731373986722
+        },
+        {
+          "action": "move trickroom, move expandingforce +1 mega",
+          "worst_response_rng_mean": -405.3244366593691
+        },
+        {
+          "action": "move followme, move expandingforce +1 mega",
+          "worst_response_rng_mean": -407.62443665936905
+        },
+        {
+          "action": "move psychic +1, move expandingforce +1",
+          "worst_response_rng_mean": -448.96321198402234
+        },
+        {
+          "action": "move psychic +2, move expandingforce +2",
+          "worst_response_rng_mean": -693.371235223258
+        },
+        {
+          "action": "move trickroom, move expandingforce +1",
+          "worst_response_rng_mean": -700.1733310316414
+        },
+        {
+          "action": "move followme, move expandingforce +1",
+          "worst_response_rng_mean": -702.3233310316414
+        },
+        {
+          "action": "move psychic +1, move protect mega",
+          "worst_response_rng_mean": -818.39224677159
+        },
+        {
+          "action": "move trickroom, move protect mega",
+          "worst_response_rng_mean": -829.0502824858756
+        },
+        {
+          "action": "move followme, move protect mega",
+          "worst_response_rng_mean": -830.2002824858757
+        },
+        {
+          "action": "move followme, move protect",
+          "worst_response_rng_mean": -832.2002824858757
+        },
+        {
+          "action": "move followme, switch 3",
+          "worst_response_rng_mean": -836.9751412429379
+        },
+        {
+          "action": "switch 3, move expandingforce +1 mega",
+          "worst_response_rng_mean": -976.9934523809521
+        },
+        {
+          "action": "move psychic +1, switch 3",
+          "worst_response_rng_mean": -1067.090481234867
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "redirection-and-setup-warmup-2",
+      "selected": "move followme, move hypervoice",
+      "incumbent": "move followme, move mysticalfire +2",
+      "samples": 288,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move followme, move hypervoice",
+          "worst_response_rng_mean": 2143.731636986005
+        },
+        {
+          "action": "move followme, move protect",
+          "worst_response_rng_mean": 1068.2435611453884
+        },
+        {
+          "action": "move psychic +2, move protect",
+          "worst_response_rng_mean": 1068.2435611453884
+        },
+        {
+          "action": "move trickroom, move protect",
+          "worst_response_rng_mean": 1068.2435611453884
+        },
+        {
+          "action": "move followme, switch 3",
+          "worst_response_rng_mean": 1007.1660101249804
+        },
+        {
+          "action": "switch 3, move mysticalfire +2",
+          "worst_response_rng_mean": 835.585616363244
+        },
+        {
+          "action": "move followme, move mysticalfire +2",
+          "worst_response_rng_mean": 151.77593689823743
+        },
+        {
+          "action": "move followme, move expandingforce +1",
+          "worst_response_rng_mean": 65.79186046511614
+        },
+        {
+          "action": "move psychic +1, move expandingforce +1",
+          "worst_response_rng_mean": 65.79186046511614
+        },
+        {
+          "action": "move psychic +2, move expandingforce +2",
+          "worst_response_rng_mean": 65.79186046511614
+        },
+        {
+          "action": "move trickroom, move expandingforce +1",
+          "worst_response_rng_mean": 65.79186046511614
+        },
+        {
+          "action": "move trickroom, move mysticalfire +2",
+          "worst_response_rng_mean": 65.79186046511614
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "repositioning-warmup-0",
+      "selected": "move darkestlariat +2, move thunderbolt +1",
+      "incumbent": "move darkestlariat +1, move thunderbolt +1",
+      "samples": 264,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move fakeout +2, move thunderbolt +1",
+          "worst_response_rng_mean": 17.417410433690012
+        },
+        {
+          "action": "move darkestlariat +2, move thunderbolt +1",
+          "worst_response_rng_mean": 2.4352451288493593
+        },
+        {
+          "action": "move darkestlariat +1, move thunderbolt +1",
+          "worst_response_rng_mean": -34.030813953488206
+        },
+        {
+          "action": "move darkestlariat +1, move willowisp +1",
+          "worst_response_rng_mean": -34.030813953488206
+        },
+        {
+          "action": "move flareblitz +1, move thunderbolt +1",
+          "worst_response_rng_mean": -34.030813953488206
+        },
+        {
+          "action": "switch 3, move thunderbolt +1",
+          "worst_response_rng_mean": -301.63407643312087
+        },
+        {
+          "action": "move darkestlariat +1, move hydropump +1",
+          "worst_response_rng_mean": -1018.432994923858
+        },
+        {
+          "action": "move darkestlariat +1, move hydropump +2",
+          "worst_response_rng_mean": -1054.6258883248727
+        },
+        {
+          "action": "move darkestlariat +1, move protect",
+          "worst_response_rng_mean": -1054.6258883248727
+        },
+        {
+          "action": "move darkestlariat +2, move hydropump +2",
+          "worst_response_rng_mean": -1054.6258883248727
+        },
+        {
+          "action": "move darkestlariat +1, switch 3",
+          "worst_response_rng_mean": -1079.564740211452
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "repositioning-warmup-2",
+      "selected": "move steelroller +2 mega, switch 4",
+      "incumbent": "move steelroller +2 mega, move thunderbolt +2",
+      "samples": 336,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move steelroller +2 mega, switch 4",
+          "worst_response_rng_mean": 2228.8
+        },
+        {
+          "action": "move psychicfangs +1 mega, move hydropump +1",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move psychicfangs +2 mega, move hydropump +2",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move steelroller +2 mega, move hydropump +2",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move steelroller +2 mega, move protect",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move steelroller +2 mega, move thunderbolt +2",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move steelroller +2 mega, move willowisp +1",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move steelroller +2 mega, move willowisp +2",
+          "worst_response_rng_mean": 2215.0
+        },
+        {
+          "action": "move protect mega, move thunderbolt +2",
+          "worst_response_rng_mean": 2196.6753039798596
+        },
+        {
+          "action": "move earthquake mega, move hydropump +1",
+          "worst_response_rng_mean": 2193.9037307836516
+        },
+        {
+          "action": "move earthquake mega, move willowisp +1",
+          "worst_response_rng_mean": 2177.110435894103
+        },
+        {
+          "action": "move earthquake mega, switch 4",
+          "worst_response_rng_mean": 2163.745757057006
+        },
+        {
+          "action": "move earthquake mega, move protect",
+          "worst_response_rng_mean": 2161.011709779453
+        },
+        {
+          "action": "switch 4, move thunderbolt +2",
+          "worst_response_rng_mean": 1079.6446327683616
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "alternative-attacker-warmup-0",
+      "selected": "move mysticalfire +1 mega, move protect",
+      "incumbent": "move mysticalfire +1 mega, move steelroller +2",
+      "samples": 312,
+      "terminal_improvement_witnesses": [
+        {
+          "action": "move hypervoice mega, move steelroller +2",
+          "stage": "second",
+          "extra_terminal_wins": 2,
+          "avoided_terminal_losses": 0,
+          "inside_search_candidates": true,
+          "native_control_score_parity_selected_and_alternative": false,
+          "extra_wins_original_responses_default_rng": 0,
+          "lost_wins_original_responses_default_rng": 0,
+          "avoided_losses_original_responses_default_rng": 0,
+          "first_turn_fewer_surviving_allies_than_selected": 7,
+          "first_turn_fewer_surviving_enemies_than_selected": 8,
+          "extra_win_scenarios": [
+            {
+              "reply": "move highhorsepower +1, switch 3",
+              "rng": 0
+            },
+            {
+              "reply": "move highhorsepower +1, switch 3",
+              "rng": 3
+            }
+          ],
+          "avoided_loss_scenarios": [],
+          "interpretation": "Scenario-wise terminal improvement under these continuations; nonterminal routes remain unresolved."
+        }
+      ],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move mysticalfire +1 mega, move protect",
+          "worst_response_rng_mean": -21.0
+        },
+        {
+          "action": "move mysticalfire +1 mega, move steelroller +2",
+          "worst_response_rng_mean": -63.96530612244903
+        },
+        {
+          "action": "move mysticalfire +1 mega, switch 3",
+          "worst_response_rng_mean": -70.80989583333348
+        },
+        {
+          "action": "move expandingforce +1 mega, move psychicfangs +1",
+          "worst_response_rng_mean": -1033.3975935828876
+        },
+        {
+          "action": "move hypervoice mega, move steelroller +2",
+          "worst_response_rng_mean": -1058.6626377823854
+        },
+        {
+          "action": "move expandingforce +1 mega, move protect",
+          "worst_response_rng_mean": -1074.2933155080214
+        },
+        {
+          "action": "move expandingforce +1 mega, switch 3",
+          "worst_response_rng_mean": -1074.2933155080214
+        },
+        {
+          "action": "move protect mega, move steelroller +2",
+          "worst_response_rng_mean": -1114.6951871657752
+        },
+        {
+          "action": "move expandingforce +1 mega, move earthquake",
+          "worst_response_rng_mean": -1115.3028393175452
+        },
+        {
+          "action": "switch 3, move steelroller +2 mega",
+          "worst_response_rng_mean": -1116.6951871657752
+        },
+        {
+          "action": "move expandingforce +2 mega, move psychicfangs +2",
+          "worst_response_rng_mean": -1117.4951871657752
+        },
+        {
+          "action": "move expandingforce +2 mega, move steelroller +2",
+          "worst_response_rng_mean": -1117.4951871657752
+        },
+        {
+          "action": "move mysticalfire +2 mega, move steelroller +2",
+          "worst_response_rng_mean": -1124.9604932882244
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    },
+    {
+      "id": "alternative-attacker-warmup-2",
+      "selected": "move hypervoice, move armorcannon +2",
+      "incumbent": "move expandingforce +2, move armorcannon +2",
+      "samples": 264,
+      "terminal_improvement_witnesses": [],
+      "expanded_response_rng_utility_ranking": [
+        {
+          "action": "move hypervoice, move armorcannon +2",
+          "worst_response_rng_mean": 1096.8
+        },
+        {
+          "action": "move expandingforce +2, move wideguard",
+          "worst_response_rng_mean": 1038.4265306122445
+        },
+        {
+          "action": "move protect, move armorcannon +2",
+          "worst_response_rng_mean": 976.1348639455781
+        },
+        {
+          "action": "move expandingforce +2, switch 4",
+          "worst_response_rng_mean": 490.91904761904755
+        },
+        {
+          "action": "move expandingforce +2, move armorcannon +2",
+          "worst_response_rng_mean": 425.8294642857143
+        },
+        {
+          "action": "move mysticalfire +2, move armorcannon +2",
+          "worst_response_rng_mean": 425.8294642857143
+        },
+        {
+          "action": "move expandingforce +2, move protect",
+          "worst_response_rng_mean": 241.65731292517003
+        },
+        {
+          "action": "switch 4, move armorcannon +2",
+          "worst_response_rng_mean": 29.706785389314785
+        },
+        {
+          "action": "move expandingforce +1, move armorcannon +1",
+          "worst_response_rng_mean": -6.2
+        },
+        {
+          "action": "move expandingforce +1, move protect",
+          "worst_response_rng_mean": -6.2
+        },
+        {
+          "action": "move expandingforce +1, switch 4",
+          "worst_response_rng_mean": -6.2
+        }
+      ],
+      "continuation_limitation": "Frozen V2 follow-up can miss a stronger available tactical continuation."
+    }
+  ],
+  "summary": {
+    "cases": 12,
+    "audited_actionable": 12,
+    "samples": 3696,
+    "cases_with_first_turn_terminal_witness": 0,
+    "cases_with_second_turn_terminal_witness": 3,
+    "control_cells_reproduced": 150,
+    "passed": "Manifest hashes, identities, complete coupled scenario grid and native control-cell reproduction."
+  }
+}
