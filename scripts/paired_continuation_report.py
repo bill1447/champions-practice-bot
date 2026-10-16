@@ -64,6 +64,9 @@ def main():
                     'second_wins': sum(r['second']['terminal_win'] for r in group),
                     'second_losses': sum(r['second']['terminal_loss'] for r in group),
                     'trajectories_with_native_search': sum(any(d['trace']['status'] == 'search' for d in r['decisions']) for r in group),
+                    'admitted_decision_occurrences': sum(d['trace'].get('admitted_worlds', 0) > 0 for r in group for d in r['decisions']),
+                    'completed_search_occurrences': sum(d['trace']['status'] == 'search' for r in group for d in r['decisions']),
+                    'changed_action_occurrences': sum(d['trace'].get('disagreement', False) for r in group for d in r['decisions']),
                     'strict_opposition_matched': sum(r['strict_opposition_match'] for r in group)})
         decisions = [d for r in rows if r['policy'] == 'native' for d in r['decisions']]
         unique = [d for d in decisions if not d['cached']]
@@ -89,7 +92,9 @@ def main():
         'native_fallback_occurrences': sum(c['native_decision_occurrences'].get('fallback', 0) for c in output['cases']),
         'unique_native_fallback_computations': sum(c['native_unique_computations'].get('fallback', 0) for c in output['cases']),
         'forced_wait_occurrences': sum(c['native_decision_occurrences'].get('nonactionable', 0) for c in output['cases']),
-        'interpretation': 'Zero searches cannot establish native continuation quality; fallback-equivalent cells are not native-search results.'}
+        'interpretation': ('Native follow-up evidence exists only in cells with completed searches; report fallbacks and strict opposition matches separately.'
+            if any(c['public_native_effect_identified'] for c in output['cases']) else
+            'Zero searches cannot establish native continuation quality; fallback-equivalent cells are not native-search results.')}
     if args.forensic:
         forensic_raw = args.forensic.read_bytes()
         forensic = json.loads(forensic_raw)

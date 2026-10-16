@@ -3,7 +3,7 @@
 import argparse
 from collections import Counter
 from copy import deepcopy
-from dataclasses import asdict
+from dataclasses import asdict, replace
 import gzip
 import hashlib
 import json
@@ -56,11 +56,25 @@ def facts(summary):
         'utility': asdict(score_exact_summary_breakdown(summary, 'p1'))}
 
 
+def continuation_priors(profile):
+    priors = public_priors()
+    if profile == 'public-earthquake-coverage':
+        for species in ('Garchomp', 'Metagross'):
+            # Retain originals: public evidence must exclude incompatible sets.
+            priors[species] = (*priors[species], *(replace(candidate,
+                moves=tuple('Earthquake' if move == 'Stomping Tantrum' else move for move in candidate.moves))
+                for candidate in priors[species] if 'Stomping Tantrum' in candidate.moves))
+    elif profile != 'baseline':
+        raise ValueError('Unknown frozen prior profile')
+    return priors
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('phase', choices=('freeze', 'evaluate'))
     parser.add_argument('--manifest', type=Path, default=ROOT/'reviews/paired-continuation-manifest-2026-10-16.json')
     parser.add_argument('--output', type=Path, default=ROOT/'runs/paired-continuation/v1')
+    parser.add_argument('--prior-profile', choices=('baseline', 'public-earthquake-coverage'), default='baseline')
     args = parser.parse_args()
     source = read(INPUT)
     fresh = json.loads((ROOT/FRESH_MANIFEST).read_text())
@@ -85,6 +99,9 @@ def main():
             cases.append({'id': name, 'selected': saved['selected'], 'alternative': alternative,
                 'replies': saved['replies'], 'root_floor_attribution': floors})
         args.manifest.write_text(json.dumps({'cases': cases,
+            'public_prior_profile': args.prior_profile,
+            'public_prior_sha256': digest(json.dumps({s: [c.team_text for c in cs] for s, cs in
+                continuation_priors(args.prior_profile).items()}, sort_keys=True).encode()),
             'input_sha256': digest((ROOT/INPUT).read_bytes()), 'fresh_manifest_sha256': digest((ROOT/FRESH_MANIFEST).read_bytes()),
             'source_sha256': hashes, 'rng_labels': fresh['protocol']['rng'],
             'protocol': {'priority': 'speed-control first; all three retained cases; no outcome-based exclusions',
@@ -92,7 +109,9 @@ def main():
                 'root': 'Reproduce exact fresh-benchmark roots, initial replies and four coupled RNG labels.',
                 'public': 'Both continuations receive full public six-mon previews, owned requests and public history only.',
                 'native': 'Existing ExperimentalNativePlayer; shared eight-second preparation/search budget per decision; no carried exact states.',
-                'priors': 'Existing diversity catalog, unchanged; no actual opponent team passed to native continuation.',
+                'priors': ('Existing diversity catalog, unchanged; no actual opponent team passed to native continuation.'
+                    if args.prior_profile == 'baseline' else
+                    'Existing catalog plus public Earthquake variants for Garchomp/Metagross; all originals retained; no actual opponent team supplied.'),
                 'opposition': 'V2 reference replies replayed at matching turn/phase/occurrence if legal. Missing/illegal schedules explicitly unmatched; use public V2 and separate strict-paired analyses.',
                 'rng': 'Exact original root labels; same phase and next-turn seed derivation as fresh benchmark.',
                 'horizon': 'Through root turn + 2, at most six decision checkpoints per turn.',
@@ -105,6 +124,10 @@ def main():
     assert manifest['source_sha256'] == hashes
     assert manifest['input_sha256'] == digest((ROOT/INPUT).read_bytes())
     assert manifest['fresh_manifest_sha256'] == digest((ROOT/FRESH_MANIFEST).read_bytes())
+    priors = continuation_priors(manifest.get('public_prior_profile', 'baseline'))
+    if 'public_prior_sha256' in manifest:
+        assert manifest['public_prior_sha256'] == digest(json.dumps(
+            {s: [c.team_text for c in cs] for s, cs in priors.items()}, sort_keys=True).encode())
     assert not args.output.exists(), 'Choose a fresh run directory'
     args.output.mkdir(parents=True)
     policy, policy_identity = frozen_policy('e0ae723')
@@ -157,7 +180,7 @@ def main():
                         reference_replies = {}
                         for mode in ('v2', 'native'):
                             player = ExperimentalNativePlayer(ROOT, own_team=case['own_team'],
-                                opening_prior=team_text(case['enemy_roster']), priors=public_priors(),
+                                opening_prior=team_text(case['enemy_roster']), priors=priors,
                                 catalog=catalog, incumbent_policy=policy) if mode == 'native' else None
                             if player:
                                 player.ledger = prefix_ledger
