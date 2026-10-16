@@ -1,0 +1,398 @@
+{
+  "cases": [
+    {
+      "id": "speed-control-warmup-2",
+      "selected": "move woodhammer +2, move psychicfangs +1",
+      "alternative": "move protect, move steelroller +1",
+      "replies": [
+        "move dragonclaw +1, move thunderbolt +2",
+        "move protect, move thunderbolt +2",
+        "move dragonclaw +1, move protect",
+        "move dragonclaw +1, switch 3",
+        "move dragonclaw +1, move willowisp +1",
+        "move dragonclaw +1, move hydropump +1"
+      ],
+      "root_floor_attribution": {
+        "move woodhammer +2, move psychicfangs +1": {
+          "worst": -2147.728828828829,
+          "equal_reply_mean": -1507.7839431788477,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "leaf_utility": -2147.728828828829,
+              "leaf_breakdown": {
+                "total": -2147.728828828829,
+                "terminal": 0.0,
+                "material": -2148.5468076772427,
+                "position": 10.71797884841363,
+                "speed": -9.9,
+                "living": -2000.0,
+                "hp": -148.54680767724247,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -2135.6288288288292,
+                "terminal": 0.0,
+                "material": -2148.5468076772427,
+                "position": 25.71797884841363,
+                "speed": -12.8
+              }
+            }
+          ]
+        },
+        "move protect, move steelroller +1": {
+          "worst": -3242.862162162162,
+          "equal_reply_mean": -2233.6999139266654,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move thunderbolt +2",
+              "leaf_utility": -3242.862162162162,
+              "leaf_breakdown": {
+                "total": -3242.862162162162,
+                "terminal": 0.0,
+                "material": -3234.054054054054,
+                "position": 0.8918918918918877,
+                "speed": -9.7,
+                "living": -3000.0,
+                "hp": -234.05405405405406,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -3242.862162162162,
+                "terminal": 0.0,
+                "material": -3234.054054054054,
+                "position": 0.8918918918918877,
+                "speed": -9.7
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "trade-and-spread-warmup-2",
+      "selected": "move earthquake, move protect mega",
+      "alternative": "move earthquake, move expandingforce +2 mega",
+      "replies": [
+        "move psychicfangs +1, move sludgebomb +2",
+        "move protect, move sludgebomb +2",
+        "move psychicfangs +1, move protect",
+        "move earthquake, move protect",
+        "move earthquake, switch 4",
+        "move earthquake, move sleeppowder +1"
+      ],
+      "root_floor_attribution": {
+        "move earthquake, move protect mega": {
+          "worst": 1071.6562058874158,
+          "equal_reply_mean": 1425.891662363,
+          "controlling_responses": [
+            {
+              "reply": "move psychicfangs +1, move protect",
+              "leaf_utility": 1071.6562058874158,
+              "leaf_breakdown": {
+                "total": 1071.6562058874158,
+                "terminal": 0.0,
+                "material": 1067.4401790325355,
+                "position": -4.88397314511964,
+                "speed": 9.1,
+                "living": 1000.0,
+                "hp": 67.44017903253572,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": 1083.056205887416,
+                "terminal": 0.0,
+                "material": 1067.4401790325355,
+                "position": 10.11602685488036,
+                "speed": 5.5
+              }
+            }
+          ]
+        },
+        "move earthquake, move expandingforce +2 mega": {
+          "worst": 994.2072262955791,
+          "equal_reply_mean": 1348.9642247212767,
+          "controlling_responses": [
+            {
+              "reply": "move psychicfangs +1, move protect",
+              "leaf_utility": 994.2072262955791,
+              "leaf_breakdown": {
+                "total": 994.2072262955791,
+                "terminal": 0.0,
+                "material": 1000.0932402570252,
+                "position": -14.986013961446172,
+                "speed": 9.1,
+                "living": 1000.0,
+                "hp": 0.09324025702551353,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": 1005.607226295579,
+                "terminal": 0.0,
+                "material": 1000.0932402570252,
+                "position": 0.01398603855382774,
+                "speed": 5.5
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "alternative-attacker-warmup-0",
+      "selected": "move mysticalfire +1 mega, move protect",
+      "alternative": "move hypervoice mega, move steelroller +2",
+      "replies": [
+        "move highhorsepower +2, move highhorsepower +2",
+        "move protect, move highhorsepower +2",
+        "move highhorsepower +2, move protect",
+        "move highhorsepower +1, move protect",
+        "move highhorsepower +1, switch 3",
+        "move highhorsepower +1, move grassyglide +1"
+      ],
+      "root_floor_attribution": {
+        "move mysticalfire +1 mega, move protect": {
+          "worst": -15.3,
+          "equal_reply_mean": 56.04046345811045,
+          "controlling_responses": [
+            {
+              "reply": "move protect, move highhorsepower +2",
+              "leaf_utility": -15.3,
+              "leaf_breakdown": {
+                "total": -15.3,
+                "terminal": 0.0,
+                "material": 0.0,
+                "position": -18.0,
+                "speed": 2.7,
+                "living": 0.0,
+                "hp": 0.0,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -15.3,
+                "terminal": 0.0,
+                "material": 0.0,
+                "position": -18.0,
+                "speed": 2.7
+              }
+            }
+          ]
+        },
+        "move hypervoice mega, move steelroller +2": {
+          "worst": -1070.2552366401105,
+          "equal_reply_mean": -346.64408066256806,
+          "controlling_responses": [
+            {
+              "reply": "move highhorsepower +2, move highhorsepower +2",
+              "leaf_utility": -1070.2552366401105,
+              "leaf_breakdown": {
+                "total": -1070.2552366401105,
+                "terminal": 0.0,
+                "material": -1060.3958579479222,
+                "position": -12.059378692188332,
+                "speed": 2.2,
+                "living": -1000.0,
+                "hp": -60.39585794792225,
+                "status": 0.0
+              },
+              "first_turn_breakdown": {
+                "total": -1081.9552366401106,
+                "terminal": 0.0,
+                "material": -1060.3958579479222,
+                "position": -27.059378692188332,
+                "speed": 5.5
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "public_prior_profile": "public-earthquake-coverage",
+  "public_prior_sha256": "af9e948d738f569b4e50386e099d75bd9c64ff7ab7d6dbc90ab91a847315cdcd",
+  "input_sha256": "d5b449732cd987bcdaba50b54b6f52e867a7bab6a72950758b0a739cc7e600be",
+  "fresh_manifest_sha256": "a8985ecc8427cae8c4fea00c86398e46958042166d8da28a7f418c0355700a9c",
+  "source_sha256": {
+    "scripts/paired_native_continuation.py": "f85b5ff80aa46eec8acf21d2c9e9652565918372e80d5620b641674c9d487211",
+    "src/champions_practice/admission_audit.py": "10d47968af9a388844912d9c2f8e1015fa0826e3378f2395551ebeeca5593097",
+    "src/champions_practice/ai_smoke.py": "14d586a8a941e9755fd3971c8d7a510600efeef964531e76ce166cc0f3dbc59b",
+    "src/champions_practice/battle_smoke.py": "6e2d2c879915568a4672e892682f5c50fbb93ec50c58001636ebc369aa164762",
+    "src/champions_practice/beliefs.py": "3e7f806565bf335bf6531ee88bdf0f3e2e19ea3127cc40377460fb8963d0dda1",
+    "src/champions_practice/belief_controller.py": "c12154bad68b383d06e7e5bedf2ff3354244a67eaa9305ffe0dad6d536f102a8",
+    "src/champions_practice/belief_controller_smoke.py": "5d7eb167c6bab7e1b23ec09903ad7e3db47f1f1807bba5eb6dd1e34f099438f0",
+    "src/champions_practice/belief_search.py": "055a4bd9064f535444119e710a724cbd850f4a78cd264a530ad4c79ac4c277b2",
+    "src/champions_practice/belief_search_smoke.py": "df75140d2b66ec64052aac9242bf10f8db4f0f5c08c5526ad4e0118d2f398cdc",
+    "src/champions_practice/belief_smoke.py": "5ac4aa03a977b7b97381b97ccbad72be5e6ef9e113783de5c35f4ca86c67e3ec",
+    "src/champions_practice/belief_worlds.py": "9cf09e164fb78d92098bd391532ceca970221bc5681eb9edb077c292bb96d091",
+    "src/champions_practice/cli.py": "be64bfb693ee5abd8996169f0b669bcc78b43bfadca1759f752c800b33674414",
+    "src/champions_practice/client.py": "9db0b9abf2f0e5cbba8cd547782b9e84fc65f89c88e47132cc1d18d5ccce92ed",
+    "src/champions_practice/competitive_evaluation.py": "37c1c10a63a58dc11646993d8e04589ec5b656728a152a4691057672357f9e86",
+    "src/champions_practice/config.py": "3f8c00231490c2288894582fb9fe643d07089d8b879c3d5025b50de45f7c1fa4",
+    "src/champions_practice/consequence_ties.py": "4b7954e714209bb14818f16418eb870dc7ed45474a9c3783e7052a900b705ab2",
+    "src/champions_practice/current_state_constraints.py": "bad9ca7f9ceb7fd778d5ff2508282217d29cf525a8a247a45f7e2ac653bca1dc",
+    "src/champions_practice/current_state_constraints_smoke.py": "dbfd12e80e0de2f228ea01fa49d669cbb7ec26d918763ad7582509182cdb4878",
+    "src/champions_practice/current_state_proposals.py": "46382aadf797c2e7fa8eaa995c3ee68ae526349929670bb15d2dc42d41c0cd20",
+    "src/champions_practice/current_state_proposals_smoke.py": "b62b3ae146097c5eac59547a747b68d29a02ad9c84465c9cb2f7fc76174becaf",
+    "src/champions_practice/current_state_reconstruction.py": "0a75906f2ac537e89e3ff98162d449f734c71cfc1a8a03f4c9143e4bed51c13e",
+    "src/champions_practice/current_state_reconstruction_smoke.py": "e2665ab08bbfd41720ef3ee7b99db4ddc87379375a3b98a73bdd87cccb439f9e",
+    "src/champions_practice/damage_conditioning_smoke.py": "743c83d451fe689f3a77effc1b0c3db51c930a62dce935a483b11b5e2c14ca00",
+    "src/champions_practice/damage_roll_domain_smoke.py": "3a337f6704985cc3762612feb4d76de593e7d45ca7ea6b15a935376e2514d192",
+    "src/champions_practice/damage_witness_smoke.py": "74c1b39acabf3c39dba0be2670c31d8266bb1d9a9d26ddfba074f1b933f402a9",
+    "src/champions_practice/demo_fixture.py": "1b49629bc841976899a695d1f04892eff906701e6909efbbc2baad7695ae7490",
+    "src/champions_practice/demo_server.py": "94b0390a5aed3b754d4e4585c2da110a8277f18c942ac7a891ba0d122f00f181",
+    "src/champions_practice/diversity_boundary_smoke.py": "4648b3e9d0d77d2afc341dc377249eb9ae303b82ad6bca46df9675dfd7b371cf",
+    "src/champions_practice/diversity_league.py": "3c17606513ce966509cac42b9e6e45fe379ded7805e8c838c935729d1c91d21a",
+    "src/champions_practice/exact_search.py": "ffa868b9436cf959fe484a9b4f91e516377a4764e1108e0bc0e50e2bd834f1ac",
+    "src/champions_practice/exact_search_smoke.py": "a312740e1a043ab526bab54e82e9ae28d10d3279e322ae4c14afc484c20de657",
+    "src/champions_practice/execution_authority_smoke.py": "4cd53cbc960ce6a3b3b8ff4cce2728487276e632eec7b20205736a36c98a5806",
+    "src/champions_practice/execution_evidence_smoke.py": "f273cbebf4441ffe24d132375a67f9751d753ef9482e32c5fec6294f60db28f5",
+    "src/champions_practice/experimental_native_player.py": "7d01056ecff132c173ce1f3b74ec4b94c7dfa6e376d668d8b0844aa3fe048f02",
+    "src/champions_practice/fainted_active_present_smoke.py": "6cb859b94c69ea3657a591e6172a6d790d0962cf29de925a1e175b5c40dfbe18",
+    "src/champions_practice/finite_conditioning_smoke.py": "d24327c6749b3aeb1fa11b212f7030c1880b1cd13872b0ffd80e753cc2de78bd",
+    "src/champions_practice/finite_transition_smoke.py": "c9fef81794e32490c14ccf27e5b26118c8bf955756c6ed1befc9902cfc60b8e2",
+    "src/champions_practice/forced_wait_authority_smoke.py": "2d92da3c67bd5d3ceb42f2f3f96342a75f16d7dd8f82bc44e1b6529a599d0165",
+    "src/champions_practice/human_mega_regression_smoke.py": "788fe35e80cf41a637be6160db5ba2b74176786df97a0513775245bd4cb9b41c",
+    "src/champions_practice/independent_opponent.py": "82022fea7ac405a3562565661e0542ef15fc2d97748fb263c00fc5cdb169a218",
+    "src/champions_practice/legality_oracle_smoke.py": "b5237a79ea26581071dd3c07b5d933da982f3cc148412685938164ebc99422db",
+    "src/champions_practice/legal_actions_smoke.py": "2a2bde6b8a9313f74d58739aa786c9501712852148617ad28306bda90c8d158c",
+    "src/champions_practice/midgame_reconstruction_smoke.py": "a1a7114babe2861745e8644e1a549a65d2c81c90ca4833b121ef6884f1429329",
+    "src/champions_practice/native_projection_smoke.py": "d6c8932aea075f344342146f0e5fbd6a3deef76cb21ca560a8c2c2a9b79692a7",
+    "src/champions_practice/native_speed.py": "e75a4657300d8d54e2f464808ae89417017adead73ab47b214ff47af8788aea0",
+    "src/champions_practice/native_stochastic_audit.py": "db3f9f34854db50b58edccce70faa86e7543677e1b051588a177b2bd0e30ea7e",
+    "src/champions_practice/native_stochastic_tracker.py": "1978204bf2b9538730d57c9efe335b6b73d79d8ea64c98bc551685f14489d850",
+    "src/champions_practice/native_stochastic_validator.py": "0d8884f6b477a2aefa3032d34b8a5e3143769e6cedacf22278cc34ffc0595cd5",
+    "src/champions_practice/observation_beliefs.py": "68989ae9f5001321170aa1c7cd15292939e4b0f3567d21d463a26ae641f383be",
+    "src/champions_practice/observation_conditioning_smoke.py": "bd1882b5de1ba93fcc7a45d2d6209f0da0d38278055fba34096534974ebbfc9e",
+    "src/champions_practice/own_mega_lifecycle_smoke.py": "8d1678d178271be4b4cbbda11e5e05ea53715a9db24ba286b9b4db9a8004dbab",
+    "src/champions_practice/persistent_admission_smoke.py": "4cdbe61d263f35f3375dc185c439d9260cc38a9b2e9abcd7257a2d1ae5eb1adb",
+    "src/champions_practice/persistent_support.py": "40e6f263370875abe00828add12ccc994dda82b95c68d474ebed6986a07719d3",
+    "src/champions_practice/plan_consequences.py": "56629863e952ab21534c348a754729970d0c271bc04fd063665c0ac23a410e96",
+    "src/champions_practice/plan_feasibility.py": "e3bdcffaac026f6e8b47c8214397d27a0781c2d8fcfa77de452eb7882e0aa798",
+    "src/champions_practice/players.py": "3c8dab3abe2928be91a87fbd2f3cb74361c0699c5095613a390e3359384fa5b9",
+    "src/champions_practice/position_report.py": "f55c67210fb03ff024bf01864c99530a7bc0478a5b20e47f40b077886239143d",
+    "src/champions_practice/present_mechanics.py": "cefd0581a82de9bfaedc66e3f6e440e6b512d5ae9b940d0e5e3285da725b2d29",
+    "src/champions_practice/present_mechanics_smoke.py": "74782593faf6303a3247674227766e47a3cab9f5b4e4bb30bf168b4207c27680",
+    "src/champions_practice/present_rebase.py": "89a8b83f27081a6d922782164d1296d62070f5a8d1320b4f4a136763df9ccbc7",
+    "src/champions_practice/protection_lifecycle_smoke.py": "c70b382ffee9f1f06a08444068008cb436332d4fb16623343d2208b6bafad356",
+    "src/champions_practice/public_effect_timing.py": "9ea7a2a22846c7d4ed83504e3a0e988474d38f7c2e7cbdf8d021043e7b8bc5ad",
+    "src/champions_practice/public_event_conditioning_smoke.py": "ce5a3e4e244ae44c57f9e37d950cf0f5495138d2bb80f7b35d40a4777b30a19d",
+    "src/champions_practice/public_inventory.py": "9f17109a95b1da87ccf88e335525be1366f5af564b5189c877511e2a1079e653",
+    "src/champions_practice/public_ledger_recovery_smoke.py": "24332164818db2f3e77e7c7ebf68614e8915364080b605bc995f0983d46f03d1",
+    "src/champions_practice/public_ledger_smoke.py": "db052172f2bc4f8d0e590a9ced63a9a351114fa3a5e4e6b79555834704d13e5a",
+    "src/champions_practice/public_lifecycle.py": "9b5fe7653ff5312bb6ac93d047d136c093c9567383234ab74aae3b1613e64821",
+    "src/champions_practice/public_origin.py": "47f6a12fe8a9442f94f7be9fda69840287e7aadebd662fae498e7bb6c8e094b9",
+    "src/champions_practice/public_scaffold_bootstrap.py": "f11fd99b6be5897b266e5d764c7350813b23e5b44ba1d2453669981135e58bf1",
+    "src/champions_practice/public_scaffold_bootstrap_smoke.py": "e471db84bb379c4c089fff9b8bab9f0d5a3321c05ec91bd43a0d5a1d69c3d94c",
+    "src/champions_practice/public_structural_legality_smoke.py": "fa95f11dbb8cc868ff70945db53a5bacce3fc2ddb3d2d205b1802ca9e3e99282",
+    "src/champions_practice/public_switch_action_smoke.py": "738e90e8f4f7b91b4eba448146010190b57dfad6a117372422c8dea6f3e0350b",
+    "src/champions_practice/public_transformation_action_smoke.py": "95b5b817387ceb14aeefe563bb380919a6423e6b1c701c5551253f381f4028af",
+    "src/champions_practice/quantitative_transition_smoke.py": "bf8b472eb8ae70987fe175bab33a814540e92efdc4b8de5d6d1ed7054816f9e5",
+    "src/champions_practice/queue_retention.py": "8daf964979c63ae6d961e996b8de9bf292556111d49c93f039c4c70cc424d475",
+    "src/champions_practice/queue_retention_smoke.py": "612ff774644883a02c11dd1e45183c87ddcf2ed0e229d795c76419a636edacdb",
+    "src/champions_practice/queue_shadow.py": "f168e6c47dca7edb70a661e2b4245e94bbf1ec3090ef2ad945f7236337cb4d6d",
+    "src/champions_practice/reachability.py": "c7087d08a8545c7526e8b5c23585115ed6d0909b51d28c3f022e5cd16d76b68e",
+    "src/champions_practice/reachability_smoke.py": "8980755f266bf3cbe3d242b663b0ac445b9ac54fe6b75cfb9cf78dfcd0c5ebb7",
+    "src/champions_practice/rebase_challenge.py": "ce96c09b5d68d79b112b639433577b1bfb9b9462ae6b8863de40bff63058d433",
+    "src/champions_practice/rebase_challenge_smoke.py": "d80694845c3ba495f8a4c51aaf4e81fe52f307ab64afc413eb0990c8b7d05b7b",
+    "src/champions_practice/recommendations.py": "6737cef1c716149153447e90beaa73c82bd649085905c7c212f76eaefd0d62ad",
+    "src/champions_practice/recommendation_smoke.py": "05395ae3b681a52369b413468babbd7b86017f3e4388845c372ae72b6868348f",
+    "src/champions_practice/recovery.py": "48736f3481e97eb7272b0693ecc8f97a3bbae06b39661fbd299060d871b44068",
+    "src/champions_practice/recovery_boundary_smoke.py": "2db701c718d4f406d68541cccadd5073a6c82d24fd7a586a4c5b38636fd725cb",
+    "src/champions_practice/recovery_corpus.py": "3df929c63fe70617a417a62675fa7d028b33ad54bee8b9e791a54f88585511c7",
+    "src/champions_practice/recovery_corpus_smoke.py": "cecb960d5c95dd8c56a43a4199c34e7a6b97dce2aecce7dc67a798167b87eda1",
+    "src/champions_practice/recovery_history_authority_smoke.py": "36fea5e4c4cadc911d5a6d1cd7b8ff42768347063c4b771d17d825485a227a4e",
+    "src/champions_practice/recovery_member_lineage_smoke.py": "24c096963c4563470a49195e5898269283c7d380385ec8c19ca11d6c00869e88",
+    "src/champions_practice/recovery_mutation_authority_smoke.py": "38552dd1490de4693d8bc2479202297c630a2311d4e49bcbf87aca2ebf4b93dc",
+    "src/champions_practice/recovery_opening_authority_smoke.py": "f9ed4d6639c18fba48c2dfaaf0ebef4b7356419cac012c24208f1b9684264aad",
+    "src/champions_practice/recovery_sampling_inconclusive_smoke.py": "1b01b85549ae32b34240722783e40b44a9ad0416eab7799ab0c5eb944db7ad9f",
+    "src/champions_practice/recovery_soundness.py": "cd1738bcbb7a8da699e6aeab7c0984332acb05ac5b2a69de5d3d6cf98413fbb6",
+    "src/champions_practice/recovery_soundness_smoke.py": "37861bf16e0af1a4f1a917f50b666b842a8fd1ab88f08c25d2fa555ea365c217",
+    "src/champions_practice/recovery_stat_proposal_smoke.py": "06b9802c2862dd60d7598dfccf78f37f6c6253e854d392c7c976efa3af240636",
+    "src/champions_practice/replacement_lifecycle_smoke.py": "c6bd96eb38d67a6801d019eb5f4535c6f78abfe4ff0cc2aea8ff852704635d9f",
+    "src/champions_practice/replay_corpus.py": "d6d5eb41724e7a32f54075e18ce785d5628b6d32c7cc6dd0dbba1fdfc5ae1348",
+    "src/champions_practice/replay_policy_dataset.py": "ce6db1b51d0d7c7466b00cbb0184ad6b0b39e6a50911cbdf3d209a89c6122e21",
+    "src/champions_practice/replay_policy_menu_smoke.py": "a5697bf2b414e7f5c321f4b842d1cd86b2eb2c9f95e8466ff1ad946e9605fb24",
+    "src/champions_practice/replay_semantic_audit.py": "276b4bda671dd7f7a6d03f51049e52ae556ab26fa1c479947d17c1cc7c4fbcf7",
+    "src/champions_practice/replay_semantic_audit_smoke.py": "4be0e613ccf3bf1dbe7630ea6573b0fde7458a07e9c6a67a094af977da16f15a",
+    "src/champions_practice/replay_trajectories.py": "d8679d203528b1d9f5ad068036ef0fbbd98e0b6002102ee41f2dc18561ee93ce",
+    "src/champions_practice/replay_trajectory_smoke.py": "9448d9bf897045afe3e6343ac0c9094d74b928ea48ab8b08789b686b9c3bb359",
+    "src/champions_practice/revival_blessing_smoke.py": "49124d1b2bf2f270f29db6b67de9e6931a5dfe43267659be9b383514f04d5133",
+    "src/champions_practice/risk_joint_audit.py": "0dec308990683bdc55ba19e45ace655c74e8d04ae502536a2917e9cb16c782dd",
+    "src/champions_practice/rng_observation_smoke.py": "e3d79e8187ec5775402aaa66657fb4d89a1313a7d2269cd4c079ba53f52415ac",
+    "src/champions_practice/rolling_public_checkpoints.py": "859f27d434d7c73b07519021318a907430055274a4a941c4b660ed9d702cd6d3",
+    "src/champions_practice/rolling_public_checkpoints_smoke.py": "1f50121d289d4c1db57d464cc991d37e29a4cdb0dad4d05c91d5e5dcf571085f",
+    "src/champions_practice/sealed_transition_smoke.py": "186fc94ead7bd75dda1dc7b91a9cac7d26da7e69ea202c6eba6f1f04e119dc86",
+    "src/champions_practice/search_bridge_smoke.py": "a2be8006ea3754536425dba145375f7dc763cd025ac4482fc16acebcc1d34af5",
+    "src/champions_practice/search_worker.py": "92f4395306c93c9d1bd3eaec95959f95a1686dcd3bb75db3209b3768085fe933",
+    "src/champions_practice/selected_prior_smoke.py": "d86d10497275067833f649fd3a4b55a7b7dae85ca089dd8ef21ee0ca355fc753",
+    "src/champions_practice/semantic_policy_diagnostics.py": "f9c9851cc895850b105f0a5032f152da3dc452dd46ebb6e6be243cfb5438ef2f",
+    "src/champions_practice/semantic_policy_features.py": "e9a00a8835c18c37e4a78c28e54bebda5186ffafb4c8a1e51fe830e466074b9a",
+    "src/champions_practice/semantic_policy_registry.py": "1eaee460b89deb7449f88e5865a1bbaacd0e4f7f7004765615b185e46c291b22",
+    "src/champions_practice/semantic_policy_tools.py": "096a297ef941920d9dbc588a005d5c21f7f245151f3c72ac5c0a3ddf15ac46e5",
+    "src/champions_practice/semantic_policy_train.py": "e6ac0bcd7ec69de46bbb20b509ea1cabd29001215224d7c57c4d51619eb21e85",
+    "src/champions_practice/session_smoke.py": "493c916d1e2c59e7390df87a747227b17242a21ddf74c9d4e455ed36787564cd",
+    "src/champions_practice/sethp_projection_smoke.py": "5e8448c7662d327163ceb93c0c22abf8101311e899baa538c152865bcb2400c2",
+    "src/champions_practice/showdown.py": "ed022ff4e633472de9c24f3e883dc6faf2eef5f7827b0c877d94270d696b9962",
+    "src/champions_practice/showdown_build_stamp.py": "1884b8c70572f43572d5195f66ced1b87c647752e1b637ea361b966b8f599b54",
+    "src/champions_practice/showdown_public_catalog.py": "c417f45c840847be12e21683b5bdb5360773be38349e8e0b3d644d3ec9c50e9e",
+    "src/champions_practice/showdown_runtime_gate.py": "5e25e2c31c85c1ea61e1d7213fee237f45afe750cbe6720f70207f8bd47b1065",
+    "src/champions_practice/smoke.py": "f5691eb9009ba2b93bc626361b7d6b6259f586de18acc8d27b02e51591dd24eb",
+    "src/champions_practice/state_maintenance_audit.py": "e495b9667452513a8f81288734999bba5654d70596983bc792d9d5b64a9a1206",
+    "src/champions_practice/stochastic_domains.py": "8757f5f878631623d1d9d88c48656e1520b3002119cbfa3b19616be70ecd6060",
+    "src/champions_practice/strategic_benchmarks.py": "c4235da793cb3baab8f8478564e8ef314103be94cdf16272c322c5a58559c9ca",
+    "src/champions_practice/strategic_benchmark_smoke.py": "dd04ab88d25505a59c1b1e19c06d3894b633619fca4635c959d46257aeafedc5",
+    "src/champions_practice/strategic_diagnostic.py": "02c4b6552b9e5a3974bc44ff0a8ee4db3b431b9a4da4455dd3f3f9ea36d8e286",
+    "src/champions_practice/strategy.py": "894950ab95866f12d4002ca90635f91e4569af3e16b52f7857d3da817970e601",
+    "src/champions_practice/strategy_evidence.py": "d1e9d9579d216d33ecd845ddec50dc8c99b1df7ad19f4b877bf265bbd57438be",
+    "src/champions_practice/strategy_tactics.py": "1b4b615733a57f0521116400f018efe1c31521d1e4817bd11651a54d1aa29483",
+    "src/champions_practice/strength_league.py": "29a4622858553bdd95e3663f0fbc8468d3dc54fa1a239fa820f502997aaf7c76",
+    "src/champions_practice/structural_collapse_probe.py": "f54285ffc44a287522b08317ce28b2b2a7be7344879efc78144aeeaf27652149",
+    "src/champions_practice/tactical_consequences.py": "3df4983da10f2115c259277bed27c175e508785863655df68f96befffff86f88",
+    "src/champions_practice/tactical_objective.py": "fc90a350b1a2308bc4b513e8237c49e76673b3a956fe350037a514573d0f07af",
+    "src/champions_practice/teams.py": "947a85cdccd2a2de1ecaa99577d3aad110799531a2126a69519eac15cb2796e7",
+    "src/champions_practice/team_corpus.py": "485eb229b7feb25ae56ddb135fe55f7939d4b2ad1647d64efbb525265c0e73a1",
+    "src/champions_practice/team_corpus_smoke.py": "3bfdc6233bee02772719703a44dfeae8abb4a1e16be50682692e9dcb52b6ac1e",
+    "src/champions_practice/team_text.py": "4cdb7dcef1e16e238e50ad2da38522206871428439cde92e2a274464510c50e7",
+    "src/champions_practice/terrain_lifecycle_review_smoke.py": "a082116abe74f407a18f068a503b9da5e4bc4ea99302d8704c8f97dcbd60a0d8",
+    "src/champions_practice/timeout_lifecycle_smoke.py": "1fe92c1bdc5df92a9b91dc1b5558c403e3208868788b3f440e80124f2f62fcdd",
+    "src/champions_practice/trace.py": "55373bbb2c4a2fa95f71e5583f5ca6483f4fc7bae75e939a5809475913fa3530",
+    "src/champions_practice/trace_trick_room_smoke.py": "d3334cf68044017304cf18015623b0179ce0d92e80fb825a52923c75b4293caf",
+    "src/champions_practice/transition_drift_probe.py": "3cbca3b2f691a6785dec121298dbb08015d17cb8e21d852f5b160dd0074e66c9",
+    "src/champions_practice/unburden_present_smoke.py": "934614a36ea730420ad7bac7fdf6be03f45ffc5e974b592429fe5ea17f0de8d1",
+    "src/champions_practice/uncertain_fixture.py": "b476b09432e5736ee98213b13fef3e17426111377d5163531bcebc6f65373e5e",
+    "src/champions_practice/worker_lifecycle_hardening_smoke.py": "0d024d8e077f30b656b7d9b02f27a78d27484e39be484794e6db7c79782b15af",
+    "src/champions_practice/__init__.py": "31aa5dc3bb584536e26d30e9464ee0079a1d3e4bca0c54a96856ec83f69fdf2f",
+    "src/champions_practice/agent_v2/audit.py": "e013b3a13537b30186aaaffea1f3b430a048ef8a27bfe14561962ccee221f180",
+    "src/champions_practice/agent_v2/joint.py": "feb965eb03f1fa5bad7130e83595282a793719028a752ed6b7ccad3d19b944cc",
+    "src/champions_practice/agent_v2/policy.py": "a471136a87914cf06cef4d5cd6deace1a2a19c09e740685b2cc5a67ee2dc9f54",
+    "src/champions_practice/agent_v2/__init__.py": "1ce5e09e5458610e49f4e81e452889a2be4635643b215d9ef9c0274b58064694",
+    "src/champions_practice/opponent/actions.py": "b525ca2d3d3f5de4fbf34a323521084e762e87cf03f455350bb5e7c423b8bbc8",
+    "src/champions_practice/opponent/evaluator.py": "918bfbd65cad05acc6eb9675df30754bfd49033f8507411ac18454a55b43d87d",
+    "src/champions_practice/opponent/player.py": "84cda7b1b24d1d96c1227bf45dc18e1fd5e9078f9b71f898e35b51ce61c66e9e",
+    "src/champions_practice/opponent/preview.py": "3c5d531b0f5d4dfa4f7cdcc654ad252b4599ab1ed80e74d92d7e71be7de39c69",
+    "src/champions_practice/opponent/response.py": "b4cf5cf5955c6ce0095290ea43c55364a5072cdad5f730d6d5176d8bf4ac5fd1",
+    "src/champions_practice/opponent/__init__.py": "f9d61879f432963f1d447a1399039c4a2029f14a261a28e0a0ac15950ca5ff96",
+    "tools/showdown-search-worker.js": "b2ee07a89fb0e7167e54ce9a0596f8c9838186696f47191051a91f87a39745f3",
+    "scripts/fresh_tactical_benchmark.py": "83cf825a0e8769b2387bb1debdb3821ff7b57e5f1da7a44d40937aacdc11f416"
+  },
+  "rng_labels": [
+    "sodium,1234567812345678123456781234567812345678123456781234567812345678",
+    "sodium,c538f8f2bf38cccc808a75ed58539a7a8f7283095f26ff938a140800021db8b3",
+    "sodium,c8034a3b3cee8b61cb10c4ffb0b644212e34ebb66b7d8ebd50831fa702b4382c",
+    "sodium,054f593b02be6784c63fc305104ae611c4893e4e3220d4b508616d4836ac60fc"
+  ],
+  "protocol": {
+    "priority": "speed-control first; all three retained cases; no outcome-based exclusions",
+    "factorial": "Two fixed root commands x frozen V2 or deployed public-only native continuation.",
+    "root": "Reproduce exact fresh-benchmark roots, initial replies and four coupled RNG labels.",
+    "public": "Both continuations receive full public six-mon previews, owned requests and public history only.",
+    "native": "Existing ExperimentalNativePlayer; shared eight-second preparation/search budget per decision; no carried exact states.",
+    "priors": "Existing catalog plus public Earthquake variants for Garchomp/Metagross; all originals retained; no actual opponent team supplied.",
+    "opposition": "V2 reference replies replayed at matching turn/phase/occurrence if legal. Missing/illegal schedules explicitly unmatched; use public V2 and separate strict-paired analyses.",
+    "rng": "Exact original root labels; same phase and next-turn seed derivation as fresh benchmark.",
+    "horizon": "Through root turn + 2, at most six decision checkpoints per turn.",
+    "fallback": "Admission failures, deadlines, native errors and forced waits reported separately; none counted as successful search.",
+    "cache": "Decision memoization keyed only by full public observation/action history and legal menu; occurrences and unique computations reported separately.",
+    "limits": "Retained diagnostics, not game win probabilities. Full-preview V2 replay may differ from earlier exact-world probe. Nonterminal survival is not a proven win route."
+  }
+}

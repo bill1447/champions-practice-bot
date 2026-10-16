@@ -1,0 +1,51 @@
+{
+  "weather_diagnosis": {
+    "raw_diagnostic_sha256": "77500f8d9f6623bcbd06650ad6c48e426ac20cd6733128ebc378c60864abfe76",
+    "probe_calls": 48,
+    "actionable_fallback_occurrences": 74,
+    "native_rejections": {
+      "unsupported-public-weather-plan": 48
+    },
+    "scope": "Read-only public history / hypothetical-constructor instrumentation; no live hidden state or admission bypass.",
+    "example": {
+      "turn": 4,
+      "phase": "move",
+      "public_weather": "raindance",
+      "public_plan": {
+        "weather": "raindance",
+        "residual_turns": 3
+      },
+      "hypothetical_opening_weather": "",
+      "hypothetical_drizzle_members": [
+        {
+          "side": 0,
+          "species": "Pelipper",
+          "item": "focussash",
+          "active": false
+        }
+      ]
+    },
+    "example_public_opening_actors": {
+      "opponent": [
+        "Metagross",
+        "Pelipper"
+      ],
+      "player": [
+        "Garchomp",
+        "Rotom-Wash"
+      ]
+    }
+  },
+  "separate_fresh_probe": {
+    "archive_sha256": "b246450fa79d4d617230d29593ac85aab6bfd7a4429023b6aef62f81cfee51a1",
+    "manifest_sha256": "f3da99c52af7c9918f96c6aff09b0114bfd80d0e259c5ebd18d3fb0bfa3d3738",
+    "frozen_cases": 12,
+    "probed": 10,
+    "native_search_positions": 2,
+    "paired_scenarios": 124,
+    "paired_scenarios_with_search": 32,
+    "native_terminal_improvements": 0,
+    "native_terminal_regressions": 0,
+    "interpretation": "Too few admitted positions to establish broader tactical quality. Nonterminal choices remain ungraded."
+  }
+}
